@@ -1,0 +1,103 @@
+import { prisma } from '@/lib/prisma';
+import { addMinutes } from 'date-fns';
+
+export class GestorSeleccionTemporal {
+  /**
+   * Crea una selección temporal para un docente
+   */
+  static async crearSeleccion(params: {
+    id_docente: number;
+    id_curso: number;
+    id_grupo: number;
+    id_ambiente: number;
+    dia_semana: number;
+    hora_inicio: string;
+    hora_fin: string;
+    tipo_clase: string;
+    id_periodo: number;
+    sesion_id: string;
+  }) {
+    // 30 minutos de expiración
+    const fechaExpiracion = addMinutes(new Date(), 30);
+
+    return await prisma.seleccionTemporalHorario.upsert({
+      where: {
+        sesion_id_dia_semana_hora_inicio: {
+          sesion_id: params.sesion_id,
+          dia_semana: params.dia_semana,
+          hora_inicio: params.hora_inicio
+        }
+      },
+      update: {
+        ...params,
+        fecha_expiracion: fechaExpiracion
+      },
+      create: {
+        ...params,
+        fecha_expiracion: fechaExpiracion
+      }
+    });
+  }
+
+  /**
+   * Elimina una selección temporal específica
+   */
+  static async eliminarSeleccion(id_seleccion: number) {
+    return await prisma.seleccionTemporalHorario.delete({
+      where: { id_seleccion }
+    });
+  }
+
+  /**
+   * Limpia selecciones expiradas y devuelve los IDs eliminados para notificar vía Socket
+   */
+  static async limpiarExpirados() {
+    const ahora = new Date();
+    
+    // Obtener las que van a ser eliminadas para notificar
+    const expiradas = await prisma.seleccionTemporalHorario.findMany({
+      where: { fecha_expiracion: { lte: ahora } }
+    });
+
+    await prisma.seleccionTemporalHorario.deleteMany({
+      where: { fecha_expiracion: { lte: ahora } }
+    });
+
+    return expiradas;
+  }
+
+  /**
+   * Confirma una selección temporal convirtiéndola en definitiva
+   */
+  static async confirmarSeleccion(id_seleccion: number, usuario_id: number) {
+    const temporal = await prisma.seleccionTemporalHorario.findUnique({
+      where: { id_seleccion }
+    });
+
+    if (!temporal) throw new Error("Selección temporal no encontrada");
+
+    return await prisma.$transaction(async (tx) => {
+      const definitiva = await tx.horarioAsignado.create({
+        data: {
+          id_docente: temporal.id_docente,
+          id_curso: temporal.id_curso,
+          id_grupo: temporal.id_grupo,
+          id_ambiente: temporal.id_ambiente,
+          dia_semana: temporal.dia_semana,
+          hora_inicio: temporal.hora_inicio,
+          hora_fin: temporal.hora_fin,
+          id_periodo: temporal.id_periodo,
+          tipo_clase: temporal.tipo_clase,
+          estado: 'borrador',
+          creado_por: usuario_id
+        }
+      });
+
+      await tx.seleccionTemporalHorario.delete({
+        where: { id_seleccion }
+      });
+
+      return definitiva;
+    });
+  }
+}
