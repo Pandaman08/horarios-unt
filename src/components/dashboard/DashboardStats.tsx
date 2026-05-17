@@ -25,9 +25,11 @@ import {
   CalendarCheck, 
   AlertTriangle, 
   TrendingUp,
-  Activity
+  Activity,
+  AlertCircle
 } from "lucide-react";
 import { getSocket } from "@/lib/socket-client";
+import { KpiConflictosPendientes } from "./KpiConflictosPendientes";
 
 interface StatsData {
   kpis: {
@@ -49,8 +51,10 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
   const [actividades, setActividades] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchStats();
-    setupSocket();
+    if (id_periodo && !isNaN(id_periodo)) {
+      fetchStats();
+      setupSocket();
+    }
   }, [id_periodo]);
 
   const fetchStats = async () => {
@@ -67,16 +71,35 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
 
   const setupSocket = () => {
     const socket = getSocket();
+    
     socket.on("horario-actualizado", (payload) => {
       fetchStats();
       if (payload && payload.mensaje) {
         setActividades(prev => [
-          { id: Date.now(), mensaje: payload.mensaje, fecha: new Date() },
+          { id: Date.now(), mensaje: payload.mensaje, fecha: new Date(), tipo: 'info' },
           ...prev.slice(0, 9)
         ]);
       }
     });
-    return () => socket.off("horario-actualizado");
+
+    socket.on("nuevo_conflicto", (payload) => {
+      if (payload && payload.descripcion) {
+        setActividades(prev => [
+          { 
+            id: payload.id_conflicto || Date.now(), 
+            mensaje: `⚠️ Conflicto detectado: ${payload.descripcion}`, 
+            fecha: payload.timestamp || new Date(),
+            tipo: 'error'
+          },
+          ...prev.slice(0, 9)
+        ]);
+      }
+    });
+
+    return () => {
+      socket.off("horario-actualizado");
+      socket.off("nuevo_conflicto");
+    };
   };
 
   if (loading || !data) return <div className="p-8 text-center">Cargando estadísticas...</div>;
@@ -99,13 +122,7 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
           color="text-green-600" 
           bgColor="bg-green-100" 
         />
-        <KPICard 
-          title="Conflictos" 
-          value={data.kpis.conflictosPendientes} 
-          icon={AlertTriangle} 
-          color="text-red-600" 
-          bgColor="bg-red-100" 
-        />
+        <KpiConflictosPendientes periodoId={id_periodo} />
         <KPICard 
           title="Avance Total" 
           value={`${data.kpis.porcentajeAvance}%`} 
@@ -197,11 +214,15 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
               ) : (
                 actividades.map((act) => (
                   <div key={act.id} className="flex items-start space-x-3 border-b pb-3 last:border-0">
-                    <div className="bg-indigo-50 p-2 rounded-full">
-                      <CalendarCheck className="h-4 w-4 text-indigo-600" />
+                    <div className={`${act.tipo === 'error' ? 'bg-red-50' : 'bg-indigo-50'} p-2 rounded-full`}>
+                      {act.tipo === 'error' ? (
+                        <AlertCircle className="h-4 w-4 text-red-600" />
+                      ) : (
+                        <CalendarCheck className="h-4 w-4 text-indigo-600" />
+                      )}
                     </div>
                     <div>
-                      <p className="text-sm font-medium">{act.mensaje}</p>
+                      <p className={`text-sm font-medium ${act.tipo === 'error' ? 'text-red-900' : ''}`}>{act.mensaje}</p>
                       <p className="text-xs text-muted-foreground">{new Date(act.fecha).toLocaleTimeString()}</p>
                     </div>
                   </div>

@@ -20,7 +20,8 @@ import {
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2 } from "lucide-react";
+import { Plus, Edit, Trash2, MapPin } from "lucide-react";
+import { AsignarAmbientesDialog } from "./AsignarAmbientesDialog";
 
 interface Curso {
   id_curso: number;
@@ -38,6 +39,8 @@ export function CursoList() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCurso, setEditingCurso] = useState<Curso | null>(null);
+  const [isAmbientesOpen, setIsAmbientesOpen] = useState(false);
+  const [selectedCurso, setSelectedCurso] = useState<Curso | null>(null);
 
   const [formData, setFormData] = useState({
     codigo: "",
@@ -59,7 +62,11 @@ export function CursoList() {
     try {
       const res = await fetch("/api/cursos");
       const data = await res.json();
-      setCursos(data);
+      if (Array.isArray(data)) {
+        setCursos(data);
+      } else {
+        setCursos([]);
+      }
     } catch (error) {
       toast.error("Error al cargar cursos");
     } finally {
@@ -257,6 +264,17 @@ export function CursoList() {
                   <TableCell>{curso.ciclo}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        title="Asignar Ambientes"
+                        onClick={() => {
+                          setSelectedCurso(curso);
+                          setIsAmbientesOpen(true);
+                        }}
+                      >
+                        <MapPin className="h-4 w-4" />
+                      </Button>
                       <Button variant="outline" size="icon" onClick={() => handleEdit(curso)}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -271,6 +289,18 @@ export function CursoList() {
           </TableBody>
         </Table>
       </div>
+
+      {selectedCurso && (
+        <AsignarAmbientesDialog
+          cursoId={selectedCurso.id_curso}
+          cursoNombre={selectedCurso.nombre}
+          isOpen={isAmbientesOpen}
+          onClose={() => {
+            setIsAmbientesOpen(false);
+            setSelectedCurso(null);
+          }}
+        />
+      )}
     </div>
   );
 }
