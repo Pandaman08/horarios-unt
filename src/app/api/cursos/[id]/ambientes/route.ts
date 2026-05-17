@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id_curso = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id_curso = parseInt(idStr);
     const cursoAmbientes = await prisma.cursoAmbiente.findMany({
       where: { id_curso },
       include: { ambiente: true }
@@ -19,10 +20,11 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id_curso = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id_curso = parseInt(idStr);
     const data = await request.json(); // Array of { id_ambiente, tipo_clase }
 
     // Eliminar relaciones anteriores

@@ -10,6 +10,8 @@ export type NextApiResponseWithSocket = NextApiResponse & {
   };
 };
 
+let globalIo: ServerIO | null = null;
+
 export const initSocketServer = (res: NextApiResponseWithSocket) => {
   if (!res.socket.server.io) {
     console.log("Iniciando Socket.IO...");
@@ -18,6 +20,7 @@ export const initSocketServer = (res: NextApiResponseWithSocket) => {
       addTrailingSlash: false,
     });
     res.socket.server.io = io;
+    globalIo = io;
 
     io.on("connection", (socket) => {
       console.log("Cliente conectado:", socket.id);
@@ -36,6 +39,18 @@ export const initSocketServer = (res: NextApiResponseWithSocket) => {
         console.log("Cliente desconectado:", socket.id);
       });
     });
+  } else {
+    globalIo = res.socket.server.io;
   }
   return res.socket.server.io;
+};
+
+export const getIo = () => globalIo;
+
+export const emitirEvento = (evento: string, data: any) => {
+  if (globalIo) {
+    globalIo.emit(evento, data);
+    return true;
+  }
+  return false;
 };
