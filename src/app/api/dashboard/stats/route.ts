@@ -5,10 +5,11 @@ import { startOfDay, endOfDay } from 'date-fns';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const id_periodo = searchParams.get('id_periodo');
+    const id_periodo_str = searchParams.get('id_periodo');
+    const id_periodo = id_periodo_str ? parseInt(id_periodo_str) : NaN;
     
-    if (!id_periodo) {
-      return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
+    if (isNaN(id_periodo)) {
+      return NextResponse.json({ error: 'Falta id_periodo o es inválido' }, { status: 400 });
     }
 
     const hoy = new Date();
@@ -20,13 +21,13 @@ export async function GET(request: Request) {
       prisma.docente.count({ where: { activo: true } }),
       prisma.horarioAsignado.count({
         where: {
-          id_periodo: parseInt(id_periodo),
+          id_periodo: id_periodo,
           // Usamos la fecha de creación si existiera, o simplemente el conteo total por ahora
           // En una implementación real filtraríamos por fecha_creacion
         }
       }),
       prisma.conflictoHorario.count({
-        where: { id_periodo: parseInt(id_periodo), resuelto: false }
+        where: { id_periodo: id_periodo, resuelto: false }
       })
     ]);
 
@@ -41,7 +42,7 @@ export async function GET(request: Request) {
     const ocupacionAmbientes = await prisma.horarioAsignado.groupBy({
       by: ['id_ambiente'],
       _count: { id_asignacion: true },
-      where: { id_periodo: parseInt(id_periodo) },
+      where: { id_periodo: id_periodo },
       orderBy: { _count: { id_asignacion: 'desc' } },
       take: 10
     });

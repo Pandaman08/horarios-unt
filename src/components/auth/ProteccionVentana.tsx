@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Lock, Clock } from "lucide-react";
 
 export function ProteccionVentana({ children }: { children: React.ReactNode }) {
-  const [access, setAccess] = useState<{ tieneAcceso: boolean; mensaje?: string } | null>(null);
+  const [access, setAccess] = useState<{ tieneAcceso: boolean; soloLectura?: boolean; mensaje?: string } | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -28,7 +28,8 @@ export function ProteccionVentana({ children }: { children: React.ReactNode }) {
     return <div className="flex items-center justify-center min-h-[400px]">Cargando...</div>;
   }
 
-  if (access && !access.tieneAcceso) {
+  // Permitir acceso si tiene acceso total O si es solo lectura
+  if (access && !access.tieneAcceso && !access.soloLectura) {
     return (
       <div className="flex items-center justify-center min-h-[400px] p-4">
         <Card className="max-w-md w-full border-red-200 bg-red-50">

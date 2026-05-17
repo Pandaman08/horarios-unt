@@ -14,6 +14,7 @@ import { Input } from "@/components/ui/input";
 import {
   Dialog,
   DialogContent,
+  DialogDescription,
   DialogHeader,
   DialogTitle,
   DialogTrigger,
@@ -68,7 +69,7 @@ export function ConfiguradorVentanas() {
   }, []);
 
   useEffect(() => {
-    if (selectedPeriodo) {
+    if (selectedPeriodo && selectedPeriodo !== "undefined" && selectedPeriodo !== "") {
       fetchVentanas();
     }
   }, [selectedPeriodo]);
@@ -82,12 +83,15 @@ export function ConfiguradorVentanas() {
       const periodosData = await periodosRes.json();
       const statsData = await statsRes.json();
       
-      setPeriodos(periodosData);
-      setStats(statsData);
-      if (periodosData.length > 0) {
-        setSelectedPeriodo(periodosData[0].id_periodo.toString());
+      if (Array.isArray(periodosData)) {
+        setPeriodos(periodosData);
+        if (periodosData.length > 0 && !selectedPeriodo) {
+          setSelectedPeriodo(periodosData[0].id_periodo.toString());
+        }
       }
+      setStats(statsData);
     } catch (error) {
+      console.error("Error al cargar datos iniciales:", error);
       toast.error("Error al cargar datos iniciales");
     } finally {
       setLoading(false);
@@ -176,6 +180,9 @@ export function ConfiguradorVentanas() {
                 <DialogContent>
                   <DialogHeader>
                     <DialogTitle>Programar Ventanas Automáticamente</DialogTitle>
+                    <DialogDescription>
+                      Configure los parámetros para generar las ventanas de atención de forma automática basadas en la jerarquía docente.
+                    </DialogDescription>
                   </DialogHeader>
                   <form onSubmit={handleAutoSchedule} className="space-y-4">
                     <div className="space-y-2">

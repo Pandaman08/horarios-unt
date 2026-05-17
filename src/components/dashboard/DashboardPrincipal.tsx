@@ -31,12 +31,23 @@ export default function DashboardPrincipal() {
     try {
       const res = await fetch("/api/periodos");
       const data = await res.json();
-      setPeriodos(data);
-      if (data.length > 0) {
-        setSelectedPeriodo(data[0].id_periodo.toString());
+      
+      if (Array.isArray(data)) {
+        setPeriodos(data);
+        if (data.length > 0) {
+          // Si no hay seleccionado uno, o el seleccionado no existe en la data nueva, elegir el primero
+          setSelectedPeriodo(prev => {
+            const exists = data.find(p => p.id_periodo.toString() === prev);
+            return exists ? prev : data[0].id_periodo.toString();
+          });
+        }
+      } else {
+        console.error("Data de periodos no es un array:", data);
+        setPeriodos([]);
       }
     } catch (error) {
-      console.error("Error al cargar periodos");
+      console.error("Error al cargar periodos:", error);
+      toast.error("Error al cargar periodos");
     }
   };
 
