@@ -65,7 +65,12 @@ export function PeriodoList() {
     try {
       const res = await fetch("/api/periodos");
       const data = await res.json();
-      setPeriodos(data);
+      if (Array.isArray(data)) {
+        setPeriodos(data);
+      } else {
+        setPeriodos([]);
+        toast.error("Formato de datos de periodos inválido");
+      }
     } catch (error) {
       toast.error("Error al cargar periodos");
     } finally {
