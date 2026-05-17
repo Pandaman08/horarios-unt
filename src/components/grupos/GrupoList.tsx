@@ -81,9 +81,9 @@ export function GrupoList() {
         cursosRes.json(),
         periodosRes.json(),
       ]);
-      setGrupos(gruposData);
-      setCursos(cursosData);
-      setPeriodos(periodosData);
+      setGrupos(Array.isArray(gruposData) ? gruposData : []);
+      setCursos(Array.isArray(cursosData) ? cursosData : []);
+      setPeriodos(Array.isArray(periodosData) ? periodosData : []);
     } catch (error) {
       toast.error("Error al cargar datos");
     } finally {

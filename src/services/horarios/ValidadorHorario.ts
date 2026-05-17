@@ -1,217 +1,381 @@
 import { prisma } from '@/lib/prisma';
+import { MAX_HORAS_DIARIAS } from '@/lib/constantes';
+import { emitirEvento } from '@/lib/socket-server';
 
-export interface ValidacionResultado {
+export interface SolicitudAsignacion {
+  docenteId: number;
+  cursoId: number;
+  grupoId: number;
+  tipoClase: string;
+  ambienteId: number;
+  diaSemana: number;   // 1=Lunes,...,6=Sábado
+  horaInicio: string;  // formato 'HH:MM'
+  horaFin: string;
+  periodoId: number;   // id del período académico
+  asignacionId?: number; // para ediciones, excluirse a sí mismo
+}
+
+export interface Conflicto {
+  tipo: 'CRUCE_DOCENTE' | 'CRUCE_GRUPO' | 'OCUPACION_AMBIENTE' | 'EXCESO_HORAS_DIARIAS' | 'FUERA_FRANJA' | 'CURSO_NO_ASIGNABLE' | 'AMBIENTE_NO_VALIDO' | 'HORAS_COMPLETADAS';
+  mensaje: string;     // texto legible
+  severidad: 'ERROR' | 'ADVERTENCIA';
+  detalle?: any;
+}
+
+export interface ResultadoValidacion {
   valido: boolean;
-  error?: string;
-  tipo?: string;
+  conflictos: Conflicto[];
+  tiempoValidacion: number; // ms
 }
 
 export class ValidadorHorario {
   /**
    * Ejecuta las 8 validaciones obligatorias en paralelo
    */
-  static async validarAsignacion(params: {
-    id_docente: number;
-    id_curso: number;
-    id_grupo: number;
-    id_ambiente: number;
-    id_periodo: number;
-    dia_semana: number;
-    hora_inicio: string;
-    hora_fin: string;
-    tipo_clase: string;
-  }): Promise<ValidacionResultado> {
-    const validations = [
-      this.validarCruceDocente(params),
-      this.validarCruceGrupo(params),
-      this.validarOcupacionAmbiente(params),
-      this.validarExcesoCargaDiaria(params),
-      this.validarFranjaInstitucional(params),
-      this.validarCursoAsignable(params),
-      this.validarAmbienteValido(params),
-      this.validarHorasCompletadas(params),
+  static async validarAsignacion(solicitud: SolicitudAsignacion): Promise<ResultadoValidacion> {
+    const inicio = performance.now();
+
+    const validaciones = [
+      this.validarCruceDocente(solicitud),
+      this.validarCruceGrupo(solicitud),
+      this.validarOcupacionAmbiente(solicitud),
+      this.validarExcesoCargaDiaria(solicitud),
+      this.validarFranjaInstitucional(solicitud),
+      this.validarCursoAsignable(solicitud),
+      this.validarAmbienteValido(solicitud),
+      this.validarHorasCompletadas(solicitud),
     ];
 
-    const resultados = await Promise.all(validations);
-    const fallos = resultados.filter(r => !r.valido);
+    const resultados = await Promise.all(validaciones);
+    const conflictos = resultados.flat();
+    
+    const fin = performance.now();
+    const tiempoValidacion = fin - inicio;
 
-    if (fallos.length > 0) {
-      // Registrar conflicto en la base de datos
-      for (const fallo of fallos) {
-        await prisma.conflictoHorario.create({
-          data: {
-            id_periodo: params.id_periodo,
-            id_docente: params.id_docente,
-            tipo_conflicto: fallo.tipo || 'desconocido',
-            descripcion: fallo.error || 'Conflicto detectado',
-            fecha_deteccion: new Date(),
-            resuelto: false
-          }
-        });
-      }
-      return fallos[0];
+    const tieneErrores = conflictos.some(c => c.severidad === 'ERROR');
+
+    // Registrar conflictos de tipo ERROR de forma asíncrona
+    if (tieneErrores) {
+      this.registrarConflictos(solicitud, conflictos.filter(c => c.severidad === 'ERROR')).catch(err => {
+        console.error('Error al registrar conflictos:', err);
+      });
     }
 
-    return { valido: true };
+    return {
+      valido: !tieneErrores,
+      conflictos,
+      tiempoValidacion
+    };
   }
 
   // 1. Cruce de docente
-  private static async validarCruceDocente(p: any): Promise<ValidacionResultado> {
-    const cruceDefinitivo = await prisma.horarioAsignado.findFirst({
+  private static async validarCruceDocente(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    
+    // Buscar en horario_asignado
+    const cruceAsignado = await prisma.horarioAsignado.findFirst({
       where: {
-        id_docente: p.id_docente,
-        id_periodo: p.id_periodo,
-        dia_semana: p.dia_semana,
+        id_docente: s.docenteId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
+        id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined,
         OR: [
-          { hora_inicio: { lte: p.hora_inicio }, hora_fin: { gt: p.hora_inicio } },
-          { hora_inicio: { lt: p.hora_fin }, hora_fin: { gte: p.hora_fin } },
-          { hora_inicio: { gte: p.hora_inicio }, hora_fin: { lte: p.hora_fin } }
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
         ]
-      }
+      },
+      include: { curso: true }
     });
 
-    if (cruceDefinitivo) return { valido: false, error: 'El docente ya tiene una clase en este horario.', tipo: 'cruce_docente' };
+    if (cruceAsignado) {
+      conflictos.push({
+        tipo: 'CRUCE_DOCENTE',
+        mensaje: `El docente ya tiene una clase asignada (${cruceAsignado.curso.nombre}) en este horario.`,
+        severidad: 'ERROR',
+        detalle: { id_asignacion: cruceAsignado.id_asignacion }
+      });
+    }
 
+    // Buscar en seleccion_temporal_horario
     const cruceTemporal = await prisma.seleccionTemporalHorario.findFirst({
       where: {
-        id_docente: p.id_docente,
-        id_periodo: p.id_periodo,
-        dia_semana: p.dia_semana,
+        id_docente: s.docenteId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
         fecha_expiracion: { gt: new Date() },
         OR: [
-          { hora_inicio: { lte: p.hora_inicio }, hora_fin: { gt: p.hora_inicio } },
-          { hora_inicio: { lt: p.hora_fin }, hora_fin: { gte: p.hora_fin } }
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
         ]
-      }
+      },
+      include: { curso: true }
     });
 
-    if (cruceTemporal) return { valido: false, error: 'El docente tiene una selección temporal en este horario.', tipo: 'cruce_docente' };
+    if (cruceTemporal) {
+      conflictos.push({
+        tipo: 'CRUCE_DOCENTE',
+        mensaje: `El docente tiene una selección temporal bloqueada para el curso ${cruceTemporal.curso.nombre}.`,
+        severidad: 'ERROR',
+        detalle: { id_seleccion: cruceTemporal.id_seleccion }
+      });
+    }
 
-    return { valido: true };
+    return conflictos;
   }
 
   // 2. Cruce de grupo
-  private static async validarCruceGrupo(p: any): Promise<ValidacionResultado> {
+  private static async validarCruceGrupo(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
     const cruce = await prisma.horarioAsignado.findFirst({
       where: {
-        id_grupo: p.id_grupo,
-        id_periodo: p.id_periodo,
-        dia_semana: p.dia_semana,
+        id_grupo: s.grupoId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
+        id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined,
         OR: [
-          { hora_inicio: { lte: p.hora_inicio }, hora_fin: { gt: p.hora_inicio } },
-          { hora_inicio: { lt: p.hora_fin }, hora_fin: { gte: p.hora_fin } }
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } }
         ]
-      }
+      },
+      include: { curso: true }
     });
 
-    if (cruce) return { valido: false, error: 'El grupo ya tiene otra clase en este horario.', tipo: 'cruce_grupo' };
-    return { valido: true };
+    if (cruce) {
+      conflictos.push({
+        tipo: 'CRUCE_GRUPO',
+        mensaje: `El grupo ya tiene el curso ${cruce.curso.nombre} asignado en este horario.`,
+        severidad: 'ERROR'
+      });
+    }
+
+    return conflictos;
   }
 
   // 3. Ocupación de ambiente
-  private static async validarOcupacionAmbiente(p: any): Promise<ValidacionResultado> {
+  private static async validarOcupacionAmbiente(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
     const ocupado = await prisma.horarioAsignado.findFirst({
       where: {
-        id_ambiente: p.id_ambiente,
-        id_periodo: p.id_periodo,
-        dia_semana: p.dia_semana,
+        id_ambiente: s.ambienteId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
+        id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined,
         OR: [
-          { hora_inicio: { lte: p.hora_inicio }, hora_fin: { gt: p.hora_inicio } },
-          { hora_inicio: { lt: p.hora_fin }, hora_fin: { gte: p.hora_fin } }
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } }
         ]
       }
     });
 
-    if (ocupado) return { valido: false, error: 'El ambiente ya está ocupado en este horario.', tipo: 'cruce_ambiente' };
-    return { valido: true };
+    if (ocupado) {
+      conflictos.push({
+        tipo: 'OCUPACION_AMBIENTE',
+        mensaje: 'El ambiente seleccionado ya está ocupado en este horario.',
+        severidad: 'ERROR'
+      });
+    }
+
+    return conflictos;
   }
 
-  // 4. Exceso de carga diaria (máximo 8 horas)
-  private static async validarExcesoCargaDiaria(p: any): Promise<ValidacionResultado> {
+  // 4. Exceso de carga diaria
+  private static async validarExcesoCargaDiaria(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    
+    // Obtener horas ya asignadas
     const asignados = await prisma.horarioAsignado.findMany({
-      where: { id_docente: p.id_docente, id_periodo: p.id_periodo, dia_semana: p.dia_semana }
+      where: { 
+        id_docente: s.docenteId, 
+        id_periodo: s.periodoId, 
+        dia_semana: s.diaSemana,
+        id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined
+      }
     });
 
     let minutosTotales = 0;
     asignados.forEach(a => {
-      const inicio = this.timeToMinutes(a.hora_inicio);
-      const fin = this.timeToMinutes(a.hora_fin);
-      minutosTotales += (fin - inicio);
+      minutosTotales += (this.timeToMinutes(a.hora_fin) - this.timeToMinutes(a.hora_inicio));
     });
 
-    const actualInicio = this.timeToMinutes(p.hora_inicio);
-    const actualFin = this.timeToMinutes(p.hora_fin);
-    minutosTotales += (actualFin - actualInicio);
+    // Sumar nueva duración
+    minutosTotales += (this.timeToMinutes(s.horaFin) - this.timeToMinutes(s.horaInicio));
 
-    if (minutosTotales > 8 * 60) {
-      return { valido: false, error: 'El docente supera el máximo de 8 horas diarias.', tipo: 'exceso_carga' };
+    if (minutosTotales > MAX_HORAS_DIARIAS * 60) {
+      conflictos.push({
+        tipo: 'EXCESO_HORAS_DIARIAS',
+        mensaje: `El docente superaría las ${MAX_HORAS_DIARIAS} horas diarias permitidas.`,
+        severidad: 'ERROR',
+        detalle: { horasActuales: minutosTotales / 60 }
+      });
     }
-    return { valido: true };
+    return conflictos;
   }
 
-  // 5. Fuera de franja institucional (07:00-22:00, no almuerzo 12-13)
-  private static async validarFranjaInstitucional(p: any): Promise<ValidacionResultado> {
-    const inicio = this.timeToMinutes(p.hora_inicio);
-    const fin = this.timeToMinutes(p.hora_fin);
+  // 5. Fuera de franja institucional
+  private static async validarFranjaInstitucional(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    const inicio = this.timeToMinutes(s.horaInicio);
+    const fin = this.timeToMinutes(s.horaFin);
 
     if (inicio < this.timeToMinutes("07:00") || fin > this.timeToMinutes("22:00")) {
-      return { valido: false, error: 'Horario fuera de la franja institucional (07:00 - 22:00).', tipo: 'franja_institucional' };
+      conflictos.push({
+        tipo: 'FUERA_FRANJA',
+        mensaje: 'El horario solicitado está fuera de la franja permitida (07:00 - 22:00).',
+        severidad: 'ERROR'
+      });
     }
 
-    // Cruce con hora de almuerzo (12:00 - 13:00)
+    // Bloque de almuerzo (12:00 - 13:00)
     const almuerzoInicio = this.timeToMinutes("12:00");
     const almuerzoFin = this.timeToMinutes("13:00");
 
     if ((inicio < almuerzoFin && fin > almuerzoInicio)) {
-      return { valido: false, error: 'Cruce con la hora de almuerzo (12:00 - 13:00).', tipo: 'franja_institucional' };
+      conflictos.push({
+        tipo: 'FUERA_FRANJA',
+        mensaje: 'El horario interfiere con el bloque de almuerzo institucional (12:00 - 13:00).',
+        severidad: 'ADVERTENCIA'
+      });
     }
 
-    return { valido: true };
+    return conflictos;
   }
 
   // 6. Curso no asignable al docente
-  private static async validarCursoAsignable(p: any): Promise<ValidacionResultado> {
-    const asignable = await prisma.docenteCurso.findFirst({
-      where: { id_docente: p.id_docente, id_curso: p.id_curso, tipo_clase: p.tipo_clase, activo: true }
+  private static async validarCursoAsignable(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    const habilitado = await prisma.docenteCurso.findFirst({
+      where: { 
+        id_docente: s.docenteId, 
+        id_curso: s.cursoId, 
+        tipo_clase: s.tipoClase, 
+        activo: true 
+      }
     });
 
-    if (!asignable) return { valido: false, error: 'El docente no está habilitado para dictar este curso/tipo.', tipo: 'curso_no_asignable' };
-    return { valido: true };
+    if (!habilitado) {
+      conflictos.push({
+        tipo: 'CURSO_NO_ASIGNABLE',
+        mensaje: 'El docente no tiene asignado este curso o tipo de clase en su carga académica.',
+        severidad: 'ERROR'
+      });
+    }
+    return conflictos;
   }
 
   // 7. Ambiente no válido para el curso/tipo
-  private static async validarAmbienteValido(p: any): Promise<ValidacionResultado> {
-    const valido = await prisma.cursoAmbiente.findFirst({
-      where: { id_curso: p.id_curso, id_ambiente: p.id_ambiente, tipo_clase: p.tipo_clase }
+  private static async validarAmbienteValido(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    
+    // Verificamos solo que el ambiente exista y esté activo
+    const ambiente = await prisma.ambiente.findUnique({
+      where: { id_ambiente: s.ambienteId }
     });
 
-    if (!valido) return { valido: false, error: 'El ambiente seleccionado no es válido para este curso.', tipo: 'ambiente_no_valido' };
-    return { valido: true };
+    if (!ambiente || !ambiente.activo) {
+      conflictos.push({
+        tipo: 'AMBIENTE_NO_VALIDO',
+        mensaje: 'El ambiente seleccionado no existe o no está activo.',
+        severidad: 'ERROR'
+      });
+    }
+
+    // Opcional: Podríamos validar que el tipo de ambiente coincida (ej: laboratorio para laboratorio)
+    // Pero por ahora damos libertad total como solicitó el usuario
+    
+    return conflictos;
   }
 
   // 8. Horas completadas del curso
-  private static async validarHorasCompletadas(p: any): Promise<ValidacionResultado> {
-    const curso = await prisma.curso.findUnique({ where: { id_curso: p.id_curso } });
-    if (!curso) return { valido: false, error: 'Curso no encontrado.' };
+  private static async validarHorasCompletadas(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    const curso = await prisma.curso.findUnique({ where: { id_curso: s.cursoId } });
+    if (!curso) return conflictos;
 
-    const horasRequeridas = p.tipo_clase === 'teoria' ? curso.horas_teoria : curso.horas_laboratorio;
+    let horasTope = 0;
+    const tipo = s.tipoClase.toLowerCase();
+    if (tipo.includes('teoria')) horasTope = curso.horas_teoria;
+    else if (tipo.includes('laboratorio')) horasTope = curso.horas_laboratorio;
+    else if (tipo.includes('practica')) horasTope = curso.horas_practica;
+    else if (tipo.includes('práctica')) horasTope = curso.horas_practica;
     
+    // Sumar horas ya asignadas (confirmadas)
     const asignados = await prisma.horarioAsignado.findMany({
-      where: { id_curso: p.id_curso, id_grupo: p.id_grupo, tipo_clase: p.tipo_clase, id_periodo: p.id_periodo }
+      where: { 
+        id_curso: s.cursoId, 
+        id_grupo: s.grupoId, 
+        tipo_clase: s.tipoClase, 
+        id_periodo: s.periodoId,
+        id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined
+      }
     });
 
-    let minutosAsignados = 0;
+    // Sumar selecciones temporales vigentes
+    const temporales = await prisma.seleccionTemporalHorario.findMany({
+      where: {
+        id_curso: s.cursoId,
+        id_grupo: s.grupoId,
+        tipo_clase: s.tipoClase,
+        id_periodo: s.periodoId,
+        fecha_expiracion: { gt: new Date() }
+      }
+    });
+
+    let minutosTotales = 0;
     asignados.forEach(a => {
-      minutosAsignados += (this.timeToMinutes(a.hora_fin) - this.timeToMinutes(a.hora_inicio));
+      minutosTotales += (this.timeToMinutes(a.hora_fin) - this.timeToMinutes(a.hora_inicio));
+    });
+    temporales.forEach(t => {
+      minutosTotales += (this.timeToMinutes(t.hora_fin) - this.timeToMinutes(t.hora_inicio));
     });
 
-    const minutosActual = (this.timeToMinutes(p.hora_fin) - this.timeToMinutes(p.hora_inicio));
+    // Sumar nueva duración
+    const minutosNueva = (this.timeToMinutes(s.horaFin) - this.timeToMinutes(s.horaInicio));
     
-    if ((minutosAsignados + minutosActual) > (horasRequeridas * 60)) {
-      return { valido: false, error: 'Se supera el total de horas requeridas para este curso.', tipo: 'horas_completadas' };
+    if ((minutosTotales + minutosNueva) > (horasTope * 60)) {
+      conflictos.push({
+        tipo: 'HORAS_COMPLETADAS',
+        mensaje: `Se excede el total de horas de ${s.tipoClase} para este curso (${horasTope}h).`,
+        severidad: 'ERROR',
+        detalle: { horasAsignadas: (minutosTotales + minutosNueva) / 60, tope: horasTope }
+      });
     }
 
-    return { valido: true };
+    return conflictos;
+  }
+
+  private static async registrarConflictos(s: SolicitudAsignacion, errores: Conflicto[]) {
+    try {
+      for (const error of errores) {
+        const conflicto = await prisma.conflictoHorario.create({
+          data: {
+            id_periodo: s.periodoId,
+            tipo_conflicto: error.tipo,
+            descripcion: error.mensaje,
+            id_docente_1: s.docenteId,
+            id_curso: s.cursoId,
+            id_ambiente: s.ambienteId,
+            dia_semana: s.diaSemana,
+            hora_inicio: s.horaInicio,
+            hora_fin: s.horaFin,
+            resuelto: false,
+            fecha_deteccion: new Date()
+          }
+        });
+
+        // Emitir vía WebSocket
+        emitirEvento('nuevo_conflicto', {
+          id_conflicto: conflicto.id_conflicto,
+          descripcion: conflicto.descripcion,
+          tipo: conflicto.tipo_conflicto,
+          timestamp: conflicto.fecha_deteccion,
+          id_periodo: s.periodoId
+        });
+      }
+    } catch (err) {
+      console.error('Error al guardar conflictos en BD:', err);
+    }
   }
 
   private static timeToMinutes(time: string): number {

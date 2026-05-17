@@ -23,7 +23,15 @@ export async function GET(request: Request) {
       include: { curso: true }
     });
 
-    const progreso = await Promise.all(cursosAsignados.map(async (dc) => {
+    // Eliminar posibles duplicados lógicos en la respuesta (por inconsistencias previas)
+    const uniqueCursos = Array.from(new Set(cursosAsignados.map(c => `${c.id_curso}-${c.tipo_clase.toLowerCase()}`)))
+      .map(key => {
+        const [id, tipo] = key.split('-');
+        return cursosAsignados.find(c => c.id_curso === parseInt(id) && c.tipo_clase.toLowerCase() === tipo);
+      }).filter(Boolean);
+
+    const progreso = await Promise.all(uniqueCursos.map(async (dc: any) => {
+      // 1. Asignaciones confirmadas (Estas deben contarse)
       const asignaciones = await prisma.horarioAsignado.findMany({
         where: {
           id_docente: docente.id_docente,
@@ -33,14 +41,36 @@ export async function GET(request: Request) {
         }
       });
 
-      let minutosAsignados = 0;
-      asignaciones.forEach(a => {
-        const [h1, m1] = a.hora_inicio.split(':').map(Number);
-        const [h2, m2] = a.hora_fin.split(':').map(Number);
-        minutosAsignados += (h2 * 60 + m2) - (h1 * 60 + m1);
+      // 2. Selecciones temporales vigentes (Estas también para el progreso en tiempo real)
+      const temporales = await prisma.seleccionTemporalHorario.findMany({
+        where: {
+          id_docente: docente.id_docente,
+          id_curso: dc.id_curso,
+          tipo_clase: dc.tipo_clase,
+          id_periodo: parseInt(id_periodo),
+          fecha_expiracion: { gt: new Date() }
+        }
       });
 
-      const horasRequeridas = dc.tipo_clase === 'teoria' ? dc.curso.horas_teoria : dc.curso.horas_laboratorio;
+      let minutosTotales = 0;
+      
+      const calcularMinutos = (hInicio: string | null, hFin: string | null) => {
+        if (!hInicio || !hFin) return 0;
+        const [h1, m1] = hInicio.split(':').map(Number);
+        const [h2, m2] = hFin.split(':').map(Number);
+        return (h2 * 60 + m2) - (h1 * 60 + m1);
+      };
+
+      asignaciones.forEach(a => minutosTotales += calcularMinutos(a.hora_inicio, a.hora_fin));
+      temporales.forEach(t => minutosTotales += calcularMinutos(t.hora_inicio, t.hora_fin));
+
+      // Determinar horas requeridas según el tipo de clase
+      let horasRequeridas = 0;
+      const tipo = dc.tipo_clase.toLowerCase();
+      if (tipo.includes('teoria')) horasRequeridas = dc.curso.horas_teoria;
+      else if (tipo.includes('laboratorio')) horasRequeridas = dc.curso.horas_laboratorio;
+      else if (tipo.includes('practica')) horasRequeridas = dc.curso.horas_practica;
+      else if (tipo.includes('práctica')) horasRequeridas = dc.curso.horas_practica;
 
       return {
         id_curso: dc.id_curso,
@@ -48,7 +78,8 @@ export async function GET(request: Request) {
         codigo: dc.curso.codigo,
         tipo_clase: dc.tipo_clase,
         horas_requeridas: horasRequeridas,
-        horas_asignadas: minutosAsignados / 60
+        horas_asignadas: minutosTotales / 60,
+        confirmado: asignaciones.length > 0 // Añadimos flag para saber si ya hay algo definitivo
       };
     }));
 

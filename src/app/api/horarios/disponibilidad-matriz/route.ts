@@ -10,11 +10,23 @@ export async function GET(request: Request) {
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
 
     const where: any = { id_periodo: parseInt(id_periodo) };
-    if (id_ambiente) where.id_ambiente = parseInt(id_ambiente);
-
-    // Obtener asignaciones definitivas
+    // Las asignaciones confirmadas y temporales del docente actual se buscan en TODOS los ambientes
+    // pero para otros docentes solo en el ambiente actual.
+    
+    // 1. Obtener TODAS las asignaciones y temporales del docente actual para que siempre las vea
+    const miAsignacionWhere: any = { id_periodo: parseInt(id_periodo) };
+    const { searchParams: params } = new URL(request.url);
+    const id_docente = params.get('id_docente');
+    
+    // 2. Obtener asignaciones definitivas
     const asignaciones = await prisma.horarioAsignado.findMany({
-      where,
+      where: {
+        id_periodo: parseInt(id_periodo),
+        OR: [
+          { id_ambiente: id_ambiente ? parseInt(id_ambiente) : undefined },
+          { id_docente: id_docente ? parseInt(id_docente) : undefined }
+        ]
+      },
       include: {
         docente: true,
         curso: true,
@@ -23,11 +35,15 @@ export async function GET(request: Request) {
       }
     });
 
-    // Obtener selecciones temporales vigentes
+    // 3. Obtener selecciones temporales vigentes
     const temporales = await prisma.seleccionTemporalHorario.findMany({
       where: {
-        ...where,
-        fecha_expiracion: { gt: new Date() }
+        id_periodo: parseInt(id_periodo),
+        fecha_expiracion: { gt: new Date() },
+        OR: [
+          { id_ambiente: id_ambiente ? parseInt(id_ambiente) : undefined },
+          { id_docente: id_docente ? parseInt(id_docente) : undefined }
+        ]
       },
       include: {
         docente: true,

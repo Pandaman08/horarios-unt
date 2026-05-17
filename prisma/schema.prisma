@@ -8,298 +8,298 @@ datasource db {
 }
 
 model Usuario {
-  id_usuario         Int              @id @default(autoincrement())
-  codigo             String           @unique
-  nombres            String
-  apellidos          String
-  correo_electronico String?          @unique
-  contrasena_hash    String
-  rol                String           // administrador_sistema, director_escuela, coordinador_academico, operador_horarios, docente
-  activo             Boolean          @default(true)
-  ultimo_acceso      DateTime?
-  fecha_creacion     DateTime         @default(now())
-  fecha_actualizacion DateTime         @default(now())
-  docente            Docente?
+  id_usuario          Int       @id @default(autoincrement())
+  codigo              String    @unique
+  nombres             String
+  apellidos           String
+  correo_electronico  String?   @unique
+  contrasena_hash     String
+  rol                 String
+  activo              Boolean   @default(true)
+  ultimo_acceso       DateTime?
+  fecha_creacion      DateTime  @default(now())
+  fecha_actualizacion DateTime  @default(now())
+  docente             Docente?
 }
 
 model Docente {
-  id_docente         Int                  @id @default(autoincrement())
-  id_usuario         Int?                 @unique
-  codigo_docente     String               @unique
-  nombres            String
-  apellidos          String
-  modalidad          String               // nombrado, contratado
-  categoria          String               // principal, asociado, auxiliar, jefe_practica
-  dedicacion         String?              // tiempo_completo, tiempo_parcial, por_horas
-  antiguedad         Int                  @default(0)
-  fecha_ingreso      DateTime?
-  correo_electronico String?
-  telefono           String?
-  grado_academico    String?
-  especialidad       String?
-  horas_maximas_semanales Int             @default(40)
-  activo             Boolean              @default(true)
-  usuario            Usuario?             @relation(fields: [id_usuario], references: [id_usuario])
-  docente_cursos     DocenteCurso[]
-  disponibilidad     DisponibilidadDocente[]
-  horarios_asignados HorarioAsignado[]
-  selecciones_temporales SeleccionTemporalHorario[]
+  id_docente                Int                               @id @default(autoincrement())
+  id_usuario                Int?                              @unique
+  codigo_docente            String                            @unique
+  nombres                   String
+  apellidos                 String
+  modalidad                 String
+  categoria                 String
+  dedicacion                String?
+  antiguedad                Int                               @default(0)
+  fecha_ingreso             DateTime?
+  correo_electronico        String?
+  telefono                  String?
+  grado_academico           String?
+  especialidad              String?
+  horas_maximas_semanales   Int                               @default(40)
+  activo                    Boolean                           @default(true)
+  cola_notificaciones       ColaNotificaciones[]
+  disponibilidad            DisponibilidadDocente[]
+  usuario                   Usuario?                          @relation(fields: [id_usuario], references: [id_usuario])
+  docente_cursos            DocenteCurso[]
+  historial_notificaciones  HistorialNotificaciones[]
+  horarios_asignados        HorarioAsignado[]
   preferencias_notificacion PreferenciasNotificacionDocente[]
-  historial_notificaciones HistorialNotificaciones[]
-  cola_notificaciones ColaNotificaciones[]
+  selecciones_temporales    SeleccionTemporalHorario[]
 }
 
 model Curso {
-  id_curso         Int              @id @default(autoincrement())
-  codigo           String           @unique
-  nombre           String
-  horas_teoria     Int              @default(0)
-  horas_laboratorio Int             @default(0)
-  horas_practica   Int              @default(0)
-  creditos         Int
-  ciclo            Int?
-  plan_estudios    String?
-  prerequisitos    String?
-  activo           Boolean          @default(true)
-  docente_cursos   DocenteCurso[]
-  grupos           Grupo[]
-  curso_ambientes  CursoAmbiente[]
-  horarios_asignados HorarioAsignado[]
+  id_curso               Int                        @id @default(autoincrement())
+  codigo                 String                     @unique
+  nombre                 String
+  horas_teoria           Int                        @default(0)
+  horas_laboratorio      Int                        @default(0)
+  horas_practica         Int                        @default(0)
+  creditos               Int
+  ciclo                  Int?
+  plan_estudios          String?
+  prerequisitos          String?
+  activo                 Boolean                    @default(true)
+  curso_ambientes        CursoAmbiente[]
+  docente_cursos         DocenteCurso[]
+  grupos                 Grupo[]
+  horarios_asignados     HorarioAsignado[]
   selecciones_temporales SeleccionTemporalHorario[]
 }
 
 model DocenteCurso {
-  id_docente_curso   Int      @id @default(autoincrement())
-  id_docente         Int
-  id_curso           Int
-  tipo_clase         String   // teoria, laboratorio, practica
-  experiencia_anios  Int      @default(0)
-  prioridad          Int      @default(1)
-  activo             Boolean  @default(true)
-  docente            Docente  @relation(fields: [id_docente], references: [id_docente])
-  curso              Curso    @relation(fields: [id_curso], references: [id_curso])
+  id_docente_curso  Int     @id @default(autoincrement())
+  id_docente        Int
+  id_curso          Int
+  tipo_clase        String
+  experiencia_anios Int     @default(0)
+  prioridad         Int     @default(1)
+  activo            Boolean @default(true)
+  curso             Curso   @relation(fields: [id_curso], references: [id_curso])
+  docente           Docente @relation(fields: [id_docente], references: [id_docente])
 
   @@unique([id_docente, id_curso, tipo_clase])
 }
 
 model Grupo {
-  id_grupo           Int              @id @default(autoincrement())
-  id_curso           Int
-  id_periodo         Int
-  codigo_grupo       String
-  capacidad_maxima   Int              @default(40)
-  cantidad_matriculados Int           @default(0)
-  activo             Boolean          @default(true)
-  curso              Curso            @relation(fields: [id_curso], references: [id_curso])
-  periodo            PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
-  horarios_asignados HorarioAsignado[]
+  id_grupo               Int                        @id @default(autoincrement())
+  id_curso               Int
+  id_periodo             Int
+  codigo_grupo           String
+  capacidad_maxima       Int                        @default(40)
+  cantidad_matriculados  Int                        @default(0)
+  activo                 Boolean                    @default(true)
+  curso                  Curso                      @relation(fields: [id_curso], references: [id_curso])
+  periodo                PeriodoAcademico           @relation(fields: [id_periodo], references: [id_periodo])
+  horarios_asignados     HorarioAsignado[]
   selecciones_temporales SeleccionTemporalHorario[]
 
   @@unique([id_curso, codigo_grupo, id_periodo])
 }
 
 model Ambiente {
-  id_ambiente        Int              @id @default(autoincrement())
-  codigo             String           @unique
-  nombre             String
-  tipo               String           // aula, laboratorio, auditorio, sala_reuniones
-  capacidad          Int
-  piso               String?
-  pabellon           String?
-  equipamiento       String?
-  caracteristicas    Json?
-  activo             Boolean          @default(true)
-  requiere_mantenimiento Boolean       @default(false)
-  observaciones      String?
-  curso_ambientes    CursoAmbiente[]
-  horarios_asignados HorarioAsignado[]
+  id_ambiente            Int                        @id @default(autoincrement())
+  codigo                 String                     @unique
+  nombre                 String
+  tipo                   String
+  capacidad              Int
+  piso                   String?
+  pabellon               String?
+  equipamiento           String?
+  caracteristicas        Json?
+  activo                 Boolean                    @default(true)
+  requiere_mantenimiento Boolean                    @default(false)
+  observaciones          String?
+  curso_ambientes        CursoAmbiente[]
+  horarios_asignados     HorarioAsignado[]
   selecciones_temporales SeleccionTemporalHorario[]
 }
 
 model CursoAmbiente {
-  id_curso_ambiente   Int      @id @default(autoincrement())
-  id_curso            Int
-  id_ambiente         Int
-  tipo_clase          String   // teoria, laboratorio, practica
-  curso               Curso    @relation(fields: [id_curso], references: [id_curso])
-  ambiente            Ambiente @relation(fields: [id_ambiente], references: [id_ambiente])
+  id_curso_ambiente Int      @id @default(autoincrement())
+  id_curso          Int
+  id_ambiente       Int
+  tipo_clase        String
+  ambiente          Ambiente @relation(fields: [id_ambiente], references: [id_ambiente])
+  curso             Curso    @relation(fields: [id_curso], references: [id_curso])
 
   @@unique([id_curso, id_ambiente, tipo_clase])
 }
 
 model PeriodoAcademico {
-  id_periodo         Int              @id @default(autoincrement())
-  codigo             String           @unique
-  nombre             String
-  anio               Int
-  semestre           Int
-  fecha_inicio       DateTime
-  fecha_fin          DateTime
-  fecha_inicio_clases DateTime?
-  fecha_fin_clases   DateTime?
-  activo             Boolean          @default(true)
-  estado             String           @default("planificacion") // planificacion, asignacion_horarios, en_curso, finalizado
-  grupos             Grupo[]
-  ventanas_atencion  VentanaAtencion[]
-  horarios_asignados HorarioAsignado[]
+  id_periodo              Int                        @id @default(autoincrement())
+  codigo                  String                     @unique
+  nombre                  String
+  anio                    Int
+  semestre                Int
+  fecha_inicio            DateTime
+  fecha_fin               DateTime
+  fecha_inicio_clases     DateTime?
+  fecha_fin_clases        DateTime?
+  activo                  Boolean                    @default(true)
+  estado                  String                     @default("planificacion")
+  conflictos              ConflictoHorario[]
   disponibilidad_docentes DisponibilidadDocente[]
-  conflictos         ConflictoHorario[]
-  selecciones_temporales SeleccionTemporalHorario[]
+  grupos                  Grupo[]
+  horarios_asignados      HorarioAsignado[]
+  selecciones_temporales  SeleccionTemporalHorario[]
+  ventanas_atencion       VentanaAtencion[]
 }
 
 model VentanaAtencion {
-  id_ventana         Int              @id @default(autoincrement())
+  id_ventana         Int               @id @default(autoincrement())
   id_periodo         Int
   fecha              DateTime
   orden_prioridad    Int
-  modalidad          String           // nombrado, contratado
-  categoria          String           // principal, asociado, auxiliar, jefe_practica
+  modalidad          String
+  categoria          String
   hora_inicio        String
   hora_fin           String
-  intervalo_minutos  Int              @default(15)
-  cantidad_docentes  Int              @default(0)
-  cantidad_atendidos Int              @default(0)
-  completado         Boolean          @default(false)
-  activo             Boolean          @default(true)
-  periodo            PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
+  intervalo_minutos  Int               @default(15)
+  cantidad_docentes  Int               @default(0)
+  cantidad_atendidos Int               @default(0)
+  completado         Boolean           @default(false)
+  activo             Boolean           @default(true)
   horarios_asignados HorarioAsignado[]
+  periodo            PeriodoAcademico  @relation(fields: [id_periodo], references: [id_periodo])
 }
 
 model HorarioAsignado {
-  id_asignacion      Int              @id @default(autoincrement())
-  id_docente         Int
-  id_curso           Int
-  id_grupo           Int
-  tipo_clase         String           // teoria, laboratorio, practica
-  id_ambiente        Int
-  dia_semana         Int              // 1=Lunes..6=Sábado
-  hora_inicio        String
-  hora_fin           String
-  id_periodo         Int
-  id_ventana         Int?
-  estado             String           @default("borrador") // borrador, confirmado, publicado, modificado, cancelado
-  observaciones      String?
-  creado_por         Int?
-  docente            Docente          @relation(fields: [id_docente], references: [id_docente])
-  curso              Curso            @relation(fields: [id_curso], references: [id_curso])
-  grupo              Grupo            @relation(fields: [id_grupo], references: [id_grupo])
-  ambiente           Ambiente         @relation(fields: [id_ambiente], references: [id_ambiente])
-  periodo            PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
-  ventana            VentanaAtencion? @relation(fields: [id_ventana], references: [id_ventana])
+  id_asignacion Int              @id @default(autoincrement())
+  id_docente    Int
+  id_curso      Int
+  id_grupo      Int
+  tipo_clase    String
+  id_ambiente   Int
+  dia_semana    Int
+  hora_inicio   String
+  hora_fin      String
+  id_periodo    Int
+  id_ventana    Int?
+  estado        String           @default("borrador")
+  observaciones String?
+  creado_por    Int?
+  ambiente      Ambiente         @relation(fields: [id_ambiente], references: [id_ambiente])
+  curso         Curso            @relation(fields: [id_curso], references: [id_curso])
+  docente       Docente          @relation(fields: [id_docente], references: [id_docente])
+  grupo         Grupo            @relation(fields: [id_grupo], references: [id_grupo])
+  periodo       PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
+  ventana       VentanaAtencion? @relation(fields: [id_ventana], references: [id_ventana])
 }
 
 model SeleccionTemporalHorario {
-  id_seleccion       Int      @id @default(autoincrement())
-  id_docente         Int
-  id_curso           Int
-  id_grupo           Int
-  tipo_clase         String
-  id_ambiente        Int
-  dia_semana         Int
-  hora_inicio        String
-  hora_fin           String
-  id_periodo         Int
-  sesion_id          String
-  fecha_seleccion    DateTime @default(now())
+  id_seleccion     Int              @id @default(autoincrement())
+  id_docente       Int
+  id_curso         Int
+  id_grupo         Int
+  tipo_clase       String
+  id_ambiente      Int
+  dia_semana       Int
+  hora_inicio      String
+  hora_fin         String
+  id_periodo       Int
+  sesion_id        String
+  fecha_seleccion  DateTime         @default(now())
   fecha_expiracion DateTime
-  docente            Docente  @relation(fields: [id_docente], references: [id_docente])
-  curso              Curso    @relation(fields: [id_curso], references: [id_curso])
-  grupo              Grupo    @relation(fields: [id_grupo], references: [id_grupo])
-  ambiente           Ambiente @relation(fields: [id_ambiente], references: [id_ambiente])
-  periodo            PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
+  ambiente         Ambiente         @relation(fields: [id_ambiente], references: [id_ambiente])
+  curso            Curso            @relation(fields: [id_curso], references: [id_curso])
+  docente          Docente          @relation(fields: [id_docente], references: [id_docente])
+  grupo            Grupo            @relation(fields: [id_grupo], references: [id_grupo])
+  periodo          PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
 
   @@unique([sesion_id, dia_semana, hora_inicio])
 }
 
 model DisponibilidadDocente {
-  id_disponibilidad  Int      @id @default(autoincrement())
+  id_disponibilidad  Int              @id @default(autoincrement())
   id_docente         Int
   id_periodo         Int
   dia_semana         Int
   hora_inicio        String
   hora_fin           String
-  disponible         Boolean  @default(true)
-  es_restriccion     Boolean  @default(false)
+  disponible         Boolean          @default(true)
+  es_restriccion     Boolean          @default(false)
   motivo_restriccion String?
-  docente            Docente  @relation(fields: [id_docente], references: [id_docente])
+  docente            Docente          @relation(fields: [id_docente], references: [id_docente])
   periodo            PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
 
   @@unique([id_docente, dia_semana, hora_inicio, id_periodo])
 }
 
 model ConflictoHorario {
-  id_conflicto       Int      @id @default(autoincrement())
-  id_periodo         Int
-  tipo_conflicto     String   // cruce_docente, cruce_grupo, cruce_ambiente, exceso_horas_docente, etc.
-  descripcion        String
-  id_docente_1       Int?
-  id_docente_2       Int?
-  id_curso           Int?
-  id_ambiente        Int?
-  dia_semana         Int?
-  hora_inicio        String?
-  hora_fin           String?
-  resuelto           Boolean  @default(false)
-  fecha_deteccion    DateTime @default(now())
-  fecha_resolucion   DateTime?
-  resuelto_por       Int?
-  periodo            PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
+  id_conflicto     Int              @id @default(autoincrement())
+  id_periodo       Int
+  tipo_conflicto   String
+  descripcion      String
+  id_docente_1     Int?
+  id_docente_2     Int?
+  id_curso         Int?
+  id_ambiente      Int?
+  dia_semana       Int?
+  hora_inicio      String?
+  hora_fin         String?
+  resuelto         Boolean          @default(false)
+  fecha_deteccion  DateTime         @default(now())
+  fecha_resolucion DateTime?
+  resuelto_por     Int?
+  periodo          PeriodoAcademico @relation(fields: [id_periodo], references: [id_periodo])
 }
 
 model PreferenciasNotificacionDocente {
-  id_preferencia     Int      @id @default(autoincrement())
+  id_preferencia     Int       @id @default(autoincrement())
   id_docente         Int
-  canal              String   // correo, whatsapp, telegram
-  activo             Boolean  @default(true)
-  datos_contacto     Json     // { telefono: "+51999988877", chat_id: "123456", username: "@docente" }
-  verificado         Boolean  @default(false)
+  canal              String
+  activo             Boolean   @default(true)
+  datos_contacto     Json
+  verificado         Boolean   @default(false)
   fecha_verificacion DateTime?
-  docente            Docente  @relation(fields: [id_docente], references: [id_docente])
+  docente            Docente   @relation(fields: [id_docente], references: [id_docente])
 
   @@unique([id_docente, canal])
 }
 
 model HistorialNotificaciones {
-  id_notificacion    Int      @id @default(autoincrement())
+  id_notificacion    Int       @id @default(autoincrement())
   id_docente         Int
   id_ventana         Int?
-  tipo_notificacion  String   // recordatorio_24h, alerta_15min, confirmacion_horario
-  canal              String   // correo, whatsapp, telegram
+  tipo_notificacion  String
+  canal              String
   mensaje            String
-  estado_envio       String   @default("pendiente") // pendiente, enviado, entregado, leido, fallido, rebotado
+  estado_envio       String    @default("pendiente")
   fecha_envio        DateTime?
   fecha_entrega      DateTime?
   codigo_respuesta   String?
   respuesta_servidor String?
-  intentos           Int      @default(1)
-  docente            Docente  @relation(fields: [id_docente], references: [id_docente])
+  intentos           Int       @default(1)
+  docente            Docente   @relation(fields: [id_docente], references: [id_docente])
 }
 
 model ColaNotificaciones {
-  id_cola            Int      @id @default(autoincrement())
-  id_docente         Int
-  tipo_notificacion  String
-  canal              String
-  datos_mensaje      Json
-  fecha_programada   DateTime
-  prioridad          Int      @default(5)
-  estado             String   @default("pendiente") // pendiente, procesando, completado, fallido
-  intentos           Int      @default(0)
-  maximo_intentos    Int      @default(3)
-  fecha_creacion     DateTime @default(now())
+  id_cola             Int       @id @default(autoincrement())
+  id_docente          Int
+  tipo_notificacion   String
+  canal               String
+  datos_mensaje       Json
+  fecha_programada    DateTime
+  prioridad           Int       @default(5)
+  estado              String    @default("pendiente")
+  intentos            Int       @default(0)
+  maximo_intentos     Int       @default(3)
+  fecha_creacion      DateTime  @default(now())
   fecha_procesamiento DateTime?
-  docente            Docente  @relation(fields: [id_docente], references: [id_docente])
+  docente             Docente   @relation(fields: [id_docente], references: [id_docente])
 }
 
 model ConfiguracionNotificaciones {
-  id_configuracion   Int      @id @default(autoincrement())
-  tipo_notificacion  String   // recordatorio_24h, alerta_15min
-  canal              String   // correo, whatsapp, telegram
-  activo             Boolean  @default(true)
-  plantilla_mensaje  String
-  hora_envio         String?
-  dias_antelacion    Int?
-  minutos_antelacion Int?
+  id_configuracion        Int     @id @default(autoincrement())
+  tipo_notificacion       String
+  canal                   String
+  activo                  Boolean @default(true)
+  plantilla_mensaje       String
+  hora_envio              String?
+  dias_antelacion         Int?
+  minutos_antelacion      Int?
   configuracion_adicional Json?
 }
 
@@ -307,28 +307,28 @@ model DiaNoLaborable {
   id_dia_no_laborable Int      @id @default(autoincrement())
   fecha               DateTime
   descripcion         String
-  tipo                String   // feriado_nacional, feriado_local, mantenimiento, institucional, duelo
+  tipo                String
   afecta_clases       Boolean  @default(true)
   id_periodo          Int?
 }
 
 model RestriccionInstitucional {
-  id_restriccion      Int      @id @default(autoincrement())
-  tipo_restriccion    String
-  nombre              String
-  configuracion       Json
-  id_periodo          Int?
-  activo              Boolean  @default(true)
+  id_restriccion   Int     @id @default(autoincrement())
+  tipo_restriccion String
+  nombre           String
+  configuracion    Json
+  id_periodo       Int?
+  activo           Boolean @default(true)
 }
 
 model AuditoriaHorario {
-  id_auditoria        Int      @id @default(autoincrement())
-  id_asignacion       Int?
-  accion              String   // crear, modificar, eliminar, confirmar, publicar, cancelar, reasignar
-  usuario_id          Int
-  datos_anteriores    Json?
-  datos_nuevos        Json?
-  direccion_ip        String?
-  motivo              String?
-  fecha_registro      DateTime @default(now())
+  id_auditoria     Int      @id @default(autoincrement())
+  id_asignacion    Int?
+  accion           String
+  usuario_id       Int
+  datos_anteriores Json?
+  datos_nuevos     Json?
+  direccion_ip     String?
+  motivo           String?
+  fecha_registro   DateTime @default(now())
 }
