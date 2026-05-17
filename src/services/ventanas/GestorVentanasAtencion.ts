@@ -19,7 +19,7 @@ export class GestorVentanasAtencion {
       contratado: { principal: 0, asociado: 0, auxiliar: 0, jefe_practica: 0 }
     };
 
-    docentes.forEach(d => {
+    docentes.forEach((d: { modalidad: string | number; categoria: string | number; }) => {
       if (stats[d.modalidad] && stats[d.modalidad][d.categoria] !== undefined) {
         stats[d.modalidad][d.categoria]++;
       }
