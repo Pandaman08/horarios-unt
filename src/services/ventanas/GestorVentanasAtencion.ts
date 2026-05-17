@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
-import { addMinutes, format, parse, isAfter } from 'date-fns';
+import { addMinutes, format } from 'date-fns';
+import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 
 export class GestorVentanasAtencion {
   /**
@@ -52,8 +53,8 @@ export class GestorVentanasAtencion {
 
     const ventanasCreadas = [];
     let fechaActual = new Date(fecha_inicio);
-    let horaActual = parse(hora_inicio_jornada, 'HH:mm', fechaActual);
-    const horaLimite = parse(hora_fin_jornada, 'HH:mm', fechaActual);
+    let horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
+    const horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
 
     // Agrupar docentes por modalidad y categoría para crear ventanas por bloques
     const grupos = this.agruparDocentesPorJerarquia(docentes);
@@ -73,7 +74,7 @@ export class GestorVentanasAtencion {
         if (minutosDisponiblesHoy <= 0) {
           // Pasar al siguiente día hábil (asumiendo L-V por ahora)
           fechaActual = this.obtenerSiguienteDiaHabil(fechaActual);
-          horaActual = parse(hora_inicio_jornada, 'HH:mm', fechaActual);
+          horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
           continue;
         }
 
@@ -95,18 +96,29 @@ export class GestorVentanasAtencion {
         });
 
         ventanasCreadas.push(ventana);
+        
+        // Programar notificaciones para esta ventana
+        await ServicioNotificador.programarNotificacionesVentana(ventana.id_ventana);
+        
         minutosRestantes -= minutosAsignados;
         horaActual = horaFinVentana;
 
         // Si terminamos la jornada, resetear para el día siguiente
         if (horaActual.getTime() >= horaLimite.getTime()) {
           fechaActual = this.obtenerSiguienteDiaHabil(fechaActual);
-          horaActual = parse(hora_inicio_jornada, 'HH:mm', fechaActual);
+          horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
         }
       }
     }
 
     return ventanasCreadas;
+  }
+
+  private static parseHora(horaStr: string, fechaRef: Date): Date {
+    const [horas, minutos] = horaStr.split(':').map(Number);
+    const fecha = new Date(fechaRef);
+    fecha.setHours(horas, minutos, 0, 0);
+    return fecha;
   }
 
   private static agruparDocentesPorJerarquia(docentes: any[]) {
