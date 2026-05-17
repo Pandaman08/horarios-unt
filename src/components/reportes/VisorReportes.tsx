@@ -13,7 +13,11 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
   const [ambientes, setAmbientes] = useState<any[]>([]);
   const [selectedDocente, setSelectedDocente] = useState<string>("");
   const [selectedAmbiente, setSelectedAmbiente] = useState<string>("");
-  const [generating, setGenerating] = useState(false);
+  const [generatingDocente, setGeneratingDocente] = useState(false);
+  const [generatingAula, setGeneratingAula] = useState(false);
+  const [generatingConsolidado, setGeneratingConsolidado] = useState(false);
+  const [generatingConflictos, setGeneratingConflictos] = useState(false);
+  const [generatingEstadisticas, setGeneratingEstadisticas] = useState(false);
 
   useEffect(() => {
     fetchData();
@@ -32,30 +36,48 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
     }
   };
 
-  const handleDownload = async (tipo: string, id: string) => {
-    if (!id) {
+  const handleDownload = async (tipo: 'docente' | 'aula' | 'consolidado' | 'conflictos' | 'estadisticas', id?: string) => {
+    if ((tipo === 'docente' || tipo === 'aula') && !id) {
       toast.warning("Seleccione un elemento de la lista");
       return;
     }
 
-    setGenerating(true);
+    if (tipo === 'docente') setGeneratingDocente(true);
+    else if (tipo === 'aula') setGeneratingAula(true);
+    else if (tipo === 'consolidado') setGeneratingConsolidado(true);
+    else if (tipo === 'conflictos') setGeneratingConflictos(true);
+    else if (tipo === 'estadisticas') setGeneratingEstadisticas(true);
+
     try {
-      const res = await fetch(`/api/reportes?tipo=${tipo}&id=${id}&id_periodo=${id_periodo}`);
+      const urlFetch = (tipo === 'docente' || tipo === 'aula')
+        ? `/api/reportes?tipo=${tipo}&id=${id}&id_periodo=${id_periodo}`
+        : `/api/reportes?tipo=${tipo}&id_periodo=${id_periodo}`;
+
+      const res = await fetch(urlFetch);
       if (!res.ok) throw new Error("Error al generar PDF");
-      
+
       const blob = await res.blob();
       const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `reporte-${tipo}-${id}.pdf`;
+      a.download = `reporte-${tipo}${id ? `-${id}` : ''}.pdf`;
       document.body.appendChild(a);
       a.click();
       window.URL.revokeObjectURL(url);
       toast.success("PDF generado correctamente");
+
+      // Limpiar el combobox para forzar una nueva selección
+      if (tipo === 'docente') setSelectedDocente("");
+      else if (tipo === 'aula') setSelectedAmbiente("");
+
     } catch (error) {
       toast.error("Error al descargar el reporte");
     } finally {
-      setGenerating(false);
+      if (tipo === 'docente') setGeneratingDocente(false);
+      else if (tipo === 'aula') setGeneratingAula(false);
+      else if (tipo === 'consolidado') setGeneratingConsolidado(false);
+      else if (tipo === 'conflictos') setGeneratingConflictos(false);
+      else if (tipo === 'estadisticas') setGeneratingEstadisticas(false);
     }
   };
 
@@ -64,7 +86,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <User className="mr-2 h-5 w-5 text-blue-600" /> Horario por Docente
+            <User className="mr-2 h-5 w-5 text-blue-600" /> Reporte de Horario por Docente
           </CardTitle>
           <CardDescription>Genera el horario individual oficial de un docente</CardDescription>
         </CardHeader>
@@ -84,13 +106,13 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
               </SelectContent>
             </Select>
           </div>
-          <Button 
-            className="w-full" 
-            disabled={generating} 
+          <Button
+            className="w-full"
+            disabled={generatingDocente}
             onClick={() => handleDownload('docente', selectedDocente)}
           >
-            <Download className="mr-2 h-4 w-4" /> 
-            {generating ? "Generando..." : "Descargar PDF"}
+            <Download className="mr-2 h-4 w-4" />
+            {generatingDocente ? "Generando..." : "Descargar PDF"}
           </Button>
         </CardContent>
       </Card>
@@ -98,7 +120,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center">
-            <Home className="mr-2 h-5 w-5 text-green-600" /> Horario por Ambiente
+            <Home className="mr-2 h-5 w-5 text-green-600" /> Reporte de Horario por Ambiente
           </CardTitle>
           <CardDescription>Genera el horario de uso de un aula o laboratorio</CardDescription>
         </CardHeader>
@@ -118,14 +140,13 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
               </SelectContent>
             </Select>
           </div>
-          <Button 
-            className="w-full" 
-            variant="secondary"
-            disabled={generating} 
+          <Button
+            className="w-full"
+            disabled={generatingAula}
             onClick={() => handleDownload('aula', selectedAmbiente)}
           >
-            <Download className="mr-2 h-4 w-4" /> 
-            {generating ? "Generando..." : "Descargar PDF"}
+            <Download className="mr-2 h-4 w-4" />
+            {generatingAula ? "Generando..." : "Descargar PDF"}
           </Button>
         </CardContent>
       </Card>
@@ -138,14 +159,29 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           <CardDescription>Resúmenes ejecutivos y estadísticas descriptivas del periodo</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          <Button variant="outline" className="justify-start">
-            <Printer className="mr-2 h-4 w-4" /> Consolidado de Carga
+          <Button
+            className="justify-start"
+            onClick={() => handleDownload('consolidado')}
+            disabled={generatingConsolidado}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {generatingConsolidado ? "Generando..." : "Reporte de consolidado de carga horaria"}
           </Button>
-          <Button variant="outline" className="justify-start">
-            <Printer className="mr-2 h-4 w-4" /> Reporte de Conflictos
+          <Button
+            className="justify-start"
+            onClick={() => handleDownload('conflictos')}
+            disabled={generatingConflictos}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {generatingConflictos ? "Generando..." : "Reporte de conflictos de horario"}
           </Button>
-          <Button variant="outline" className="justify-start">
-            <Printer className="mr-2 h-4 w-4" /> Estadísticas Finales
+          <Button
+            className="justify-start"
+            onClick={() => handleDownload('estadisticas')}
+            disabled={generatingEstadisticas}
+          >
+            <Download className="mr-2 h-4 w-4" />
+            {generatingEstadisticas ? "Generando..." : "Reporte de estadísticas finales"}
           </Button>
         </CardContent>
       </Card>
