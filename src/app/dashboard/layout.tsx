@@ -2,7 +2,7 @@
 
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { usePathname } from "next/navigation";
+import { usePathname, useSearchParams, useRouter } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { 
   LayoutDashboard, 
@@ -21,6 +21,9 @@ export default function DashboardLayout({
 }) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const router = useRouter();
+  const currentTab = searchParams.get("tab");
 
   const menuItems = [
     { 
@@ -31,7 +34,7 @@ export default function DashboardLayout({
     },
     { 
       title: "Catálogos", 
-      href: "/dashboard", // Por ahora los catálogos están en el inicio del dashboard para admin
+      href: "/dashboard?tab=config",
       icon: ClipboardList,
       roles: ["administrador_sistema", "director_escuela", "coordinador_academico"]
     },
@@ -64,21 +67,34 @@ export default function DashboardLayout({
         </div>
         
         <nav className="flex-1 px-4 space-y-2">
-          {filteredMenu.map((item) => (
-            <Link
-              key={item.title}
-              href={item.href}
-              className={cn(
-                "flex items-center p-3 rounded-lg transition-colors",
-                pathname === item.href 
-                  ? "bg-indigo-700 text-white" 
-                  : "text-indigo-200 hover:bg-indigo-800 hover:text-white"
-              )}
-            >
-              <item.icon className="mr-3 h-5 w-5" />
-              {item.title}
-            </Link>
-          ))}
+          {filteredMenu.map((item) => {
+            let isActive = false;
+            
+            if (item.href.includes("?tab=")) {
+              const urlTab = item.href.split("=")[1];
+              isActive = pathname === "/dashboard" && currentTab === urlTab;
+            } else if (item.href === "/dashboard") {
+              isActive = pathname === "/dashboard" && (!currentTab || currentTab === "overview");
+            } else {
+              isActive = pathname.startsWith(item.href) && item.href !== "/dashboard";
+            }
+
+            return (
+              <Link
+                key={item.title}
+                href={item.href}
+                className={cn(
+                  "flex items-center p-3 rounded-lg transition-colors",
+                  isActive
+                    ? "bg-indigo-700 text-white" 
+                    : "text-indigo-200 hover:bg-indigo-800 hover:text-white"
+                )}
+              >
+                <item.icon className="mr-3 h-5 w-5" />
+                {item.title}
+              </Link>
+            );
+          })}
         </nav>
 
         <div className="p-4 border-t border-indigo-800">

@@ -88,13 +88,13 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           <CardTitle className="flex items-center">
             <User className="mr-2 h-5 w-5 text-blue-600" /> Reporte de Horario por Docente
           </CardTitle>
-          <CardDescription>Genera el horario individual oficial de un docente</CardDescription>
+          <CardDescription className="mt-2">Genera el horario individual de un docente.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Seleccionar Docente</Label>
             <Select value={selectedDocente} onValueChange={setSelectedDocente}>
-              <SelectTrigger>
+              <SelectTrigger className="w-80">
                 <SelectValue placeholder="Busca un docente..." />
               </SelectTrigger>
               <SelectContent>
@@ -122,14 +122,14 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           <CardTitle className="flex items-center">
             <Home className="mr-2 h-5 w-5 text-green-600" /> Reporte de Horario por Ambiente
           </CardTitle>
-          <CardDescription>Genera el horario de uso de un aula o laboratorio</CardDescription>
+          <CardDescription className="mt-2">Genera el horario de uso de un aula o laboratorio.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
             <Label>Seleccionar Ambiente</Label>
             <Select value={selectedAmbiente} onValueChange={setSelectedAmbiente}>
-              <SelectTrigger>
-                <SelectValue placeholder="Busca un aula/lab..." />
+              <SelectTrigger className="w-80">
+                <SelectValue placeholder="Busca un aula/laboratorio..." />
               </SelectTrigger>
               <SelectContent>
                 {ambientes.map(a => (
@@ -156,11 +156,11 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           <CardTitle className="flex items-center">
             <FileText className="mr-2 h-5 w-5 text-indigo-600" /> Reportes de Gestión
           </CardTitle>
-          <CardDescription>Resúmenes ejecutivos y estadísticas descriptivas del periodo</CardDescription>
+          <CardDescription className="mt-2">Resúmenes ejecutivos y estadísticas descriptivas del periodo.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
           <Button
-            className="justify-start"
+            className="w-full"
             onClick={() => handleDownload('consolidado')}
             disabled={generatingConsolidado}
           >
@@ -168,7 +168,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
             {generatingConsolidado ? "Generando..." : "Reporte de consolidado de carga horaria"}
           </Button>
           <Button
-            className="justify-start"
+            className="w-full"
             onClick={() => handleDownload('conflictos')}
             disabled={generatingConflictos}
           >
@@ -176,7 +176,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
             {generatingConflictos ? "Generando..." : "Reporte de conflictos de horario"}
           </Button>
           <Button
-            className="justify-start"
+            className="w-full"
             onClick={() => handleDownload('estadisticas')}
             disabled={generatingEstadisticas}
           >
