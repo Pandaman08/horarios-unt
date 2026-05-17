@@ -67,37 +67,42 @@ export class GestorSeleccionTemporal {
   }
 
   /**
-   * Confirma una selección temporal convirtiéndola en definitiva
+   * Confirma todas las selecciones temporales de un docente en un periodo
    */
-  static async confirmarSeleccion(id_seleccion: number, usuario_id: number) {
-    const temporal = await prisma.seleccionTemporalHorario.findUnique({
-      where: { id_seleccion }
+  static async confirmarTodo(id_docente: number, id_periodo: number, usuario_id: number) {
+    const temporales = await prisma.seleccionTemporalHorario.findMany({
+      where: { id_docente, id_periodo }
     });
 
-    if (!temporal) throw new Error("Selección temporal no encontrada");
+    if (temporales.length === 0) throw new Error("No hay selecciones temporales para confirmar");
 
     return await prisma.$transaction(async (tx) => {
-      const definitiva = await tx.horarioAsignado.create({
-        data: {
-          id_docente: temporal.id_docente,
-          id_curso: temporal.id_curso,
-          id_grupo: temporal.id_grupo,
-          id_ambiente: temporal.id_ambiente,
-          dia_semana: temporal.dia_semana,
-          hora_inicio: temporal.hora_inicio,
-          hora_fin: temporal.hora_fin,
-          id_periodo: temporal.id_periodo,
-          tipo_clase: temporal.tipo_clase,
-          estado: 'borrador',
-          creado_por: usuario_id
-        }
+      const asignaciones = [];
+      
+      for (const temporal of temporales) {
+        const definitiva = await tx.horarioAsignado.create({
+          data: {
+            id_docente: temporal.id_docente,
+            id_curso: temporal.id_curso,
+            id_grupo: temporal.id_grupo,
+            id_ambiente: temporal.id_ambiente,
+            dia_semana: temporal.dia_semana,
+            hora_inicio: temporal.hora_inicio,
+            hora_fin: temporal.hora_fin,
+            id_periodo: temporal.id_periodo,
+            tipo_clase: temporal.tipo_clase,
+            estado: 'confirmado',
+            creado_por: usuario_id
+          }
+        });
+        asignaciones.push(definitiva);
+      }
+
+      await tx.seleccionTemporalHorario.deleteMany({
+        where: { id_docente, id_periodo }
       });
 
-      await tx.seleccionTemporalHorario.delete({
-        where: { id_seleccion }
-      });
-
-      return definitiva;
+      return asignaciones;
     });
   }
 }

@@ -28,6 +28,7 @@ import {
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { Plus, Edit, Trash2, BookOpen } from "lucide-react";
+import { AsignarCursosDialog } from "./AsignarCursosDialog";
 
 interface Docente {
   id_docente: number;
@@ -47,6 +48,8 @@ export function DocenteList() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingDocente, setEditingDocente] = useState<Docente | null>(null);
+  const [isAsignarOpen, setIsAsignarOpen] = useState(false);
+  const [selectedDocente, setSelectedDocente] = useState<Docente | null>(null);
 
   const [formData, setFormData] = useState({
     codigo_docente: "",
@@ -70,7 +73,11 @@ export function DocenteList() {
     try {
       const res = await fetch("/api/docentes");
       const data = await res.json();
-      setDocentes(data);
+      if (Array.isArray(data)) {
+        setDocentes(data);
+      } else {
+        setDocentes([]);
+      }
     } catch (error) {
       toast.error("Error al cargar docentes");
     } finally {
@@ -293,6 +300,17 @@ export function DocenteList() {
                   <TableCell className="capitalize">{docente.categoria.replace("_", " ")}</TableCell>
                   <TableCell>
                     <div className="flex space-x-2">
+                      <Button 
+                        variant="outline" 
+                        size="icon" 
+                        title="Asignar Cursos"
+                        onClick={() => {
+                          setSelectedDocente(docente);
+                          setIsAsignarOpen(true);
+                        }}
+                      >
+                        <BookOpen className="h-4 w-4" />
+                      </Button>
                       <Button variant="outline" size="icon" onClick={() => handleEdit(docente)}>
                         <Edit className="h-4 w-4" />
                       </Button>
@@ -307,6 +325,18 @@ export function DocenteList() {
           </TableBody>
         </Table>
       </div>
+
+      {selectedDocente && (
+        <AsignarCursosDialog
+          docenteId={selectedDocente.id_docente}
+          docenteNombre={`${selectedDocente.nombres} ${selectedDocente.apellidos}`}
+          isOpen={isAsignarOpen}
+          onClose={() => {
+            setIsAsignarOpen(false);
+            setSelectedDocente(null);
+          }}
+        />
+      )}
     </div>
   );
 }

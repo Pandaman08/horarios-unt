@@ -3,10 +3,11 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id_docente = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id_docente = parseInt(idStr);
     const docenteCursos = await prisma.docenteCurso.findMany({
       where: { id_docente, activo: true },
       include: { curso: true }
@@ -19,11 +20,18 @@ export async function GET(
 
 export async function POST(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id_docente = parseInt(params.id);
+    const { id: idStr } = await params;
+    const id_docente = parseInt(idStr);
     const data = await request.json(); // Array of { id_curso, tipo_clase }
+
+    // Normalizar datos y filtrar duplicados (por si acaso)
+    const normalizedData = data.map((item: any) => ({
+      id_curso: item.id_curso,
+      tipo_clase: item.tipo_clase.toLowerCase()
+    }));
 
     // Eliminar cursos actuales (o marcarlos como inactivos)
     await prisma.docenteCurso.updateMany({
@@ -33,7 +41,7 @@ export async function POST(
 
     // Crear nuevas relaciones
     const created = await Promise.all(
-      data.map((item: any) =>
+      normalizedData.map((item: any) =>
         prisma.docenteCurso.upsert({
           where: {
             id_docente_id_curso_tipo_clase: {
