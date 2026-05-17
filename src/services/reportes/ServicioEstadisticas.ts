@@ -1,11 +1,4 @@
 import { prisma } from '@/lib/prisma';
-import { 
-  calcularMedia, 
-  calcularMediana, 
-  calcularDesviacionEstandar, 
-  calcularMinimo, 
-  calcularMaximo 
-} from '@/lib/estadisticas';
 
 export class ServicioEstadisticas {
   static async obtenerEstadisticasGestion(id_periodo: number) {
@@ -16,23 +9,29 @@ export class ServicioEstadisticas {
     if (asignaciones.length === 0) return null;
 
     // Calcular horas por cada asignación
-    const horas = asignaciones.map((a: any) => {
+    const horas = asignaciones.map(a => {
       const [h1, m1] = a.hora_inicio.split(':').map(Number);
       const [h2, m2] = a.hora_fin.split(':').map(Number);
       return (h2 * 60 + m2 - (h1 * 60 + m1)) / 60;
     });
 
-    const mean = calcularMedia(horas);
-    const median = calcularMediana(horas);
-    const stdDev = calcularDesviacionEstandar(horas, mean);
+    const sum = horas.reduce((a, b) => a + b, 0);
+    const mean = sum / horas.length;
+    
+    const sortedHoras = [...horas].sort((a, b) => a - b);
+    const median = sortedHoras.length % 2 === 0 
+      ? (sortedHoras[sortedHoras.length / 2 - 1] + sortedHoras[sortedHoras.length / 2]) / 2
+      : sortedHoras[Math.floor(sortedHoras.length / 2)];
+
+    const stdDev = Math.sqrt(horas.map(x => Math.pow(x - mean, 2)).reduce((a, b) => a + b, 0) / horas.length);
 
     return {
       total_asignaciones: asignaciones.length,
       media_horas: mean.toFixed(2),
       mediana_horas: median.toFixed(2),
       desviacion_estandar: stdDev.toFixed(2),
-      min_horas: calcularMinimo(horas),
-      max_horas: calcularMaximo(horas),
+      min_horas: Math.min(...horas),
+      max_horas: Math.max(...horas),
       observaciones: this.generarObservaciones(mean, stdDev)
     };
   }
