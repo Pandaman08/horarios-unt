@@ -287,16 +287,33 @@ export async function GET(request: Request) {
     }
 
     const fullHTML = GeneradorPDF.wrapLayout(htmlContent, reportTitle);
+    
+    // Si el usuario añade ?format=html a la URL, devolvemos el HTML directamente
+    const format = searchParams.get('format');
+    if (format === 'html') {
+      return new Response(fullHTML, {
+        headers: { 'Content-Type': 'text/html; charset=utf-8' }
+      });
+    }
+
     const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML);
 
-    return new Response(pdfBuffer as any, {
+    if (!pdfBuffer || pdfBuffer.length === 0) {
+      throw new Error("El buffer del PDF está vacío");
+    }
+
+    return new Response(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
-        'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`
+        'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`,
+        'Content-Length': pdfBuffer.length.toString()
       }
     });
-  } catch (error) {
-    console.error(error);
-    return NextResponse.json({ error: 'Error al generar PDF' }, { status: 500 });
+  } catch (error: any) {
+    console.error("ERROR_GENERACION_REPORTES:", error);
+    return NextResponse.json({ 
+      error: 'Error al generar PDF', 
+      details: error.message 
+    }, { status: 500 });
   }
 }

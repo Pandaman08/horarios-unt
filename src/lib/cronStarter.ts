@@ -1,11 +1,14 @@
 // src/lib/cronStarter.ts
 import { iniciarCronJobs } from '@/lib/programadorTareas';
 
-let started = false;
+// Usar global para evitar múltiples instancias en desarrollo (Hot Module Replacement)
+const globalForCron = global as unknown as { cronStarted?: boolean };
 
 export function iniciarCronOnce() {
-  if (started) return;
-  started = true;
+  if (globalForCron.cronStarted) return;
+  
+  globalForCron.cronStarted = true;
+  console.log("Iniciando servicios en segundo plano (Singleton)...");
 
   // Ejecuta los cron jobs definidos en src/lib/programadorTareas.ts
   iniciarCronJobs();
