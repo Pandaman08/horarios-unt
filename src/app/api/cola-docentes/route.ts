@@ -5,8 +5,11 @@ import { format } from 'date-fns';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const id_periodo = searchParams.get('id_periodo');
-    if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
+    const id_periodo_str = searchParams.get('id_periodo');
+    if (!id_periodo_str) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
+
+    const id_periodo = parseInt(id_periodo_str);
+    if (isNaN(id_periodo)) return NextResponse.json({ error: 'id_periodo inválido' }, { status: 400 });
 
     const ahora = new Date();
     const horaActualStr = format(ahora, 'HH:mm');
@@ -18,7 +21,7 @@ export async function GET(request: Request) {
     // 1. Obtener ventanas activas en este momento
     const ventanasActivas = await prisma.ventanaAtencion.findMany({
       where: {
-        id_periodo: parseInt(id_periodo),
+        id_periodo: id_periodo,
         activo: true,
         fecha: { equals: fechaActual },
         hora_inicio: { lte: horaActualStr },
@@ -45,7 +48,7 @@ export async function GET(request: Request) {
           include: { curso: true }
         },
         horarios_asignados: {
-          where: { id_periodo: parseInt(id_periodo) }
+          where: { id_periodo: id_periodo }
         }
       },
       orderBy: [

@@ -112,7 +112,6 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
       </div>
     );
   }
-
   const kpis = [
     { 
       title: "Docentes", 
