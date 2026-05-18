@@ -139,16 +139,18 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
             <CardTitle>Ocupación de Aulas y Laboratorios</CardTitle>
             <CardDescription>Top 10 ambientes con más carga horaria</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.ocupacionAmbientes} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                <XAxis type="number" />
-                <YAxis dataKey="nombre" type="category" width={100} fontSize={12} />
-                <Tooltip />
-                <Bar dataKey="cantidad" fill="#4f46e5" radius={[0, 4, 4, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.ocupacionAmbientes} layout="vertical">
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
+                  <XAxis type="number" />
+                  <YAxis dataKey="nombre" type="category" width={100} fontSize={12} />
+                  <Tooltip />
+                  <Bar dataKey="cantidad" fill="#4f46e5" radius={[0, 4, 4, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
@@ -158,16 +160,18 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
             <CardTitle>Distribución de Carga Docente</CardTitle>
             <CardDescription>Docentes con más horas asignadas</CardDescription>
           </CardHeader>
-          <CardContent className="h-[300px]">
-            <ResponsiveContainer width="100%" height="100%">
-              <BarChart data={data.cargaDocente}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                <XAxis dataKey="nombre" fontSize={10} />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="asignaciones" fill="#818cf8" radius={[4, 4, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <div className="h-[300px] w-full">
+              <ResponsiveContainer width="100%" height="100%">
+                <BarChart data={data.cargaDocente}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
+                  <XAxis dataKey="nombre" fontSize={10} />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="asignaciones" fill="#818cf8" radius={[4, 4, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
       </div>
@@ -178,25 +182,27 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
           <CardHeader>
             <CardTitle>Avance por Categoría</CardTitle>
           </CardHeader>
-          <CardContent className="h-[250px] flex items-center justify-center">
-             <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data.avanceCategoria}
-                  dataKey="_count.id_docente"
-                  nameKey="categoria"
-                  cx="50%"
-                  cy="50%"
-                  outerRadius={80}
-                  label={({ categoria }) => categoria.replace("_", " ")}
-                >
-                  {data.avanceCategoria.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip />
-              </PieChart>
-            </ResponsiveContainer>
+          <CardContent>
+            <div className="h-[250px] w-full flex items-center justify-center">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data.avanceCategoria}
+                    dataKey="_count.id_docente"
+                    nameKey="categoria"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={80}
+                    label={({ categoria }) => categoria.replace("_", " ")}
+                  >
+                    {data.avanceCategoria.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </CardContent>
         </Card>
 
