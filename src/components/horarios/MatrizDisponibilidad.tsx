@@ -12,6 +12,7 @@ import {
   Lock, 
   CheckCircle2, 
   AlertCircle,
+  XCircle,
   ChevronDown,
   LayoutGrid,
   Zap,
@@ -24,6 +25,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { Button } from "@/components/ui/button";
 import { UserCircle } from "lucide-react";
 
 interface CeldaInfo {
@@ -33,7 +35,14 @@ interface CeldaInfo {
   docente_nombre?: string;
   curso_nombre?: string;
   tipo_clase?: string;
-  estado: 'disponible' | 'ocupado' | 'seleccionado_mio' | 'bloqueado';
+  estado: 'disponible' | 'ocupado' | 'seleccionado_mio' | 'bloqueado' | 'error';
+  mensaje_error?: string;
+}
+
+interface ConflictoVisual {
+  tipo: string;
+  mensaje: string;
+  severidad: 'ERROR' | 'ADVERTENCIA';
 }
 
 interface Props {
@@ -73,6 +82,8 @@ export function MatrizDisponibilidad({
   const [intervalo, setIntervalo] = useState<number>(60); // Default 60 min
   const [internalSoloLectura, setSoloLectura] = useState(false);
   const [processingCell, setProcessingCell] = useState<string | null>(null);
+  const [conflictosActuales, setConflictosActuales] = useState<ConflictoVisual[]>([]);
+  const [errorCell, setErrorCell] = useState<string | null>(null);
 
   const soloLectura = propSoloLectura ?? internalSoloLectura;
 
@@ -247,6 +258,8 @@ export function MatrizDisponibilidad({
       }
 
       setProcessingCell(key);
+      setConflictosActuales([]);
+      setErrorCell(null);
 
       try {
         const hora_fin = format(addMinutes(parse(hora, "HH:mm", new Date()), intervalo), "HH:mm");
@@ -274,8 +287,20 @@ export function MatrizDisponibilidad({
           if (onSelectionChange) onSelectionChange();
           getSocket().emit("horario-actualizado");
         } else {
-          const msg = result.error || (result.conflictos && result.conflictos[0]?.mensaje) || "Error al seleccionar";
-          toast.error(msg);
+          // Manejo detallado de conflictos
+          if (result.conflictos) {
+            setConflictosActuales(result.conflictos);
+            setErrorCell(key);
+            
+            // Mostrar el primer error en toast pero dejar los demás en el panel
+            const primerError = result.conflictos.find((c: any) => c.severidad === 'ERROR') || result.conflictos[0];
+            toast.error(primerError.mensaje, {
+              description: "Revise los detalles del conflicto en la matriz.",
+              duration: 5000,
+            });
+          } else {
+            toast.error(result.error || "Error al seleccionar");
+          }
         }
       } catch (error) {
         toast.error("Error de conexión");
@@ -344,7 +369,40 @@ export function MatrizDisponibilidad({
               <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
               <span className="text-[9px] font-black text-gray-500 uppercase">Bloqueo</span>
             </div>
+            <div className="flex items-center gap-1.5">
+              <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.4)]" />
+              <span className="text-[9px] font-black text-red-600 uppercase">Conflicto</span>
+            </div>
           </div>
+
+          {conflictosActuales.length > 0 && (
+            <div className="flex items-center gap-3 p-2 px-4 bg-red-50 border border-red-100 rounded-2xl animate-in slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+              <div className="flex flex-col">
+                <p className="text-[10px] font-black text-red-800 uppercase tracking-tight">
+                  Se detectaron {conflictosActuales.length} conflictos:
+                </p>
+                <div className="flex flex-wrap gap-x-4">
+                  {conflictosActuales.map((c, i) => (
+                    <span key={i} className="text-[9px] font-bold text-red-600/80 italic">
+                      • {c.mensaje}
+                    </span>
+                  ))}
+                </div>
+              </div>
+              <Button 
+                variant="ghost" 
+                size="icon" 
+                className="h-6 w-6 rounded-full hover:bg-red-100 text-red-600"
+                onClick={() => {
+                  setConflictosActuales([]);
+                  setErrorCell(null);
+                }}
+              >
+                <XCircle className="h-3 w-3" />
+              </Button>
+            </div>
+          )}
 
           <div className="flex items-center gap-2 p-2 px-3 bg-amber-50 border border-amber-100 rounded-xl animate-in fade-in duration-500">
             <Info className="h-3.5 w-3.5 text-amber-600 shrink-0" />
@@ -401,6 +459,7 @@ export function MatrizDisponibilidad({
                     const info = disponibilidad[key];
                     const esMia = id_docente_actual !== undefined && info?.id_docente === id_docente_actual;
                     const isProcessing = processingCell === key;
+                    const hasError = errorCell === key;
                     
                     return (
                       <td
@@ -413,7 +472,8 @@ export function MatrizDisponibilidad({
                           info?.estado === 'ocupado' && !esMia && "bg-red-50/40 cursor-not-allowed bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZTUyNTIiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTAgNDBoNDB2LTQwSDB2NDB6bTIwLTQwSDQwTDAgNDBoMjB6Ii8+PC9nPjwvZz48L3N2Zz4=')]",
                           esMia && "bg-yellow-50/60 z-10",
                           info?.estado === 'bloqueado' && "bg-gray-100/60 cursor-not-allowed grayscale",
-                          isProcessing && "cursor-wait opacity-70"
+                          isProcessing && "cursor-wait opacity-70",
+                          hasError && "bg-red-100 ring-2 ring-red-500 z-20 animate-pulse"
                         )}
                       >
                         {isProcessing && (
@@ -422,7 +482,14 @@ export function MatrizDisponibilidad({
                           </div>
                         )}
 
-                        {!info && !soloLectura && !isProcessing && (
+                        {hasError && (
+                          <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-red-50/80 backdrop-blur-[1px] rounded-xl p-1 text-center">
+                            <AlertCircle className="h-5 w-5 text-red-600 mb-1" />
+                            <span className="text-[8px] font-black text-red-700 uppercase leading-tight">Conflicto</span>
+                          </div>
+                        )}
+
+                        {!info && !soloLectura && !isProcessing && !hasError && (
                           <div className="absolute inset-0 opacity-0 group-hover/cell:opacity-100 flex items-center justify-center pointer-events-none transition-opacity">
                             <Zap className="h-4 w-4 text-emerald-400 animate-pulse" />
                           </div>
