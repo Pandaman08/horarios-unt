@@ -27,8 +27,20 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { Plus, Edit, Trash2 } from "lucide-react";
-import { Badge } from "@/components/ui/badge";
+import { 
+  Plus, 
+  Edit, 
+  Trash2, 
+  Calendar, 
+  Search, 
+  Clock, 
+  CheckCircle2, 
+  AlertCircle,
+  Timer
+} from "lucide-react";
+import { format } from "date-fns";
+import { es } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface Periodo {
   id_periodo: number;
@@ -46,6 +58,11 @@ export function PeriodoList() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingPeriodo, setEditingPeriodo] = useState<Periodo | null>(null);
+  const [searchTerm, setSearchTerm] = useState("");
+
+  const filteredPeriodos = periodos.filter(p => 
+    `${p.nombre} ${p.codigo}`.toLowerCase().includes(searchTerm.toLowerCase())
+  );
 
   const [formData, setFormData] = useState({
     codigo: "",
@@ -69,7 +86,6 @@ export function PeriodoList() {
         setPeriodos(data);
       } else {
         setPeriodos([]);
-        toast.error("Formato de datos de periodos inválido");
       }
     } catch (error) {
       toast.error("Error al cargar periodos");
@@ -149,20 +165,36 @@ export function PeriodoList() {
   };
 
   const getStatusBadge = (estado: string) => {
-    const states: Record<string, { label: string, color: string }> = {
-      planificacion: { label: "Planificación", color: "bg-blue-100 text-blue-800" },
-      asignacion_horarios: { label: "Asignación", color: "bg-yellow-100 text-yellow-800" },
-      en_curso: { label: "En Curso", color: "bg-green-100 text-green-800" },
-      finalizado: { label: "Finalizado", color: "bg-gray-100 text-gray-800" },
+    const states: Record<string, { label: string, color: string, icon: any }> = {
+      planificacion: { label: "Planificación", color: "bg-blue-50 text-blue-700", icon: Clock },
+      asignacion_horarios: { label: "Asignación", color: "bg-yellow-50 text-yellow-700", icon: Timer },
+      en_curso: { label: "En Curso", color: "bg-emerald-50 text-emerald-700", icon: CheckCircle2 },
+      finalizado: { label: "Finalizado", color: "bg-gray-50 text-gray-700", icon: AlertCircle },
     };
     const state = states[estado] || states.planificacion;
-    return <Badge className={state.color}>{state.label}</Badge>;
+    const Icon = state.icon;
+    return (
+      <span className={cn("px-3 py-1 rounded-full font-black text-[10px] uppercase tracking-widest border-none flex items-center gap-1.5", state.color)}>
+        <Icon className="h-3 w-3" />
+        {state.label}
+      </span>
+    );
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex justify-between items-center">
-        <h2 className="text-2xl font-bold">Gestión de Periodos</h2>
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Header y Acciones */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
+        <div className="relative flex-1 max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+          <Input 
+            placeholder="Buscar periodo académico..." 
+            className="pl-10 bg-white border-gray-200 rounded-xl focus:ring-[#003366]/10 font-medium"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+        
         <Dialog open={isDialogOpen} onOpenChange={(open) => {
           setIsDialogOpen(open);
           if (!open) {
@@ -171,95 +203,122 @@ export function PeriodoList() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button>
+            <Button className="bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
               <Plus className="mr-2 h-4 w-4" /> Nuevo Periodo
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-2xl">
-            <DialogHeader>
-              <DialogTitle>{editingPeriodo ? "Editar Periodo" : "Nuevo Periodo"}</DialogTitle>
+          <DialogContent className="w-[95vw] md:w-[90vw] lg:max-w-5xl rounded-[32px] p-8 border-none shadow-2xl overflow-y-auto max-h-[95vh] overflow-x-hidden">
+            <DialogHeader className="mb-6">
+              <div className="flex items-center gap-4">
+                <div className="h-14 w-14 bg-blue-50 rounded-2xl flex items-center justify-center">
+                  <Calendar className="h-8 w-8 text-[#003366]" />
+                </div>
+                <div>
+                  <DialogTitle className="text-3xl font-black text-gray-900 tracking-tight">
+                    {editingPeriodo ? "Actualizar Periodo" : "Crear Ciclo Académico"}
+                  </DialogTitle>
+                  <p className="text-base text-gray-500 font-medium">Defina los rangos de fecha y el estado del periodo lectivo.</p>
+                </div>
+              </div>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label htmlFor="codigo">Código (ej: 2026-I)</Label>
-                <Input
-                  id="codigo"
-                  value={formData.codigo}
-                  onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                  required
-                />
+            
+            <form onSubmit={handleSubmit} className="space-y-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5">
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Código del Periodo</Label>
+                  <Input
+                    placeholder="Ej: 2026-I"
+                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    value={formData.codigo}
+                    onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Año Lectivo</Label>
+                  <Input
+                    type="number"
+                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    value={formData.anio}
+                    onChange={(e) => setFormData({ ...formData, anio: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Semestre</Label>
+                  <Select
+                    value={formData.semestre}
+                    onValueChange={(value) => setFormData({ ...formData, semestre: value })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl border-gray-200 font-bold text-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                      <SelectItem value="1" className="font-bold">Semestre I</SelectItem>
+                      <SelectItem value="2" className="font-bold">Semestre II</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="md:col-span-2 lg:col-span-3 space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Nombre del Periodo</Label>
+                  <Input
+                    placeholder="Ej: Semestre Académico 2026 - I"
+                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    value={formData.nombre}
+                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Estado del Ciclo</Label>
+                  <Select
+                    value={formData.estado}
+                    onValueChange={(value) => setFormData({ ...formData, estado: value })}
+                  >
+                    <SelectTrigger className="h-12 rounded-xl border-gray-200 font-bold text-base">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                      <SelectItem value="planificacion" className="font-bold text-blue-600">Planificación</SelectItem>
+                      <SelectItem value="asignacion_horarios" className="font-bold text-yellow-600">Asignación de Horarios</SelectItem>
+                      <SelectItem value="en_curso" className="font-bold text-emerald-600">En Curso</SelectItem>
+                      <SelectItem value="finalizado" className="font-bold text-gray-600">Finalizado</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Fecha de Inicio</Label>
+                  <Input
+                    type="date"
+                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    value={formData.fecha_inicio}
+                    onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
+                    required
+                  />
+                </div>
+                <div className="space-y-3">
+                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Fecha de Término</Label>
+                  <Input
+                    type="date"
+                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    value={formData.fecha_fin}
+                    onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })}
+                    required
+                  />
+                </div>
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="nombre">Nombre</Label>
-                <Input
-                  id="nombre"
-                  value={formData.nombre}
-                  onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="anio">Año</Label>
-                <Input
-                  id="anio"
-                  type="number"
-                  value={formData.anio}
-                  onChange={(e) => setFormData({ ...formData, anio: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="semestre">Semestre</Label>
-                <Input
-                  id="semestre"
-                  type="number"
-                  min="1"
-                  max="2"
-                  value={formData.semestre}
-                  onChange={(e) => setFormData({ ...formData, semestre: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fecha_inicio">Fecha Inicio</Label>
-                <Input
-                  id="fecha_inicio"
-                  type="date"
-                  value={formData.fecha_inicio}
-                  onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="fecha_fin">Fecha Fin</Label>
-                <Input
-                  id="fecha_fin"
-                  type="date"
-                  value={formData.fecha_fin}
-                  onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })}
-                  required
-                />
-              </div>
-              <div className="space-y-2 col-span-2">
-                <Label>Estado</Label>
-                <Select
-                  value={formData.estado}
-                  onValueChange={(value) => setFormData({ ...formData, estado: value })}
+              
+              <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
+                <Button 
+                  type="button" 
+                  variant="ghost" 
+                  onClick={() => setIsDialogOpen(false)}
+                  className="h-12 rounded-xl font-bold text-gray-500 px-8 hover:bg-gray-100"
                 >
-                  <SelectTrigger>
-                    <SelectValue />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="planificacion">Planificación</SelectItem>
-                    <SelectItem value="asignacion_horarios">Asignación de Horarios</SelectItem>
-                    <SelectItem value="en_curso">En Curso</SelectItem>
-                    <SelectItem value="finalizado">Finalizado</SelectItem>
-                  </SelectContent>
-                </Select>
-              </div>
-              <div className="col-span-2">
-                <Button type="submit" className="w-full">
-                  {editingPeriodo ? "Actualizar" : "Guardar"}
+                  Cancelar
+                </Button>
+                <Button type="submit" className="h-12 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-12 font-black shadow-xl shadow-blue-900/20 transition-all hover:scale-[1.02]">
+                  {editingPeriodo ? "Actualizar Periodo" : "Crear Periodo"}
                 </Button>
               </div>
             </form>
@@ -267,52 +326,98 @@ export function PeriodoList() {
         </Dialog>
       </div>
 
-      <div className="border rounded-md">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>Código</TableHead>
-              <TableHead>Nombre</TableHead>
-              <TableHead>Año/Semestre</TableHead>
-              <TableHead>Fechas</TableHead>
-              <TableHead>Estado</TableHead>
-              <TableHead>Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">Cargando...</TableCell>
+      <div className="bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow className="border-none hover:bg-transparent">
+                <TableHead className="w-[120px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8">Código</TableHead>
+                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Periodo Académico</TableHead>
+                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Duración</TableHead>
+                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Estado Actual</TableHead>
+                <TableHead className="w-[150px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8 text-right">Acciones</TableHead>
               </TableRow>
-            ) : periodos.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={6} className="text-center">No hay periodos registrados</TableCell>
-              </TableRow>
-            ) : (
-              periodos.map((periodo) => (
-                <TableRow key={periodo.id_periodo}>
-                  <TableCell className="font-medium">{periodo.codigo}</TableCell>
-                  <TableCell>{periodo.nombre}</TableCell>
-                  <TableCell>{`${periodo.anio}-${periodo.semestre}`}</TableCell>
-                  <TableCell>
-                    {new Date(periodo.fecha_inicio).toLocaleDateString()} - {new Date(periodo.fecha_fin).toLocaleDateString()}
-                  </TableCell>
-                  <TableCell>{getStatusBadge(periodo.estado)}</TableCell>
-                  <TableCell>
-                    <div className="flex space-x-2">
-                      <Button variant="outline" size="icon" onClick={() => handleEdit(periodo)}>
-                        <Edit className="h-4 w-4" />
-                      </Button>
-                      <Button variant="destructive" size="icon" onClick={() => handleDelete(periodo.id_periodo)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
+            </TableHeader>
+            <TableBody>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-10 w-10 border-4 border-blue-100 border-t-[#003366] rounded-full animate-spin" />
+                      <p className="text-sm font-bold text-gray-400">Cargando cronograma...</p>
                     </div>
                   </TableCell>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+              ) : filteredPeriodos.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-2">
+                        <Calendar className="h-8 w-8 text-gray-300" />
+                      </div>
+                      <p className="text-lg font-black text-gray-400 tracking-tight">No hay periodos registrados</p>
+                      <p className="text-sm text-gray-400 font-medium">Configure el primer ciclo académico para comenzar.</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredPeriodos.map((periodo) => (
+                  <TableRow key={periodo.id_periodo} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
+                    <TableCell className="px-8 font-black text-xs text-gray-400">{periodo.codigo}</TableCell>
+                    <TableCell>
+                      <div className="flex items-center gap-4 py-2">
+                        <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-[#003366] transition-colors">
+                          <Calendar className="h-5 w-5 text-[#003366] group-hover:text-white transition-colors" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="font-bold text-gray-900 tracking-tight">{periodo.nombre}</span>
+                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Año {periodo.anio} - Semestre {periodo.semestre}</span>
+                        </div>
+                      </div>
+                    </TableCell>
+                    <TableCell className="text-center">
+                      <div className="flex flex-col items-center gap-1">
+                        <div className="flex items-center gap-2 text-xs font-bold text-gray-600">
+                          <span>{format(new Date(periodo.fecha_inicio), "dd MMM", { locale: es })}</span>
+                          <span className="text-gray-300">→</span>
+                          <span>{format(new Date(periodo.fecha_fin), "dd MMM", { locale: es })}</span>
+                        </div>
+                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Duración total</span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex justify-center">
+                        {getStatusBadge(periodo.estado)}
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-8">
+                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleEdit(periodo)}
+                          title="Editar"
+                          className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-[#003366]"
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleDelete(periodo.id_periodo)}
+                          title="Eliminar"
+                          className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
     </div>
   );

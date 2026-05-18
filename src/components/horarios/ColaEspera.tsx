@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
 import { User, ChevronRight, Clock } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -48,7 +47,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
     <Card className="h-full">
       <CardHeader className="flex flex-row items-center justify-between pb-2">
         <CardTitle className="text-lg font-bold">Cola de Espera</CardTitle>
-        <Badge variant="secondary">{cola.length} en espera</Badge>
+        <span className="inline-flex items-center bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-bold">{cola.length} en espera</span>
       </CardHeader>
       <CardContent className="p-0">
         <div className="divide-y max-h-[600px] overflow-y-auto">
@@ -98,7 +97,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                     </Button>
                   )}
                   {esActual && (
-                    <Badge className="bg-blue-500">En Atención</Badge>
+                    <span className="inline-flex items-center bg-blue-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">En Atención</span>
                   )}
                 </div>
               );

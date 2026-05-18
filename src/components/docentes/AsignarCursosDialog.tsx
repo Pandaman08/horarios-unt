@@ -123,7 +123,7 @@ export function AsignarCursosDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+      <DialogContent className="w-[95vw] md:w-[90vw] lg:w-[1000px] max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-[32px] p-10 border-none shadow-2xl">
         <DialogHeader>
           <DialogTitle>Asignar Cursos a {docenteNombre}</DialogTitle>
         </DialogHeader>

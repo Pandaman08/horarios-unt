@@ -1,5 +1,5 @@
-import { PrismaClient } from '@prisma/client';
-import * as bcrypt from 'bcryptjs';
+const { PrismaClient } = require('@prisma/client');
+const bcrypt = require('bcryptjs');
 
 const prisma = new PrismaClient();
 
@@ -9,6 +9,12 @@ async function main() {
 
   // ELIMINAR DATOS PREVIOS (Opcional, pero asegura que el seed sea limpio)
   console.log('-> Limpiando base de datos');
+  await prisma.auditoriaHorario.deleteMany({});
+  await prisma.historialNotificaciones.deleteMany({});
+  await prisma.colaNotificaciones.deleteMany({});
+  await prisma.preferenciasNotificacionDocente.deleteMany({});
+  await prisma.disponibilidadDocente.deleteMany({});
+  await prisma.conflictoHorario.deleteMany({});
   await prisma.horarioAsignado.deleteMany({});
   await prisma.seleccionTemporalHorario.deleteMany({});
   await prisma.docenteCurso.deleteMany({});
@@ -68,6 +74,7 @@ async function main() {
     { codigo: '1004', nombres: 'Ana', apellidos: 'Martínez', rol: 'docente', mod: 'contratado', cat: 'principal', tel: '944333222', correo: 'ana@unt.edu.pe' },
     { codigo: '1005', nombres: 'Jorge', apellidos: 'Ramírez', rol: 'docente', mod: 'contratado', cat: 'asociado', tel: '922111000', correo: 'jorge@unt.edu.pe' },
     { codigo: 'admin', nombres: 'Admin', apellidos: 'SGH', rol: 'administrador_sistema', correo: 'admin@unt.edu.pe' },
+    { codigo: 'operador', nombres: 'Operador', apellidos: 'SGH', rol: 'operador_horarios', correo: 'operador@unt.edu.pe' }
   ];
 
   console.log('-> Insertando usuarios y docentes');
@@ -91,9 +98,9 @@ async function main() {
           codigo_docente: d.codigo,
           nombres: d.nombres,
           apellidos: d.apellidos,
-          modalidad: d.mod!,
-          categoria: d.cat!,
-          telefono: d.tel,
+          modalidad: d.mod,
+          categoria: d.cat,
+          telefono: d.tel || '',
           correo_electronico: user.correo_electronico,
         },
       });
