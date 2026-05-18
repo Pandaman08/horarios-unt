@@ -4,12 +4,12 @@ import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
-import { 
-  LayoutDashboard, 
-  Users, 
-  BookOpen, 
-  Calendar, 
-  ClipboardList, 
+import {
+  LayoutDashboard,
+  Users,
+  BookOpen,
+  Calendar,
+  ClipboardList,
   LogOut,
   UserCircle
 } from "lucide-react";
@@ -23,33 +23,33 @@ export default function DashboardLayout({
   const pathname = usePathname();
 
   const menuItems = [
-    { 
-      title: "Inicio", 
-      href: "/dashboard", 
+    {
+      title: "Inicio",
+      href: "/dashboard",
       icon: LayoutDashboard,
       roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios", "docente"]
     },
-    { 
-      title: "Catálogos", 
-      href: "/dashboard", // Por ahora los catálogos están en el inicio del dashboard para admin
+    {
+      title: "Catálogos",
+      href: "/dashboard/catalogos",
       icon: ClipboardList,
       roles: ["administrador_sistema", "director_escuela", "coordinador_academico"]
     },
-    { 
-      title: "Atención Operador", 
-      href: "/dashboard/horarios/asignacion", 
+    {
+      title: "Atención Operador",
+      href: "/dashboard/horarios/asignacion",
       icon: Users,
       roles: ["administrador_sistema", "operador_horarios"]
     },
-    { 
-      title: "Selección Docente", 
-      href: "/dashboard/horarios/seleccion", 
+    {
+      title: "Selección Docente",
+      href: "/dashboard/horarios/seleccion",
       icon: Calendar,
       roles: ["administrador_sistema", "docente"]
     },
   ];
 
-  const filteredMenu = menuItems.filter(item => 
+  const filteredMenu = menuItems.filter(item =>
     session?.user?.rol && item.roles.includes(session.user.rol)
   );
 
@@ -62,7 +62,7 @@ export default function DashboardLayout({
             <BookOpen className="mr-2" /> Horarios UNT
           </h1>
         </div>
-        
+
         <nav className="flex-1 px-4 space-y-2">
           {filteredMenu.map((item) => (
             <Link
@@ -70,8 +70,8 @@ export default function DashboardLayout({
               href={item.href}
               className={cn(
                 "flex items-center p-3 rounded-lg transition-colors",
-                pathname === item.href 
-                  ? "bg-indigo-700 text-white" 
+                pathname === item.href
+                  ? "bg-indigo-700 text-white"
                   : "text-indigo-200 hover:bg-indigo-800 hover:text-white"
               )}
             >
