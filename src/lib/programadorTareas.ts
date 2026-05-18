@@ -1,9 +1,13 @@
 import cron from 'node-cron';
 import { GestorSeleccionTemporal } from '@/services/horarios/GestorSeleccionTemporal';
 import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
+import { iniciarTelegramPolling } from '@/lib/telegramPolling';
 
 export const iniciarCronJobs = () => {
   console.log("Iniciando cron jobs...");
+
+  // Iniciar polling de Telegram (para desarrollo local sin webhook)
+  iniciarTelegramPolling();
 
   // Limpieza de selecciones temporales cada 5 minutos
   cron.schedule('*/5 * * * *', async () => {

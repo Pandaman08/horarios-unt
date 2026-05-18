@@ -4,8 +4,10 @@ import "@/styles/globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
 import { SessionProvider } from "@/components/auth/SessionProvider";
+import { iniciarCronOnce } from "@/lib/cronStarter";
 
 const inter = Inter({ subsets: ["latin"] });
+
 
 export const metadata: Metadata = {
   title: "Sistema de Horarios UNT",
@@ -17,8 +19,11 @@ export default function RootLayout({
 }: Readonly<{
   children: React.ReactNode;
 }>) {
+  // Inicia los cron jobs una sola vez por proceso
+  iniciarCronOnce();
+
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
         <SessionProvider>{children}</SessionProvider>
       </body>
