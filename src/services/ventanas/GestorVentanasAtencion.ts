@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
-import { addMinutes, format, parse, isAfter } from 'date-fns';
+import { addMinutes, format } from 'date-fns';
+import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 
 export class GestorVentanasAtencion {
   /**
@@ -55,10 +56,9 @@ export class GestorVentanasAtencion {
     console.log(`Docentes activos encontrados: ${docentes.length}`);
 
     const ventanasCreadas = [];
-    // Normalizar fechaActual a mediodía UTC para evitar problemas de zona horaria
-    let fechaActual = new Date(format(fecha_inicio, 'yyyy-MM-dd') + 'T12:00:00Z');
-    let horaActual = parse(hora_inicio_jornada, 'HH:mm', fechaActual);
-    let horaLimite = parse(hora_fin_jornada, 'HH:mm', fechaActual);
+    let fechaActual = new Date(fecha_inicio);
+    let horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
+    const horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
     let prioridadActual = 1;
 
     // Agrupar docentes por modalidad y categoría para crear ventanas por bloques
@@ -80,8 +80,7 @@ export class GestorVentanasAtencion {
         if (minutosDisponiblesHoy <= 0) {
           // Pasar al siguiente día hábil
           fechaActual = this.obtenerSiguienteDiaHabil(fechaActual);
-          horaActual = parse(hora_inicio_jornada, 'HH:mm', fechaActual);
-          horaLimite = parse(hora_fin_jornada, 'HH:mm', fechaActual);
+          horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
           console.log(`Cambiando al siguiente día: ${format(fechaActual, 'yyyy-MM-dd')}`);
           continue;
         }
@@ -105,14 +104,17 @@ export class GestorVentanasAtencion {
         });
 
         ventanasCreadas.push(ventana);
+        
+        // Programar notificaciones para esta ventana
+        await ServicioNotificador.programarNotificacionesVentana(ventana.id_ventana);
+        
         minutosRestantes -= minutosAsignados;
         horaActual = horaFinVentana;
 
         // Si terminamos la jornada, resetear para el día siguiente
         if (horaActual.getTime() >= horaLimite.getTime() && minutosRestantes > 0) {
           fechaActual = this.obtenerSiguienteDiaHabil(fechaActual);
-          horaActual = parse(hora_inicio_jornada, 'HH:mm', fechaActual);
-          horaLimite = parse(hora_fin_jornada, 'HH:mm', fechaActual);
+          horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
           console.log(`Jornada terminada. Cambiando al siguiente día: ${format(fechaActual, 'yyyy-MM-dd')}`);
         }
       }
@@ -120,6 +122,13 @@ export class GestorVentanasAtencion {
 
     console.log(`Programación finalizada. Ventanas creadas: ${ventanasCreadas.length}`);
     return ventanasCreadas;
+  }
+
+  private static parseHora(horaStr: string, fechaRef: Date): Date {
+    const [horas, minutos] = horaStr.split(':').map(Number);
+    const fecha = new Date(fechaRef);
+    fecha.setHours(horas, minutos, 0, 0);
+    return fecha;
   }
 
   private static agruparDocentesPorJerarquia(docentes: any[]) {
