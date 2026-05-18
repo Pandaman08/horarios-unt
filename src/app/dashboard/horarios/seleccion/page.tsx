@@ -345,24 +345,24 @@ export default function SeleccionHorariosPage() {
                 </div>
               </div>
 
-              <div className="flex items-center gap-4">
+              <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
                 {mostrarBotonEditar && !soloLectura ? (
                   <Button 
                     variant="outline"
                     onClick={handleActivarEdicion}
-                    className="h-12 px-8 border-2 border-[#003366] text-[#003366] hover:bg-blue-50 rounded-xl font-black transition-all transform hover:scale-[1.02]"
+                    className="h-10 px-6 border-2 border-[#003366] text-[#003366] hover:bg-blue-50 rounded-xl font-black transition-all transform hover:scale-[1.02] text-xs whitespace-nowrap"
                   >
-                    <Settings2 className="mr-2 h-4 w-4" /> Editar Horario Actual
+                    <Settings2 className="mr-2 h-4 w-4" /> Editar Horario
                   </Button>
                 ) : (
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button 
                         disabled={loadingConfirm || cursosProgreso.length === 0 || soloLectura}
-                        className="h-12 px-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
+                        className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
                       >
-                        <CheckCircle className="mr-2 h-5 w-5" /> 
-                        {soloLectura ? "Ventana Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Todo el Horario")}
+                        <CheckCircle className="mr-2 h-4 w-4" /> 
+                        {soloLectura ? "Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Horario")}
                       </Button>
                     </DialogTrigger>
                     <DialogContent className="bg-white rounded-[32px] border-none shadow-2xl sm:max-w-[450px] p-8">
@@ -399,8 +399,8 @@ export default function SeleccionHorariosPage() {
             </div>
 
             {/* Grid de Pasos 1 y 2 */}
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
-              <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5">
+            <div className="flex flex-col xl:flex-row gap-6 items-stretch">
+              <div className="flex-1 bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5">
                 <ProgresoCursos 
                   cursos={cursosProgreso}
                   cursoSeleccionadoId={cursoSeleccionado?.id}
@@ -409,44 +409,46 @@ export default function SeleccionHorariosPage() {
                 />
               </div>
 
-              <div className="h-full">
+              <div className="flex-1">
                 {cursoSeleccionado ? (
                   <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 space-y-6 h-full animate-in zoom-in-95 duration-500">
-                    <div className="flex items-center justify-between mb-2">
-                      <div className="flex items-center gap-3">
-                        <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                    <div className="flex items-center justify-between gap-4">
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
                           <Settings2 className="h-4 w-4 text-[#003366]" />
                         </div>
-                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider">Configuración de Bloque</h4>
+                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider truncate">Configuración de Bloque</h4>
                       </div>
-                      <span className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-[#003366] rounded-md font-black text-[9px] uppercase tracking-tighter">
-                        Paso 2 de 3
+                      <span className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-[#003366] rounded-md font-black text-[9px] uppercase tracking-tighter shrink-0">
+                        Paso 2
                       </span>
                     </div>
                     
                     <div className="space-y-6">
                       <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Grupo de Estudios</Label>
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Grupo</Label>
                           <Select value={idGrupo} onValueChange={setIdGrupo}>
-                            <SelectTrigger className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:ring-4 focus:ring-blue-100 transition-all">
-                              <SelectValue placeholder="Seleccione grupo" />
+                            <SelectTrigger className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:ring-4 focus:ring-blue-100 transition-all w-full">
+                              <SelectValue placeholder="Grupo" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-gray-100 shadow-xl">
                               {grupos.map(g => (
-                                <SelectItem key={g.id_grupo} value={g.id_grupo.toString()} className="font-bold">Grupo {g.codigo_grupo}</SelectItem>
+                                <SelectItem key={g.id_grupo} value={g.id_grupo.toString()} className="font-bold">G-{g.codigo_grupo}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
 
                         <div className="space-y-2">
-                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Ambiente de Clase</Label>
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Ambiente</Label>
                           <Select value={idAmbiente} onValueChange={setIdAmbiente}>
-                            <SelectTrigger className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:ring-4 focus:ring-blue-100 transition-all">
-                              <SelectValue placeholder="Seleccione ambiente" />
+                            <SelectTrigger className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:ring-4 focus:ring-blue-100 transition-all w-full overflow-hidden">
+                              <div className="truncate pr-2 text-left">
+                                <SelectValue placeholder="Ambiente" />
+                              </div>
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                            <SelectContent className="rounded-xl border-gray-100 shadow-xl max-w-[300px]">
                               {ambientesFiltrados.map(a => (
                                 <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()} className="font-bold">{a.nombre}</SelectItem>
                               ))}
@@ -459,7 +461,7 @@ export default function SeleccionHorariosPage() {
                         <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 animate-in zoom-in duration-300">
                           <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
                           <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-tight">
-                            Configuración lista. Ahora seleccione los bloques en la matriz inferior.
+                            Configuración lista. Seleccione los bloques en la matriz inferior.
                           </p>
                         </div>
                       )}
