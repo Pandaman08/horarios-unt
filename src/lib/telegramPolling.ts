@@ -5,29 +5,31 @@ import { ServicioTelegram } from '@/services/notificaciones/ServicioTelegram';
 const botToken = process.env.TELEGRAM_BOT_TOKEN;
 const apiUrl = `https://api.telegram.org/bot${botToken}`;
 
+// Usar global para evitar múltiples instancias en desarrollo
+const globalForTelegram = global as unknown as { telegramPollingStarted?: boolean };
+
 let offset = 0;
-let isRunning = false;
 
 export async function iniciarTelegramPolling() {
-  if (isRunning) {
-    console.log('Telegram polling ya está corriendo');
+  if (globalForTelegram.telegramPollingStarted) {
     return;
   }
 
-  if (!botToken) {
-    console.error('TELEGRAM_BOT_TOKEN no configurado');
+  if (!botToken || botToken === 'tu_token_aqui' || botToken.length < 10) {
+    console.warn('TELEGRAM_BOT_TOKEN no configurado o inválido. Polling omitido.');
     return;
   }
 
-  isRunning = true;
+  globalForTelegram.telegramPollingStarted = true;
   console.log('Iniciando Telegram polling...');
 
-  // Ejecutar en segundo plano sin bloquear
-  setImmediate(async () => {
-    while (isRunning) {
+  // Ejecutar en segundo plano
+  const poll = async () => {
+    while (globalForTelegram.telegramPollingStarted) {
       try {
         const response = await axios.get(`${apiUrl}/getUpdates`, {
-          params: { offset, timeout: 30 }
+          params: { offset, timeout: 30 },
+          timeout: 35000 // Un poco más que el timeout de Telegram
         });
 
         const updates = response.data.result || [];
@@ -37,16 +39,25 @@ export async function iniciarTelegramPolling() {
           await procesarMensaje(update);
         }
       } catch (error: any) {
+        // Si recibimos un 404 o 401, el token es inválido. Detenemos el polling.
+        if (error.response?.status === 404 || error.response?.status === 401) {
+          console.error('TOKEN de Telegram inválido (404/401). Deteniendo polling permanentemente.');
+          globalForTelegram.telegramPollingStarted = false;
+          break;
+        }
+        
         console.error('Error en Telegram polling:', error.message);
-        // Esperar 5 segundos antes de reintentar
-        await new Promise(resolve => setTimeout(resolve, 5000));
+        // Esperar 10 segundos antes de reintentar para no saturar la consola
+        await new Promise(resolve => setTimeout(resolve, 10000));
       }
     }
-  });
+  };
+
+  poll();
 }
 
 export function detenerTelegramPolling() {
-  isRunning = false;
+  globalForTelegram.telegramPollingStarted = false;
   console.log('Telegram polling detenido');
 }
 

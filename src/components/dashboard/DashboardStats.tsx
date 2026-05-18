@@ -28,6 +28,7 @@ import {
   Activity,
   AlertCircle
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket-client";
 import { KpiConflictosPendientes } from "./KpiConflictosPendientes";
 
@@ -43,7 +44,7 @@ interface StatsData {
   cargaDocente: any[];
 }
 
-const COLORS = ["#4f46e5", "#818cf8", "#c7d2fe", "#e0e7ff"];
+const COLORS = ["#003366", "#005599", "#D4AF37", "#E5E7EB"];
 
 export function DashboardStats({ id_periodo }: { id_periodo: number }) {
   const [data, setData] = useState<StatsData | null>(null);
@@ -102,158 +103,189 @@ export function DashboardStats({ id_periodo }: { id_periodo: number }) {
     };
   };
 
-  if (loading || !data) return <div className="p-8 text-center">Cargando estadísticas...</div>;
+  if (loading) {
+    return (
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 animate-pulse">
+        {[1, 2, 3, 4].map(i => (
+          <div key={i} className="h-40 bg-gray-50 rounded-[32px] border border-gray-100" />
+        ))}
+      </div>
+    );
+  }
+  const kpis = [
+    { 
+      title: "Docentes", 
+      value: data?.kpis.totalDocentes || 0, 
+      icon: Users, 
+      color: "from-[#003366] to-[#004488]",
+      description: "Plana académica activa"
+    },
+    { 
+      title: "Asignaciones", 
+      value: data?.kpis.asignacionesRealizadas || 0, 
+      icon: CalendarCheck, 
+      color: "from-emerald-600 to-emerald-800",
+      description: "Sesiones programadas"
+    },
+    { 
+      title: "Conflictos", 
+      value: data?.kpis.conflictosPendientes || 0, 
+      icon: AlertTriangle, 
+      color: "from-amber-500 to-amber-700",
+      description: "Revisiones necesarias"
+    },
+    { 
+      title: "Avance", 
+      value: `${data?.kpis.porcentajeAvance || 0}%`, 
+      icon: TrendingUp, 
+      color: "from-indigo-600 to-indigo-800",
+      description: "Progreso del semestre"
+    },
+  ];
 
   return (
-    <div className="p-6 space-y-6">
-      {/* KPIs */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <KPICard 
-          title="Total Docentes" 
-          value={data.kpis.totalDocentes} 
-          icon={Users} 
-          color="text-blue-600" 
-          bgColor="bg-blue-100" 
-        />
-        <KPICard 
-          title="Asignaciones" 
-          value={data.kpis.asignacionesRealizadas} 
-          icon={CalendarCheck} 
-          color="text-green-600" 
-          bgColor="bg-green-100" 
-        />
-        <KpiConflictosPendientes periodoId={id_periodo} />
-        <KPICard 
-          title="Avance Total" 
-          value={`${data.kpis.porcentajeAvance}%`} 
-          icon={TrendingUp} 
-          color="text-indigo-600" 
-          bgColor="bg-indigo-100" 
-        />
+    <div className="space-y-8 lg:space-y-12 animate-in fade-in slide-in-from-bottom-4 duration-1000">
+      {/* KPI Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6">
+        {kpis.map((kpi, idx) => (
+          <Card key={idx} className="group overflow-hidden rounded-[32px] border border-gray-100 bg-white shadow-xl shadow-blue-900/5 hover:shadow-2xl hover:shadow-blue-900/10 transition-all duration-500 hover:-translate-y-2">
+            <CardContent className="p-8 relative">
+              <div className="flex items-center justify-between mb-6">
+                <div className={`p-4 rounded-2xl bg-gradient-to-br ${kpi.color} shadow-lg shadow-blue-900/20 group-hover:scale-110 transition-transform duration-500`}>
+                  <kpi.icon className="h-6 w-6 text-white" />
+                </div>
+                <div className="flex flex-col items-end">
+                  <Activity className="h-4 w-4 text-emerald-400 animate-pulse" />
+                  <span className="text-[8px] font-black text-gray-300 uppercase tracking-[0.2em] mt-1">Live</span>
+                </div>
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-4xl font-black tracking-tight text-gray-900">{kpi.value}</h3>
+                <div>
+                  <p className="text-xs font-black text-gray-400 uppercase tracking-[0.2em]">{kpi.title}</p>
+                  <p className="text-[10px] font-bold text-gray-400 mt-1">{kpi.description}</p>
+                </div>
+              </div>
+              <div className="absolute bottom-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-blue-100/50 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            </CardContent>
+          </Card>
+        ))}
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Ocupación de Ambientes */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Ocupación de Aulas y Laboratorios</CardTitle>
-            <CardDescription>Top 10 ambientes con más carga horaria</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.ocupacionAmbientes} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" horizontal={false} />
-                  <XAxis type="number" />
-                  <YAxis dataKey="nombre" type="category" width={100} fontSize={12} />
-                  <Tooltip />
-                  <Bar dataKey="cantidad" fill="#4f46e5" radius={[0, 4, 4, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        {/* Gráfico Principal: Ocupación */}
+        <Card className="lg:col-span-2 rounded-[40px] border border-gray-100 shadow-2xl shadow-blue-900/5 bg-white p-8">
+          <CardHeader className="px-0 pt-0 mb-8">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <div className="flex items-center gap-2 mb-1">
+                  <div className="w-2 h-2 rounded-full bg-[#003366]" />
+                  <CardTitle className="text-2xl font-black text-gray-900 tracking-tight">Ocupación de Ambientes</CardTitle>
+                </div>
+                <CardDescription className="text-base text-gray-400 font-bold uppercase tracking-widest text-[10px]">Distribución de carga por espacio físico</CardDescription>
+              </div>
+              <div className="flex items-center gap-2 p-1.5 bg-gray-50 rounded-2xl border border-gray-100">
+                <span className="inline-flex items-center bg-white border-none shadow-sm font-black text-[9px] px-3 py-1 rounded-lg">HORAS / SEMANA</span>
+              </div>
             </div>
+          </CardHeader>
+          <CardContent className="px-0 pb-0 h-[350px]">
+            <ResponsiveContainer width="100%" height="100%">
+              <BarChart data={data?.ocupacionAmbientes || []} margin={{ top: 0, right: 0, left: -20, bottom: 0 }}>
+                <defs>
+                  <linearGradient id="barGradient" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#003366" stopOpacity={1} />
+                    <stop offset="100%" stopColor="#005599" stopOpacity={0.8} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="#f1f5f9" />
+                <XAxis 
+                  dataKey="nombre" 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}}
+                  dy={15}
+                />
+                <YAxis 
+                  axisLine={false} 
+                  tickLine={false} 
+                  tick={{fill: '#94a3b8', fontSize: 10, fontWeight: 800}}
+                />
+                <Tooltip 
+                  cursor={{fill: '#f8fafc', radius: 12}}
+                  contentStyle={{borderRadius: '24px', border: 'none', boxShadow: '0 20px 25px -5px rgba(0,0,0,0.1)', padding: '16px'}}
+                />
+                <Bar dataKey="cantidad" radius={[10, 10, 0, 0]} barSize={40} fill="url(#barGradient)">
+                  {(data?.ocupacionAmbientes || []).map((entry, index) => (
+                    <Cell key={`cell-${index}`} fillOpacity={1 - (index * 0.1)} />
+                  ))}
+                </Bar>
+              </BarChart>
+            </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        {/* Carga Docente */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Distribución de Carga Docente</CardTitle>
-            <CardDescription>Docentes con más horas asignadas</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[300px] w-full">
-              <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={data.cargaDocente}>
-                  <CartesianGrid strokeDasharray="3 3" vertical={false} />
-                  <XAxis dataKey="nombre" fontSize={10} />
-                  <YAxis />
-                  <Tooltip />
-                  <Bar dataKey="asignaciones" fill="#818cf8" radius={[4, 4, 0, 0]} />
-                </BarChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-        {/* Avance por Categoría */}
-        <Card className="lg:col-span-1">
-          <CardHeader>
-            <CardTitle>Avance por Categoría</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="h-[250px] w-full flex items-center justify-center">
-              <ResponsiveContainer width="100%" height="100%">
-                <PieChart>
-                  <Pie
-                    data={data.avanceCategoria}
-                    dataKey="_count.id_docente"
-                    nameKey="categoria"
-                    cx="50%"
-                    cy="50%"
-                    outerRadius={80}
-                    label={({ categoria }) => categoria.replace("_", " ")}
-                  >
-                    {data.avanceCategoria.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                    ))}
-                  </Pie>
-                  <Tooltip />
-                </PieChart>
-              </ResponsiveContainer>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Feed de Actividad */}
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Activity className="mr-2 h-5 w-5 text-indigo-600" /> Feed de Actividad
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {actividades.length === 0 ? (
-                <p className="text-center text-muted-foreground py-8">Esperando actividad en tiempo real...</p>
-              ) : (
-                actividades.map((act) => (
-                  <div key={act.id} className="flex items-start space-x-3 border-b pb-3 last:border-0">
-                    <div className={`${act.tipo === 'error' ? 'bg-red-50' : 'bg-indigo-50'} p-2 rounded-full`}>
-                      {act.tipo === 'error' ? (
-                        <AlertCircle className="h-4 w-4 text-red-600" />
-                      ) : (
-                        <CalendarCheck className="h-4 w-4 text-indigo-600" />
-                      )}
-                    </div>
-                    <div>
-                      <p className={`text-sm font-medium ${act.tipo === 'error' ? 'text-red-900' : ''}`}>{act.mensaje}</p>
-                      <p className="text-xs text-muted-foreground">{new Date(act.fecha).toLocaleTimeString()}</p>
-                    </div>
+        {/* Actividad e Historial */}
+        <div className="space-y-8">
+          <Card className="rounded-[40px] border border-gray-100 shadow-2xl shadow-blue-900/5 bg-white p-8">
+            <CardHeader className="px-0 pt-0 mb-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <Activity className="h-5 w-5 text-[#003366]" />
                   </div>
-                ))
-              )}
+                  <CardTitle className="text-xl font-black text-gray-900 uppercase tracking-tight">Actividad</CardTitle>
+                </div>
+                <div className="flex items-center gap-1.5 px-3 py-1 bg-emerald-50 rounded-full">
+                  <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+                  <span className="text-[9px] font-black text-emerald-700 uppercase tracking-widest">En Vivo</span>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="px-0 pb-0">
+              <div className="space-y-6 overflow-y-auto max-h-[400px] pr-4 custom-scrollbar">
+                {actividades.length === 0 ? (
+                  <div className="flex flex-col items-center justify-center py-16 text-center">
+                    <div className="h-20 w-20 bg-gray-50 rounded-[32px] flex items-center justify-center mb-4">
+                      <Activity className="h-10 w-10 text-gray-200" />
+                    </div>
+                    <p className="text-gray-400 text-sm font-bold max-w-[150px]">Sincronizando actualizaciones...</p>
+                  </div>
+                ) : (
+                  actividades.map((act) => (
+                    <div key={act.id} className="relative pl-6 pb-6 border-l-2 border-gray-50 last:pb-0">
+                      <div className={cn(
+                        "absolute -left-[5px] top-1 h-2 w-2 rounded-full",
+                        act.tipo === 'error' ? "bg-red-500 ring-4 ring-red-50" : "bg-blue-500 ring-4 ring-blue-50"
+                      )} />
+                      <div className="space-y-1">
+                        <p className="text-xs font-bold text-gray-800 leading-snug">{act.mensaje}</p>
+                        <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                          {new Date(act.fecha).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                        </p>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 bg-[#003366] p-6 text-white overflow-hidden relative">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/5 rounded-full -mr-16 -mt-16 blur-2xl" />
+            <div className="relative z-10 flex items-center justify-between">
+              <div className="space-y-1">
+                <p className="text-[10px] font-black text-blue-200 uppercase tracking-widest">Resumen de Calidad</p>
+                <h4 className="text-lg font-black tracking-tight">Cero Conflictos</h4>
+                <p className="text-xs text-blue-100/60 font-medium">No se detectan cruces horitontales.</p>
+              </div>
+              <div className="h-12 w-12 bg-white/10 rounded-2xl flex items-center justify-center backdrop-blur-md border border-white/10">
+                <AlertCircle className="h-6 w-6 text-yellow-400" />
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </Card>
+        </div>
       </div>
     </div>
-  );
-}
-
-function KPICard({ title, value, icon: Icon, color, bgColor }: any) {
-  return (
-    <Card>
-      <CardContent className="p-6 flex items-center justify-between">
-        <div>
-          <p className="text-sm font-medium text-muted-foreground">{title}</p>
-          <h3 className="text-2xl font-bold">{value}</h3>
-        </div>
-        <div className={`${bgColor} p-3 rounded-lg`}>
-          <Icon className={`h-6 w-6 ${color}`} />
-        </div>
-      </CardContent>
-    </Card>
   );
 }

@@ -23,7 +23,7 @@ export default function RootLayout({
   iniciarCronOnce();
 
   return (
-    <html lang="es">
+    <html lang="es" suppressHydrationWarning>
       <body className={inter.className}>
         <SessionProvider>{children}</SessionProvider>
       </body>

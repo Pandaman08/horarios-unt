@@ -13,7 +13,10 @@ export async function GET(request: Request) {
 
     const ahora = new Date();
     const horaActualStr = format(ahora, 'HH:mm');
-    const fechaActual = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+    
+    // Normalizar fecha a mediodía UTC para coincidir con el almacenamiento de VentanaAtencion
+    const hoySoloFechaStr = format(ahora, 'yyyy-MM-dd');
+    const fechaActual = new Date(hoySoloFechaStr + 'T12:00:00Z');
 
     // 1. Obtener ventanas activas en este momento
     const ventanasActivas = await prisma.ventanaAtencion.findMany({
