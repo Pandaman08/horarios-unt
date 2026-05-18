@@ -45,7 +45,7 @@ export default function DashboardLayout({
       title: "Selección Docente",
       href: "/dashboard/horarios/seleccion",
       icon: Calendar,
-      roles: ["administrador_sistema", "docente"]
+      roles: ["docente"]
     },
   ];
 

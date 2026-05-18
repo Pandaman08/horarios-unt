@@ -2,6 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { MatrizDisponibilidad } from "@/components/horarios/MatrizDisponibilidad";
 import { ProgresoCursos } from "@/components/horarios/ProgresoCursos";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -17,6 +18,20 @@ import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { ProteccionVentana } from "@/components/auth/ProteccionVentana";
 import { getSocket } from "@/lib/socket-client";
+import { 
+  User, 
+  CheckCircle, 
+  XCircle, 
+  Users, 
+  Monitor, 
+  ChevronRight,
+  Info,
+  Clock,
+  Layout as LayoutIcon,
+  Settings2,
+  Calendar
+} from "lucide-react";
+import { cn } from "@/lib/utils";
 
 import {
   Dialog,
@@ -30,7 +45,8 @@ import {
 } from "@/components/ui/dialog";
 
 export default function SeleccionHorariosPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [periodos, setPeriodos] = useState<any[]>([]);
   const [idPeriodo, setIdPeriodo] = useState<string>("");
   const [ambientes, setAmbientes] = useState<any[]>([]);
@@ -46,6 +62,20 @@ export default function SeleccionHorariosPage() {
   const [yaConfirmo, setYaConfirmo] = useState(false);
   const [modoEdicionManual, setModoEdicionManual] = useState(false);
   const [finVentana, setFinVentana] = useState<number | null>(null);
+
+  // Redirección por rol: Esta vista es exclusiva para docentes
+  useEffect(() => {
+    if (status === "unauthenticated") {
+      router.push("/auth/login");
+    } else if (status === "authenticated" && session?.user?.rol !== "docente") {
+      // Si es admin u operador, mandarlo a su flujo de atención
+      if (["administrador_sistema", "operador_horarios"].includes(session.user.rol)) {
+        router.push("/dashboard/horarios/asignacion");
+      } else {
+        router.push("/dashboard");
+      }
+    }
+  }, [session, status, router]);
 
   useEffect(() => {
     fetchInitialData();
@@ -246,137 +276,243 @@ export default function SeleccionHorariosPage() {
 
   return (
     <ProteccionVentana>
-      <div className="p-6 space-y-6">
-        <div className="flex justify-between items-center">
-          <div className="space-y-1">
-            <h1 className="text-2xl font-bold">Selección de Horarios</h1>
-            {tiempoRestante && (
-              <div className="flex items-center space-x-2 bg-blue-50 text-blue-700 px-3 py-1 rounded-full border border-blue-100 w-fit">
-                <span className="text-xs font-bold uppercase">Tiempo restante:</span>
-                <span className="text-sm font-mono font-bold">{tiempoRestante}</span>
+      <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700">
+        {/* Header de la Página */}
+        <div className="bg-white border-b border-gray-100 p-6 shadow-sm z-20">
+          <div className="max-w-[1800px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-6">
+              <div className="h-12 w-12 bg-[#003366] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/20">
+                <LayoutIcon className="h-6 w-6 text-white" />
               </div>
-            )}
-          </div>
-          <div className="flex space-x-4">
-            <div className="flex items-center space-x-2">
-              <Label>Periodo:</Label>
-              <Select value={idPeriodo} onValueChange={setIdPeriodo}>
-                <SelectTrigger className="w-[150px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {periodos.map(p => (
-                    <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>{p.codigo}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div>
+                <h1 className="text-2xl font-black text-gray-900 tracking-tight">Selección de Horarios</h1>
+                <div className="flex items-center gap-2 mt-0.5">
+                  {tiempoRestante ? (
+                    <div className="flex items-center gap-2 bg-blue-50 text-[#003366] px-3 py-1 rounded-full border border-blue-100">
+                      <Clock className="h-3 w-3 animate-pulse" />
+                      <span className="text-[10px] font-black uppercase tracking-widest">Tiempo restante:</span>
+                      <span className="text-xs font-mono font-black">{tiempoRestante}</span>
+                    </div>
+                  ) : (
+                    <p className="text-[10px] font-black text-[#003366]/40 uppercase tracking-[0.2em]">Autogestión de Carga Académica</p>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-2xl border border-gray-100">
+              <div className="flex items-center gap-2 px-3">
+                <Clock className="h-4 w-4 text-gray-400" />
+                <span className="text-xs font-bold text-gray-600">Periodo:</span>
+                <Select value={idPeriodo} onValueChange={setIdPeriodo}>
+                  <SelectTrigger className="w-[140px] h-9 border-none bg-white rounded-xl shadow-sm font-black text-xs focus:ring-2 focus:ring-blue-100">
+                    <SelectValue placeholder="Ciclo" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                    {periodos.map(p => (
+                      <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold">Ciclo {p.codigo}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </div>
 
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          <div className="lg:col-span-1 space-y-6">
-            <ProgresoCursos 
-              cursos={cursosProgreso}
-              cursoSeleccionadoId={cursoSeleccionado?.id}
-              tipoSeleccionado={cursoSeleccionado?.tipo}
-              onSelectCurso={(id, tipo) => setCursoSeleccionado({id, tipo})}
-            />
-
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-sm">Configuración de Bloque</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <div className="space-y-2">
-                  <Label>Grupo</Label>
-                  <Select value={idGrupo} onValueChange={setIdGrupo}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione grupo" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {grupos.map(g => (
-                        <SelectItem key={g.id_grupo} value={g.id_grupo.toString()}>{g.codigo_grupo}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        {/* Área de Trabajo Central (Scrollable) */}
+        <main className="flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar">
+          <div className="max-w-[1600px] mx-auto p-6 space-y-6">
+            {/* Card de Usuario Docente */}
+            <div className="p-6 bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="flex items-center gap-6">
+                <div className="h-16 w-16 bg-blue-50 rounded-2xl flex items-center justify-center ring-4 ring-blue-50/50">
+                  <User className="h-8 w-8 text-[#003366]" />
                 </div>
-                <div className="space-y-2">
-                  <Label>Ambiente</Label>
-                  <Select value={idAmbiente} onValueChange={setIdAmbiente}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccione ambiente" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {ambientesFiltrados.map(a => (
-                        <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()}>{a.nombre}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                <div>
+                  <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-2">
+                    {session?.user?.name}
+                  </h2>
+                  <div className="flex items-center gap-2">
+                    <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg">
+                      Docente UNT
+                    </span>
+                    {yaConfirmo && (
+                      <span className="inline-flex items-center bg-blue-50 text-blue-700 border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg">
+                        Horario Confirmado
+                      </span>
+                    )}
+                  </div>
                 </div>
+              </div>
 
+              <div className="flex items-center gap-4">
                 {mostrarBotonEditar && !soloLectura ? (
                   <Button 
                     variant="outline"
-                    className="w-full mt-4 border-2 border-black font-bold py-6 rounded-xl transition-all transform hover:scale-[1.02]"
                     onClick={handleActivarEdicion}
+                    className="h-12 px-8 border-2 border-[#003366] text-[#003366] hover:bg-blue-50 rounded-xl font-black transition-all transform hover:scale-[1.02]"
                   >
-                    Editar Horario
+                    <Settings2 className="mr-2 h-4 w-4" /> Editar Horario Actual
                   </Button>
                 ) : (
                   <Dialog>
                     <DialogTrigger asChild>
                       <Button 
-                        className="w-full mt-4 bg-black hover:bg-gray-800 text-white font-bold py-6 rounded-xl shadow-lg transition-all transform hover:scale-[1.02]"
                         disabled={loadingConfirm || cursosProgreso.length === 0 || soloLectura}
+                        className="h-12 px-10 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100"
                       >
-                        {soloLectura ? "Ventana Finalizada (Solo Lectura)" : (loadingConfirm ? "Confirmando..." : "Confirmar Todo el Horario")}
+                        <CheckCircle className="mr-2 h-5 w-5" /> 
+                        {soloLectura ? "Ventana Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Todo el Horario")}
                       </Button>
                     </DialogTrigger>
-                    <DialogContent className="bg-white rounded-2xl border-2 sm:max-w-[425px]">
-                      <DialogHeader>
-                        <DialogTitle className="text-xl font-bold text-gray-900">¿Confirmar selección de horario?</DialogTitle>
-                        <DialogDescription className="text-gray-600 text-base">
-                          Al confirmar, su selección actual se volverá <span className="font-bold text-black underline">definitiva y fija</span> para todo el periodo académico. 
+                    <DialogContent className="bg-white rounded-[32px] border-none shadow-2xl sm:max-w-[450px] p-8">
+                      <DialogHeader className="space-y-4">
+                        <div className="h-12 w-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-2">
+                          <CheckCircle className="h-6 w-6 text-emerald-600" />
+                        </div>
+                        <DialogTitle className="text-2xl font-black text-gray-900 tracking-tight">¿Confirmar Selección?</DialogTitle>
+                        <DialogDescription className="text-gray-500 font-medium text-base leading-relaxed">
+                          Al confirmar, su selección actual se volverá <span className="font-bold text-emerald-600 underline decoration-2 underline-offset-4">definitiva</span>. 
                           <br /><br />
                           Asegúrese de haber completado todas sus horas antes de proceder.
                         </DialogDescription>
                       </DialogHeader>
-                      <DialogFooter className="gap-2 sm:justify-end mt-4">
+                      <DialogFooter className="gap-3 sm:justify-end mt-8">
                         <DialogClose asChild>
-                          <Button type="button" variant="outline" className="rounded-xl border-gray-200 hover:bg-gray-50 font-semibold">
+                          <Button type="button" variant="ghost" className="rounded-xl font-bold text-gray-400 hover:bg-gray-50">
                             Revisar de nuevo
                           </Button>
                         </DialogClose>
                         <DialogClose asChild>
                           <Button 
                             onClick={confirmarTodo}
-                            className="bg-black hover:bg-gray-800 text-white rounded-xl font-bold px-6"
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black px-8"
                           >
-                            Sí, confirmar horario
+                            Sí, confirmar ahora
                           </Button>
                         </DialogClose>
                       </DialogFooter>
                     </DialogContent>
                   </Dialog>
                 )}
-              </CardContent>
-            </Card>
-          </div>
+              </div>
+            </div>
 
-          <div className="lg:col-span-3">
-            <MatrizDisponibilidad 
-              id_periodo={parseInt(idPeriodo)}
-              id_ambiente={parseInt(idAmbiente)}
-              id_docente_actual={session?.user?.id_docente ? parseInt(session.user.id_docente) : undefined}
-              id_curso_actual={cursoSeleccionado?.id}
-              id_grupo_actual={parseInt(idGrupo)}
-              tipo_clase_actual={cursoSeleccionado?.tipo}
-              onSelectionChange={fetchDocenteCursos}
-              soloLectura={soloLectura}
-            />
+            {/* Grid de Pasos 1 y 2 */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 items-start">
+              <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5">
+                <ProgresoCursos 
+                  cursos={cursosProgreso}
+                  cursoSeleccionadoId={cursoSeleccionado?.id}
+                  tipoSeleccionado={cursoSeleccionado?.tipo}
+                  onSelectCurso={(id, tipo) => setCursoSeleccionado({id, tipo})}
+                />
+              </div>
+
+              <div className="h-full">
+                {cursoSeleccionado ? (
+                  <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 space-y-6 h-full animate-in zoom-in-95 duration-500">
+                    <div className="flex items-center justify-between mb-2">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center">
+                          <Settings2 className="h-4 w-4 text-[#003366]" />
+                        </div>
+                        <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider">Configuración de Bloque</h4>
+                      </div>
+                      <span className="flex items-center gap-1.5 px-2 py-0.5 bg-blue-50 text-[#003366] rounded-md font-black text-[9px] uppercase tracking-tighter">
+                        Paso 2 de 3
+                      </span>
+                    </div>
+                    
+                    <div className="space-y-6">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Grupo de Estudios</Label>
+                          <Select value={idGrupo} onValueChange={setIdGrupo}>
+                            <SelectTrigger className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:ring-4 focus:ring-blue-100 transition-all">
+                              <SelectValue placeholder="Seleccione grupo" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                              {grupos.map(g => (
+                                <SelectItem key={g.id_grupo} value={g.id_grupo.toString()} className="font-bold">Grupo {g.codigo_grupo}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div className="space-y-2">
+                          <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Ambiente de Clase</Label>
+                          <Select value={idAmbiente} onValueChange={setIdAmbiente}>
+                            <SelectTrigger className="h-12 rounded-xl border-gray-100 bg-gray-50/50 font-bold focus:ring-4 focus:ring-blue-100 transition-all">
+                              <SelectValue placeholder="Seleccione ambiente" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                              {ambientesFiltrados.map(a => (
+                                <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()} className="font-bold">{a.nombre}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      {idGrupo && idAmbiente && (
+                        <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 animate-in zoom-in duration-300">
+                          <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
+                          <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-tight">
+                            Configuración lista. Ahora seleccione los bloques en la matriz inferior.
+                          </p>
+                        </div>
+                      )}
+                    </div>
+                  </div>
+                ) : (
+                  <div className="h-full min-h-[200px] bg-white p-8 rounded-[32px] border-2 border-dashed border-gray-100 flex flex-col items-center justify-center text-center space-y-4">
+                    <div className="h-12 w-12 bg-gray-50 rounded-2xl flex items-center justify-center text-gray-300">
+                      <ChevronRight className="h-6 w-6" />
+                    </div>
+                    <p className="text-[11px] font-black text-gray-400 uppercase tracking-wider">
+                      Paso 1: Seleccione un curso de la izquierda
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+
+            {/* Paso 3: Matriz de Disponibilidad (Ancho Completo) */}
+            <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-xl shadow-blue-900/5 min-h-[600px] relative">
+              {(!idGrupo || !idAmbiente) ? (
+                <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center bg-white/80 backdrop-blur-sm rounded-[40px] z-10">
+                  <div className="h-20 w-20 bg-blue-50 rounded-[28px] flex items-center justify-center mb-6">
+                    <Monitor className="h-10 w-10 text-[#003366] opacity-20" />
+                  </div>
+                  <h4 className="text-xl font-black text-gray-900 tracking-tight mb-2 uppercase tracking-widest">Paso 3: Matriz de Horarios</h4>
+                  <p className="text-gray-400 font-medium max-w-sm mx-auto">
+                    Complete la configuración del bloque (Paso 2) para habilitar la asignación en la matriz.
+                  </p>
+                </div>
+              ) : (
+                <div className="animate-in fade-in zoom-in-95 duration-700">
+                  <div className="flex items-center gap-3 mb-8">
+                    <div className="h-10 w-10 bg-[#003366] rounded-xl flex items-center justify-center shadow-lg">
+                      <Calendar className="h-5 w-5 text-white" />
+                    </div>
+                    <h3 className="text-lg font-black text-gray-900 uppercase tracking-widest">Matriz Académica Semanal</h3>
+                  </div>
+                  <MatrizDisponibilidad 
+                    id_periodo={parseInt(idPeriodo)}
+                    id_ambiente={parseInt(idAmbiente)}
+                    id_docente_actual={session?.user?.id_docente ? parseInt(session.user.id_docente) : undefined}
+                    id_curso_actual={cursoSeleccionado?.id}
+                    id_grupo_actual={parseInt(idGrupo)}
+                    tipo_clase_actual={cursoSeleccionado?.tipo}
+                    onSelectionChange={fetchDocenteCursos}
+                    soloLectura={soloLectura}
+                  />
+                </div>
+              )}
+            </div>
           </div>
-        </div>
+        </main>
       </div>
     </ProteccionVentana>
   );
