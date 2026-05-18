@@ -87,13 +87,13 @@ export function PreferenciasNotificacion() {
                 <div className="flex items-center space-x-2">
                   <p className="font-medium">Telegram Bot</p>
                   {prefTelegram?.verificado ? (
-                    <Badge variant="outline" className="text-green-600 border-green-200 bg-green-50">
+                    <span className="inline-flex items-center text-[10px] font-bold text-green-600 border border-green-200 bg-green-50 px-2 py-0.5 rounded-full">
                       <CheckCircle2 className="h-3 w-3 mr-1" /> Verificado
-                    </Badge>
+                    </span>
                   ) : (
-                    <Badge variant="outline" className="text-amber-600 border-amber-200 bg-amber-50">
+                    <span className="inline-flex items-center text-[10px] font-bold text-amber-600 border border-amber-200 bg-amber-50 px-2 py-0.5 rounded-full">
                       <XCircle className="h-3 w-3 mr-1" /> No vinculado
-                    </Badge>
+                    </span>
                   )}
                 </div>
                 <p className="text-sm text-muted-foreground">Alertas urgentes 15 minutos antes.</p>
@@ -120,5 +120,3 @@ export function PreferenciasNotificacion() {
     </div>
   );
 }
-
-import { Badge } from "@/components/ui/badge";

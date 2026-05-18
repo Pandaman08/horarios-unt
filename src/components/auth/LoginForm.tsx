@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { User, ShieldCheck, Headphones } from "lucide-react";
+import { User, ShieldCheck, Headphones, XCircle, Mail, Lock, ArrowRight } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),
@@ -61,90 +61,124 @@ export function LoginForm() {
   };
 
   return (
-    <div className="w-full max-w-md bg-white rounded-2xl shadow-xl p-8 border border-gray-100">
-      <div className="text-center mb-8">
-        <div className="bg-indigo-600 w-16 h-16 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-lg shadow-indigo-200">
-          <ShieldCheck className="text-white h-10 w-10" />
+    <div className="w-full">
+      <div className="lg:hidden text-center mb-10">
+        <div className="bg-white w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-blue-200 border-4 border-[#003366] p-2">
+          <img 
+            src="/logount.png" 
+            alt="UNT Logo" 
+            className="h-14 w-auto object-contain"
+          />
         </div>
-        <h1 className="text-2xl font-bold text-gray-800 tracking-tight">SGH - UNT</h1>
-        <p className="text-gray-500 text-sm mt-1">Ingeniería de Sistemas</p>
+        <h1 className="text-3xl font-black text-gray-900 tracking-tight">SGH - UNT</h1>
+        <p className="text-blue-600 font-bold text-xs uppercase tracking-[0.2em] mt-1">Ingeniería de Sistemas</p>
       </div>
 
-      <div className="grid grid-cols-3 gap-2 mb-8">
+      <div className="hidden lg:block mb-10">
+        <h3 className="text-3xl font-black text-gray-900 tracking-tight mb-2">Bienvenido</h3>
+        <p className="text-gray-500 font-medium">Inicia sesión para gestionar tus horarios académicos.</p>
+      </div>
+
+      <div className="bg-blue-50/50 rounded-2xl p-2 mb-8 flex gap-2 border border-blue-100">
         <button 
           onClick={() => fillLogin('admin')}
-          className="flex flex-col items-center p-2 rounded-xl border border-gray-100 bg-gray-50 hover:bg-indigo-50 hover:border-indigo-200 transition-all group"
+          className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all group relative"
         >
-          <ShieldCheck className="h-5 w-5 text-gray-400 group-hover:text-indigo-600 mb-1" />
-          <span className="text-[10px] font-bold text-gray-500 group-hover:text-indigo-700">ADMIN</span>
+          <div className="bg-white p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+            <ShieldCheck className="h-5 w-5 text-blue-900" />
+          </div>
+          <span className="text-[10px] font-black text-blue-900/60 group-hover:text-blue-900 tracking-wider">ADMIN</span>
         </button>
         <button 
           onClick={() => fillLogin('operador')}
-          className="flex flex-col items-center p-2 rounded-xl border border-gray-100 bg-gray-50 hover:bg-blue-50 hover:border-blue-200 transition-all group"
+          className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all group relative"
         >
-          <Headphones className="h-5 w-5 text-gray-400 group-hover:text-blue-600 mb-1" />
-          <span className="text-[10px] font-bold text-gray-500 group-hover:text-blue-700">OPERADOR</span>
+          <div className="bg-white p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+            <Headphones className="h-5 w-5 text-blue-700" />
+          </div>
+          <span className="text-[10px] font-black text-blue-700/60 group-hover:text-blue-700 tracking-wider">OPERADOR</span>
         </button>
         <button 
           onClick={() => fillLogin('docente')}
-          className="flex flex-col items-center p-2 rounded-xl border border-gray-100 bg-gray-50 hover:bg-emerald-50 hover:border-emerald-200 transition-all group"
+          className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-white hover:shadow-sm transition-all group relative"
         >
-          <User className="h-5 w-5 text-gray-400 group-hover:text-emerald-600 mb-1" />
-          <span className="text-[10px] font-bold text-gray-500 group-hover:text-emerald-700">DOCENTE</span>
+          <div className="bg-white p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+            <User className="h-5 w-5 text-emerald-600" />
+          </div>
+          <span className="text-[10px] font-black text-emerald-600/60 group-hover:text-emerald-600 tracking-wider">DOCENTE</span>
         </button>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">
-            Correo electrónico
+      <form onSubmit={handleSubmit} className="space-y-6">
+        <div className="space-y-2 group">
+          <label className="text-sm font-bold text-gray-700 ml-1 group-focus-within:text-[#003366] transition-colors">
+            Correo Institucional
           </label>
-          <input
-            type="email"
-            value={email}
-            onChange={(e) => setEmail(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-            placeholder="ejemplo@unt.edu.pe"
-            required
-          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#003366] transition-colors">
+              <Mail className="h-5 w-5" />
+            </div>
+            <input
+              type="email"
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              className="w-full pl-11 pr-4 py-4 rounded-2xl border-2 border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#003366] focus:ring-4 focus:ring-blue-100 outline-none transition-all placeholder:text-gray-400 font-medium"
+              placeholder="usuario@unt.edu.pe"
+              required
+            />
+          </div>
         </div>
 
-        <div>
-          <label className="block text-xs font-bold text-gray-500 uppercase tracking-wider mb-1 ml-1">
+        <div className="space-y-2 group">
+          <label className="text-sm font-bold text-gray-700 ml-1 group-focus-within:text-[#003366] transition-colors">
             Contraseña
           </label>
-          <input
-            type="password"
-            value={password}
-            onChange={(e) => setPassword(e.target.value)}
-            className="w-full px-4 py-3 rounded-xl border border-gray-200 focus:ring-2 focus:ring-indigo-500 focus:border-transparent outline-none transition-all"
-            placeholder="••••••••"
-            required
-          />
+          <div className="relative">
+            <div className="absolute inset-y-0 left-0 pl-4 flex items-center pointer-events-none text-gray-400 group-focus-within:text-[#003366] transition-colors">
+              <Lock className="h-5 w-5" />
+            </div>
+            <input
+              type="password"
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              className="w-full pl-11 pr-4 py-4 rounded-2xl border-2 border-gray-100 bg-gray-50/50 focus:bg-white focus:border-[#003366] focus:ring-4 focus:ring-blue-100 outline-none transition-all placeholder:text-gray-400 font-medium"
+              placeholder="••••••••"
+              required
+            />
+          </div>
         </div>
 
         {error && (
-          <div className="bg-red-50 text-red-600 p-3 rounded-xl text-xs font-medium border border-red-100 flex items-center">
-            <XCircle className="h-4 w-4 mr-2" /> {error}
+          <div className="bg-red-50 text-red-600 p-4 rounded-2xl text-sm font-bold border border-red-100 flex items-center animate-in fade-in slide-in-from-top-2 duration-300">
+            <XCircle className="h-5 w-5 mr-3 flex-shrink-0" /> {error}
           </div>
         )}
 
         <Button
           type="submit"
           disabled={loading}
-          className="w-full py-6 rounded-xl bg-indigo-600 hover:bg-indigo-700 text-white font-bold shadow-lg shadow-indigo-100 transition-all disabled:opacity-50"
+          className="w-full py-8 rounded-2xl bg-[#003366] hover:bg-[#002244] text-white font-black text-lg shadow-xl shadow-blue-900/20 hover:shadow-blue-900/30 transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 flex items-center justify-center gap-3"
         >
-          {loading ? "Verificando..." : "Ingresar al Sistema"}
+          {loading ? (
+            <div className="h-6 w-6 border-4 border-white/30 border-t-white rounded-full animate-spin" />
+          ) : (
+            <>
+              Ingresar al Sistema
+              <ArrowRight className="h-5 w-5" />
+            </>
+          )}
         </Button>
       </form>
 
-      <div className="mt-8 text-center">
-        <p className="text-[10px] text-gray-400 font-medium uppercase tracking-widest">
-          © {new Date().getFullYear()} Universidad Nacional de Trujillo
-        </p>
+      <div className="mt-12 text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-gray-50 rounded-full border border-gray-100">
+          <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
+          <p className="text-[10px] text-gray-400 font-black uppercase tracking-widest">
+            Servidores Activos • UNT {new Date().getFullYear()}
+          </p>
+        </div>
       </div>
     </div>
   );
 }
 
-import { XCircle as XCircleIcon } from "lucide-react";

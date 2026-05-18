@@ -8,14 +8,14 @@ const publicRoutes = ["/auth/login", "/api/auth"];
 
 // Mapa de roles permitidos por ruta (opcional)
 const rolePermissions: Record<string, string[]> = {
-  "/dashboard": ["administrador_sistema", "operador_horarios", "docente", "director_escuela", "coordinador_academico"],
+  "/dashboard/horarios/seleccion": ["docente"],
+  "/dashboard/horarios/asignacion": ["operador_horarios", "administrador_sistema"],
   "/dashboard/docentes": ["administrador_sistema", "director_escuela"],
   "/dashboard/periodos": ["administrador_sistema", "coordinador_academico"],
   "/dashboard/ventanas": ["administrador_sistema", "coordinador_academico", "operador_horarios"],
-  "/dashboard/horarios/seleccion": ["docente"],
-  "/dashboard/horarios/asignacion": ["operador_horarios", "administrador_sistema"],
   "/dashboard/reportes": ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"],
   "/dashboard/configuracion": ["administrador_sistema"],
+  "/dashboard": ["administrador_sistema", "operador_horarios", "docente", "director_escuela", "coordinador_academico"],
 };
 
 export default withAuth(

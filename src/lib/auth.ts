@@ -4,6 +4,7 @@ import CredentialsProvider from "next-auth/providers/credentials";
 import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
+import { iniciarCronOnce } from "@/lib/cronStarter";
 
 // Esquema de validación para login
 const loginSchema = z.object({
@@ -80,6 +81,9 @@ export const authOptions: NextAuthOptions = {
           where: { id_usuario: usuario.id_usuario },
           data: { ultimo_acceso: new Date() },
         });
+
+        // Iniciar servicios en segundo plano una sola vez al primer login
+        iniciarCronOnce();
 
         // Devolver objeto de usuario para la sesión
         return {
