@@ -369,7 +369,7 @@ export function DocenteList() {
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Correo Electrónico</Label>
                   <Input
                     type="email"
-                    placeholder="ejemplo@unt.edu.pe"
+                    placeholder="ejemplo@correo.com"
                     className="h-11 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
                     value={formData.correo_electronico}
                     onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })}

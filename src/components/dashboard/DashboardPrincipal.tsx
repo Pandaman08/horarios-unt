@@ -2,15 +2,17 @@
 
 import { useState, useEffect } from "react";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
-
-
+import { GestorNotificaciones } from "@/components/dashboard/GestorNotificaciones";
+import { VisorReportes } from "@/components/reportes/VisorReportes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Toaster } from "@/components/ui/sonner";
 import { 
   BarChart3, 
   LayoutDashboard,
-  ChevronDown
+  FileText,
+  ChevronDown,
+  Bell
 } from "lucide-react";
 
 import { useSession } from "next-auth/react";
@@ -97,6 +99,19 @@ export default function DashboardPrincipal() {
               >
                 <BarChart3 className="h-4 w-4" /> Resumen General
               </TabsTrigger>
+              
+              <TabsTrigger 
+                value="reports" 
+                className="px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg lg:rounded-xl data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold text-xs lg:text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <FileText className="h-4 w-4" /> Reportes Oficiales
+              </TabsTrigger>
+              <TabsTrigger 
+                value="notifications" 
+                className="px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg lg:rounded-xl data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold text-xs lg:text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <Bell className="h-4 w-4" /> Notificaciones
+              </TabsTrigger>
             </TabsList>
           </div>
         </div>
@@ -105,6 +120,16 @@ export default function DashboardPrincipal() {
           {selectedPeriodo && (
             <DashboardStats id_periodo={parseInt(selectedPeriodo)} />
           )}
+        </TabsContent>
+
+        <TabsContent value="reports" className="animate-in fade-in slide-in-from-bottom-4 duration-700 outline-none">
+          {selectedPeriodo && (
+            <VisorReportes id_periodo={parseInt(selectedPeriodo)} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="notifications" className="animate-in fade-in slide-in-from-bottom-4 duration-700 outline-none">
+          <GestorNotificaciones />
         </TabsContent>
       </Tabs>
       <Toaster position="top-right" richColors />
