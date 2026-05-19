@@ -7,6 +7,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Badge } from "@/components/ui/badge";
 import { Bell, RefreshCw, Send, AlertTriangle, CheckCircle2, Clock } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 
 export function GestorNotificaciones() {
   const [data, setData] = useState<any>(null);
