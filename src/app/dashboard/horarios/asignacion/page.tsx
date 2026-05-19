@@ -20,9 +20,74 @@ import {
   Clock,
   Layout as LayoutIcon,
   Settings2,
-  Calendar
+  Calendar,
+  BarChart3,
+  HelpCircle,
+  MousePointer2
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+// Componente para el progreso general solicitado por Melanie
+function ProgresoGeneral({ id_periodo }: { id_periodo: string }) {
+  return (
+    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 space-y-6 animate-in fade-in duration-700">
+      <div className="flex items-center gap-3">
+        <div className="h-10 w-10 bg-gray-50 rounded-xl flex items-center justify-center">
+          <BarChart3 className="h-5 w-5 text-[#003366]" />
+        </div>
+        <div>
+          <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Progreso de Asignación</h3>
+          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Porcentaje de avance general</p>
+        </div>
+      </div>
+
+      <div className="flex items-center gap-6">
+        <div className="relative h-20 w-20 flex items-center justify-center shrink-0">
+          <svg className="h-full w-full transform -rotate-90">
+            <circle
+              cx="40"
+              cy="40"
+              r="34"
+              stroke="currentColor"
+              strokeWidth="8"
+              fill="transparent"
+              className="text-gray-100"
+            />
+            <circle
+              cx="40"
+              cy="40"
+              r="34"
+              stroke="currentColor"
+              strokeWidth="8"
+              fill="transparent"
+              strokeDasharray={213.6}
+              strokeDashoffset={213.6} // 0% por defecto
+              className="text-emerald-500 transition-all duration-1000"
+            />
+          </svg>
+          <span className="absolute text-xl font-black text-gray-900">0%</span>
+        </div>
+
+        <div className="space-y-1">
+          <p className="text-xs font-black text-gray-900">0 <span className="text-gray-300 mx-1">/</span> 0</p>
+          <p className="text-[10px] font-bold text-gray-400 uppercase leading-tight">
+            Horas asignadas <br /> de 0 horas totales
+          </p>
+          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
+            <div className="h-full bg-gray-200 w-0" />
+          </div>
+        </div>
+      </div>
+
+      <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl flex items-start gap-3">
+        <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
+        <p className="text-[10px] font-medium text-blue-800 leading-relaxed">
+          El progreso se actualiza automáticamente conforme se asignan cursos.
+        </p>
+      </div>
+    </div>
+  );
+}
 
 export default function AsignacionOperadorPage() {
   const [periodos, setPeriodos] = useState<any[]>([]);
@@ -184,8 +249,8 @@ export default function AsignacionOperadorPage() {
 
       {/* Contenido Principal */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Izquierdo: Cola de Espera (Fijo) */}
-        <aside className="w-80 bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0">
+        {/* Sidebar Izquierdo: Cola de Espera (Oculto en Mobile) */}
+        <aside className="hidden lg:flex w-80 bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0">
           <div className="p-4 border-b border-gray-100 bg-white/50">
             <div className="flex items-center gap-2 text-gray-400 mb-4 px-2">
               <Users className="h-4 w-4" />
@@ -202,14 +267,40 @@ export default function AsignacionOperadorPage() {
         </aside>
 
         {/* Área de Trabajo Central (Scrollable) */}
-        <main className="flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar min-w-0">
+        <main className="flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar min-w-0 relative">
           {!docenteActual ? (
-            <div className="h-full flex flex-col items-center justify-center p-10 text-center min-w-[300px]">
-              <div className="w-24 h-24 bg-blue-50 rounded-[40px] flex items-center justify-center mb-6 animate-bounce duration-[3000ms]">
-                <Users className="h-10 w-10 text-[#003366] opacity-20" />
+            <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-8">
+              {/* Card de Cola de Espera (Solo visible en Mobile para facilitar el flujo) */}
+              <div className="lg:hidden animate-in slide-in-from-top-4 duration-500">
+                <ColaEspera 
+                  id_periodo={parseInt(idPeriodo)} 
+                  onLlamarDocente={handleLlamarDocente}
+                  docenteActualId={docenteActual?.id_docente}
+                />
               </div>
-              <h3 className="text-2xl font-black text-gray-900 tracking-tight mb-2">Esperando Operación</h3>
-              <p className="text-gray-400 font-medium max-w-sm">Seleccione un docente de la cola lateral para iniciar el proceso de asignación de horarios.</p>
+
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                {/* Card de Instrucciones (Operación) */}
+                <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-xl shadow-blue-900/5 flex flex-col items-center text-center space-y-6 animate-in fade-in duration-700">
+                  <div className="h-20 w-20 bg-blue-50 rounded-[28px] flex items-center justify-center">
+                    <MousePointer2 className="h-10 w-10 text-[#003366] opacity-40" />
+                  </div>
+                  <div>
+                    <h3 className="text-xl font-black text-gray-900 uppercase tracking-widest mb-2">Operación</h3>
+                    <p className="text-sm font-medium text-gray-400 leading-relaxed max-w-[280px] mx-auto">
+                      Seleccione un docente de la cola de atención para iniciar el proceso de asignación.
+                    </p>
+                  </div>
+                  <div className="pt-4 w-full border-t border-gray-50">
+                    <div className="flex items-center justify-center gap-2 text-[10px] font-black text-blue-400 uppercase tracking-tighter">
+                      <Info className="h-3 w-3" /> Requiere selección previa
+                    </div>
+                  </div>
+                </div>
+
+                {/* Card de Progreso General */}
+                <ProgresoGeneral id_periodo={idPeriodo} />
+              </div>
             </div>
           ) : (
             <div className="max-w-[1600px] mx-auto p-6 space-y-6">
@@ -370,6 +461,11 @@ export default function AsignacionOperadorPage() {
             </div>
           )}
         </main>
+
+        {/* Floating Help Button (As shown in image) */}
+        <button className="fixed bottom-6 right-6 h-12 w-12 bg-[#003366] text-white rounded-full shadow-2xl flex items-center justify-center hover:scale-110 transition-all z-[60] animate-in zoom-in duration-1000">
+          <HelpCircle className="h-6 w-6" />
+        </button>
       </div>
     </div>
   );
