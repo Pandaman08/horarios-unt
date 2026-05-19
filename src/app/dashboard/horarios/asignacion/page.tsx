@@ -23,7 +23,7 @@ import {
   Calendar,
   BarChart3,
   HelpCircle,
-  MousePointer2
+  MousePointer2,
   Search,
   FileText
 } from "lucide-react";
