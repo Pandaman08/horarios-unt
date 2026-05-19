@@ -2,8 +2,8 @@
 
 import { useState, useEffect } from "react";
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
-
-
+import { GestorNotificaciones } from "@/components/dashboard/GestorNotificaciones";
+import { VisorReportes } from "@/components/reportes/VisorReportes";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -19,7 +19,10 @@ import {
   MapPin,
   Calendar,
   Layers,
-  Layout
+  Layout,
+  FileText,
+  Bell,
+  ShieldCheck,
 } from "lucide-react";
 
 import { useSession } from "next-auth/react";
@@ -158,12 +161,54 @@ export default function DashboardPrincipal() {
           </div>
         </div>
       </div>
-
       <div className="animate-in fade-in duration-500">
         {selectedPeriodo && (
           <DashboardStats id_periodo={parseInt(selectedPeriodo)} />
         )}
       </div>
+      <Tabs defaultValue="overview" className="space-y-6 lg:space-y-8">
+        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2 relative z-20">
+          <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 custom-scrollbar">
+            <TabsList className="bg-white p-1.5 rounded-xl lg:rounded-2xl border border-gray-100 shadow-sm h-auto flex flex-row min-w-max sm:min-w-0">
+              <TabsTrigger 
+                value="overview" 
+                className="px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg lg:rounded-xl data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold text-xs lg:text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <BarChart3 className="h-4 w-4" /> Resumen General
+              </TabsTrigger>
+              
+              <TabsTrigger 
+                value="reports" 
+                className="px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg lg:rounded-xl data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold text-xs lg:text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <FileText className="h-4 w-4" /> Reportes Oficiales
+              </TabsTrigger>
+              <TabsTrigger 
+                value="notifications" 
+                className="px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg lg:rounded-xl data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold text-xs lg:text-sm flex items-center justify-center gap-2 whitespace-nowrap"
+              >
+                <Bell className="h-4 w-4" /> Notificaciones
+              </TabsTrigger>
+            </TabsList>
+          </div>
+        </div>
+
+        <TabsContent value="overview" className="animate-in fade-in slide-in-from-bottom-4 duration-700 outline-none">
+          {selectedPeriodo && (
+            <DashboardStats id_periodo={parseInt(selectedPeriodo)} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="reports" className="animate-in fade-in slide-in-from-bottom-4 duration-700 outline-none">
+          {selectedPeriodo && (
+            <VisorReportes id_periodo={parseInt(selectedPeriodo)} />
+          )}
+        </TabsContent>
+
+        <TabsContent value="notifications" className="animate-in fade-in slide-in-from-bottom-4 duration-700 outline-none">
+          <GestorNotificaciones />
+        </TabsContent>
+      </Tabs>
       <Toaster position="top-right" richColors />
     </div>
   );
