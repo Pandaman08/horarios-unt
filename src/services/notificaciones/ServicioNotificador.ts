@@ -25,24 +25,48 @@ export class ServicioNotificador {
 
   private static async enviarNotificacion(notif: any) {
     let success = false;
+    let skip = false;
+    let mensajeHistorial = "";
     const datos = notif.datos_mensaje as any;
 
     try {
-      if (notif.canal === 'correo') {
-        const res = await ServicioCorreo.enviarCorreo(
-          notif.docente.correo_electronico,
-          datos.asunto,
-          datos.html
-        );
-        success = res.success;
-      } else if (notif.canal === 'telegram') {
-        const pref = notif.docente.preferencias_notificacion.find((p: any) => p.canal === 'telegram');
-        if (pref && pref.verificado) {
-          const res = await ServicioTelegram.enviarMensaje(
-            (pref.datos_contacto as any).chat_id,
-            datos.texto
+      // 1. Validar REGLA: Correo NO se envía para alertas de 15 minutos
+      if (notif.canal === 'correo' && notif.tipo_notificacion === 'alerta_15min') {
+        console.log(`Omitiendo correo para alerta_15min según reglas del sistema.`);
+        skip = true;
+      }
+
+      // 2. Verificar preferencias del docente
+      const preferencias = (notif.docente as any).preferencias_notificacion || [];
+      const pref = preferencias.find((p: any) => p.canal === notif.canal);
+      
+      if (!skip && pref && !pref.activo) {
+        console.log(`Notificación omitida para docente ${notif.id_docente} por canal ${notif.canal} (desactivado por el usuario)`);
+        skip = true;
+      }
+
+      if (!skip) {
+        if (notif.canal === 'correo') {
+          const res = await ServicioCorreo.enviarCorreo(
+            (notif.docente as any).correo_electronico,
+            datos.asunto,
+            datos.html
           );
           success = res.success;
+          mensajeHistorial = success ? 'Enviado con éxito' : `Error SMTP: ${res.error || 'Desconocido'}`;
+        } else if (notif.canal === 'telegram') {
+          if (pref && pref.verificado) {
+            const res = await ServicioTelegram.enviarMensaje(
+              (pref.datos_contacto as any).chat_id,
+              datos.texto
+            );
+            success = res.success;
+            mensajeHistorial = success ? 'Enviado con éxito' : `Error Telegram: ${res.error || 'Desconocido'}`;
+          } else {
+            success = false;
+            mensajeHistorial = 'Telegram no vinculado (use /start)';
+            console.warn(`Telegram no verificado para docente ${notif.id_docente}`);
+          }
         }
       }
 
@@ -50,26 +74,37 @@ export class ServicioNotificador {
       await prisma.colaNotificaciones.update({
         where: { id_cola: notif.id_cola },
         data: {
-          estado: success ? 'completado' : 'fallido',
+          estado: skip ? 'omitido' : (success ? 'completado' : 'fallido'),
           intentos: { increment: 1 },
           fecha_procesamiento: new Date()
         }
       });
 
-      // Registrar en historial
-      await prisma.historialNotificaciones.create({
-        data: {
-          id_docente: notif.id_docente,
-          tipo_notificacion: notif.tipo_notificacion,
-          canal: notif.canal,
-          mensaje: success ? 'Enviado con éxito' : 'Error en el envío',
-          estado_envio: success ? 'enviado' : 'fallido',
-          fecha_envio: new Date()
+      // Registrar en historial si no fue omitido
+      if (!skip) {
+        await prisma.historialNotificaciones.create({
+          data: {
+            id_docente: notif.id_docente,
+            tipo_notificacion: notif.tipo_notificacion,
+            canal: notif.canal,
+            mensaje: mensajeHistorial,
+            estado_envio: success ? 'enviado' : 'fallido',
+            fecha_envio: new Date()
+          }
+        });
+      }
+
+    } catch (error: any) {
+      console.error(`Error procesando notificación ${notif.id_cola}:`, error);
+      // Asegurar que no quede trabada en la cola
+      await prisma.colaNotificaciones.update({
+        where: { id_cola: notif.id_cola },
+        data: { 
+          estado: 'fallido', 
+          intentos: { increment: 1 },
+          fecha_procesamiento: new Date()
         }
       });
-
-    } catch (error) {
-      console.error(`Error procesando notificación ${notif.id_cola}:`, error);
     }
   }
 
@@ -100,9 +135,9 @@ export class ServicioNotificador {
       // Ajustar a una hora razonable, ej: 08:00 AM
       fecha24h.setHours(8, 0, 0, 0);
 
-      if (fecha24h > new Date()) {
-        await this.crearEntradaCola(docente.id_docente, 'recordatorio_24h', fecha24h, ventana);
-      }
+      // Si la fecha ya pasó (ventana es mañana o hoy), enviarlo lo antes posible (ahora + 1 min)
+      const programada24h = fecha24h > new Date() ? fecha24h : new Date(Date.now() + 60000);
+      await this.crearEntradaCola(docente.id_docente, 'recordatorio_24h', programada24h, ventana, docente);
 
       // 2. Programar alerta 15 minutos antes
       const [hora, minuto] = ventana.hora_inicio.split(':').map(Number);
@@ -110,39 +145,86 @@ export class ServicioNotificador {
       fecha15min.setHours(hora, minuto - 15, 0, 0);
 
       if (fecha15min > new Date()) {
-        await this.crearEntradaCola(docente.id_docente, 'alerta_15min', fecha15min, ventana);
+        await this.crearEntradaCola(docente.id_docente, 'alerta_15min', fecha15min, ventana, docente);
       }
     }
   }
 
-  private static async crearEntradaCola(id_docente: number, tipo: string, fecha: Date, ventana: any) {
-    const mensajeBase = `Hola, te recordamos que tu ventana de atención para la selección de horarios es el ${ventana.fecha.toLocaleDateString()} a las ${ventana.hora_inicio}.`;
-
-    // Programar Correo
-    await prisma.colaNotificaciones.create({
-      data: {
-        id_docente,
-        tipo_notificacion: tipo,
-        canal: 'correo',
-        fecha_programada: fecha,
-        datos_mensaje: {
-          asunto: `Recordatorio: Ventana de Atención - UNT`,
-          html: `<p>${mensajeBase}</p><p>Por favor, asegúrate de tener tus cursos listos.</p>`
-        }
-      }
+  private static async crearEntradaCola(id_docente: number, tipo: string, fecha: Date, ventana: any, docente: any) {
+    // Buscar plantillas en la base de datos
+    const configs = await prisma.configuracionNotificaciones.findMany({
+      where: { tipo_notificacion: tipo, activo: true }
     });
 
-    // Programar Telegram
-    await prisma.colaNotificaciones.create({
-      data: {
-        id_docente,
-        tipo_notificacion: tipo,
+    const configCorreo = configs.find((conf: any) => conf.canal === 'correo');
+    const configTelegram = configs.find((conf: any) => conf.canal === 'telegram');
+
+    const replacePlaceholders = (text: string, docente: any) => {
+      if (!text) return "";
+      return text
+        .split('{{nombre}}').join(docente.nombres)
+        .split('{{fecha}}').join(ventana.fecha.toLocaleDateString())
+        .split('{{hora}}').join(ventana.hora_inicio)
+        .split('{{modalidad}}').join(ventana.modalidad)
+        .split('{{categoria}}').join(ventana.categoria);
+    };
+
+    // 1. Programar Correo (Solo para recordatorio 24h)
+    if (tipo === 'recordatorio_24h') {
+      const asuntoDefault = 'Recordatorio: Tu ventana de selección de horarios';
+      const htmlDefault = `<p>Hola {{nombre}}, te recordamos que tu ventana de atención para la selección de horarios es el {{fecha}} a las {{hora}}.</p><p>Por favor, asegúrate de tener tus cursos listos.</p>`;
+
+      // EVITAR DUPLICADOS: No enviar más de un recordatorio de 24h por periodo/docente si ya existe uno pendiente o enviado recientemente
+      const existe = await prisma.colaNotificaciones.findFirst({
+        where: { 
+          id_docente, 
+          tipo_notificacion: tipo, 
+          canal: 'correo',
+          fecha_creacion: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Creado en las últimas 24h
+        }
+      });
+
+      if (!existe) {
+        await prisma.colaNotificaciones.create({
+          data: {
+            id_docente,
+            tipo_notificacion: tipo,
+            canal: 'correo',
+            fecha_programada: fecha,
+            datos_mensaje: {
+              asunto: configCorreo?.configuracion_adicional ? (configCorreo.configuracion_adicional as any).asunto : asuntoDefault,
+              html: replacePlaceholders(configCorreo ? configCorreo.plantilla_mensaje : htmlDefault, docente)
+            }
+          }
+        });
+      }
+    }
+
+    // 2. Programar Telegram (Tanto para 24h como 15min)
+    const textoDefault = `🔔 <b>RECORDATORIO</b>\n\nHola {{nombre}}, tu ventana de atención es el {{fecha}} a las {{hora}}.\n\n<i>Sistema de Horarios UNT</i>`;
+
+    // EVITAR DUPLICADOS: No enviar más de una alerta del mismo tipo si ya se envió una recientemente
+    const existeTelegram = await prisma.colaNotificaciones.findFirst({
+      where: { 
+        id_docente, 
+        tipo_notificacion: tipo, 
         canal: 'telegram',
-        fecha_programada: fecha,
-        datos_mensaje: {
-          texto: `🔔 <b>RECORDATORIO</b>\n\n${mensajeBase}\n\n<i>Sistema de Horarios UNT</i>`
-        }
+        fecha_creacion: { gte: new Date(Date.now() - 1 * 60 * 60 * 1000) } // Creado en la última hora
       }
     });
+
+    if (!existeTelegram) {
+      await prisma.colaNotificaciones.create({
+        data: {
+          id_docente,
+          tipo_notificacion: tipo,
+          canal: 'telegram',
+          fecha_programada: fecha,
+          datos_mensaje: {
+            texto: replacePlaceholders(configTelegram ? configTelegram.plantilla_mensaje : textoDefault, docente)
+          }
+        }
+      });
+    }
   }
 }

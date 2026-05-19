@@ -11,7 +11,11 @@ export class ServicioCorreo {
     },
   });
 
-  static async enviarCorreo(to: string, subject: string, html: string) {
+  static async enviarCorreo(to: string | null | undefined, subject: string, html: string) {
+    if (!to) {
+      console.warn('Intento de enviar correo sin destinatario');
+      return { success: false, error: 'No hay destinatario' };
+    }
     try {
       const info = await this.transporter.sendMail({
         from: `"Horarios UNT" <${process.env.SMTP_USER}>`,

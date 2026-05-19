@@ -58,7 +58,7 @@ export class GestorVentanasAtencion {
     const ventanasCreadas = [];
     let fechaActual = new Date(fecha_inicio);
     let horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
-    const horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
+    let horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
     let prioridadActual = 1;
 
     // Agrupar docentes por modalidad y categoría para crear ventanas por bloques
@@ -81,6 +81,7 @@ export class GestorVentanasAtencion {
           // Pasar al siguiente día hábil
           fechaActual = this.obtenerSiguienteDiaHabil(fechaActual);
           horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
+          horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
           console.log(`Cambiando al siguiente día: ${format(fechaActual, 'yyyy-MM-dd')}`);
           continue;
         }
@@ -115,6 +116,7 @@ export class GestorVentanasAtencion {
         if (horaActual.getTime() >= horaLimite.getTime() && minutosRestantes > 0) {
           fechaActual = this.obtenerSiguienteDiaHabil(fechaActual);
           horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
+          horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
           console.log(`Jornada terminada. Cambiando al siguiente día: ${format(fechaActual, 'yyyy-MM-dd')}`);
         }
       }
