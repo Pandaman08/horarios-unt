@@ -170,7 +170,14 @@ export default function SeleccionHorariosPage() {
   const fetchDocenteCursos = async () => {
     if (!idPeriodo || idPeriodo === "undefined") return;
     try {
-      const res = await fetch(`/api/docentes/mis-cursos?id_periodo=${idPeriodo}`);
+      // Si el usuario es docente, usa mis-cursos normal
+      // Si es admin u operador, debemos permitir ver cursos de un docente específico si quisiéramos, 
+      // pero por ahora mantenemos la lógica de docente si es que tiene id_docente vinculado.
+      const url = session?.user?.rol === 'docente' 
+        ? `/api/docentes/mis-cursos?id_periodo=${idPeriodo}`
+        : `/api/docentes/mis-cursos?id_periodo=${idPeriodo}&id_docente=${session?.user?.id_docente}`;
+
+      const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
         setCursosProgreso(data);

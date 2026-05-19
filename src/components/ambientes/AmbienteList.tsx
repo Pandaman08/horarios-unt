@@ -178,109 +178,124 @@ export function AmbienteList() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header y Acciones */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Buscar ambiente por nombre o código..." 
-            className="pl-10 bg-white border-gray-200 rounded-xl focus:ring-[#003366]/10 font-medium"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    <div className="space-y-4">
+      {/* Header Balanceado */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center">
+            <MapPin className="h-6 w-6 text-[#003366]" />
+          </div>
+          <div>
+            <h2 className="text-[20px] font-black text-gray-900 tracking-tight">Ambientes</h2>
+            <p className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Gestión de espacios físicos</p>
+          </div>
         </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingAmbiente(null);
-            resetForm();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Ambiente
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] md:w-[90vw] lg:max-w-5xl rounded-[32px] p-8 border-none shadow-2xl overflow-y-auto max-h-[95vh] overflow-x-hidden">
+
+        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <div className="relative flex-1 sm:min-w-[280px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Input 
+              placeholder="Buscar ambientes..." 
+              className="pl-12 h-11 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-[14px] focus:ring-2 focus:ring-blue-100 transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingAmbiente(null);
+              resetForm();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold text-[14px] shadow-sm transition-all">
+                <Plus className="mr-2 h-5 w-5" /> Nuevo Ambiente
+              </Button>
+            </DialogTrigger>
+          <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-3xl rounded-2xl p-6 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
             <DialogHeader className="mb-6">
               <div className="flex items-center gap-4">
-                <div className="h-14 w-14 bg-blue-50 rounded-2xl flex items-center justify-center">
+                <div className="h-14 w-14 bg-blue-50 rounded-xl flex items-center justify-center">
                   <Building2 className="h-8 w-8 text-[#003366]" />
                 </div>
                 <div>
-                  <DialogTitle className="text-3xl font-black text-gray-900 tracking-tight">
-                    {editingAmbiente ? "Actualizar Ambiente" : "Registrar Nuevo Ambiente"}
+                  <DialogTitle className="text-[24px] font-black text-gray-900 tracking-tight">
+                    {editingAmbiente ? "Actualizar Ambiente" : "Registrar Ambiente"}
                   </DialogTitle>
-                  <p className="text-base text-gray-500 font-medium">Configure las características del espacio físico.</p>
                 </div>
               </div>
             </DialogHeader>
             
             <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5">
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Código Identificador</Label>
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Código</Label>
                   <Input
                     placeholder="Ej: A-101"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    className={cn("h-11 rounded-xl border-gray-200 font-bold text-[16px]", editingAmbiente && "bg-gray-50")}
                     value={formData.codigo}
-                    onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                    onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase().slice(0, 10) })}
                     required
+                    readOnly={!!editingAmbiente}
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Capacidad (Personas)</Label>
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Capacidad</Label>
                   <Input
                     type="number"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"
                     value={formData.capacidad}
-                    onChange={(e) => setFormData({ ...formData, capacidad: e.target.value })}
+                    onChange={(e) => {
+                      const val = Math.max(1, Math.min(500, parseInt(e.target.value) || 1));
+                      setFormData({ ...formData, capacidad: val.toString() });
+                    }}
                     required
+                    min={1}
+                    max={500}
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Tipo de Ambiente</Label>
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Tipo</Label>
                   <Select
                     value={formData.tipo}
                     onValueChange={(value) => setFormData({ ...formData, tipo: value })}
                   >
-                    <SelectTrigger className="h-12 rounded-xl border-gray-200 font-bold text-base">
+                    <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]">
                       <SelectValue />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
-                      <SelectItem value="aula" className="font-bold">Aula Teórica</SelectItem>
-                      <SelectItem value="laboratorio" className="font-bold">Laboratorio Especializado</SelectItem>
-                      <SelectItem value="auditorio" className="font-bold">Auditorio</SelectItem>
-                      <SelectItem value="sala_reuniones" className="font-bold">Sala de Reuniones</SelectItem>
+                    <SelectContent className="rounded-xl">
+                      <SelectItem value="aula" className="font-bold text-[16px]">Aula Teórica</SelectItem>
+                      <SelectItem value="laboratorio" className="font-bold text-[16px]">Laboratorio</SelectItem>
+                      <SelectItem value="auditorio" className="font-bold text-[16px]">Auditorio</SelectItem>
+                      <SelectItem value="sala_reuniones" className="font-bold text-[16px]">Sala de Reuniones</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="md:col-span-2 lg:col-span-3 space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Nombre Descriptivo</Label>
+                <div className="md:col-span-3 space-y-2">
+                  <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Nombre</Label>
                   <Input
-                    placeholder="Ej: Aula Magna de Ingeniería"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    placeholder="Ej: Aula Magna"
+                    className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"
                     value={formData.nombre}
                     onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                     required
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Pabellón</Label>
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Pabellón</Label>
                   <Input
-                    placeholder="Ej: Pabellón B"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    placeholder="Ej: B"
+                    className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"
                     value={formData.pabellon}
                     onChange={(e) => setFormData({ ...formData, pabellon: e.target.value })}
                   />
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Piso / Nivel</Label>
+                <div className="space-y-2">
+                  <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Piso</Label>
                   <Input
-                    placeholder="Ej: Segundo Piso"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
+                    placeholder="Ej: 2"
+                    className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"
                     value={formData.piso}
                     onChange={(e) => setFormData({ ...formData, piso: e.target.value })}
                   />
@@ -292,96 +307,76 @@ export function AmbienteList() {
                   type="button" 
                   variant="ghost" 
                   onClick={() => setIsDialogOpen(false)}
-                  className="h-12 rounded-xl font-bold text-gray-500 px-8 hover:bg-gray-100"
+                  className="h-11 rounded-xl font-bold text-gray-500 px-8 text-[16px]"
                 >
                   Cancelar
                 </Button>
-                <Button type="submit" className="h-12 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-12 font-black shadow-xl shadow-blue-900/20 transition-all hover:scale-[1.02]">
-                  {editingAmbiente ? "Actualizar Ambiente" : "Crear Ambiente"}
+                <Button type="submit" className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-10 font-black text-[16px]">
+                  {editingAmbiente ? "Actualizar" : "Crear"}
                 </Button>
               </div>
             </form>
           </DialogContent>
         </Dialog>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50/50">
               <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="w-[120px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8">Código</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Ambiente</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Tipo</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Capacidad</TableHead>
-                <TableHead className="w-[150px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8 text-right">Acciones</TableHead>
+                <TableHead className="w-[100px]">Cód.</TableHead>
+                <TableHead>Nombre del Ambiente</TableHead>
+                <TableHead className="w-[120px]">Pabellón</TableHead>
+                <TableHead className="w-[120px]">Piso</TableHead>
+                <TableHead className="w-[140px] text-center">Tipo</TableHead>
+                <TableHead className="w-[100px] text-center">Cap.</TableHead>
+                <TableHead className="w-[120px] text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-10 w-10 border-4 border-blue-100 border-t-[#003366] rounded-full animate-spin" />
-                      <p className="text-sm font-bold text-gray-400">Cargando ambientes...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} className="py-12 text-center text-[16px] font-bold text-gray-400">Cargando ambientes...</TableCell></TableRow>
               ) : filteredAmbientes.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-2">
-                        <MapPin className="h-8 w-8 text-gray-300" />
-                      </div>
-                      <p className="text-lg font-black text-gray-400 tracking-tight">No hay ambientes registrados</p>
-                      <p className="text-sm text-gray-400 font-medium">Registre los espacios físicos de la facultad.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={7} className="py-12 text-center text-[16px] font-bold text-gray-400">No se encontraron registros</TableCell></TableRow>
               ) : (
                 filteredAmbientes.map((ambiente) => (
                   <TableRow key={ambiente.id_ambiente} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                    <TableCell className="px-8 font-black text-xs text-gray-400">{ambiente.codigo}</TableCell>
+                    <TableCell className="font-bold text-[14px] text-gray-500">{ambiente.codigo}</TableCell>
                     <TableCell>
-                      <div className="flex items-center gap-4 py-2">
-                        <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-[#003366] transition-colors">
-                          <DoorOpen className="h-5 w-5 text-[#003366] group-hover:text-white transition-colors" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 tracking-tight">{ambiente.nombre}</span>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <MapPin className="h-3 w-3 text-gray-400" />
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Pabellón {ambiente.pabellon} - Piso {ambiente.piso}</span>
-                          </div>
-                        </div>
+                      <div className="flex items-center gap-3">
+                        <DoorOpen className="h-5 w-5 text-[#003366]/50" />
+                        <span className="font-bold text-gray-900 truncate text-[16px]">{ambiente.nombre}</span>
                       </div>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[14px] font-bold text-gray-500">{ambiente.pabellon || '-'}</span>
+                    </TableCell>
+                    <TableCell>
+                      <span className="text-[14px] font-bold text-gray-500">{ambiente.piso || '-'}</span>
                     </TableCell>
                     <TableCell className="text-center">
                       <span className={cn(
-                        "inline-flex items-center px-2.5 py-0.5 rounded-lg font-black text-[9px] uppercase tracking-tighter border-none",
+                        "px-3 py-1 rounded-lg text-[12px] font-black uppercase tracking-tight",
                         ambiente.tipo === 'laboratorio' ? "bg-purple-50 text-purple-700" : "bg-blue-50 text-blue-700"
                       )}>
-                        {ambiente.tipo === 'laboratorio' ? <Monitor className="h-3 w-3 mr-1 inline" /> : null}
                         {ambiente.tipo}
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-lg">
-                        <Users className="h-3.5 w-3.5 text-gray-400" />
-                        <span className="text-sm font-black text-[#003366]">{ambiente.capacidad}</span>
-                      </div>
+                      <span className="text-[16px] font-black text-[#003366]">{ambiente.capacidad}</span>
                     </TableCell>
-                    <TableCell className="px-8">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                    <TableCell>
+                      <div className="flex items-center justify-end gap-2">
                         <Button 
                           variant="ghost" 
                           size="icon" 
                           onClick={() => handleEdit(ambiente)}
                           title="Editar"
-                          className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-[#003366]"
+                          className="h-9 w-9 hover:bg-blue-50 hover:text-[#003366]"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-5 w-5" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -391,9 +386,9 @@ export function AmbienteList() {
                             setIsDeleteDialogOpen(true);
                           }}
                           title="Eliminar"
-                          className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
+                          className="h-9 w-9 hover:bg-red-50 hover:text-red-600"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-5 w-5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -451,13 +446,6 @@ export function AmbienteList() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
-
-      <AsignarAmbientesDialog
-        cursoId={0} // No usado aquí
-        cursoNombre="" 
-        isOpen={false}
-        onClose={() => {}}
-      />
     </div>
   );
 }
