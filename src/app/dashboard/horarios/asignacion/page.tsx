@@ -61,17 +61,29 @@ export default function AsignacionOperadorPage() {
   };
 
   const fetchDocenteCursos = async () => {
-    const res = await fetch(`/api/docentes/${docenteActual.id_docente}/cursos`);
-    const data = await res.json();
-    const transformado = data.map((dc: any) => ({
-      id_curso: dc.id_curso,
-      nombre: dc.curso.nombre,
-      codigo: dc.curso.codigo,
-      tipo_clase: dc.tipo_clase,
-      horas_requeridas: dc.tipo_clase === 'teoria' ? dc.curso.horas_teoria : dc.curso.horas_laboratorio,
-      horas_asignadas: 0 
-    }));
-    setCursosProgreso(transformado);
+    if (!docenteActual || !idPeriodo) return;
+    try {
+      const res = await fetch(`/api/docentes/mis-cursos?id_periodo=${idPeriodo}&id_docente_manual=${docenteActual.id_docente}`);
+      if (res.ok) {
+        const data = await res.json();
+        setCursosProgreso(data);
+      } else {
+        // Fallback si el endpoint no soporta id_docente_manual aún
+        const resOld = await fetch(`/api/docentes/${docenteActual.id_docente}/cursos`);
+        const dataOld = await resOld.json();
+        const transformado = dataOld.map((dc: any) => ({
+          id_curso: dc.id_curso,
+          nombre: dc.curso.nombre,
+          codigo: dc.curso.codigo,
+          tipo_clase: dc.tipo_clase,
+          horas_requeridas: dc.tipo_clase === 'teoria' ? dc.curso.horas_teoria : dc.curso.horas_laboratorio,
+          horas_asignadas: 0 
+        }));
+        setCursosProgreso(transformado);
+      }
+    } catch (error) {
+      console.error("Error al cargar progreso:", error);
+    }
   };
 
   const fetchGrupos = async () => {
@@ -190,9 +202,9 @@ export default function AsignacionOperadorPage() {
         </aside>
 
         {/* Área de Trabajo Central (Scrollable) */}
-        <main className="flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar min-w-0">
           {!docenteActual ? (
-            <div className="h-full flex flex-col items-center justify-center p-10 text-center">
+            <div className="h-full flex flex-col items-center justify-center p-10 text-center min-w-[300px]">
               <div className="w-24 h-24 bg-blue-50 rounded-[40px] flex items-center justify-center mb-6 animate-bounce duration-[3000ms]">
                 <Users className="h-10 w-10 text-[#003366] opacity-20" />
               </div>
