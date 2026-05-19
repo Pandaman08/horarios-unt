@@ -13,9 +13,9 @@ import {
   ClipboardList,
   LogOut,
   UserCircle,
-  FileText
+  FileText,
   Menu,
-  X,
+  X
 } from "lucide-react";
 
 export default function DashboardLayout({
