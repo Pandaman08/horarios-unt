@@ -13,8 +13,9 @@ import {
   ClipboardList,
   LogOut,
   UserCircle,
+  FileText
   Menu,
-  X
+  X,
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -60,6 +61,12 @@ export default function DashboardLayout({
       href: "/dashboard/horarios/asignacion",
       icon: Users,
       roles: ["administrador_sistema", "operador_horarios"]
+    },
+    {
+      title: "Reportes",
+      href: "/dashboard/reportes",
+      icon: FileText,
+      roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"]
     },
     {
       title: "Selección Docente",
