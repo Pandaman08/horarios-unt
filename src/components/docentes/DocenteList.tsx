@@ -191,6 +191,12 @@ export function DocenteList() {
         return;
       }
 
+      // Validación de seguridad: antigüedad no mayor a 50 años (asumiendo edad promedio de jubilación)
+      if (parseInt(formData.antiguedad) > 50) {
+        toast.error("La antigüedad no puede ser mayor a 50 años por políticas institucionales.");
+        return;
+      }
+
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
@@ -342,16 +348,21 @@ export function DocenteList() {
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-10 gap-y-5">
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Código Institucional</Label>
-                  <Input
-                    placeholder="Ej: 1001"
-                    className={cn(
-                      "h-11 rounded-xl border-gray-200 focus:ring-4 font-bold text-base transition-all",
-                      isCodeDuplicate ? "border-red-300 focus:border-red-500 focus:ring-red-50 text-red-600" : "focus:border-[#003366] focus:ring-blue-50"
-                    )}
-                    value={formData.codigo_docente}
-                    onChange={(e) => setFormData({ ...formData, codigo_docente: e.target.value })}
-                    required
-                  />
+                  <div className="relative">
+                    <Input
+                      placeholder="Ej: 1001"
+                      readOnly
+                      className={cn(
+                        "h-11 rounded-xl border-gray-200 bg-gray-50/80 text-gray-500 cursor-not-allowed font-bold text-base transition-all",
+                        isCodeDuplicate && "border-red-300 text-red-600"
+                      )}
+                      value={formData.codigo_docente}
+                      required
+                    />
+                    <p className="text-[9px] font-bold text-gray-400 uppercase tracking-tighter mt-1 ml-1">
+                      Código generado automáticamente por el sistema
+                    </p>
+                  </div>
                 </div>
 
                 <div className="space-y-2">
@@ -371,7 +382,10 @@ export function DocenteList() {
                     placeholder="Nombres completos"
                     className="h-11 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
                     value={formData.nombres}
-                    onChange={(e) => setFormData({ ...formData, nombres: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^a-zA-ZáéíóúñÑ ]/g, "");
+                      setFormData({ ...formData, nombres: value });
+                    }}
                     required
                   />
                 </div>
@@ -382,7 +396,10 @@ export function DocenteList() {
                     placeholder="Apellidos completos"
                     className="h-11 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
                     value={formData.apellidos}
-                    onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^a-zA-ZáéíóúñÑ ]/g, "");
+                      setFormData({ ...formData, apellidos: value });
+                    }}
                     required
                   />
                 </div>
@@ -393,7 +410,12 @@ export function DocenteList() {
                     placeholder="Ej: 987654321"
                     className="h-11 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
                     value={formData.telefono}
-                    onChange={(e) => setFormData({ ...formData, telefono: e.target.value })}
+                    onChange={(e) => {
+                      const value = e.target.value.replace(/[^0-9]/g, "");
+                      if (value.length <= 9) {
+                        setFormData({ ...formData, telefono: value });
+                      }
+                    }}
                   />
                 </div>
 
@@ -433,12 +455,24 @@ export function DocenteList() {
 
                 <div className="space-y-2">
                   <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Antigüedad (Años)</Label>
-                  <Input
-                    type="number"
-                    className="h-11 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.antiguedad}
-                    onChange={(e) => setFormData({ ...formData, antiguedad: e.target.value })}
-                  />
+                  <div className="space-y-1">
+                    <Input
+                      type="number"
+                      min="0"
+                      max="50"
+                      className={cn(
+                        "h-11 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base",
+                        parseInt(formData.antiguedad) > 40 && "border-amber-300 bg-amber-50"
+                      )}
+                      value={formData.antiguedad}
+                      onChange={(e) => setFormData({ ...formData, antiguedad: e.target.value })}
+                    />
+                    {parseInt(formData.antiguedad) > 40 && (
+                      <p className="text-[9px] font-bold text-amber-600 uppercase tracking-tighter animate-in fade-in">
+                        ⚠ Antigüedad cercana al límite institucional (50 años).
+                      </p>
+                    )}
+                  </div>
                 </div>
 
                 {!editingDocente ? (

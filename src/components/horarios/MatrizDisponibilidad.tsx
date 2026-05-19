@@ -442,7 +442,7 @@ export function MatrizDisponibilidad({
 
       <div className="relative overflow-hidden bg-white rounded-[40px] shadow-2xl shadow-blue-900/10 border border-gray-100">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full border-collapse min-w-[900px] table-fixed">
+          <table className="w-full border-collapse min-w-[1100px] table-fixed">
             <thead>
               <tr className="bg-[#003366] sticky top-0 z-30 shadow-md">
                 <th className="w-24 p-4 text-center border-b border-r border-white/10">
