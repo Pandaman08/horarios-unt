@@ -46,7 +46,7 @@ export default function DashboardPrincipal() {
   };
 
   return (
-    <div className="space-y-6 lg:space-y-10 pb-10 lg:pb-20">
+    <div className="p-4 sm:p-8 max-w-[1800px] mx-auto space-y-6 lg:space-y-10 pb-10 lg:pb-20">
       {/* Bienvenida Institucional */}
       <div className="relative overflow-hidden bg-[#003366] rounded-3xl lg:rounded-[40px] p-6 lg:p-10 text-white shadow-2xl shadow-blue-900/20">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent pointer-events-none" />
@@ -99,6 +99,7 @@ export default function DashboardPrincipal() {
               >
                 <BarChart3 className="h-4 w-4" /> Resumen General
               </TabsTrigger>
+              
               <TabsTrigger 
                 value="reports" 
                 className="px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg lg:rounded-xl data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold text-xs lg:text-sm flex items-center justify-center gap-2 whitespace-nowrap"

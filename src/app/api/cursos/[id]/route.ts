@@ -61,6 +61,27 @@ export async function DELETE(
   try {
     const { id: idStr } = await params;
     const id = parseInt(idStr);
+
+    // Verificar dependencias antes de eliminar
+    const [docentes, grupos, asignaciones, selecciones, ambientes] = await Promise.all([
+      prisma.docenteCurso.count({ where: { id_curso: id } }),
+      prisma.grupo.count({ where: { id_curso: id } }),
+      prisma.horarioAsignado.count({ where: { id_curso: id } }),
+      prisma.seleccionTemporalHorario.count({ where: { id_curso: id } }),
+      prisma.cursoAmbiente.count({ where: { id_curso: id } })
+    ]);
+
+    if (docentes > 0 || grupos > 0 || asignaciones > 0 || selecciones > 0 || ambientes > 0) {
+      let mensaje = "No se puede eliminar el curso porque tiene dependencias:";
+      if (docentes > 0) mensaje += ` ${docentes} docentes asignados.`;
+      if (grupos > 0) mensaje += ` ${grupos} grupos creados.`;
+      if (asignaciones > 0) mensaje += ` ${asignaciones} horarios asignados.`;
+      if (selecciones > 0) mensaje += ` ${selecciones} selecciones temporales.`;
+      if (ambientes > 0) mensaje += ` ${ambientes} ambientes vinculados.`;
+      
+      return NextResponse.json({ error: mensaje }, { status: 400 });
+    }
+
     await prisma.curso.update({
       where: { id_curso: id },
       data: { activo: false }

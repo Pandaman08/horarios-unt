@@ -1,5 +1,6 @@
 "use client";
 
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -11,7 +12,10 @@ import {
   Calendar,
   ClipboardList,
   LogOut,
-  UserCircle
+  UserCircle,
+  FileText,
+  Menu,
+  X
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -21,6 +25,23 @@ export default function DashboardLayout({
 }) {
   const { data: session } = useSession();
   const pathname = usePathname();
+  const [isSidebarOpen, setIsSidebarOpen] = useState(false);
+
+  // Bloquear scroll cuando el menú está abierto (Mejora UX Mobile)
+  useEffect(() => {
+    const mainContent = document.querySelector('main');
+    if (isSidebarOpen) {
+      document.body.style.overflow = "hidden";
+      if (mainContent) mainContent.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+      if (mainContent) mainContent.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      if (mainContent) mainContent.style.overflow = "auto";
+    };
+  }, [isSidebarOpen]);
 
   const menuItems = [
     {
@@ -42,10 +63,16 @@ export default function DashboardLayout({
       roles: ["administrador_sistema", "operador_horarios"]
     },
     {
+      title: "Reportes",
+      href: "/dashboard/reportes",
+      icon: FileText,
+      roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"]
+    },
+    {
       title: "Selección Docente",
       href: "/dashboard/horarios/seleccion",
       icon: Calendar,
-      roles: ["docente"]
+      roles: ["administrador_sistema", "docente"]
     },
   ];
 
@@ -55,20 +82,41 @@ export default function DashboardLayout({
 
   return (
     <div className="flex h-screen bg-[#f8fafc] overflow-hidden">
-      {/* Sidebar - Desktop */}
-      <aside className="hidden lg:flex w-72 bg-[#003366] text-white flex-col shadow-2xl z-40">
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] transition-opacity duration-300"
+          onClick={() => setIsSidebarOpen(false)}
+        />
+      )}
+
+      {/* Sidebar */}
+      <aside className={cn(
+        "fixed left-0 z-50 w-[78%] max-w-[300px] bg-[#003366] text-white flex flex-col shadow-2xl transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:w-72 lg:h-screen",
+        "top-16 h-[calc(100vh-4rem)] lg:top-0", // Ajuste exacto para móvil debajo del header
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full"
+      )}>
         <div className="p-8">
-          <div className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm shadow-inner">
-            <img 
-              src="/logount.png" 
-              alt="UNT Logo" 
-              className="h-10 w-auto brightness-0 invert"
-            />
-            <div className="h-8 w-[1px] bg-white/20" />
-            <h1 className="text-sm font-black leading-tight tracking-tighter uppercase">
-              Horarios <br />
-              <span className="text-blue-300">UNT</span>
-            </h1>
+          <div className="flex items-center justify-between lg:justify-start gap-4">
+            <div className="flex items-center gap-4 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm shadow-inner flex-1">
+              <img 
+                src="/logount.png" 
+                alt="UNT Logo" 
+                className="h-10 w-auto brightness-0 invert"
+              />
+              <div className="h-8 w-[1px] bg-white/20" />
+              <h1 className="text-sm font-black leading-tight tracking-tighter uppercase">
+                Horarios <br />
+                <span className="text-blue-300">UNT</span>
+              </h1>
+            </div>
+            {/* Close button for mobile */}
+            <button 
+              onClick={() => setIsSidebarOpen(false)}
+              className="lg:hidden h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10"
+            >
+              <X className="h-6 w-6 text-white" />
+            </button>
           </div>
         </div>
 
@@ -80,6 +128,7 @@ export default function DashboardLayout({
             <Link
               key={item.title}
               href={item.href}
+              onClick={() => setIsSidebarOpen(false)}
               className={cn(
                 "flex items-center p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden",
                 pathname === item.href
@@ -128,7 +177,13 @@ export default function DashboardLayout({
       </aside>
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#003366] flex items-center justify-between px-6 z-50 shadow-lg">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#003366] flex items-center justify-between px-6 z-40 shadow-lg">
+        <button 
+          onClick={() => setIsSidebarOpen(true)}
+          className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10"
+        >
+          <Menu className="h-6 w-6 text-white" />
+        </button>
         <div className="flex items-center gap-3">
           <img src="/logount.png" alt="UNT" className="h-8 w-auto brightness-0 invert" />
           <span className="text-white font-black text-sm tracking-tighter">SGH UNT</span>
@@ -139,9 +194,9 @@ export default function DashboardLayout({
       </div>
 
       {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        <main className="flex-1 overflow-y-auto pt-20 lg:pt-8 p-4 sm:p-8 custom-scrollbar relative">
-          <div className="max-w-7xl mx-auto animate-in fade-in duration-700">
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <main className="flex-1 overflow-y-auto pt-16 lg:pt-0 custom-scrollbar">
+          <div className="min-h-full animate-in fade-in duration-700">
             {children}
           </div>
         </main>

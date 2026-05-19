@@ -43,32 +43,89 @@ export class GestorVentanasAtencion {
     
     console.log(`Iniciando programación automática: Periodo=${id_periodo}, FechaInicio=${format(fecha_inicio, 'yyyy-MM-dd')}`);
 
-    // Obtener docentes ordenados por jerarquía
+    // 1. Obtener docentes activos que tienen al menos un curso asignado y ese curso tiene ambientes
     const docentes = await prisma.docente.findMany({
-      where: { activo: true },
+      where: { 
+        activo: true,
+        docente_cursos: {
+          some: {
+            curso: {
+              curso_ambientes: {
+                some: {}
+              }
+            }
+          }
+        }
+      },
       orderBy: [
-        { modalidad: 'asc' }, // nombrado, contratado
-        { categoria: 'asc' }, // principal, asociado, auxiliar, jefe_practica
+        { modalidad: 'asc' }, 
+        { categoria: 'asc' }, 
         { antiguedad: 'desc' }
       ]
     });
 
-    console.log(`Docentes activos encontrados: ${docentes.length}`);
+    // 2. Obtener ventanas existentes para el periodo
+    const ventanasExistentes = await prisma.ventanaAtencion.findMany({
+      where: { id_periodo, activo: true }
+    });
+
+    console.log(`Docentes elegibles encontrados: ${docentes.length}`);
+
+    // Agrupar docentes por modalidad y categoría
+    const gruposBrutos = this.agruparDocentesPorJerarquia(docentes);
+    
+    // 3. Filtrar grupos o ajustar cantidad de docentes según lo que ya existe
+    const gruposParaProcesar = gruposBrutos.map(grupo => {
+      const { modalidad, categoria, listaDocentes } = grupo;
+      
+      // Calcular cuántos docentes ya están cubiertos por ventanas existentes para este grupo
+      const docentesCubiertos = ventanasExistentes
+        .filter(v => v.modalidad === modalidad && v.categoria === categoria)
+        .reduce((sum, v) => sum + v.cantidad_docentes, 0);
+      
+      const docentesRestantes = listaDocentes.length - docentesCubiertos;
+      
+      if (docentesRestantes > 0) {
+        return {
+          ...grupo,
+          // Solo nos interesan los N últimos docentes que no estaban cubiertos
+          listaDocentes: listaDocentes.slice(docentesCubiertos)
+        };
+      }
+      return null;
+    }).filter(g => g !== null) as any[];
+
+    if (gruposParaProcesar.length === 0) {
+      console.log("No hay nuevos docentes que requieran programación de ventanas.");
+      return [];
+    }
 
     const ventanasCreadas = [];
+    
+    // Buscar la última ventana para continuar desde ahí si es posible
     let fechaActual = new Date(fecha_inicio);
     let horaActual = this.parseHora(hora_inicio_jornada, fechaActual);
+
     let horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
     let prioridadActual = 1;
 
-    // Agrupar docentes por modalidad y categoría para crear ventanas por bloques
-    const grupos = this.agruparDocentesPorJerarquia(docentes);
-    console.log(`Grupos jerárquicos creados: ${grupos.length}`);
+    if (ventanasExistentes.length > 0) {
+      const ultimaVentana = [...ventanasExistentes].sort((a, b) => {
+        const dateA = new Date(a.fecha).getTime() + this.timeToMinutes(a.hora_fin);
+        const dateB = new Date(b.fecha).getTime() + this.timeToMinutes(b.hora_fin);
+        return dateB - dateA;
+      })[0];
 
-    for (const grupo of grupos) {
+      fechaActual = new Date(ultimaVentana.fecha);
+      horaActual = this.parseHora(ultimaVentana.hora_fin, fechaActual);
+      prioridadActual = Math.max(...ventanasExistentes.map(v => v.orden_prioridad)) + 1;
+    }
+
+    const horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
+
+    for (const grupo of gruposParaProcesar) {
       const { modalidad, categoria, listaDocentes } = grupo;
       const numDocentes = listaDocentes.length;
-      if (numDocentes === 0) continue;
 
       const minutosNecesarios = numDocentes * intervalo_por_docente;
       let minutosRestantes = minutosNecesarios;
@@ -124,6 +181,11 @@ export class GestorVentanasAtencion {
 
     console.log(`Programación finalizada. Ventanas creadas: ${ventanasCreadas.length}`);
     return ventanasCreadas;
+  }
+
+  private static timeToMinutes(horaStr: string): number {
+    const [h, m] = horaStr.split(':').map(Number);
+    return h * 60 + m;
   }
 
   private static parseHora(horaStr: string, fechaRef: Date): Date {

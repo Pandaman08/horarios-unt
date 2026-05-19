@@ -36,9 +36,21 @@ import {
   Users, 
   BookOpen, 
   Calendar,
-  Hash
+  Hash,
+  AlertTriangle,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Grupo {
   id_grupo: number;
@@ -69,6 +81,10 @@ export function GrupoList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const filteredGrupos = grupos.filter(g => 
     `${g.curso.nombre} ${g.codigo_grupo} ${g.periodo.codigo}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -136,18 +152,22 @@ export function GrupoList() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Está seguro de eliminar este grupo?")) return;
-
     try {
       const res = await fetch(`/api/grupos/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
       if (res.ok) {
         toast.success("Grupo eliminado");
         fetchData();
       } else {
-        toast.error("Error al eliminar grupo");
+        setErrorMessage(data.error || "Error al eliminar grupo");
+        setIsErrorDialogOpen(true);
       }
     } catch (error) {
       toast.error("Error de conexión");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
     }
   };
 
@@ -371,7 +391,10 @@ export function GrupoList() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => handleDelete(grupo.id_grupo)}
+                          onClick={() => {
+                            setDeletingId(grupo.id_grupo);
+                            setIsDeleteDialogOpen(true);
+                          }}
                           title="Eliminar"
                           className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
                         >
@@ -386,6 +409,53 @@ export function GrupoList() {
           </Table>
         </div>
       </div>
+
+      {/* Ventana de Advertencia de Eliminación */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-gray-900">¿Confirmar eliminación?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium text-gray-500">
+              Esta acción marcará el grupo como inactivo. Asegúrese de que no existan asignaciones de horarios vinculadas a este grupo.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-3">
+            <AlertDialogCancel className="h-12 rounded-xl font-bold border-gray-200 hover:bg-gray-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deletingId && handleDelete(deletingId)}
+              className="h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black px-8"
+            >
+              Confirmar Eliminación
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Ventana de Error por Dependencias */}
+      <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+              <Info className="h-8 w-8 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-gray-900">No se puede eliminar</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium text-gray-600 bg-amber-50 p-4 rounded-2xl border border-amber-100">
+              {errorMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogAction 
+              onClick={() => setIsErrorDialogOpen(false)}
+              className="h-12 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black px-8"
+            >
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

@@ -25,8 +25,8 @@ export class GeneradorPDF {
       // Configurar el contenido y esperar solo a que el DOM esté listo (mucho más rápido)
       console.log(`[PDF_DEBUG] 5. Seteando contenido HTML... T+${Date.now() - start}ms`);
       await page.setContent(html, { 
-        waitUntil: 'domcontentloaded',
-        timeout: 15000 
+        waitUntil: 'networkidle0',
+        timeout: 20000 
       });
       console.log(`[PDF_DEBUG] 6. DOM listo. T+${Date.now() - start}ms`);
       
@@ -71,6 +71,7 @@ export class GeneradorPDF {
         <head>
           <meta charset="utf-8">
           <title>${title}</title>
+          <script src="https://cdn.tailwindcss.com"></script>
           <style>
             body { 
               font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif, "Apple Color Emoji", "Segoe UI Emoji", "Segoe UI Symbol";

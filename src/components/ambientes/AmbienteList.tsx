@@ -36,9 +36,21 @@ import {
   Users, 
   Building2, 
   DoorOpen, 
-  Monitor 
+  Monitor,
+  AlertTriangle,
+  Info
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Ambiente {
   id_ambiente: number;
@@ -56,6 +68,10 @@ export function AmbienteList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingAmbiente, setEditingAmbiente] = useState<Ambiente | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const filteredAmbientes = ambientes.filter(a => 
     `${a.nombre} ${a.codigo} ${a.pabellon}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -116,18 +132,22 @@ export function AmbienteList() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Está seguro de eliminar este ambiente?")) return;
-
     try {
       const res = await fetch(`/api/ambientes/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
       if (res.ok) {
         toast.success("Ambiente eliminado");
         fetchAmbientes();
       } else {
-        toast.error("Error al eliminar ambiente");
+        setErrorMessage(data.error || "Error al eliminar ambiente");
+        setIsErrorDialogOpen(true);
       }
     } catch (error) {
       toast.error("Error de conexión");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
     }
   };
 
@@ -366,7 +386,10 @@ export function AmbienteList() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => handleDelete(ambiente.id_ambiente)}
+                          onClick={() => {
+                            setDeletingId(ambiente.id_ambiente);
+                            setIsDeleteDialogOpen(true);
+                          }}
                           title="Eliminar"
                           className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
                         >
@@ -381,6 +404,60 @@ export function AmbienteList() {
           </Table>
         </div>
       </div>
+
+      {/* Ventana de Advertencia de Eliminación */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-gray-900">¿Confirmar eliminación?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium text-gray-500">
+              Esta acción marcará el ambiente como inactivo. Asegúrese de que no sea necesario para la programación actual.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-3">
+            <AlertDialogCancel className="h-12 rounded-xl font-bold border-gray-200 hover:bg-gray-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deletingId && handleDelete(deletingId)}
+              className="h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black px-8"
+            >
+              Confirmar Eliminación
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Ventana de Error por Dependencias */}
+      <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+              <Info className="h-8 w-8 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-gray-900">No se puede eliminar</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium text-gray-600 bg-amber-50 p-4 rounded-2xl border border-amber-100">
+              {errorMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogAction 
+              onClick={() => setIsErrorDialogOpen(false)}
+              className="h-12 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black px-8"
+            >
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AsignarAmbientesDialog
+        cursoId={0} // No usado aquí
+        cursoNombre="" 
+        isOpen={false}
+        onClose={() => {}}
+      />
     </div>
   );
 }
