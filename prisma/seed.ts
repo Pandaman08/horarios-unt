@@ -73,7 +73,7 @@ async function main() {
 
   // 2. Usuarios y Docentes
   const usersData = [
-    { codigo: '1001', nombres: 'Roberto', apellidos: 'García', rol: 'docente', mod: 'nombrado', cat: 'principal', tel: '987654321', correo: 'roberto@unt.edu.pe' },
+    { codigo: '1001', nombres: 'Roberto', apellidos: 'García', rol: 'docente', mod: 'nombrado', cat: 'principal', tel: '987654321', correo: 'ronabuve7@gmail.com' },
     { codigo: '1002', nombres: 'María', apellidos: 'López', rol: 'docente', mod: 'nombrado', cat: 'asociado', tel: '912345678', correo: 'maria@unt.edu.pe' },
     { codigo: '1003', nombres: 'Carlos', apellidos: 'Sánchez', rol: 'docente', mod: 'nombrado', cat: 'auxiliar', tel: '955666777', correo: 'carlos@unt.edu.pe' },
     { codigo: '1004', nombres: 'Ana', apellidos: 'Martínez', rol: 'docente', mod: 'contratado', cat: 'principal', tel: '944333222', correo: 'ana@unt.edu.pe' },

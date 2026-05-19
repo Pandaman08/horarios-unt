@@ -50,104 +50,158 @@ export function GestorNotificaciones() {
     }
   };
 
-  if (loading && !data) return <div className="p-8 text-center">Cargando gestor de notificaciones...</div>;
+  if (loading && !data) return (
+    <div className="p-20 flex flex-col items-center justify-center space-y-4">
+      <RefreshCw className="h-10 w-10 text-[#003366] animate-spin opacity-20" />
+      <p className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Cargando gestor...</p>
+    </div>
+  );
 
   return (
-    <div className="space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h2 className="text-2xl font-bold tracking-tight">Sistema de Notificaciones</h2>
-          <p className="text-muted-foreground">Monitorea y gestiona el envío de alertas multicanal.</p>
+    <div className="space-y-8 animate-in fade-in duration-700">
+      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-6">
+        <div className="flex items-center gap-5">
+          <div className="h-14 w-14 bg-[#003366] rounded-[22px] flex items-center justify-center shadow-xl shadow-blue-900/20">
+            <Bell className="h-7 w-7 text-white" />
+          </div>
+          <div>
+            <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-2">Sistema de Notificaciones</h2>
+            <p className="text-[12px] font-bold text-gray-400 uppercase tracking-widest">Monitoreo y gestión de alertas multicanal</p>
+          </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={fetchData} disabled={loading}>
+        <div className="flex gap-3 w-full md:w-auto">
+          <Button 
+            variant="outline" 
+            onClick={fetchData} 
+            disabled={loading}
+            className="flex-1 md:flex-none h-11 rounded-xl border-gray-200 font-bold text-xs hover:bg-gray-50 transition-all"
+          >
             <RefreshCw className={`h-4 w-4 mr-2 ${loading ? 'animate-spin' : ''}`} /> Actualizar
           </Button>
-          <Button onClick={procesarColaManual} disabled={processing}>
+          <Button 
+            onClick={procesarColaManual} 
+            disabled={processing}
+            className="flex-1 md:flex-none h-11 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black text-xs shadow-lg shadow-blue-900/20 transition-all active:scale-95"
+          >
             <Send className="h-4 w-4 mr-2" /> Procesar Cola Ahora
           </Button>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Pendientes en Cola</CardTitle>
-            <Clock className="h-4 w-4 text-amber-500" />
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+        <Card className="rounded-[32px] border-none shadow-xl shadow-blue-900/5 bg-white overflow-hidden group transition-all hover:shadow-2xl hover:shadow-blue-900/10">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">Pendientes en Cola</CardTitle>
+            <div className="h-8 w-8 bg-amber-50 rounded-lg flex items-center justify-center">
+              <Clock className="h-4 w-4 text-amber-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.stats?.colaPendiente || 0}</div>
-            <p className="text-xs text-muted-foreground">Listas para ser enviadas</p>
+            <div className="text-4xl font-black text-gray-900 mb-1">{data?.stats?.colaPendiente || 0}</div>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-amber-400 animate-pulse" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Listas para ser enviadas</p>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Fallidas (Reintentos)</CardTitle>
-            <AlertTriangle className="h-4 w-4 text-red-500" />
+
+        <Card className="rounded-[32px] border-none shadow-xl shadow-blue-900/5 bg-white overflow-hidden group transition-all hover:shadow-2xl hover:shadow-blue-900/10">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">Fallidas (Reintentos)</CardTitle>
+            <div className="h-8 w-8 bg-red-50 rounded-lg flex items-center justify-center">
+              <AlertTriangle className="h-4 w-4 text-red-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.stats?.colaFallida || 0}</div>
-            <p className="text-xs text-muted-foreground">Requieren atención</p>
+            <div className="text-4xl font-black text-gray-900 mb-1">{data?.stats?.colaFallida || 0}</div>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-red-400" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Requieren atención</p>
+            </div>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between pb-2">
-            <CardTitle className="text-sm font-medium">Enviadas con Éxito</CardTitle>
-            <CheckCircle2 className="h-4 w-4 text-green-500" />
+
+        <Card className="rounded-[32px] border-none shadow-xl shadow-blue-900/5 bg-white overflow-hidden group transition-all hover:shadow-2xl hover:shadow-blue-900/10">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
+            <CardTitle className="text-[11px] font-black uppercase tracking-[0.15em] text-gray-400">Enviadas con Éxito</CardTitle>
+            <div className="h-8 w-8 bg-emerald-50 rounded-lg flex items-center justify-center">
+              <CheckCircle2 className="h-4 w-4 text-emerald-500" />
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{data?.stats?.historialExito || 0}</div>
-            <p className="text-xs text-muted-foreground">Historial acumulado</p>
+            <div className="text-4xl font-black text-gray-900 mb-1">{data?.stats?.historialExito || 0}</div>
+            <div className="flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
+              <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Historial acumulado</p>
+            </div>
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Últimos Envíos</CardTitle>
-          <CardDescription>Registro reciente de actividad del notificador.</CardDescription>
+      <Card className="rounded-[40px] border-none shadow-xl shadow-blue-900/5 bg-white overflow-hidden">
+        <CardHeader className="border-b border-gray-50 p-8">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-gray-50 rounded-xl flex items-center justify-center">
+              <RefreshCw className="h-5 w-5 text-gray-400" />
+            </div>
+            <div>
+              <CardTitle className="text-sm font-black uppercase tracking-widest text-gray-900">Últimos Envíos</CardTitle>
+              <CardDescription className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Registro reciente de actividad del notificador</CardDescription>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="p-0">
           <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Docente</TableHead>
-                <TableHead>Canal</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead>Fecha</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Detalle</TableHead>
+            <TableHeader className="bg-gray-50/50">
+              <TableRow className="border-none hover:bg-transparent">
+                <TableHead className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-gray-400">Docente</TableHead>
+                <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Canal</TableHead>
+                <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Tipo</TableHead>
+                <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Fecha</TableHead>
+                <TableHead className="py-5 text-[10px] font-black uppercase tracking-widest text-gray-400 text-center">Estado</TableHead>
+                <TableHead className="px-8 py-5 text-[10px] font-black uppercase tracking-widest text-gray-400">Detalle</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {data?.recientes?.map((notif: any) => (
-                <TableRow key={notif.id_notificacion}>
-                  <TableCell className="font-medium">
+                <TableRow key={notif.id_notificacion} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
+                  <TableCell className="px-8 py-4 font-black text-gray-900 text-xs">
                     {notif.docente?.nombres} {notif.docente?.apellidos}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={notif.canal === 'telegram' ? 'default' : 'secondary'}>
+                  <TableCell className="text-center">
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                      notif.canal === 'telegram' ? "bg-blue-50 text-blue-600" : "bg-indigo-50 text-indigo-600"
+                    )}>
                       {notif.canal}
-                    </Badge>
+                    </span>
                   </TableCell>
-                  <TableCell className="text-xs">{notif.tipo_notificacion}</TableCell>
-                  <TableCell className="text-xs">
+                  <TableCell className="text-center text-[10px] font-bold text-gray-500 uppercase tracking-tighter">
+                    {notif.tipo_notificacion}
+                  </TableCell>
+                  <TableCell className="text-center text-[10px] font-bold text-gray-400">
                     {new Date(notif.fecha_envio).toLocaleString()}
                   </TableCell>
-                  <TableCell>
-                    <Badge variant={notif.estado_envio === 'enviado' ? 'default' : 'destructive'}>
+                  <TableCell className="text-center">
+                    <span className={cn(
+                      "px-3 py-1 rounded-full text-[9px] font-black uppercase tracking-widest",
+                      notif.estado_envio === 'enviado' ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
+                    )}>
                       {notif.estado_envio === 'enviado' ? 'Enviado' : 'Fallido'}
-                    </Badge>
+                    </span>
                   </TableCell>
-                  <TableCell className="text-[10px] text-muted-foreground max-w-[150px] truncate" title={notif.mensaje}>
+                  <TableCell className="px-8 py-4 text-[10px] font-medium text-gray-400 max-w-[200px] truncate italic" title={notif.mensaje}>
                     {notif.mensaje}
                   </TableCell>
                 </TableRow>
               ))}
               {(!data?.recientes || data.recientes.length === 0) && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-4 text-muted-foreground">
-                    No hay actividad reciente.
+                  <TableCell colSpan={6} className="text-center py-20">
+                    <div className="flex flex-col items-center gap-2 opacity-20">
+                      <Bell className="h-10 w-10 text-gray-400" />
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em]">No hay actividad reciente</p>
+                    </div>
                   </TableCell>
                 </TableRow>
               )}

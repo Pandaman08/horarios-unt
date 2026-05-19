@@ -18,7 +18,8 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Bell
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -77,6 +78,12 @@ export default function DashboardLayout({
       href: "/dashboard/reportes",
       icon: FileText,
       roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"]
+    },
+    {
+      title: "Notificaciones",
+      href: "/dashboard/notificaciones",
+      icon: Bell,
+      roles: ["administrador_sistema"]
     },
     {
       title: "Gestionar Horario",
