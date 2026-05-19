@@ -44,7 +44,7 @@ export default function DashboardPrincipal() {
   };
 
   return (
-    <div className="space-y-6 lg:space-y-10 pb-10 lg:pb-20">
+    <div className="p-4 sm:p-8 max-w-[1800px] mx-auto space-y-6 lg:space-y-10 pb-10 lg:pb-20">
       {/* Bienvenida Institucional */}
       <div className="relative overflow-hidden bg-[#003366] rounded-3xl lg:rounded-[40px] p-6 lg:p-10 text-white shadow-2xl shadow-blue-900/20">
         <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent pointer-events-none" />

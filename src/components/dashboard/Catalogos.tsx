@@ -22,7 +22,7 @@ import {
 
 export default function CatalogosPage() {
   return (
-    <div className="space-y-8 animate-in fade-in duration-700 pb-10">
+    <div className="p-4 sm:p-8 max-w-[1600px] mx-auto space-y-8 animate-in fade-in duration-700 pb-10">
       {/* Header Institucional del Módulo */}
       <div className="relative overflow-hidden bg-white rounded-[32px] p-8 border border-gray-100 shadow-xl shadow-blue-900/5">
         <div className="absolute top-0 right-0 w-64 h-64 bg-blue-50/50 rounded-full -mr-32 -mt-32 blur-3xl" />
