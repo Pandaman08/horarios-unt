@@ -225,7 +225,7 @@ export function ConfiguradorVentanas() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Fin Jornada</Label>
-                    <Input type="time" className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={autoFormData.hora_fin_jornada} onChange={(e) => setAutoFormData({ ...formData, hora_fin_jornada: e.target.value })} required />
+                    <Input type="time" className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={autoFormData.hora_fin_jornada} onChange={(e) => setAutoFormData({ ...autoFormData, hora_fin_jornada: e.target.value })} required />
                   </div>
                 </div>
                 <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">

@@ -167,7 +167,7 @@ export function GestorNotificaciones() {
               {data?.recientes?.map((notif: any) => (
                 <TableRow key={notif.id_notificacion} className="border-b border-gray-50 hover:bg-gray-50/50 transition-colors">
                   <TableCell className="px-8 py-4 font-black text-gray-900 text-xs">
-                    {notif.docente?.nombres} {notif.docente?.apellidos}
+                    {notif.docente ? `${notif.docente.nombres} ${notif.docente.apellidos}` : 'Docente Desconocido'}
                   </TableCell>
                   <TableCell className="text-center">
                     <span className={cn(
@@ -181,7 +181,7 @@ export function GestorNotificaciones() {
                     {notif.tipo_notificacion}
                   </TableCell>
                   <TableCell className="text-center text-[10px] font-bold text-gray-400">
-                    {new Date(notif.fecha_envio).toLocaleString()}
+                    {notif.fecha_envio ? new Date(notif.fecha_envio).toLocaleString() : 'Pendiente'}
                   </TableCell>
                   <TableCell className="text-center">
                     <span className={cn(

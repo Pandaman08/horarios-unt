@@ -1,4 +1,5 @@
-import { DashboardStats } from "@/components/dashboard/DashboardStats";
+"use client";
+
 import { GestorNotificaciones } from "@/components/dashboard/GestorNotificaciones";
 
 export default function NotificacionesPage() {

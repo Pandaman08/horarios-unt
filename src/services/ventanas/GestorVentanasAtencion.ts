@@ -43,19 +43,10 @@ export class GestorVentanasAtencion {
     
     console.log(`Iniciando programación automática: Periodo=${id_periodo}, FechaInicio=${format(fecha_inicio, 'yyyy-MM-dd')}`);
 
-    // 1. Obtener docentes activos que tienen al menos un curso asignado y ese curso tiene ambientes
+    // 1. Obtener docentes activos
     const docentes = await prisma.docente.findMany({
       where: { 
-        activo: true,
-        docente_cursos: {
-          some: {
-            curso: {
-              curso_ambientes: {
-                some: {}
-              }
-            }
-          }
-        }
+        activo: true
       },
       orderBy: [
         { modalidad: 'asc' }, 
@@ -121,7 +112,7 @@ export class GestorVentanasAtencion {
       prioridadActual = Math.max(...ventanasExistentes.map(v => v.orden_prioridad)) + 1;
     }
 
-    const horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
+    horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
 
     for (const grupo of gruposParaProcesar) {
       const { modalidad, categoria, listaDocentes } = grupo;
