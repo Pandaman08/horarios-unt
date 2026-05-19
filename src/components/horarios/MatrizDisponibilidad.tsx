@@ -84,6 +84,7 @@ export function MatrizDisponibilidad({
   const [processingCell, setProcessingCell] = useState<string | null>(null);
   const [conflictosActuales, setConflictosActuales] = useState<ConflictoVisual[]>([]);
   const [errorCell, setErrorCell] = useState<string | null>(null);
+  const [filtroHorario, setFiltroHorario] = useState<'todos' | 'libres' | 'ocupados' | 'mios'>('todos');
 
   const soloLectura = propSoloLectura ?? internalSoloLectura;
 
@@ -351,6 +352,26 @@ export function MatrizDisponibilidad({
           </div>
         </div>
 
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-gray-700 whitespace-nowrap">Filtrar por:</span>
+            <Select 
+              value={filtroHorario} 
+              onValueChange={(v: any) => setFiltroHorario(v)}
+            >
+              <SelectTrigger className="w-[140px] h-9 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-xs focus:ring-4 focus:ring-blue-100">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-gray-100 shadow-2xl">
+                <SelectItem value="todos" className="text-xs font-medium">Todos</SelectItem>
+                <SelectItem value="libres" className="text-xs font-medium">Solo Libres</SelectItem>
+                <SelectItem value="ocupados" className="text-xs font-medium">Solo Ocupados</SelectItem>
+                <SelectItem value="mios" className="text-xs font-medium">Solo Mis Horas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 w-full lg:w-auto">
           <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50/50 rounded-2xl border border-gray-100 w-full sm:w-auto">
             <div className="flex items-center gap-1.5">
@@ -473,7 +494,11 @@ export function MatrizDisponibilidad({
                           esMia && "bg-yellow-50/60 z-10",
                           info?.estado === 'bloqueado' && "bg-gray-100/60 cursor-not-allowed grayscale",
                           isProcessing && "cursor-wait opacity-70",
-                          hasError && "bg-red-100 ring-2 ring-red-500 z-20 animate-pulse"
+                          hasError && "bg-red-100 ring-2 ring-red-500 z-20 animate-pulse",
+                          // Aplicar filtros de opacidad
+                          filtroHorario === 'libres' && info && "opacity-20 pointer-events-none grayscale",
+                          filtroHorario === 'ocupados' && !info && "opacity-20 pointer-events-none grayscale",
+                          filtroHorario === 'mios' && !esMia && "opacity-20 pointer-events-none grayscale"
                         )}
                       >
                         {isProcessing && (

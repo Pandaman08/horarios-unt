@@ -54,6 +54,21 @@ export async function DELETE(
   try {
     const { id: idStr } = await params;
     const id = parseInt(idStr);
+
+    // Verificar dependencias antes de eliminar
+    const [asignaciones, selecciones] = await Promise.all([
+      prisma.horarioAsignado.count({ where: { id_grupo: id } }),
+      prisma.seleccionTemporalHorario.count({ where: { id_grupo: id } })
+    ]);
+
+    if (asignaciones > 0 || selecciones > 0) {
+      let mensaje = "No se puede eliminar el grupo porque tiene dependencias:";
+      if (asignaciones > 0) mensaje += ` ${asignaciones} horarios asignados.`;
+      if (selecciones > 0) mensaje += ` ${selecciones} selecciones temporales.`;
+      
+      return NextResponse.json({ error: mensaje }, { status: 400 });
+    }
+
     await prisma.grupo.update({
       where: { id_grupo: id },
       data: { activo: false }

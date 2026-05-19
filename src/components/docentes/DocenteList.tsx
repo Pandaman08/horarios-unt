@@ -41,10 +41,25 @@ import {
   Briefcase,
   Users,
   AlertCircle,
-  Sparkles
+  Sparkles,
+  AlertTriangle,
+  Info,
+  Lock,
+  Eye,
+  EyeOff
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AsignarCursosDialog } from "./AsignarCursosDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Docente {
   id_docente: number;
@@ -67,6 +82,14 @@ export function DocenteList() {
   const [isAsignarOpen, setIsAsignarOpen] = useState(false);
   const [selectedDocente, setSelectedDocente] = useState<Docente | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [adminPassword, setAdminPassword] = useState("");
+  const [isAdminVerified, setIsAdminVerified] = useState(false);
+  const [isVerifyingAdmin, setIsVerifyingAdmin] = useState(false);
 
   const filteredDocentes = docentes.filter(d => 
     `${d.nombres} ${d.apellidos} ${d.codigo_docente}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -84,6 +107,8 @@ export function DocenteList() {
     telefono: "",
     grado_academico: "",
     especialidad: "",
+    contrasena: "",
+    nueva_contrasena: "",
   });
 
   // Calcular el siguiente código disponible
@@ -132,6 +157,27 @@ export function DocenteList() {
     }
   };
 
+  const handleVerifyAdmin = async () => {
+    setIsVerifyingAdmin(true);
+    try {
+      const res = await fetch("/api/auth/verify-admin", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ password: adminPassword }),
+      });
+      if (res.ok) {
+        setIsAdminVerified(true);
+        toast.success("Identidad confirmada");
+      } else {
+        toast.error("Contraseña de administrador incorrecta");
+      }
+    } catch (error) {
+      toast.error("Error al verificar identidad");
+    } finally {
+      setIsVerifyingAdmin(false);
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = editingDocente ? "PUT" : "POST";
@@ -172,23 +218,29 @@ export function DocenteList() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Está seguro de eliminar este docente?")) return;
-
     try {
       const res = await fetch(`/api/docentes/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
       if (res.ok) {
         toast.success("Docente eliminado");
         fetchDocentes();
       } else {
-        toast.error("Error al eliminar docente");
+        setErrorMessage(data.error || "Error al eliminar docente");
+        setIsErrorDialogOpen(true);
       }
     } catch (error) {
       toast.error("Error de conexión");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
     }
   };
 
   const handleEdit = (docente: Docente) => {
     setEditingDocente(docente);
+    setIsAdminVerified(false);
+    setAdminPassword("");
     setFormData({
       codigo_docente: docente.codigo_docente,
       nombres: docente.nombres,
@@ -201,6 +253,8 @@ export function DocenteList() {
       telefono: docente.telefono || "",
       grado_academico: "",
       especialidad: "",
+      contrasena: "",
+      nueva_contrasena: "",
     });
     setIsDialogOpen(true);
   };
@@ -243,7 +297,14 @@ export function DocenteList() {
           }
         }}>
           <DialogTrigger asChild>
-            <Button className="bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <Button 
+              onClick={() => {
+                resetForm();
+                setIsAdminVerified(false);
+                setAdminPassword("");
+              }}
+              className="bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]"
+            >
               <Plus className="mr-2 h-4 w-4" /> Nuevo Docente
             </Button>
           </DialogTrigger>
@@ -413,6 +474,82 @@ export function DocenteList() {
                     )}
                   </div>
                 </div>
+
+                {!editingDocente ? (
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400 ml-1">Contraseña de Acceso</Label>
+                    <div className="relative">
+                      <Input
+                        type={showPassword ? "text" : "password"}
+                        placeholder="Mínimo 6 caracteres"
+                        className="h-11 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base pr-10"
+                        value={formData.contrasena}
+                        onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })}
+                        required
+                      />
+                      <button
+                        type="button"
+                        onClick={() => setShowPassword(!showPassword)}
+                        className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                      >
+                        {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                      </button>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="space-y-4 md:col-span-2 p-6 bg-gray-50 rounded-2xl border border-gray-100 mt-2">
+                    <div className="flex items-center gap-2 mb-2">
+                      <Lock className="h-4 w-4 text-[#003366]" />
+                      <h4 className="text-xs font-black uppercase tracking-widest text-[#003366]">Seguridad y Acceso</h4>
+                    </div>
+                    
+                    {!isAdminVerified ? (
+                      <div className="space-y-3">
+                        <p className="text-xs font-medium text-gray-500">Para editar la contraseña del docente, confirme su identidad de administrador:</p>
+                        <div className="flex gap-2">
+                          <Input
+                            type="password"
+                            placeholder="Contraseña de administrador"
+                            className="h-10 rounded-xl bg-white border-gray-200 font-bold"
+                            value={adminPassword}
+                            onChange={(e) => setAdminPassword(e.target.value)}
+                          />
+                          <Button 
+                            type="button"
+                            onClick={handleVerifyAdmin}
+                            disabled={isVerifyingAdmin || !adminPassword}
+                            className="h-10 rounded-xl bg-[#003366] text-white px-4 font-bold whitespace-nowrap"
+                          >
+                            {isVerifyingAdmin ? "Verificando..." : "Confirmar"}
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 animate-in fade-in slide-in-from-top-2 duration-300">
+                        <Label className="text-[10px] font-black uppercase tracking-widest text-gray-400">Nueva Contraseña para el Docente</Label>
+                        <div className="relative">
+                          <Input
+                            type={showPassword ? "text" : "password"}
+                            placeholder="Dejar vacío para no cambiar"
+                            className="h-11 rounded-xl bg-white border-blue-200 focus:border-blue-500 focus:ring-4 focus:ring-blue-50 font-bold text-base pr-10"
+                            value={formData.nueva_contrasena}
+                            onChange={(e) => setFormData({ ...formData, nueva_contrasena: e.target.value })}
+                          />
+                          <button
+                            type="button"
+                            onClick={() => setShowPassword(!showPassword)}
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                          >
+                            {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
+                          </button>
+                        </div>
+                        <p className="text-[10px] text-blue-600 font-bold uppercase tracking-widest flex items-center gap-1">
+                          <Sparkles className="h-3 w-3" /> Modo edición de contraseña activado
+                        </p>
+                      </div>
+                    )}
+                  </div>
+                )}
               </div>
               
               <div className="flex justify-end gap-4 pt-6 border-t border-gray-100">
@@ -547,7 +684,10 @@ export function DocenteList() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => handleDelete(docente.id_docente)}
+                          onClick={() => {
+                            setDeletingId(docente.id_docente);
+                            setIsDeleteDialogOpen(true);
+                          }}
                           title="Eliminar"
                           className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
                         >
@@ -562,6 +702,53 @@ export function DocenteList() {
           </Table>
         </div>
       </div>
+
+      {/* Ventana de Advertencia de Eliminación */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
+              <AlertTriangle className="h-8 w-8 text-red-600" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-gray-900">¿Confirmar eliminación?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium text-gray-500">
+              Esta acción marcará al docente como inactivo. Asegúrese de que no tenga carga académica vigente que deba ser reasignada primero.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6 gap-3">
+            <AlertDialogCancel className="h-12 rounded-xl font-bold border-gray-200 hover:bg-gray-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction 
+              onClick={() => deletingId && handleDelete(deletingId)}
+              className="h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black px-8"
+            >
+              Confirmar Eliminación
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Ventana de Error por Dependencias */}
+      <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
+              <Info className="h-8 w-8 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="text-2xl font-black text-gray-900">No se puede eliminar</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium text-gray-600 bg-amber-50 p-4 rounded-2xl border border-amber-100">
+              {errorMessage}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-6">
+            <AlertDialogAction 
+              onClick={() => setIsErrorDialogOpen(false)}
+              className="h-12 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black px-8"
+            >
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
       <AsignarCursosDialog
         docenteId={selectedDocente?.id_docente || 0}

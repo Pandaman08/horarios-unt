@@ -24,8 +24,12 @@ import {
   BarChart3,
   HelpCircle,
   MousePointer2
+  Search,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Input } from "@/components/ui/input";
 
 // Componente para el progreso general solicitado por Melanie
 function ProgresoGeneral({ id_periodo }: { id_periodo: string }) {
@@ -100,10 +104,42 @@ export default function AsignacionOperadorPage() {
   const [grupos, setGrupos] = useState<any[]>([]);
   const [idGrupo, setIdGrupo] = useState<string>("");
   const [isConfirming, setIsConfirming] = useState(false);
+  const [searchTerm, setSearchTerm] = useState("");
+  const [searchResults, setSearchResults] = useState<any[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
 
   useEffect(() => {
     fetchPeriodos();
   }, []);
+
+  useEffect(() => {
+    const delayDebounceFn = setTimeout(() => {
+      if (searchTerm) {
+        handleSearch();
+      } else {
+        setSearchResults([]);
+      }
+    }, 300);
+
+    return () => clearTimeout(delayDebounceFn);
+  }, [searchTerm]);
+
+  const handleSearch = async () => {
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/docentes?search=${encodeURIComponent(searchTerm)}`);
+      const data = await res.json();
+      setSearchResults(data.filter((d: any) => 
+        d.nombres.toLowerCase().includes(searchTerm.toLowerCase()) || 
+        d.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        d.codigo_docente.toLowerCase().includes(searchTerm.toLowerCase())
+      ));
+    } catch (error) {
+      console.error("Error al buscar docentes:", error);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   useEffect(() => {
     if (docenteActual && idPeriodo) {
@@ -127,28 +163,31 @@ export default function AsignacionOperadorPage() {
 
   const fetchDocenteCursos = async () => {
     if (!docenteActual || !idPeriodo) return;
-    try {
-      const res = await fetch(`/api/docentes/mis-cursos?id_periodo=${idPeriodo}&id_docente_manual=${docenteActual.id_docente}`);
-      if (res.ok) {
-        const data = await res.json();
-        setCursosProgreso(data);
-      } else {
-        // Fallback si el endpoint no soporta id_docente_manual aún
-        const resOld = await fetch(`/api/docentes/${docenteActual.id_docente}/cursos`);
-        const dataOld = await resOld.json();
-        const transformado = dataOld.map((dc: any) => ({
-          id_curso: dc.id_curso,
-          nombre: dc.curso.nombre,
-          codigo: dc.curso.codigo,
-          tipo_clase: dc.tipo_clase,
-          horas_requeridas: dc.tipo_clase === 'teoria' ? dc.curso.horas_teoria : dc.curso.horas_laboratorio,
-          horas_asignadas: 0 
-        }));
-        setCursosProgreso(transformado);
-      }
-    } catch (error) {
-      console.error("Error al cargar progreso:", error);
-    }
+    
+    // 1. Obtener cursos que el docente tiene asignados para dictar
+    const resCursos = await fetch(`/api/docentes/${docenteActual.id_docente}/cursos`);
+    const cursosData = await resCursos.json();
+    
+    // 2. Obtener lo que ya tiene asignado en el horario para este periodo
+    const resHorarios = await fetch(`/api/horarios/validar?id_docente=${docenteActual.id_docente}&id_periodo=${idPeriodo}`);
+    const horariosData = await resHorarios.json();
+    
+    const transformado = cursosData.map((dc: any) => {
+      // Contar horas ya asignadas (permanentemente o temporalmente)
+      const horasAsignadas = (horariosData.asignados || [])
+        .filter((h: any) => h.id_curso === dc.id_curso && h.tipo_clase === dc.tipo_clase)
+        .length; // Asumiendo que cada registro es 1 hora (ajustar si es diferente)
+
+      return {
+        id_curso: dc.id_curso,
+        nombre: dc.curso.nombre,
+        codigo: dc.curso.codigo,
+        tipo_clase: dc.tipo_clase,
+        horas_requeridas: dc.tipo_clase === 'teoria' ? dc.curso.horas_teoria : dc.curso.horas_laboratorio,
+        horas_asignadas: horasAsignadas
+      };
+    });
+    setCursosProgreso(transformado);
   };
 
   const fetchGrupos = async () => {
@@ -178,6 +217,31 @@ export default function AsignacionOperadorPage() {
     setCursosProgreso([]);
     setCursoSeleccionado(null);
     toast.success("Atención finalizada");
+  };
+
+  const handleGenerarReporte = async () => {
+    if (!docenteActual || !idPeriodo) return;
+    
+    try {
+      const url = `/api/reportes?tipo=docente&id=${docenteActual.id_docente}&id_periodo=${idPeriodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) throw new Error("Error al generar reporte");
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `reporte-docente-${docenteActual.codigo_docente}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Reporte generado con éxito");
+    } catch (error) {
+      console.error(error);
+      toast.error("Error al generar el reporte");
+    }
   };
 
   const handleConfirmarAsignacion = async () => {
@@ -249,21 +313,77 @@ export default function AsignacionOperadorPage() {
 
       {/* Contenido Principal */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Izquierdo: Cola de Espera (Oculto en Mobile) */}
-        <aside className="hidden lg:flex w-80 bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0">
-          <div className="p-4 border-b border-gray-100 bg-white/50">
-            <div className="flex items-center gap-2 text-gray-400 mb-4 px-2">
-              <Users className="h-4 w-4" />
-              <span className="text-[10px] font-black uppercase tracking-widest">Cola de Atención</span>
+        {/* Sidebar Izquierdo: Cola y Búsqueda */}
+        <aside className="w-80 bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0">
+          <Tabs defaultValue="cola" className="w-full flex flex-col h-full">
+            <div className="p-4 border-b border-gray-100 bg-white/50">
+              <TabsList className="grid w-full grid-cols-2">
+                <TabsTrigger value="cola" className="text-[10px] font-black uppercase tracking-widest">Cola</TabsTrigger>
+                <TabsTrigger value="buscar" className="text-[10px] font-black uppercase tracking-widest">Buscar</TabsTrigger>
+              </TabsList>
             </div>
-          </div>
-          <div className="flex-1 overflow-y-auto custom-scrollbar">
-            <ColaEspera 
-              id_periodo={parseInt(idPeriodo)} 
-              onLlamarDocente={handleLlamarDocente}
-              docenteActualId={docenteActual?.id_docente}
-            />
-          </div>
+
+            <TabsContent value="cola" className="flex-1 overflow-hidden flex flex-col mt-0">
+              <div className="flex-1 overflow-y-auto custom-scrollbar">
+                <ColaEspera 
+                  id_periodo={parseInt(idPeriodo)} 
+                  onLlamarDocente={handleLlamarDocente}
+                  docenteActualId={docenteActual?.id_docente}
+                />
+              </div>
+            </TabsContent>
+
+            <TabsContent value="buscar" className="flex-1 overflow-hidden flex flex-col mt-0">
+              <div className="p-4 space-y-4">
+                <div className="relative">
+                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                  <Input 
+                    placeholder="Nombre o código..." 
+                    className="pl-10 h-10 rounded-xl border-gray-100 bg-white shadow-sm font-bold text-xs focus:ring-2 focus:ring-blue-100"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+                </div>
+
+                <div className="divide-y divide-gray-100 bg-white rounded-2xl border border-gray-100 overflow-hidden max-h-[500px] overflow-y-auto custom-scrollbar">
+                  {isSearching ? (
+                    <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Buscando...</div>
+                  ) : searchResults.length === 0 ? (
+                    <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                      {searchTerm ? "No se encontraron resultados" : "Ingrese un término para buscar"}
+                    </div>
+                  ) : (
+                    searchResults.map((docente) => (
+                      <div
+                        key={docente.id_docente}
+                        className={cn(
+                          "w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors",
+                          docenteActual?.id_docente === docente.id_docente && "bg-blue-50"
+                        )}
+                      >
+                        <div className="flex flex-col items-start gap-1">
+                          <span className="text-sm font-black text-gray-900">{docente.nombres} {docente.apellidos}</span>
+                          <div className="flex items-center gap-2">
+                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">{docente.codigo_docente}</span>
+                            <span className="w-1 h-1 rounded-full bg-gray-200" />
+                            <span className="text-[9px] font-black text-[#003366] uppercase tracking-tighter">{docente.modalidad}</span>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="ghost"
+                          onClick={() => handleLlamarDocente(docente)}
+                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 h-8 px-2 text-[10px] font-black uppercase tracking-widest"
+                        >
+                          Verificar
+                        </Button>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+            </TabsContent>
+          </Tabs>
         </aside>
 
         {/* Área de Trabajo Central (Scrollable) */}
@@ -326,6 +446,13 @@ export default function AsignacionOperadorPage() {
                 </div>
 
                 <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
+                  <Button 
+                    variant="outline" 
+                    onClick={handleGenerarReporte}
+                    className="h-10 px-4 rounded-xl font-bold text-blue-600 border-blue-100 hover:bg-blue-50 transition-all text-xs"
+                  >
+                    <FileText className="mr-2 h-4 w-4" /> Reporte
+                  </Button>
                   <Button 
                     variant="ghost" 
                     onClick={handleFinalizarAtencion}

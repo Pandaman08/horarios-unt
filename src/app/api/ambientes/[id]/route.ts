@@ -55,6 +55,23 @@ export async function DELETE(
   try {
     const { id: idStr } = await params;
     const id = parseInt(idStr);
+
+    // Verificar dependencias antes de eliminar (incluso para soft delete)
+    const [asignaciones, selecciones, cursosRelacionados] = await Promise.all([
+      prisma.horarioAsignado.count({ where: { id_ambiente: id } }),
+      prisma.seleccionTemporalHorario.count({ where: { id_ambiente: id } }),
+      prisma.cursoAmbiente.count({ where: { id_ambiente: id } })
+    ]);
+
+    if (asignaciones > 0 || selecciones > 0 || cursosRelacionados > 0) {
+      let mensaje = "No se puede eliminar el ambiente porque tiene dependencias:";
+      if (asignaciones > 0) mensaje += ` ${asignaciones} horarios asignados.`;
+      if (selecciones > 0) mensaje += ` ${selecciones} selecciones temporales.`;
+      if (cursosRelacionados > 0) mensaje += ` ${cursosRelacionados} cursos vinculados.`;
+      
+      return NextResponse.json({ error: mensaje }, { status: 400 });
+    }
+
     await prisma.ambiente.update({
       where: { id_ambiente: id },
       data: { activo: false }
