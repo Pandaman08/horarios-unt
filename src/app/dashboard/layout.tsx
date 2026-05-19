@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
 import { usePathname } from "next/navigation";
@@ -26,6 +26,22 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
 
+  // Bloquear scroll cuando el menú está abierto (Mejora UX Mobile)
+  useEffect(() => {
+    const mainContent = document.querySelector('main');
+    if (isSidebarOpen) {
+      document.body.style.overflow = "hidden";
+      if (mainContent) mainContent.style.overflow = "hidden";
+    } else {
+      document.body.style.overflow = "auto";
+      if (mainContent) mainContent.style.overflow = "auto";
+    }
+    return () => {
+      document.body.style.overflow = "auto";
+      if (mainContent) mainContent.style.overflow = "auto";
+    };
+  }, [isSidebarOpen]);
+
   const menuItems = [
     {
       title: "Inicio",
@@ -49,7 +65,7 @@ export default function DashboardLayout({
       title: "Selección Docente",
       href: "/dashboard/horarios/seleccion",
       icon: Calendar,
-      roles: ["docente"]
+      roles: ["administrador_sistema", "docente"]
     },
   ];
 
@@ -62,14 +78,15 @@ export default function DashboardLayout({
       {/* Mobile Backdrop */}
       {isSidebarOpen && (
         <div 
-          className="lg:hidden fixed inset-0 bg-black/50 backdrop-blur-sm z-40 transition-opacity"
+          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] transition-opacity duration-300"
           onClick={() => setIsSidebarOpen(false)}
         />
       )}
 
       {/* Sidebar */}
       <aside className={cn(
-        "fixed inset-y-0 left-0 z-50 w-72 bg-[#003366] text-white flex flex-col shadow-2xl transition-transform duration-300 lg:static lg:translate-x-0",
+        "fixed left-0 z-50 w-[78%] max-w-[300px] bg-[#003366] text-white flex flex-col shadow-2xl transition-transform duration-300 ease-in-out lg:static lg:translate-x-0 lg:w-72 lg:h-screen",
+        "top-16 h-[calc(100vh-4rem)] lg:top-0", // Ajuste exacto para móvil debajo del header
         isSidebarOpen ? "translate-x-0" : "-translate-x-full"
       )}>
         <div className="p-8">
@@ -153,7 +170,7 @@ export default function DashboardLayout({
       </aside>
 
       {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#003366] flex items-center justify-between px-6 z-50 shadow-lg">
+      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#003366] flex items-center justify-between px-6 z-40 shadow-lg">
         <button 
           onClick={() => setIsSidebarOpen(true)}
           className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10"
