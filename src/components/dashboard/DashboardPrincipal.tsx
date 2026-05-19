@@ -6,14 +6,93 @@ import { DashboardStats } from "@/components/dashboard/DashboardStats";
 
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { Toaster } from "@/components/ui/sonner";
+import { toast } from "sonner";
 import { 
   BarChart3, 
   LayoutDashboard,
-  ChevronDown
+  ChevronDown,
+  Database,
+  Users,
+  BookOpen,
+  MapPin,
+  Calendar,
+  Layers,
+  Layout
 } from "lucide-react";
 
 import { useSession } from "next-auth/react";
+import { DocenteList } from "@/components/docentes/DocenteList";
+import { CursoList } from "@/components/cursos/CursoList";
+import { AmbienteList } from "@/components/ambientes/AmbienteList";
+import { PeriodoList } from "@/components/periodos/PeriodoList";
+import { GrupoList } from "@/components/grupos/GrupoList";
+import { ConfiguradorVentanas } from "@/components/ventanas/ConfiguradorVentanas";
+import { UsuarioList } from "@/components/usuarios/UsuarioList";
+
+function CatalogosTabContent() {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.rol === 'administrador_sistema';
+
+  return (
+    <Tabs defaultValue="docentes" className="w-full">
+      <div className="px-4 pt-4">
+        <TabsList className="flex flex-wrap h-auto gap-1 bg-gray-50/50 p-1 rounded-lg border border-gray-100 w-full sm:w-auto">
+          <TabsTrigger value="docentes" className="flex items-center gap-1.5 px-4 py-1.5 rounded-md data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-xs">
+            <Users className="h-3.5 w-3.5" /> Docentes
+          </TabsTrigger>
+          <TabsTrigger value="cursos" className="flex items-center gap-1.5 px-4 py-1.5 rounded-md data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-xs">
+            <BookOpen className="h-3.5 w-3.5" /> Cursos
+          </TabsTrigger>
+          <TabsTrigger value="ambientes" className="flex items-center gap-1.5 px-4 py-1.5 rounded-md data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-xs">
+            <MapPin className="h-3.5 w-3.5" /> Ambientes
+          </TabsTrigger>
+          <TabsTrigger value="periodos" className="flex items-center gap-1.5 px-4 py-1.5 rounded-md data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-xs">
+            <Calendar className="h-3.5 w-3.5" /> Periodos
+          </TabsTrigger>
+          <TabsTrigger value="grupos" className="flex items-center gap-1.5 px-4 py-1.5 rounded-md data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-xs">
+            <Layers className="h-3.5 w-3.5" /> Grupos
+          </TabsTrigger>
+          <TabsTrigger value="ventanas" className="flex items-center gap-1.5 px-4 py-1.5 rounded-md data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-xs">
+            <Layout className="h-3.5 w-3.5" /> Ventanas
+          </TabsTrigger>
+          {isAdmin && (
+            <TabsTrigger value="usuarios" className="flex items-center gap-1.5 px-4 py-1.5 rounded-md data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-md transition-all font-bold text-xs">
+              <ShieldCheck className="h-3.5 w-3.5" /> Usuarios
+            </TabsTrigger>
+          )}
+        </TabsList>
+      </div>
+
+      <div className="p-4">
+        <TabsContent value="docentes" className="mt-0 focus-visible:outline-none outline-none">
+          <DocenteList />
+        </TabsContent>
+        <TabsContent value="cursos" className="mt-0 focus-visible:outline-none outline-none">
+          <CursoList />
+        </TabsContent>
+        <TabsContent value="ambientes" className="mt-0 focus-visible:outline-none outline-none">
+          <AmbienteList />
+        </TabsContent>
+        <TabsContent value="periodos" className="mt-0 focus-visible:outline-none outline-none">
+          <PeriodoList />
+        </TabsContent>
+        <TabsContent value="grupos" className="mt-0 focus-visible:outline-none outline-none">
+          <GrupoList />
+        </TabsContent>
+        <TabsContent value="ventanas" className="mt-0 focus-visible:outline-none outline-none">
+          <ConfiguradorVentanas />
+        </TabsContent>
+        {isAdmin && (
+          <TabsContent value="usuarios" className="mt-0 focus-visible:outline-none outline-none">
+            <UsuarioList />
+          </TabsContent>
+        )}
+      </div>
+    </Tabs>
+  );
+}
 
 export default function DashboardPrincipal() {
   const { data: session } = useSession();
@@ -44,69 +123,47 @@ export default function DashboardPrincipal() {
   };
 
   return (
-    <div className="p-4 sm:p-8 max-w-[1800px] mx-auto space-y-6 lg:space-y-10 pb-10 lg:pb-20">
-      {/* Bienvenida Institucional */}
-      <div className="relative overflow-hidden bg-[#003366] rounded-3xl lg:rounded-[40px] p-6 lg:p-10 text-white shadow-2xl shadow-blue-900/20">
-        <div className="absolute top-0 right-0 w-1/2 h-full bg-gradient-to-l from-white/10 to-transparent pointer-events-none" />
-        <div className="absolute -top-24 -right-24 w-96 h-96 bg-blue-400/10 rounded-full blur-3xl animate-pulse" />
-        
-        <div className="relative z-10 flex flex-col xl:flex-row xl:items-center justify-between gap-6 lg:gap-8">
-          <div className="space-y-3 lg:space-y-4">
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 bg-white/10 backdrop-blur-md rounded-full border border-white/20">
-              <div className="w-2 h-2 rounded-full bg-yellow-400 animate-ping" />
-              <span className="text-[9px] lg:text-[10px] font-black uppercase tracking-widest text-blue-100">Sistema Operativo</span>
+    <div className="p-4 max-w-[1800px] mx-auto space-y-4 pb-8">
+      {/* Bienvenida Institucional Balanceada */}
+      <div className="relative overflow-hidden bg-[#003366] rounded-xl p-6 text-white shadow-md">
+        <div className="relative z-10 flex flex-col md:flex-row md:items-center justify-between gap-4">
+          <div className="flex items-center gap-6">
+            <div className="hidden sm:flex h-14 w-14 bg-white/10 rounded-xl items-center justify-center border border-white/10">
+              <LayoutDashboard className="h-7 w-7 text-blue-200" />
             </div>
-            <h1 className="text-3xl lg:text-5xl font-black tracking-tight leading-tight">
-              ¡Buen día, <br />
-              <span className="text-transparent bg-clip-text bg-gradient-to-r from-blue-200 to-white">
-                {session?.user?.name?.split(' ')[0]}!
-              </span>
-            </h1>
-            <p className="text-blue-100/70 font-medium text-sm lg:text-lg max-w-xl">
-              Bienvenido al portal de gestión académica. Aquí podrás coordinar los horarios y ambientes para el periodo lectivo actual.
-            </p>
+            <div>
+              <h1 className="text-[24px] font-black tracking-tight leading-none">
+                ¡Hola, <span className="text-blue-200">{session?.user?.name?.split(' ')[0]}</span>!
+              </h1>
+              <p className="text-blue-100/60 font-medium text-[14px] mt-2">
+                Portal de Gestión Académica - Universidad Nacional de Trujillo
+              </p>
+            </div>
           </div>
 
-          <div className="bg-white/5 backdrop-blur-xl p-6 lg:p-8 rounded-2xl lg:rounded-[32px] border border-white/10 shadow-2xl w-full xl:min-w-[300px] xl:w-auto">
-            <p className="text-xs font-black text-blue-300 uppercase tracking-widest mb-3 lg:mb-4">Periodo Académico</p>
-            <div className="relative">
+          <div className="flex items-center gap-4 bg-white/5 backdrop-blur-md p-3 rounded-xl border border-white/10">
+            <span className="text-[12px] font-black text-blue-300 uppercase tracking-widest ml-1">Periodo Académico:</span>
+            <div className="relative min-w-[200px]">
               <select 
                 value={selectedPeriodo}
                 onChange={(e) => setSelectedPeriodo(e.target.value)}
-                className="w-full bg-[#002244] border-2 border-white/10 rounded-xl lg:rounded-2xl px-5 py-3 lg:py-4 text-white font-bold outline-none focus:border-yellow-400 transition-all appearance-none cursor-pointer"
+                className="w-full bg-[#002244] border border-white/10 rounded-xl px-4 py-2.5 text-[14px] text-white font-bold outline-none focus:border-yellow-400 transition-all appearance-none cursor-pointer"
               >
                 {periodos.map(p => (
                   <option key={p.id_periodo} value={p.id_periodo}>{p.nombre}</option>
                 ))}
               </select>
-              <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-blue-300">
-                <ChevronDown className="h-5 w-5" />
-              </div>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-blue-300 pointer-events-none" />
             </div>
           </div>
         </div>
       </div>
 
-      <Tabs defaultValue="overview" className="space-y-6 lg:space-y-8">
-        <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4 px-2 relative z-20">
-          <div className="w-full sm:w-auto overflow-x-auto pb-2 sm:pb-0 custom-scrollbar">
-            <TabsList className="bg-white p-1.5 rounded-xl lg:rounded-2xl border border-gray-100 shadow-sm h-auto flex flex-row min-w-max sm:min-w-0">
-              <TabsTrigger 
-                value="overview" 
-                className="px-4 lg:px-6 py-2.5 lg:py-3 rounded-lg lg:rounded-xl data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-lg transition-all font-bold text-xs lg:text-sm flex items-center justify-center gap-2 whitespace-nowrap"
-              >
-                <BarChart3 className="h-4 w-4" /> Resumen General
-              </TabsTrigger>
-            </TabsList>
-          </div>
-        </div>
-
-        <TabsContent value="overview" className="animate-in fade-in slide-in-from-bottom-4 duration-700 outline-none">
-          {selectedPeriodo && (
-            <DashboardStats id_periodo={parseInt(selectedPeriodo)} />
-          )}
-        </TabsContent>
-      </Tabs>
+      <div className="animate-in fade-in duration-500">
+        {selectedPeriodo && (
+          <DashboardStats id_periodo={parseInt(selectedPeriodo)} />
+        )}
+      </div>
       <Toaster position="top-right" richColors />
     </div>
   );

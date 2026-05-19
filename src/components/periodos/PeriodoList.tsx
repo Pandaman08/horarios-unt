@@ -36,9 +36,7 @@ import {
   Clock, 
   CheckCircle2, 
   AlertCircle,
-  Timer,
-  AlertTriangle,
-  Info
+  Timer
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -194,245 +192,152 @@ export function PeriodoList() {
     const state = states[estado] || states.planificacion;
     const Icon = state.icon;
     return (
-      <span className={cn("px-3 py-1 rounded-full font-black text-[10px] uppercase tracking-widest border-none flex items-center gap-1.5", state.color)}>
-        <Icon className="h-3 w-3" />
+      <span className={cn("px-3 py-1 rounded-lg text-[12px] font-black uppercase tracking-tight flex items-center gap-2", state.color)}>
+        <Icon className="h-4 w-4" />
         {state.label}
       </span>
     );
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header y Acciones */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Buscar periodo académico..." 
-            className="pl-10 bg-white border-gray-200 rounded-xl focus:ring-[#003366]/10 font-medium"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    <div className="space-y-4">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center">
+            <Calendar className="h-6 w-6 text-[#003366]" />
+          </div>
+          <div>
+            <h2 className="text-[20px] font-black text-gray-900 tracking-tight">Periodos</h2>
+            <p className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Ciclos académicos</p>
+          </div>
         </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingPeriodo(null);
-            resetForm();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Periodo
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] md:w-[90vw] lg:max-w-5xl rounded-[32px] p-8 border-none shadow-2xl overflow-y-auto max-h-[95vh] overflow-x-hidden">
-            <DialogHeader className="mb-6">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 bg-blue-50 rounded-2xl flex items-center justify-center">
-                  <Calendar className="h-8 w-8 text-[#003366]" />
+
+        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <div className="relative flex-1 sm:min-w-[280px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Input 
+              placeholder="Buscar periodo..." 
+              className="pl-12 h-11 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-[14px] focus:ring-2 focus:ring-blue-100 transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingPeriodo(null);
+              resetForm();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold text-[14px] shadow-sm transition-all">
+                <Plus className="mr-2 h-5 w-5" /> Nuevo Periodo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-3xl rounded-2xl p-6 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+              <DialogHeader className="mb-6">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 bg-blue-50 rounded-xl flex items-center justify-center">
+                    <Calendar className="h-8 w-8 text-[#003366]" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-[24px] font-black text-gray-900 tracking-tight">
+                      {editingPeriodo ? "Actualizar Periodo" : "Registrar Periodo"}
+                    </DialogTitle>
+                  </div>
                 </div>
-                <div>
-                  <DialogTitle className="text-3xl font-black text-gray-900 tracking-tight">
-                    {editingPeriodo ? "Actualizar Periodo" : "Crear Ciclo Académico"}
-                  </DialogTitle>
-                  <p className="text-base text-gray-500 font-medium">Defina los rangos de fecha y el estado del periodo lectivo.</p>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Código</Label>
+                    <Input 
+                      className={cn("h-11 rounded-xl border-gray-200 font-bold text-[16px]", editingPeriodo && "bg-gray-50")} 
+                      value={formData.codigo} 
+                      onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase().slice(0, 10) })} 
+                      required 
+                      readOnly={!!editingPeriodo}
+                      placeholder="Ej: 2024-I"
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-2">
+                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Nombre</Label>
+                    <Input 
+                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
+                      value={formData.nombre} 
+                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value.slice(0, 50) })} 
+                      required 
+                      maxLength={50}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Año</Label>
+                    <Input 
+                      type="number" 
+                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
+                      value={formData.anio} 
+                      onChange={(e) => {
+                        const val = Math.max(2020, Math.min(2100, parseInt(e.target.value) || 2024));
+                        setFormData({ ...formData, anio: val.toString() });
+                      }} 
+                      required 
+                      min={2020}
+                      max={2100}
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Fecha Inicio</Label>
+                    <Input type="date" className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.fecha_inicio} onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Fecha Fin</Label>
+                    <Input type="date" className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.fecha_fin} onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })} required />
+                  </div>
                 </div>
-              </div>
-            </DialogHeader>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5">
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Código del Periodo</Label>
-                  <Input
-                    placeholder="Ej: 2026-I"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.codigo}
-                    onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                    required
-                  />
+                <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-gray-500 px-8 text-[16px]">Cancelar</Button>
+                  <Button type="submit" className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-10 font-black text-[16px]">
+                    {editingPeriodo ? "Actualizar" : "Crear"}
+                  </Button>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Año Lectivo</Label>
-                  <Input
-                    type="number"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.anio}
-                    onChange={(e) => setFormData({ ...formData, anio: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Semestre</Label>
-                  <Select
-                    value={formData.semestre}
-                    onValueChange={(value) => setFormData({ ...formData, semestre: value })}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl border-gray-200 font-bold text-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
-                      <SelectItem value="1" className="font-bold">Semestre I</SelectItem>
-                      <SelectItem value="2" className="font-bold">Semestre II</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="md:col-span-2 lg:col-span-3 space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Nombre del Periodo</Label>
-                  <Input
-                    placeholder="Ej: Semestre Académico 2026 - I"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Estado del Ciclo</Label>
-                  <Select
-                    value={formData.estado}
-                    onValueChange={(value) => setFormData({ ...formData, estado: value })}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl border-gray-200 font-bold text-base">
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
-                      <SelectItem value="planificacion" className="font-bold text-blue-600">Planificación</SelectItem>
-                      <SelectItem value="asignacion_horarios" className="font-bold text-yellow-600">Asignación de Horarios</SelectItem>
-                      <SelectItem value="en_curso" className="font-bold text-emerald-600">En Curso</SelectItem>
-                      <SelectItem value="finalizado" className="font-bold text-gray-600">Finalizado</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Fecha de Inicio</Label>
-                  <Input
-                    type="date"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.fecha_inicio}
-                    onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Fecha de Término</Label>
-                  <Input
-                    type="date"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.fecha_fin}
-                    onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })}
-                    required
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => setIsDialogOpen(false)}
-                  className="h-12 rounded-xl font-bold text-gray-500 px-8 hover:bg-gray-100"
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" className="h-12 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-12 font-black shadow-xl shadow-blue-900/20 transition-all hover:scale-[1.02]">
-                  {editingPeriodo ? "Actualizar Periodo" : "Crear Periodo"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 overflow-hidden">
+      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader className="bg-gray-50/50">
               <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="w-[120px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8">Código</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Periodo Académico</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Duración</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Estado Actual</TableHead>
-                <TableHead className="w-[150px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8 text-right">Acciones</TableHead>
+                <TableHead className="w-[100px]">Código</TableHead>
+                <TableHead>Nombre del Periodo</TableHead>
+                <TableHead className="w-[200px]">Rango de Fechas</TableHead>
+                <TableHead className="w-[180px] text-center">Estado</TableHead>
+                <TableHead className="w-[150px] text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-10 w-10 border-4 border-blue-100 border-t-[#003366] rounded-full animate-spin" />
-                      <p className="text-sm font-bold text-gray-400">Cargando cronograma...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={5} className="py-12 text-center text-[16px] font-bold text-gray-400">Cargando periodos...</TableCell></TableRow>
               ) : filteredPeriodos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-2">
-                        <Calendar className="h-8 w-8 text-gray-300" />
-                      </div>
-                      <p className="text-lg font-black text-gray-400 tracking-tight">No hay periodos registrados</p>
-                      <p className="text-sm text-gray-400 font-medium">Configure el primer ciclo académico para comenzar.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={5} className="py-12 text-center text-[16px] font-bold text-gray-400">No se encontraron registros</TableCell></TableRow>
               ) : (
                 filteredPeriodos.map((periodo) => (
                   <TableRow key={periodo.id_periodo} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                    <TableCell className="px-8 font-black text-xs text-gray-400">{periodo.codigo}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-4 py-2">
-                        <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-[#003366] transition-colors">
-                          <Calendar className="h-5 w-5 text-[#003366] group-hover:text-white transition-colors" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 tracking-tight">{periodo.nombre}</span>
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Año {periodo.anio} - Semestre {periodo.semestre}</span>
-                        </div>
-                      </div>
+                    <TableCell className="font-bold text-[14px] text-gray-500">{periodo.codigo}</TableCell>
+                    <TableCell className="font-bold text-gray-900 text-[16px]">{periodo.nombre}</TableCell>
+                    <TableCell className="text-[14px] font-bold text-gray-500">
+                      {format(new Date(periodo.fecha_inicio), "dd MMM yyyy", { locale: es })} - {format(new Date(periodo.fecha_fin), "dd MMM yyyy", { locale: es })}
                     </TableCell>
                     <TableCell className="text-center">
-                      <div className="flex flex-col items-center gap-1">
-                        <div className="flex items-center gap-2 text-xs font-bold text-gray-600">
-                          <span>{format(new Date(periodo.fecha_inicio), "dd MMM", { locale: es })}</span>
-                          <span className="text-gray-300">→</span>
-                          <span>{format(new Date(periodo.fecha_fin), "dd MMM", { locale: es })}</span>
-                        </div>
-                        <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">Duración total</span>
-                      </div>
+                      <div className="flex justify-center">{getStatusBadge(periodo.estado)}</div>
                     </TableCell>
                     <TableCell>
-                      <div className="flex justify-center">
-                        {getStatusBadge(periodo.estado)}
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-8">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleEdit(periodo)}
-                          title="Editar"
-                          className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-[#003366]"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => {
-                            setDeletingId(periodo.id_periodo);
-                            setIsDeleteDialogOpen(true);
-                          }}
-                          title="Eliminar"
-                          className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                      <div className="flex items-center justify-end gap-2">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(periodo)} title="Editar" className="h-9 w-9 hover:bg-blue-50 hover:text-[#003366]"><Edit className="h-5 w-5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(periodo.id_periodo); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-9 w-9 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-5 w-5" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -443,49 +348,27 @@ export function PeriodoList() {
         </div>
       </div>
 
-      {/* Ventana de Advertencia de Eliminación */}
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+        <AlertDialogContent className="rounded-lg border-none shadow-2xl p-6">
           <AlertDialogHeader>
-            <div className="h-14 w-14 bg-red-50 rounded-2xl flex items-center justify-center mb-4">
-              <AlertTriangle className="h-8 w-8 text-red-600" />
-            </div>
-            <AlertDialogTitle className="text-2xl font-black text-gray-900">¿Confirmar eliminación?</AlertDialogTitle>
-            <AlertDialogDescription className="text-base font-medium text-gray-500">
-              Esta acción marcará el periodo como inactivo. Asegúrese de que no existan grupos o registros académicos activos para este ciclo.
-            </AlertDialogDescription>
+            <AlertDialogTitle className="text-xl font-black text-gray-900">¿Eliminar este periodo?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-gray-500">Esta acción eliminará el periodo y toda la información asociada.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="h-12 rounded-xl font-bold border-gray-200 hover:bg-gray-50">Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => deletingId && handleDelete(deletingId)}
-              className="h-12 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black px-8"
-            >
-              Confirmar Eliminación
-            </AlertDialogAction>
+            <AlertDialogCancel className="h-10 rounded-lg font-bold text-sm">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6">Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
-      {/* Ventana de Error por Dependencias */}
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-[32px] border-none shadow-2xl p-8">
+        <AlertDialogContent className="rounded-lg border-none shadow-2xl p-6">
           <AlertDialogHeader>
-            <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4">
-              <Info className="h-8 w-8 text-amber-600" />
-            </div>
-            <AlertDialogTitle className="text-2xl font-black text-gray-900">No se puede eliminar</AlertDialogTitle>
-            <AlertDialogDescription className="text-base font-medium text-gray-600 bg-amber-50 p-4 rounded-2xl border border-amber-100">
-              {errorMessage}
-            </AlertDialogDescription>
+            <AlertDialogTitle className="text-xl font-black text-gray-900">Error</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-gray-600 bg-amber-50 p-4 rounded-lg border border-amber-100">{errorMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6">
-            <AlertDialogAction 
-              onClick={() => setIsErrorDialogOpen(false)}
-              className="h-12 rounded-xl bg-[#003366] hover:bg-[#002244] text-white font-black px-8"
-            >
-              Entendido
-            </AlertDialogAction>
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-lg bg-[#003366] hover:bg-[#002244] text-white font-black text-sm px-8">Cerrar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

@@ -25,46 +25,48 @@ export default async function DashboardPage() {
   // El docente ve su saludo y pestañas para selección y perfil
   return (
     <ProteccionVentana>
-      <div className="p-8">
-        <div className="max-w-4xl mx-auto space-y-6">
-          <div className="bg-white p-8 rounded-2xl shadow-sm border border-gray-100 mb-8">
-            <h1 className="text-3xl font-bold text-gray-800">¡Hola, {session.user.name}!</h1>
-            <p className="text-gray-500 mt-2">Bienvenido al Sistema de Gestión de Horarios de Ingeniería de Sistemas.</p>
-          </div>
-
-          <Tabs defaultValue="home" className="w-full">
-            <TabsList className="mb-6">
-              <TabsTrigger value="home">Inicio</TabsTrigger>
-              <TabsTrigger value="perfil">Mi Perfil y Notificaciones</TabsTrigger>
-            </TabsList>
-
-            <TabsContent value="home">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="p-6 bg-indigo-50 rounded-xl border border-indigo-100">
-                  <h3 className="font-bold text-indigo-900">Selección de Horarios</h3>
-                  <p className="text-sm text-indigo-700 mt-1">Accede a la matriz para elegir tus horarios de clase.</p>
-                  <a 
-                    href="/dashboard/horarios/seleccion" 
-                    className="mt-4 inline-block bg-indigo-600 text-white px-4 py-2 rounded-lg text-sm font-medium hover:bg-indigo-700 transition-colors"
-                  >
-                    Ir a Selección
-                  </a>
-                </div>
-                <div className="p-6 bg-gray-50 rounded-xl border border-gray-200">
-                  <h3 className="font-bold text-gray-900">Ayuda y Soporte</h3>
-                  <p className="text-sm text-gray-700 mt-1">¿Tienes dudas con el sistema? Contacta al coordinador.</p>
-                  <button className="mt-4 text-indigo-600 text-sm font-medium hover:underline">
-                    Ver Guía de Usuario
-                  </button>
-                </div>
-              </div>
-            </TabsContent>
-
-            <TabsContent value="perfil">
-              <PreferenciasNotificacion />
-            </TabsContent>
-          </Tabs>
+      <div className="p-2 max-w-4xl mx-auto space-y-2">
+        <div className="bg-white p-4 rounded-md shadow-sm border border-gray-100">
+          <h1 className="text-xl font-black text-gray-900 tracking-tight">¡Hola, {session.user.name}!</h1>
+          <p className="text-[10px] font-bold text-gray-500 mt-0.5">Sistema de Gestión de Horarios - UNT</p>
         </div>
+
+        <Tabs defaultValue="home" className="w-full">
+          <TabsList className="bg-gray-50/50 p-1 rounded-md border border-gray-100 mb-2">
+            <TabsTrigger value="home" className="px-3 py-1 rounded-md text-xs font-bold data-[state=active]:bg-[#003366] data-[state=active]:text-white">Inicio</TabsTrigger>
+            <TabsTrigger value="perfil" className="px-3 py-1 rounded-md text-xs font-bold data-[state=active]:bg-[#003366] data-[state=active]:text-white">Perfil y Notificaciones</TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="home" className="space-y-2">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+              <div className="p-3 bg-indigo-50 rounded-md border border-indigo-100 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-black text-indigo-900">Selección de Horarios</h3>
+                  <p className="text-[10px] text-indigo-700">Accede a la matriz de elección.</p>
+                </div>
+                <a 
+                  href="/dashboard/horarios/seleccion" 
+                  className="bg-indigo-600 text-white px-3 py-1 rounded-md text-[10px] font-black hover:bg-indigo-700 transition-colors"
+                >
+                  IR
+                </a>
+              </div>
+              <div className="p-3 bg-gray-50 rounded-md border border-gray-200 flex items-center justify-between">
+                <div>
+                  <h3 className="text-xs font-black text-gray-900">Soporte</h3>
+                  <p className="text-[10px] text-gray-700">¿Dudas? Contacta al coordinador.</p>
+                </div>
+                <button className="text-[#003366] text-[10px] font-black hover:underline">
+                  GUÍA
+                </button>
+              </div>
+            </div>
+          </TabsContent>
+
+          <TabsContent value="perfil">
+            <PreferenciasNotificacion />
+          </TabsContent>
+        </Tabs>
       </div>
     </ProteccionVentana>
   );

@@ -31,12 +31,24 @@ export async function GET(request: Request) {
       })
     ]);
 
-    // 2. Avance por Categoría (Barras)
-    const avanceCategoria = await prisma.docente.groupBy({
-      by: ['categoria'],
-      _count: { id_docente: true },
-      where: { activo: true }
+    // 2. Carga por Categoría Real (Suma de horas asignadas)
+    const cargaPorCategoria = await prisma.horarioAsignado.findMany({
+      where: { id_periodo: id_periodo },
+      include: {
+        docente: {
+          select: { categoria: true }
+        }
+      }
     });
+
+    const distribucionCarga = cargaPorCategoria.reduce((acc: any, curr) => {
+      const cat = curr.docente?.categoria || 'Sin Categoría';
+      if (!acc[cat]) acc[cat] = { name: cat, value: 0 };
+      acc[cat].value += 1; // Cada registro es una hora/bloque
+      return acc;
+    }, {});
+
+    const avanceCategoria = Object.values(distribucionCarga);
 
     // 3. Ocupación de Ambientes (Top 10)
     const ocupacionAmbientes = await prisma.horarioAsignado.groupBy({
@@ -63,7 +75,7 @@ export async function GET(request: Request) {
     const cargaDocente = await prisma.horarioAsignado.groupBy({
       by: ['id_docente'],
       _count: { id_asignacion: true },
-      where: { id_periodo: parseInt(id_periodo) },
+      where: { id_periodo: id_periodo },
       orderBy: { _count: { id_asignacion: 'desc' } },
       take: 10
     });
@@ -79,6 +91,34 @@ export async function GET(request: Request) {
       asignaciones: cd._count.id_asignacion
     }));
 
+    // 5. Conflictos Detallados
+    const listaConflictos = await prisma.conflictoHorario.findMany({
+      where: { 
+        id_periodo: id_periodo, 
+        resuelto: false 
+      },
+      take: 5,
+      orderBy: { fecha_deteccion: 'desc' }
+    });
+
+    // 6. Actividad Reciente Real (Últimas asignaciones)
+    const actividadReciente = await prisma.horarioAsignado.findMany({
+      where: { id_periodo: id_periodo },
+      take: 5,
+      orderBy: { id_asignacion: 'desc' },
+      include: {
+        docente: { select: { nombres: true, apellidos: true } },
+        ambiente: { select: { nombre: true } }
+      }
+    });
+
+    const actividadesData = actividadReciente.map(act => ({
+      id: act.id_asignacion,
+      mensaje: `${act.docente?.nombres} ${act.docente?.apellidos.split(' ')[0]} asignó horario en ${act.ambiente?.nombre}`,
+      fecha: "Reciente",
+      tipo: 'success'
+    }));
+
     return NextResponse.json({
       kpis: {
         totalDocentes,
@@ -88,7 +128,9 @@ export async function GET(request: Request) {
       },
       avanceCategoria,
       ocupacionAmbientes: ocupacionData,
-      cargaDocente: cargaData
+      cargaDocente: cargaData,
+      listaConflictos,
+      actividadesRecientes: actividadesData
     });
   } catch (error) {
     console.error(error);

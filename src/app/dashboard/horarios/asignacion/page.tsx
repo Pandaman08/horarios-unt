@@ -129,11 +129,14 @@ export default function AsignacionOperadorPage() {
     try {
       const res = await fetch(`/api/docentes?search=${encodeURIComponent(searchTerm)}`);
       const data = await res.json();
-      setSearchResults(data.filter((d: any) => 
+      const filtered = data.filter((d: any) => 
         d.nombres.toLowerCase().includes(searchTerm.toLowerCase()) || 
         d.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.codigo_docente.toLowerCase().includes(searchTerm.toLowerCase())
-      ));
+      );
+      // Asegurar resultados únicos por ID
+      const resultadosUnicos = Array.from(new Map(filtered.map((d: any) => [d.id_docente, d])).values());
+      setSearchResults(resultadosUnicos);
     } catch (error) {
       console.error("Error al buscar docentes:", error);
     } finally {
@@ -157,51 +160,48 @@ export default function AsignacionOperadorPage() {
   const fetchPeriodos = async () => {
     const res = await fetch("/api/periodos");
     const data = await res.json();
-    setPeriodos(data);
-    if (data.length > 0) setIdPeriodo(data[0].id_periodo.toString());
+    // Asegurar periodos únicos por ID
+    const periodosUnicos = Array.from(new Map(data.map((p: any) => [p.id_periodo, p])).values());
+    setPeriodos(periodosUnicos);
+    if (periodosUnicos.length > 0) setIdPeriodo(periodosUnicos[0].id_periodo.toString());
   };
 
   const fetchDocenteCursos = async () => {
     if (!docenteActual || !idPeriodo) return;
     
-    // 1. Obtener cursos que el docente tiene asignados para dictar
-    const resCursos = await fetch(`/api/docentes/${docenteActual.id_docente}/cursos`);
-    const cursosData = await resCursos.json();
-    
-    // 2. Obtener lo que ya tiene asignado en el horario para este periodo
-    const resHorarios = await fetch(`/api/horarios/validar?id_docente=${docenteActual.id_docente}&id_periodo=${idPeriodo}`);
-    const horariosData = await resHorarios.json();
-    
-    const transformado = cursosData.map((dc: any) => {
-      // Contar horas ya asignadas (permanentemente o temporalmente)
-      const horasAsignadas = (horariosData.asignados || [])
-        .filter((h: any) => h.id_curso === dc.id_curso && h.tipo_clase === dc.tipo_clase)
-        .length; // Asumiendo que cada registro es 1 hora (ajustar si es diferente)
-
-      return {
-        id_curso: dc.id_curso,
-        nombre: dc.curso.nombre,
-        codigo: dc.curso.codigo,
-        tipo_clase: dc.tipo_clase,
-        horas_requeridas: dc.tipo_clase === 'teoria' ? dc.curso.horas_teoria : dc.curso.horas_laboratorio,
-        horas_asignadas: horasAsignadas
-      };
-    });
-    setCursosProgreso(transformado);
+    try {
+      // Usamos la API mis-cursos con el parámetro id_docente_manual para que el operador vea el progreso real
+      const res = await fetch(`/api/docentes/mis-cursos?id_periodo=${idPeriodo}&id_docente_manual=${docenteActual.id_docente}`);
+      if (res.ok) {
+        const data = await res.json();
+        // Los cursos ya vienen únicos por curso-tipo desde la API, pero podemos asegurar por si acaso
+        setCursosProgreso(data);
+      } else {
+        console.error("Error al cargar cursos del docente");
+        setCursosProgreso([]);
+      }
+    } catch (error) {
+      console.error("Error en fetchDocenteCursos:", error);
+      setCursosProgreso([]);
+    }
   };
 
   const fetchGrupos = async () => {
     const res = await fetch(`/api/grupos?id_curso=${cursoSeleccionado.id_curso}&id_periodo=${idPeriodo}`);
     const data = await res.json();
-    setGrupos(data);
-    if (data.length > 0) setIdGrupo(data[0].id_grupo.toString());
+    // Asegurar grupos únicos por ID
+    const gruposUnicos = Array.from(new Map(data.map((g: any) => [g.id_grupo, g])).values());
+    setGrupos(gruposUnicos);
+    if (gruposUnicos.length > 0) setIdGrupo(gruposUnicos[0].id_grupo.toString());
   };
 
   const fetchAmbientesValidos = async () => {
     const res = await fetch(`/api/cursos/${cursoSeleccionado.id_curso}/ambientes`);
     const data = await res.json();
-    setAmbientes(data.map((ca: any) => ca.ambiente));
-    if (data.length > 0) setIdAmbiente(data[0].id_ambiente.toString());
+    // Unificar ambientes por ID para evitar duplicados si un curso tiene el mismo ambiente para teoría y lab
+    const ambientesUnicos = Array.from(new Map(data.map((ca: any) => [ca.ambiente.id_ambiente, ca.ambiente])).values());
+    setAmbientes(ambientesUnicos);
+    if (ambientesUnicos.length > 0) setIdAmbiente(ambientesUnicos[0].id_ambiente.toString());
   };
 
   const handleLlamarDocente = (docente: any) => {
@@ -216,6 +216,8 @@ export default function AsignacionOperadorPage() {
     setDocenteActual(null);
     setCursosProgreso([]);
     setCursoSeleccionado(null);
+    setSearchTerm(""); // Limpiar búsqueda al finalizar
+    setSearchResults([]);
     toast.success("Atención finalizada");
   };
 
@@ -313,81 +315,86 @@ export default function AsignacionOperadorPage() {
 
       {/* Contenido Principal */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Sidebar Izquierdo: Cola y Búsqueda */}
-        <aside className="w-80 bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0">
-          <Tabs defaultValue="cola" className="w-full flex flex-col h-full">
-            <div className="p-4 border-b border-gray-100 bg-white/50">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="cola" className="text-[10px] font-black uppercase tracking-widest">Cola</TabsTrigger>
-                <TabsTrigger value="buscar" className="text-[10px] font-black uppercase tracking-widest">Buscar</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="cola" className="flex-1 overflow-hidden flex flex-col mt-0">
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <ColaEspera 
-                  id_periodo={parseInt(idPeriodo)} 
-                  onLlamarDocente={handleLlamarDocente}
-                  docenteActualId={docenteActual?.id_docente}
-                />
+        {/* Sidebar Izquierdo: Cola y Búsqueda - Se oculta en modo atención */}
+        {!docenteActual && (
+          <aside className="w-80 bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0 animate-in slide-in-from-left duration-500">
+            <Tabs defaultValue="cola" className="w-full flex flex-col h-full">
+              <div className="p-4 border-b border-gray-100 bg-white/50">
+                <TabsList className="grid w-full grid-cols-2">
+                  <TabsTrigger value="cola" className="text-[10px] font-black uppercase tracking-widest">Cola</TabsTrigger>
+                  <TabsTrigger value="buscar" className="text-[10px] font-black uppercase tracking-widest">Buscar</TabsTrigger>
+                </TabsList>
               </div>
-            </TabsContent>
 
-            <TabsContent value="buscar" className="flex-1 overflow-hidden flex flex-col mt-0">
-              <div className="p-4 space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input 
-                    placeholder="Nombre o código..." 
-                    className="pl-10 h-10 rounded-xl border-gray-100 bg-white shadow-sm font-bold text-xs focus:ring-2 focus:ring-blue-100"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+              <TabsContent value="cola" className="flex-1 overflow-hidden flex flex-col mt-0">
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                  <ColaEspera 
+                    id_periodo={parseInt(idPeriodo)} 
+                    onLlamarDocente={handleLlamarDocente}
+                    docenteActualId={docenteActual?.id_docente}
                   />
                 </div>
+              </TabsContent>
 
-                <div className="divide-y divide-gray-100 bg-white rounded-2xl border border-gray-100 overflow-hidden max-h-[500px] overflow-y-auto custom-scrollbar">
-                  {isSearching ? (
-                    <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Buscando...</div>
-                  ) : searchResults.length === 0 ? (
-                    <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      {searchTerm ? "No se encontraron resultados" : "Ingrese un término para buscar"}
-                    </div>
-                  ) : (
-                    searchResults.map((docente) => (
-                      <div
-                        key={docente.id_docente}
-                        className={cn(
-                          "w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors",
-                          docenteActual?.id_docente === docente.id_docente && "bg-blue-50"
-                        )}
-                      >
-                        <div className="flex flex-col items-start gap-1">
-                          <span className="text-sm font-black text-gray-900">{docente.nombres} {docente.apellidos}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">{docente.codigo_docente}</span>
-                            <span className="w-1 h-1 rounded-full bg-gray-200" />
-                            <span className="text-[9px] font-black text-[#003366] uppercase tracking-tighter">{docente.modalidad}</span>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleLlamarDocente(docente)}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 h-8 px-2 text-[10px] font-black uppercase tracking-widest"
-                        >
-                          Verificar
-                        </Button>
+              <TabsContent value="buscar" className="flex-1 overflow-hidden flex flex-col mt-0">
+                <div className="p-4 space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                    <Input 
+                      placeholder="Nombre o código..." 
+                      className="pl-10 h-10 rounded-xl border-gray-100 bg-white shadow-sm font-bold text-xs focus:ring-2 focus:ring-blue-100"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="divide-y divide-gray-100 bg-white rounded-2xl border border-gray-100 overflow-hidden max-h-[500px] overflow-y-auto custom-scrollbar">
+                    {isSearching ? (
+                      <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Buscando...</div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
+                        {searchTerm ? "No se encontraron resultados" : "Ingrese un término para buscar"}
                       </div>
-                    ))
-                  )}
+                    ) : (
+                      searchResults.map((docente) => (
+                        <div
+                          key={docente.id_docente}
+                          className={cn(
+                            "w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors",
+                            docenteActual?.id_docente === docente.id_docente && "bg-blue-50"
+                          )}
+                        >
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-sm font-black text-gray-900">{docente.nombres} {docente.apellidos}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">{docente.codigo_docente}</span>
+                              <span className="w-1 h-1 rounded-full bg-gray-200" />
+                              <span className="text-[9px] font-black text-[#003366] uppercase tracking-tighter">{docente.modalidad}</span>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleLlamarDocente(docente)}
+                            className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 h-8 px-2 text-[10px] font-black uppercase tracking-widest"
+                          >
+                            Verificar
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </aside>
+              </TabsContent>
+            </Tabs>
+          </aside>
+        )}
 
         {/* Área de Trabajo Central (Scrollable) */}
-        <main className="flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar min-w-0 relative">
+        <main className={cn(
+          "flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar relative transition-all duration-500",
+          docenteActual ? "p-0" : "min-w-0"
+        )}>
           {!docenteActual ? (
             <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-8">
               {/* Card de Cola de Espera (Solo visible en Mobile para facilitar el flujo) */}
@@ -423,7 +430,7 @@ export default function AsignacionOperadorPage() {
               </div>
             </div>
           ) : (
-            <div className="max-w-[1600px] mx-auto p-6 space-y-6">
+            <div className="max-w-[1800px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in duration-700">
               {/* Card de Docente en Atención */}
               <div className="p-6 bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
                 <div className="flex items-center gap-6">
