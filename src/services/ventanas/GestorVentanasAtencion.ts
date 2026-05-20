@@ -43,10 +43,15 @@ export class GestorVentanasAtencion {
     
     console.log(`Iniciando programación automática: Periodo=${id_periodo}, FechaInicio=${format(fecha_inicio, 'yyyy-MM-dd')}`);
 
-    // 1. Obtener docentes activos
+    // 1. Obtener docentes activos que tienen al menos un curso asignado
     const docentes = await prisma.docente.findMany({
       where: { 
-        activo: true
+        activo: true,
+        docente_cursos: {
+          some: {
+            activo: true
+          }
+        }
       },
       orderBy: [
         { modalidad: 'asc' }, 
@@ -55,42 +60,35 @@ export class GestorVentanasAtencion {
       ]
     });
 
-    // 2. Obtener ventanas existentes para el periodo
-    const ventanasExistentes = await prisma.ventanaAtencion.findMany({
-      where: { id_periodo, activo: true }
-    });
-
     console.log(`Docentes elegibles encontrados: ${docentes.length}`);
 
-    // Agrupar docentes por modalidad y categoría
-    const gruposBrutos = this.agruparDocentesPorJerarquia(docentes);
-    
-    // 3. Filtrar grupos o ajustar cantidad de docentes según lo que ya existe
-    const gruposParaProcesar = gruposBrutos.map(grupo => {
-      const { modalidad, categoria, listaDocentes } = grupo;
-      
-      // Calcular cuántos docentes ya están cubiertos por ventanas existentes para este grupo
-      const docentesCubiertos = ventanasExistentes
-        .filter(v => v.modalidad === modalidad && v.categoria === categoria)
-        .reduce((sum, v) => sum + v.cantidad_docentes, 0);
-      
-      const docentesRestantes = listaDocentes.length - docentesCubiertos;
-      
-      if (docentesRestantes > 0) {
-        return {
-          ...grupo,
-          // Solo nos interesan los N últimos docentes que no estaban cubiertos
-          listaDocentes: listaDocentes.slice(docentesCubiertos)
-        };
-      }
-      return null;
-    }).filter(g => g !== null) as any[];
+    // 2. Identificar docentes que ya tienen una ventana programada
+    // Usamos la cola de notificaciones como referencia de quién ya fue programado
+    const notificacionesExistentes = await prisma.colaNotificaciones.findMany({
+      where: {
+        tipo_notificacion: 'recordatorio_24h'
+      },
+      select: { id_docente: true }
+    });
+    const idsDocentesConVentana = new Set(notificacionesExistentes.map(n => n.id_docente));
 
-    if (gruposParaProcesar.length === 0) {
+    // Filtrar la lista para quedarnos solo con los que NO tienen ventana
+    const docentesSinVentana = docentes.filter(d => !idsDocentesConVentana.has(d.id_docente));
+    console.log(`Docentes sin ventana previa: ${docentesSinVentana.length}`);
+
+    if (docentesSinVentana.length === 0) {
       console.log("No hay nuevos docentes que requieran programación de ventanas.");
       return [];
     }
 
+    // 3. Obtener ventanas existentes para el periodo (solo para saber dónde continuar el horario)
+    const ventanasExistentes = await prisma.ventanaAtencion.findMany({
+      where: { id_periodo, activo: true }
+    });
+
+    // Agrupar solo los docentes que faltan por jerarquía
+    const gruposParaProcesar = this.agruparDocentesPorJerarquia(docentesSinVentana);
+    
     const ventanasCreadas = [];
     
     // Buscar la última ventana para continuar desde ahí si es posible
@@ -120,6 +118,7 @@ export class GestorVentanasAtencion {
 
       const minutosNecesarios = numDocentes * intervalo_por_docente;
       let minutosRestantes = minutosNecesarios;
+      let docentesProcesadosEnGrupo = 0;
 
       while (minutosRestantes > 0) {
         // Calcular cuánto tiempo queda en la jornada de hoy
@@ -136,6 +135,13 @@ export class GestorVentanasAtencion {
 
         const minutosAsignados = Math.min(minutosRestantes, minutosDisponiblesHoy);
         const horaFinVentana = addMinutes(horaActual, minutosAsignados);
+        const cantidadDocentesEnEstaVentana = Math.ceil(minutosAsignados / intervalo_por_docente);
+        
+        // Seleccionar los docentes específicos para esta ventana
+        const docentesParaEstaVentana = listaDocentes.slice(
+          docentesProcesadosEnGrupo, 
+          docentesProcesadosEnGrupo + cantidadDocentesEnEstaVentana
+        );
 
         const ventana = await prisma.ventanaAtencion.create({
           data: {
@@ -147,17 +153,21 @@ export class GestorVentanasAtencion {
             categoria,
             orden_prioridad: prioridadActual++,
             intervalo_minutos: intervalo_por_docente,
-            cantidad_docentes: Math.ceil(minutosAsignados / intervalo_por_docente),
+            cantidad_docentes: cantidadDocentesEnEstaVentana,
             activo: true
           }
         });
 
         ventanasCreadas.push(ventana);
         
-        // Programar notificaciones para esta ventana
-        await ServicioNotificador.programarNotificacionesVentana(ventana.id_ventana);
+        // Programar notificaciones SOLO para los docentes de esta ventana
+        await ServicioNotificador.programarNotificacionesVentana(
+          ventana.id_ventana, 
+          docentesParaEstaVentana.map(d => d.id_docente)
+        );
         
         minutosRestantes -= minutosAsignados;
+        docentesProcesadosEnGrupo += cantidadDocentesEnEstaVentana;
         horaActual = horaFinVentana;
 
         // Si terminamos la jornada, resetear para el día siguiente

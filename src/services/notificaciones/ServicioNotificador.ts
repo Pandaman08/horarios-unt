@@ -121,8 +121,10 @@ export class ServicioNotificador {
 
   /**
    * Programa notificaciones para una ventana de atención
+   * @param id_ventana ID de la ventana
+   * @param ids_docentes_especificos Lista opcional de IDs de docentes para notificar. Si no se provee, notifica a todos los de la categoría.
    */
-  static async programarNotificacionesVentana(id_ventana: number) {
+  static async programarNotificacionesVentana(id_ventana: number, ids_docentes_especificos?: number[]) {
     const ventana = await prisma.ventanaAtencion.findUnique({
       where: { id_ventana },
       include: { periodo: true }
@@ -133,8 +135,9 @@ export class ServicioNotificador {
     // Obtener docentes que pertenecen a esta ventana
     const docentes = await prisma.docente.findMany({
       where: { 
-        modalidad: ventana.modalidad, 
-        categoria: ventana.categoria,
+        id_docente: ids_docentes_especificos ? { in: ids_docentes_especificos } : undefined,
+        modalidad: ids_docentes_especificos ? undefined : ventana.modalidad, 
+        categoria: ids_docentes_especificos ? undefined : ventana.categoria,
         activo: true 
       }
     });
