@@ -5,19 +5,65 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Printer, User, Home } from "lucide-react";
+import { FileText, Download, Printer, User, Home, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
+import { useSession } from "next-auth/react";
 
 export function VisorReportes({ id_periodo }: { id_periodo: number }) {
+  const { data: session } = useSession();
+  const isAdmin = session?.user?.rol === 'administrador_sistema';
+  const isOperador = session?.user?.rol === 'operador_horarios';
+
   const [docentes, setDocentes] = useState<any[]>([]);
   const [ambientes, setAmbientes] = useState<any[]>([]);
   const [selectedDocente, setSelectedDocente] = useState<string>("");
   const [selectedAmbiente, setSelectedAmbiente] = useState<string>("");
+  const [selectedCiclo, setSelectedCiclo] = useState<string>("todos");
   const [generatingDocente, setGeneratingDocente] = useState(false);
   const [generatingAula, setGeneratingAula] = useState(false);
+  const [generatingExcel, setGeneratingExcel] = useState(false);
   const [generatingConsolidado, setGeneratingConsolidado] = useState(false);
   const [generatingConflictos, setGeneratingConflictos] = useState(false);
   const [generatingEstadisticas, setGeneratingEstadisticas] = useState(false);
+
+  const ciclos = [
+    { value: "todos", label: "Todos los Ciclos" },
+    { value: "1", label: "Ciclo I" },
+    { value: "2", label: "Ciclo II" },
+    { value: "3", label: "Ciclo III" },
+    { value: "4", label: "Ciclo IV" },
+    { value: "5", label: "Ciclo V" },
+    { value: "6", label: "Ciclo VI" },
+    { value: "7", label: "Ciclo VII" },
+    { value: "8", label: "Ciclo VIII" },
+    { value: "9", label: "Ciclo IX" },
+    { value: "10", label: "Ciclo X" },
+  ];
+
+  const handleDownloadExcel = async () => {
+    setGeneratingExcel(true);
+    try {
+      const url = `/api/reportes/excel?id_periodo=${id_periodo}&ciclo=${selectedCiclo}`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Error al generar Excel");
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Horarios_${selectedCiclo === 'todos' ? 'Todos' : `Ciclo_${selectedCiclo}`}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Excel generado correctamente");
+    } catch (error) {
+      toast.error("Error al descargar el Excel");
+    } finally {
+      setGeneratingExcel(false);
+    }
+  };
 
   useEffect(() => {
     fetchData();
@@ -87,6 +133,91 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
 
   return (
     <div className="p-4 lg:p-8 space-y-8 animate-in fade-in duration-700">
+      {/* Nueva Sección: Horarios Académicos (Excel) */}
+      <Card className="rounded-[40px] border-none shadow-2xl bg-white overflow-hidden group">
+        <div className="h-3 bg-gradient-to-r from-[#003366] to-blue-500 w-full" />
+        <CardHeader className="p-8">
+          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+            <div className="flex items-center gap-5">
+              <div className="p-4 rounded-[24px] bg-blue-50 text-[#003366] shadow-inner group-hover:rotate-3 transition-transform duration-500">
+                <FileText className="h-8 w-8" />
+              </div>
+              <div>
+                <CardTitle className="text-3xl font-black text-gray-900 tracking-tight">Horarios Académicos</CardTitle>
+                <CardDescription className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">Generación de Reportes en Excel</CardDescription>
+              </div>
+            </div>
+            
+            <div className="flex flex-wrap items-center gap-4 bg-gray-50 p-4 rounded-[28px] border border-gray-100 shadow-sm">
+              <div className="space-y-1.5 px-2">
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Seleccionar Ciclo</Label>
+                <Select value={selectedCiclo} onValueChange={setSelectedCiclo}>
+                  <SelectTrigger className="w-[200px] h-11 rounded-xl border-2 border-gray-200 bg-white px-4 font-black text-xs focus:ring-4 focus:ring-blue-100 transition-all">
+                    <SelectValue placeholder="Todos los ciclos" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
+                    {ciclos.map(c => (
+                      <SelectItem key={c.value} value={c.value} className="font-bold py-2.5">{c.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </div>
+        </CardHeader>
+        <CardContent className="p-8 pt-2">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+            <Button
+              className="h-20 rounded-[24px] bg-white border-2 border-blue-100 hover:border-blue-600 text-blue-600 hover:bg-blue-50 font-black text-sm uppercase tracking-widest transition-all group/btn shadow-sm hover:shadow-xl active:scale-95"
+              onClick={() => handleDownloadExcel()}
+              disabled={generatingExcel}
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-blue-50 text-blue-600 group-hover/btn:bg-blue-600 group-hover/btn:text-white transition-colors">
+                  <Download className="h-5 w-5" />
+                </div>
+                <span>Descargar Excel</span>
+              </div>
+            </Button>
+
+            <Button
+              className={cn(
+                "h-20 rounded-[24px] font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 group/btn",
+                isAdmin 
+                  ? "bg-[#003366] hover:bg-[#002244] text-white shadow-blue-900/20 hover:shadow-blue-900/40" 
+                  : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
+              )}
+              onClick={() => isAdmin && handleDownloadExcel()}
+              disabled={generatingExcel || !isAdmin}
+              title={!isAdmin ? "Solo el administrador puede regenerar horarios" : ""}
+            >
+              <div className="flex items-center gap-4">
+                <div className={cn(
+                  "p-3 rounded-xl transition-colors",
+                  isAdmin ? "bg-white/10 text-white group-hover/btn:bg-white group-hover/btn:text-[#003366]" : "bg-gray-200 text-gray-400"
+                )}>
+                  <RefreshCw className={cn("h-5 w-5", generatingExcel && "animate-spin")} />
+                </div>
+                <span>{generatingExcel ? "Generando..." : "Generar Excel"}</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="h-20 rounded-[24px] border-2 border-gray-100 hover:border-indigo-600 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 font-black text-sm uppercase tracking-widest transition-all active:scale-95 group/btn"
+              onClick={() => toast.info("Vista previa no disponible por el momento")}
+            >
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-gray-50 text-gray-400 group-hover/btn:bg-indigo-600 group-hover/btn:text-white transition-colors">
+                  <Printer className="h-5 w-5" />
+                </div>
+                <span>Vista Previa</span>
+              </div>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
       <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
         {/* Reporte por Docente */}
         <Card className="rounded-[32px] border-none shadow-xl bg-white overflow-hidden group">

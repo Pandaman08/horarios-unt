@@ -18,6 +18,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { 
@@ -50,7 +57,12 @@ interface Curso {
   horas_laboratorio: number;
   horas_practica: number;
   creditos: number;
-  ciclo: number;
+  id_ciclo?: number;
+  tipo_curso: string;
+  ciclo_rel?: {
+    id_ciclo: number;
+    nombre: string;
+  };
 }
 
 export function CursoList() {
@@ -65,6 +77,7 @@ export function CursoList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [ciclos, setCiclos] = useState<any[]>([]);
 
   const filteredCursos = cursos.filter(c => 
     `${c.nombre} ${c.codigo}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -77,24 +90,67 @@ export function CursoList() {
     horas_laboratorio: "0",
     horas_practica: "0",
     creditos: "0",
-    ciclo: "",
+    id_ciclo: "",
+    tipo_curso: "linea_carrera",
+    plan_estudios: "",
+    prerequisitos: "",
   });
 
   useEffect(() => {
     fetchCursos();
+    fetchCiclos();
   }, []);
+
+  const fetchCiclos = async () => {
+    try {
+      const res = await fetch("/api/ciclos");
+      const contentType = res.headers.get("content-type");
+      
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar ciclos");
+      }
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/ciclos:", text.substring(0, 200));
+        throw new Error("La respuesta de ciclos no es un JSON válido (posible 404 o redirección)");
+      }
+
+      const data = await res.json();
+      setCiclos(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Error al cargar ciclos:", error);
+      setCiclos([]);
+    }
+  };
 
   const fetchCursos = async () => {
     try {
       const res = await fetch("/api/cursos");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setCursos(data);
-      } else {
-        setCursos([]);
+      const contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar cursos");
       }
-    } catch (error) {
-      toast.error("Error al cargar cursos");
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/cursos:", text.substring(0, 200));
+        throw new Error("La respuesta de cursos no es un JSON válido (posible 404 o redirección)");
+      }
+
+      const data = await res.json();
+      setCursos(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Error en fetchCursos:", error);
+      toast.error(error.message || "Error al cargar cursos");
+      setCursos([]);
     } finally {
       setLoading(false);
     }
@@ -148,7 +204,7 @@ export function CursoList() {
     }
   };
 
-  const handleEdit = (curso: Curso) => {
+  const handleEdit = (curso: any) => {
     setEditingCurso(curso);
     setFormData({
       codigo: curso.codigo,
@@ -157,7 +213,10 @@ export function CursoList() {
       horas_laboratorio: curso.horas_laboratorio.toString(),
       horas_practica: curso.horas_practica.toString(),
       creditos: curso.creditos.toString(),
-      ciclo: curso.ciclo?.toString() || "",
+      id_ciclo: curso.id_ciclo?.toString() || "",
+      tipo_curso: curso.tipo_curso || "linea_carrera",
+      plan_estudios: curso.plan_estudios || "",
+      prerequisitos: curso.prerequisitos || "",
     });
     setIsDialogOpen(true);
   };
@@ -170,7 +229,10 @@ export function CursoList() {
       horas_laboratorio: "0",
       horas_practica: "0",
       creditos: "0",
-      ciclo: "",
+      id_ciclo: "",
+      tipo_curso: "linea_carrera",
+      plan_estudios: "",
+      prerequisitos: "",
     });
   };
 
@@ -304,17 +366,37 @@ export function CursoList() {
                   </div>
                   <div className="space-y-2">
                     <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Ciclo</Label>
-                    <Input 
-                      type="number" 
-                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
-                      value={formData.ciclo} 
-                      onChange={(e) => {
-                        const val = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
-                        setFormData({ ...formData, ciclo: val.toString() });
-                      }} 
-                      min={1}
-                      max={10}
-                    />
+                    <Select 
+                      value={formData.id_ciclo} 
+                      onValueChange={(val) => setFormData({ ...formData, id_ciclo: val })}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]">
+                        <SelectValue placeholder="Seleccionar ciclo" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                        {ciclos.map((c) => (
+                          <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="font-bold">
+                            {c.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Tipo de Curso</Label>
+                    <Select 
+                      value={formData.tipo_curso} 
+                      onValueChange={(val) => setFormData({ ...formData, tipo_curso: val })}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]">
+                        <SelectValue placeholder="Seleccionar tipo" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                        <SelectItem value="general" className="font-bold">General</SelectItem>
+                        <SelectItem value="linea_carrera" className="font-bold">Línea de Carrera</SelectItem>
+                        <SelectItem value="electivo" className="font-bold">Electivo</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
@@ -339,9 +421,9 @@ export function CursoList() {
                 <TableHead className="w-[80px] text-center">T</TableHead>
                 <TableHead className="w-[80px] text-center">L</TableHead>
                 <TableHead className="w-[80px] text-center">P</TableHead>
-                <TableHead className="w-[100px] text-center">Créd.</TableHead>
-                <TableHead className="w-[100px] text-center">Ciclo</TableHead>
-                <TableHead className="w-[150px] text-right">Acciones</TableHead>
+                <TableHead className="font-black text-gray-400 uppercase tracking-widest text-[11px] text-center">Créd.</TableHead>
+                <TableHead className="font-black text-gray-400 uppercase tracking-widest text-[11px]">Ciclo</TableHead>
+                <TableHead className="font-black text-gray-400 uppercase tracking-widest text-[11px] text-right pr-8">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -365,8 +447,12 @@ export function CursoList() {
                     <TableCell className="text-center">
                       <span className="px-3 py-1 rounded-lg bg-blue-50 text-[#003366] text-[12px] font-black">{curso.creditos}</span>
                     </TableCell>
-                    <TableCell className="text-center text-[14px] font-bold text-gray-600">{curso.ciclo}</TableCell>
                     <TableCell>
+                      <span className="text-[14px] font-bold text-gray-600">
+                        {curso.ciclo_rel?.nombre || "No asignado"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="text-right pr-4">
                       <div className="flex items-center justify-end gap-2">
                         <Button variant="ghost" size="icon" onClick={() => { setSelectedCurso(curso); setIsAmbientesOpen(true); }} title="Asignar Ambientes" className="h-9 w-9 hover:bg-emerald-50 hover:text-emerald-600"><MapPin className="h-5 w-5" /></Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar" className="h-9 w-9 hover:bg-blue-50 hover:text-[#003366]"><Edit className="h-5 w-5" /></Button>

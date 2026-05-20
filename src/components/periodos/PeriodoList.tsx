@@ -95,14 +95,30 @@ export function PeriodoList() {
   const fetchPeriodos = async () => {
     try {
       const res = await fetch("/api/periodos");
+      const contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar periodos");
+      }
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/periodos:", text.substring(0, 200));
+        throw new Error("La respuesta de periodos no es un JSON válido");
+      }
+
       const data = await res.json();
       if (Array.isArray(data)) {
         setPeriodos(data);
       } else {
         setPeriodos([]);
       }
-    } catch (error) {
-      toast.error("Error al cargar periodos");
+    } catch (error: any) {
+      console.error("Error en fetchPeriodos:", error);
+      toast.error(error.message || "Error al cargar periodos");
     } finally {
       setLoading(false);
     }
@@ -292,6 +308,23 @@ export function PeriodoList() {
                   <div className="space-y-2">
                     <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Fecha Fin</Label>
                     <Input type="date" className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.fecha_fin} onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })} required />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Estado</Label>
+                    <Select 
+                      value={formData.estado} 
+                      onValueChange={(val) => setFormData({ ...formData, estado: val })}
+                    >
+                      <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]">
+                        <SelectValue placeholder="Seleccionar estado" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                        <SelectItem value="planificacion" className="font-bold">Planificación</SelectItem>
+                        <SelectItem value="asignacion_horarios" className="font-bold">Asignación</SelectItem>
+                        <SelectItem value="en_curso" className="font-bold">En Curso</SelectItem>
+                        <SelectItem value="finalizado" className="font-bold">Finalizado</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
                 <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">

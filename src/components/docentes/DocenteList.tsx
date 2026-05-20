@@ -62,14 +62,30 @@ export function DocenteList() {
   const fetchDocentes = async () => {
     try {
       const res = await fetch("/api/docentes");
+      const contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar docentes");
+      }
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/docentes:", text.substring(0, 200));
+        throw new Error("La respuesta de docentes no es un JSON válido");
+      }
+
       const data = await res.json();
       if (Array.isArray(data)) {
         setDocentes(data);
       } else {
         setDocentes([]);
       }
-    } catch (error) {
-      toast.error("Error al cargar docentes");
+    } catch (error: any) {
+      console.error("Error en fetchDocentes:", error);
+      toast.error(error.message || "Error al cargar docentes");
     } finally {
       setLoading(false);
     }

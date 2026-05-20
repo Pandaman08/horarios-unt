@@ -94,10 +94,26 @@ export function AmbienteList() {
   const fetchAmbientes = async () => {
     try {
       const res = await fetch("/api/ambientes");
+      const contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar ambientes");
+      }
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/ambientes:", text.substring(0, 200));
+        throw new Error("La respuesta de ambientes no es un JSON válido");
+      }
+
       const data = await res.json();
-      setAmbientes(data);
-    } catch (error) {
-      toast.error("Error al cargar ambientes");
+      setAmbientes(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Error en fetchAmbientes:", error);
+      toast.error(error.message || "Error al cargar ambientes");
     } finally {
       setLoading(false);
     }

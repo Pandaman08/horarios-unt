@@ -9,6 +9,14 @@ import {
 } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import {
   Table,
   TableBody,
@@ -27,15 +35,16 @@ interface AsignarCursosDialogProps {
   onClose: () => void;
 }
 
+interface DocenteCurso {
+  id_curso: number;
+  tipo_clase: string;
+}
+
 interface Curso {
   id_curso: number;
   codigo: string;
   nombre: string;
-}
-
-interface DocenteCurso {
-  id_curso: number;
-  tipo_clase: string;
+  tipo_curso: string;
 }
 
 export function AsignarCursosDialog({
@@ -48,6 +57,11 @@ export function AsignarCursosDialog({
   const [asignaciones, setAsignaciones] = useState<DocenteCurso[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [tipoFiltro, setTipoFiltro] = useState<string>("todos");
+
+  const cursosFiltrados = cursos.filter(c => 
+    tipoFiltro === "todos" || c.tipo_curso === tipoFiltro
+  );
 
   useEffect(() => {
     if (isOpen) {
@@ -63,16 +77,33 @@ export function AsignarCursosDialog({
         fetch(`/api/docentes/${docenteId}/cursos`),
       ]);
 
-      const cursosData = await cursosRes.json();
-      const asignacionesData = await asignacionesRes.json();
+      const processRes = async (res: Response, name: string) => {
+        const contentType = res.headers.get("content-type");
+        if (!res.ok) {
+          const errorData = contentType?.includes("application/json") ? await res.json() : {};
+          throw new Error(errorData.error || `Error al cargar ${name}`);
+        }
+        if (!contentType?.includes("application/json")) {
+          const text = await res.text();
+          console.error(`Respuesta no es JSON de ${res.url}:`, text.substring(0, 200));
+          throw new Error(`La respuesta de ${name} no es un JSON válido`);
+        }
+        return res.json();
+      };
 
-      setCursos(cursosData);
-      setAsignaciones(asignacionesData.map((a: any) => ({
+      const [cursosData, asignacionesData] = await Promise.all([
+        processRes(cursosRes, "cursos"),
+        processRes(asignacionesRes, "asignaciones"),
+      ]);
+
+      setCursos(Array.isArray(cursosData) ? cursosData : []);
+      setAsignaciones(Array.isArray(asignacionesData) ? asignacionesData.map((a: any) => ({
         id_curso: a.id_curso,
-        tipo_clase: a.tipo_clase.toLowerCase(), // Normalizar a minúsculas
-      })));
-    } catch (error) {
-      toast.error("Error al cargar datos de asignación");
+        tipo_clase: a.tipo_clase.toLowerCase(),
+      })) : []);
+    } catch (error: any) {
+      console.error("Error en fetchData:", error);
+      toast.error(error.message || "Error al cargar datos de asignación");
     } finally {
       setLoading(false);
     }
@@ -133,19 +164,36 @@ export function AsignarCursosDialog({
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : (
-          <div className="space-y-4">
-            <div className="border rounded-md">
+          <div className="space-y-6">
+            <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+              <div className="space-y-1.5 flex-1 max-w-[300px]">
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Filtrar por Tipo</Label>
+                <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
+                  <SelectTrigger className="h-11 rounded-xl border-2 border-gray-200 bg-white font-bold">
+                    <SelectValue placeholder="Todos los tipos" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                    <SelectItem value="todos" className="font-bold">Todos los tipos</SelectItem>
+                    <SelectItem value="general" className="font-bold">General</SelectItem>
+                    <SelectItem value="linea_carrera" className="font-bold">Línea de Carrera</SelectItem>
+                    <SelectItem value="electivo" className="font-bold">Electivo</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            <div className="border rounded-2xl overflow-hidden shadow-sm">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-gray-50">
                   <TableRow>
-                    <TableHead>Curso</TableHead>
-                    <TableHead className="text-center">Teoría</TableHead>
-                    <TableHead className="text-center">Laboratorio</TableHead>
-                    <TableHead className="text-center">Práctica</TableHead>
+                    <TableHead className="font-black uppercase tracking-widest text-[10px]">Curso</TableHead>
+                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Teoría</TableHead>
+                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Laboratorio</TableHead>
+                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Práctica</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cursos.map((curso) => (
+                  {cursosFiltrados.map((curso) => (
                     <TableRow key={curso.id_curso}>
                       <TableCell>
                         <div className="font-medium">{curso.nombre}</div>

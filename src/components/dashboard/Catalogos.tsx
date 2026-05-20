@@ -3,6 +3,7 @@
 import { useState } from "react";
 import { DocenteList } from "@/components/docentes/DocenteList";
 import { CursoList } from "@/components/cursos/CursoList";
+import { CicloList } from "@/components/ciclos/CicloList";
 import { AmbienteList } from "@/components/ambientes/AmbienteList";
 import { PeriodoList } from "@/components/periodos/PeriodoList";
 import { GrupoList } from "@/components/grupos/GrupoList";
@@ -57,6 +58,9 @@ export default function CatalogosPage() {
               <TabsTrigger value="cursos" className="flex items-center gap-2 px-6 py-2.5 rounded-lg data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold text-[14px]">
                 <BookOpen className="h-5 w-5" /> Cursos
               </TabsTrigger>
+              <TabsTrigger value="ciclos" className="flex items-center gap-2 px-6 py-2.5 rounded-lg data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold text-[14px]">
+                <Layers className="h-5 w-5" /> Ciclos
+              </TabsTrigger>
               <TabsTrigger value="ambientes" className="flex items-center gap-2 px-6 py-2.5 rounded-lg data-[state=active]:bg-[#003366] data-[state=active]:text-white data-[state=active]:shadow-sm transition-all font-bold text-[14px]">
                 <MapPin className="h-5 w-5" /> Ambientes
               </TabsTrigger>
@@ -83,6 +87,9 @@ export default function CatalogosPage() {
             </TabsContent>
             <TabsContent value="cursos" className="mt-0 focus-visible:outline-none outline-none">
               <CursoList />
+            </TabsContent>
+            <TabsContent value="ciclos" className="mt-0 focus-visible:outline-none outline-none">
+              <CicloList />
             </TabsContent>
             <TabsContent value="ambientes" className="mt-0 focus-visible:outline-none outline-none">
               <AmbienteList />

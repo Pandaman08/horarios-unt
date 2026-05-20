@@ -103,16 +103,33 @@ export function GrupoList() {
         fetch("/api/cursos"),
         fetch("/api/periodos"),
       ]);
+
+      const processRes = async (res: Response, name: string) => {
+        const contentType = res.headers.get("content-type");
+        if (!res.ok) {
+          const errorData = contentType?.includes("application/json") ? await res.json() : {};
+          throw new Error(errorData.error || `Error al cargar ${name}`);
+        }
+        if (!contentType?.includes("application/json")) {
+          const text = await res.text();
+          console.error(`Respuesta no es JSON de /api/${name}:`, text.substring(0, 200));
+          throw new Error(`La respuesta de ${name} no es un JSON válido`);
+        }
+        return res.json();
+      };
+
       const [gruposData, cursosData, periodosData] = await Promise.all([
-        gruposRes.json(),
-        cursosRes.json(),
-        periodosRes.json(),
+        processRes(gruposRes, "grupos"),
+        processRes(cursosRes, "cursos"),
+        processRes(periodosRes, "periodos"),
       ]);
+
       setGrupos(Array.isArray(gruposData) ? gruposData : []);
       setCursos(Array.isArray(cursosData) ? cursosData : []);
       setPeriodos(Array.isArray(periodosData) ? periodosData : []);
-    } catch (error) {
-      toast.error("Error al cargar datos");
+    } catch (error: any) {
+      console.error("Error en fetchData:", error);
+      toast.error(error.message || "Error al cargar datos");
     } finally {
       setLoading(false);
     }
