@@ -57,11 +57,11 @@ model Curso {
   horas_laboratorio      Int                        @default(0)
   horas_practica         Int                        @default(0)
   creditos               Int
+  id_ciclo               Int?
   plan_estudios          String?
   prerequisitos          String?
+  tipo_curso             String                     @default("linea_carrera") // general, linea_carrera, electivo
   activo                 Boolean                    @default(true)
-  id_ciclo               Int?
-  tipo_curso             String                     @default("linea_carrera")
   ciclo_rel              Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
   curso_ambientes        CursoAmbiente[]
   docente_cursos         DocenteCurso[]
@@ -71,12 +71,12 @@ model Curso {
 }
 
 model Ciclo {
-  id_ciclo Int     @id @default(autoincrement())
-  numero   Int     @unique
-  nombre   String
-  activo   Boolean @default(true)
-  cursos   Curso[]
-  grupos   Grupo[]
+  id_ciclo            Int               @id @default(autoincrement())
+  numero              Int               @unique
+  nombre              String            // I Ciclo, II Ciclo, etc.
+  activo              Boolean           @default(true)
+  cursos              Curso[]
+  grupos              Grupo[]
 }
 
 model DocenteCurso {
@@ -93,23 +93,23 @@ model DocenteCurso {
   @@unique([id_docente, id_curso, tipo_clase])
 }
 
-model Grupo {
-  id_grupo               Int                        @id @default(autoincrement())
-  id_curso               Int
-  id_periodo             Int
-  codigo_grupo           String
-  capacidad_maxima       Int                        @default(40)
-  cantidad_matriculados  Int                        @default(0)
-  activo                 Boolean                    @default(true)
-  id_ciclo               Int?
-  ciclo                  Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
-  curso                  Curso                      @relation(fields: [id_curso], references: [id_curso])
-  periodo                PeriodoAcademico           @relation(fields: [id_periodo], references: [id_periodo])
-  horarios_asignados     HorarioAsignado[]
-  selecciones_temporales SeleccionTemporalHorario[]
-
-  @@unique([id_curso, codigo_grupo, id_periodo])
-}
+model Grupo { 
+   id_grupo               Int                        @id @default(autoincrement()) 
+   id_curso               Int 
+   id_periodo             Int 
+   id_ciclo               Int?
+   codigo_grupo           String 
+   capacidad_maxima       Int                        @default(40) 
+   cantidad_matriculados  Int                        @default(0) 
+   activo                 Boolean                    @default(true) 
+   curso                  Curso                      @relation(fields: [id_curso], references: [id_curso]) 
+   periodo                PeriodoAcademico           @relation(fields: [id_periodo], references: [id_periodo]) 
+   ciclo                  Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
+   horarios_asignados     HorarioAsignado[] 
+   selecciones_temporales SeleccionTemporalHorario[] 
+ 
+   @@unique([id_curso, codigo_grupo, id_periodo]) 
+ }
 
 model Ambiente {
   id_ambiente            Int                        @id @default(autoincrement())
