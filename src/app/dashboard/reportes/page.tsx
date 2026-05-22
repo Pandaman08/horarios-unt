@@ -33,42 +33,44 @@ export default function ReportesPage() {
   };
 
   return (
-    <div className="space-y-6 lg:space-y-8 pb-10">
-      <div className="bg-white p-6 lg:p-8 rounded-2xl shadow-sm border border-gray-100 flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-black text-gray-900 flex items-center gap-3">
-            <div className="p-2 bg-indigo-50 text-indigo-600 rounded-xl">
-              <FileText className="h-6 w-6" />
-            </div>
-            Reportes Oficiales
-          </h1>
-          <p className="text-gray-500 mt-2 font-medium">
-            Generación y visualización de reportes académicos por periodo.
-          </p>
+    <div className="p-4 md:p-6 max-w-[1800px] mx-auto space-y-6 pb-8 animate-in fade-in duration-500">
+      {/* Header Institucional de Reportes Estilo Moderno */}
+      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+        <div className="flex items-center gap-6">
+          <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
+            <FileText className="h-7 w-7 text-[#1a237e]" />
+          </div>
+          <div>
+            <span className="text-[10px] bg-indigo-50 text-[#1a237e] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Centro de Documentación</span>
+            <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight mt-2">Reportes Oficiales</h1>
+            <p className="text-slate-500 text-xs mt-1">Generación y visualización de reportes académicos por periodo</p>
+          </div>
         </div>
 
-        <div className="bg-gray-50 p-4 rounded-xl border border-gray-200 w-full md:min-w-[250px] md:w-auto">
-          <p className="text-xs font-black text-gray-500 uppercase tracking-widest mb-2">Periodo Académico</p>
-          <div className="relative">
-            <select 
-              value={selectedPeriodo}
-              onChange={(e) => setSelectedPeriodo(e.target.value)}
-              className="w-full bg-white border-2 border-gray-200 rounded-xl px-4 py-2.5 text-gray-900 font-bold outline-none focus:border-indigo-500 transition-all appearance-none cursor-pointer"
-            >
-              {periodos.map(p => (
-                <option key={p.id_periodo} value={p.id_periodo}>{p.nombre}</option>
-              ))}
-            </select>
-            <div className="absolute right-3 top-1/2 -translate-y-1/2 pointer-events-none text-gray-400">
-              <ChevronDown className="h-4 w-4" />
+        <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200 w-full md:w-auto">
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest ml-1">Periodo Académico</span>
+            <div className="relative min-w-[200px] mt-1">
+              <select 
+                value={selectedPeriodo}
+                onChange={(e) => setSelectedPeriodo(e.target.value)}
+                className="w-full bg-white border border-slate-200 rounded-xl px-4 py-2 text-xs text-slate-700 font-bold outline-none focus:ring-2 focus:ring-[#1a237e] transition-all appearance-none cursor-pointer"
+              >
+                {periodos.map(p => (
+                  <option key={p.id_periodo} value={p.id_periodo}>{p.nombre}</option>
+                ))}
+              </select>
+              <ChevronDown className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 pointer-events-none" />
             </div>
           </div>
         </div>
       </div>
 
-      {selectedPeriodo && (
-        <VisorReportes id_periodo={parseInt(selectedPeriodo)} />
-      )}
+      <div className="animate-in fade-in duration-700 slide-in-from-bottom-4">
+        {selectedPeriodo && (
+          <VisorReportes id_periodo={parseInt(selectedPeriodo)} />
+        )}
+      </div>
       <Toaster position="top-right" richColors />
     </div>
   );

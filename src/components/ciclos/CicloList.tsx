@@ -28,6 +28,7 @@ import {
   Layers,
   RefreshCw
 } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -159,24 +160,24 @@ export function CicloList() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center">
-            <Layers className="h-6 w-6 text-[#003366]" />
+    <div className="space-y-3 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 shadow-sm">
+            <Layers className="h-4 w-4 text-[#1a237e]" />
           </div>
           <div>
-            <h2 className="text-[20px] font-black text-gray-900 tracking-tight">Ciclos</h2>
-            <p className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Gestión de ciclos académicos</p>
+            <h2 className="text-base font-bold text-slate-800 tracking-tight leading-none">Ciclos Académicos</h2>
+            <p className="text-slate-500 text-[10px] mt-1">Gestión de niveles de progresión académica</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:min-w-[280px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input 
               placeholder="Buscar ciclo..." 
-              className="pl-12 h-11 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-[14px] focus:ring-2 focus:ring-blue-100 transition-all"
+              className="pl-9 h-9 rounded-lg border-slate-200 bg-slate-50/50 font-semibold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -184,30 +185,38 @@ export function CicloList() {
           <Button 
             variant="outline" 
             onClick={fetchCiclos} 
-            className="h-11 rounded-xl border-gray-200 hover:bg-gray-50"
+            className="h-9 rounded-lg border-slate-200 hover:bg-slate-50 transition-all px-3"
             title="Refrescar"
           >
-            <RefreshCw className={cn("h-5 w-5", loading && "animate-spin")} />
+            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold text-[14px] shadow-sm">
-                <Plus className="mr-2 h-5 w-5" /> Nuevo Ciclo
+              <Button className="h-9 bg-[#1a237e] hover:bg-[#121858] text-white rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo
               </Button>
             </DialogTrigger>
-            <DialogContent className="rounded-2xl p-6 border-none shadow-2xl">
+            <DialogContent className="sm:max-w-md rounded-xl p-6 border-none shadow-2xl">
               <DialogHeader className="mb-6">
-                <DialogTitle className="text-[24px] font-black text-gray-900 tracking-tight">
-                  {editingCiclo ? "Actualizar Ciclo" : "Registrar Ciclo"}
-                </DialogTitle>
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100">
+                    <Layers className="h-5 w-5 text-[#1a237e]" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-bold text-slate-800 tracking-tight">
+                      {editingCiclo ? "Actualizar Ciclo" : "Registrar Ciclo"}
+                    </DialogTitle>
+                    <p className="text-slate-500 text-xs mt-1 font-medium">Configure los datos básicos del ciclo</p>
+                  </div>
+                </div>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Número de Ciclo</Label>
+                <div className="grid grid-cols-1 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Número</Label>
                     <Input 
                       type="number"
-                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
+                      className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
                       value={formData.numero} 
                       onChange={(e) => setFormData({ ...formData, numero: e.target.value })} 
                       required 
@@ -215,20 +224,20 @@ export function CicloList() {
                       max={12}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Nombre Descriptivo</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nombre</Label>
                     <Input 
-                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
+                      className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
                       value={formData.nombre} 
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
                       required 
-                      placeholder="Ej: I Ciclo, II Ciclo..."
+                      placeholder="Ej: I Ciclo"
                     />
                   </div>
                 </div>
-                <div className="flex justify-end gap-4 pt-6">
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold">Cancelar</Button>
-                  <Button type="submit" className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-10 font-black">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-slate-400 hover:bg-slate-50 px-6 text-[11px]">Cancelar</Button>
+                  <Button type="submit" className="h-9 bg-[#1a237e] hover:bg-[#121858] text-white rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
                     {editingCiclo ? "Actualizar" : "Crear"}
                   </Button>
                 </div>
@@ -238,58 +247,64 @@ export function CicloList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <Table>
-          <TableHeader className="bg-gray-50/50">
-            <TableRow className="border-none hover:bg-transparent">
-              <TableHead className="w-[100px] font-black text-gray-400 uppercase tracking-widest text-[11px] pl-6">Nº</TableHead>
-              <TableHead className="font-black text-gray-400 uppercase tracking-widest text-[11px]">Nombre del Ciclo</TableHead>
-              <TableHead className="w-[120px] font-black text-gray-400 uppercase tracking-widest text-[11px] text-center">Estado</TableHead>
-              <TableHead className="w-[150px] font-black text-gray-400 uppercase tracking-widest text-[11px] text-right pr-6">Acciones</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow><TableCell colSpan={4} className="py-12 text-center text-[16px] font-bold text-gray-400">Cargando ciclos...</TableCell></TableRow>
-            ) : filteredCiclos.length === 0 ? (
-              <TableRow><TableCell colSpan={4} className="py-12 text-center text-[16px] font-bold text-gray-400">No se encontraron ciclos</TableCell></TableRow>
-            ) : (
-              filteredCiclos.map((ciclo) => (
-                <TableRow key={ciclo.id_ciclo} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                  <TableCell className="font-black text-[16px] text-[#003366] pl-6">{ciclo.numero}</TableCell>
-                  <TableCell className="font-bold text-gray-900 text-[16px]">{ciclo.nombre}</TableCell>
-                  <TableCell className="text-center">
-                    <span className={cn(
-                      "px-3 py-1 rounded-full text-[11px] font-black uppercase tracking-wider",
-                      ciclo.activo ? "bg-emerald-50 text-emerald-600" : "bg-red-50 text-red-600"
-                    )}>
-                      {ciclo.activo ? "Activo" : "Inactivo"}
-                    </span>
-                  </TableCell>
-                  <TableCell className="text-right pr-6">
-                    <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button variant="ghost" size="icon" onClick={() => handleEdit(ciclo)} className="h-9 w-9 hover:bg-blue-50 hover:text-[#003366]"><Edit className="h-5 w-5" /></Button>
-                      <Button variant="ghost" size="icon" onClick={() => { setDeletingId(ciclo.id_ciclo); setIsDeleteDialogOpen(true); }} className="h-9 w-9 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-5 w-5" /></Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 w-[80px]">Nº</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">Nombre</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-center">Estado</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody className="divide-y divide-slate-50">
+              {loading ? (
+                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cargando...</TableCell></TableRow>
+              ) : filteredCiclos.length === 0 ? (
+                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">No se encontraron ciclos</TableCell></TableRow>
+              ) : (
+                filteredCiclos.map((ciclo) => (
+                  <TableRow key={ciclo.id_ciclo} className="group hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="px-4 py-2">
+                      <span className="font-mono text-[10px] font-bold text-[#1a237e]">{ciclo.numero}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="font-semibold text-slate-800 text-[11px]">{ciclo.nombre}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2 text-center">
+                      <span className={cn(
+                        "px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-widest border",
+                        ciclo.activo ? "bg-emerald-50 text-emerald-700 border-emerald-100" : "bg-rose-50 text-rose-700 border-rose-100"
+                      )}>
+                        {ciclo.activo ? "Activo" : "Inactivo"}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(ciclo)} className="h-7 w-7 rounded-lg hover:bg-indigo-50 hover:text-[#1a237e] transition-all opacity-0 group-hover:opacity-100"><Edit className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(ciclo.id_ciclo); setIsDeleteDialogOpen(true); }} className="h-7 w-7 rounded-lg hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-6">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[400px]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-gray-900">¿Eliminar ciclo?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-gray-500">
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">¿Eliminar ciclo?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 mt-2">
               Esta acción marcará el ciclo como inactivo. Solo se puede eliminar definitivamente si no tiene cursos asociados.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="h-10 rounded-xl font-bold">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black px-6">Eliminar</AlertDialogAction>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-10 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-8">Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

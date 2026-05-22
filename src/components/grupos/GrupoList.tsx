@@ -204,24 +204,25 @@ export function GrupoList() {
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center">
-            <Layers className="h-6 w-6 text-[#003366]" />
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-6">
+          <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
+            <Layers className="h-7 w-7 text-[#1a237e]" />
           </div>
           <div>
-            <h2 className="text-[20px] font-black text-gray-900 tracking-tight">Grupos</h2>
-            <p className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Gestión de secciones académicas</p>
+            <span className="text-[10px] bg-indigo-50 text-[#1a237e] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Organización</span>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight mt-2">Grupos Académicos</h2>
+            <p className="text-slate-500 text-xs mt-1">Gestión de secciones y capacidades por curso</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-          <div className="relative flex-1 sm:min-w-[280px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+          <div className="relative flex-1 sm:min-w-[320px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
-              placeholder="Buscar grupo..." 
-              className="pl-12 h-11 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-[14px] focus:ring-2 focus:ring-blue-100 transition-all"
+              placeholder="Buscar por curso, grupo o periodo..." 
+              className="pl-11 h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -234,47 +235,48 @@ export function GrupoList() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold text-[14px] shadow-sm transition-all">
-                <Plus className="mr-2 h-5 w-5" /> Nuevo Grupo
+              <Button className="h-11 bg-[#1a237e] hover:bg-[#121858] text-white rounded-xl px-6 font-bold text-xs shadow-lg shadow-indigo-900/10 transition-all active:scale-95">
+                <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-3xl rounded-2xl p-6 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
-              <DialogHeader className="mb-6">
+            <DialogContent className="sm:max-w-2xl rounded-2xl p-8 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+              <DialogHeader className="mb-8">
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 bg-blue-50 rounded-xl flex items-center justify-center">
-                    <Layers className="h-8 w-8 text-[#003366]" />
+                  <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
+                    <Layers className="h-8 w-8 text-[#1a237e]" />
                   </div>
                   <div>
-                    <DialogTitle className="text-[24px] font-black text-gray-900 tracking-tight">
-                      {editingGrupo ? "Editar Grupo" : "Registrar Grupo"}
+                    <DialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">
+                      {editingGrupo ? "Actualizar Grupo" : "Registrar Grupo"}
                     </DialogTitle>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">Configure la sección para la asignatura</p>
                   </div>
                 </div>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-8">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Periodo Académico</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Periodo Académico</Label>
                     <Select value={formData.id_periodo} onValueChange={(v) => setFormData({ ...formData, id_periodo: v })}>
-                      <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {periodos.map(p => <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-[16px]">{p.codigo}</SelectItem>)}
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                        {periodos.map(p => <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-xs py-2">{p.codigo}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Asignatura</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Asignatura</Label>
                     <Select value={formData.id_curso} onValueChange={(v) => setFormData({ ...formData, id_curso: v })}>
-                      <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        {cursos.map(c => <SelectItem key={c.id_curso} value={c.id_curso.toString()} className="font-bold text-[16px]">{c.nombre}</SelectItem>)}
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                        {cursos.map(c => <SelectItem key={c.id_curso} value={c.id_curso.toString()} className="font-bold text-xs py-2">{c.nombre}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Código de Grupo</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Código de Grupo</Label>
                     <Input 
-                      className={cn("h-11 rounded-xl border-gray-200 font-bold text-[16px]", editingGrupo && "bg-gray-50")} 
+                      className={cn("h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all", editingGrupo && "bg-slate-100")} 
                       value={formData.codigo_grupo} 
                       onChange={(e) => setFormData({ ...formData, codigo_grupo: e.target.value.toUpperCase().slice(0, 5) })} 
                       required 
@@ -283,10 +285,10 @@ export function GrupoList() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Capacidad Máxima</Label>
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Capacidad Máxima</Label>
                     <Input 
                       type="number" 
-                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
+                      className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all" 
                       value={formData.capacidad_maxima} 
                       onChange={(e) => {
                         const val = Math.max(1, Math.min(100, parseInt(e.target.value) || 1));
@@ -298,10 +300,10 @@ export function GrupoList() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-gray-500 px-8 text-[16px]">Cancelar</Button>
-                  <Button type="submit" className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-10 font-black text-[16px]">
-                    {editingGrupo ? "Actualizar" : "Crear"}
+                <div className="flex justify-end gap-4 pt-6 border-t border-slate-50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-slate-400 hover:bg-slate-50 px-8 text-xs">Cancelar</Button>
+                  <Button type="submit" className="h-11 bg-[#1a237e] hover:bg-[#121858] text-white rounded-xl px-10 font-bold text-xs shadow-lg shadow-indigo-900/10 transition-all active:scale-95">
+                    {editingGrupo ? "Actualizar Grupo" : "Crear Grupo"}
                   </Button>
                 </div>
               </form>
@@ -310,41 +312,45 @@ export function GrupoList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
           <Table>
-            <TableHeader className="bg-gray-50/50">
-              <TableRow className="border-none hover:bg-transparent">
-                <TableHead>Nombre de la Asignatura</TableHead>
-                <TableHead className="w-[150px] text-center">Periodo</TableHead>
-                <TableHead className="w-[120px] text-center">Grupo</TableHead>
-                <TableHead className="w-[120px] text-center">Capacidad</TableHead>
-                <TableHead className="w-[150px] text-right">Acciones</TableHead>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Nombre de la Asignatura</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-center">Periodo</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-center">Grupo</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-center">Capacidad</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="divide-y divide-slate-50">
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="py-12 text-center text-[16px] font-bold text-gray-400">Cargando grupos...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Cargando grupos...</TableCell></TableRow>
               ) : filteredGrupos.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="py-12 text-center text-[16px] font-bold text-gray-400">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 filteredGrupos.map((grupo) => (
-                  <TableRow key={grupo.id_grupo} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                    <TableCell>
+                  <TableRow key={grupo.id_grupo} className="group hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="px-6 py-4">
                       <div className="flex items-center gap-3">
-                        <BookOpen className="h-5 w-5 text-[#003366]/50" />
-                        <span className="font-bold text-gray-900 truncate text-[16px]">{grupo.curso.nombre}</span>
+                        <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center border border-indigo-100 text-[#1a237e] shadow-sm">
+                          <BookOpen className="h-4 w-4" />
+                        </div>
+                        <span className="font-bold text-slate-800 text-xs">{grupo.curso.nombre}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center text-[14px] font-bold text-gray-500">{grupo.periodo.codigo}</TableCell>
-                    <TableCell className="text-center">
-                      <span className="px-3 py-1 rounded-lg bg-blue-50 text-[#003366] text-[12px] font-black uppercase tracking-tight">{grupo.codigo_grupo}</span>
+                    <TableCell className="px-6 py-4 text-center text-xs font-bold text-slate-500">{grupo.periodo.codigo}</TableCell>
+                    <TableCell className="px-6 py-4 text-center">
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-[#1a237e] text-[10px] font-bold border border-indigo-100 uppercase tracking-widest">{grupo.codigo_grupo}</span>
                     </TableCell>
-                    <TableCell className="text-center text-[14px] font-bold text-gray-600">{grupo.capacidad_maxima}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(grupo)} title="Editar" className="h-9 w-9 hover:bg-blue-50 hover:text-[#003366]"><Edit className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(grupo.id_grupo); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-9 w-9 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-5 w-5" /></Button>
+                    <TableCell className="px-6 py-4 text-center">
+                      <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">{grupo.capacidad_maxima}</span>
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(grupo)} title="Editar" className="h-8 w-8 rounded-lg hover:bg-indigo-50 hover:text-[#1a237e] transition-all opacity-0 group-hover:opacity-100"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(grupo.id_grupo); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-8 w-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -356,26 +362,32 @@ export function GrupoList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-lg border-none shadow-2xl p-6">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[400px]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-gray-900">¿Eliminar este grupo?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-gray-500">Esta acción no se puede deshacer.</AlertDialogDescription>
+            <div className="h-14 w-14 bg-rose-50 rounded-2xl flex items-center justify-center mb-4 border border-rose-100">
+              <Trash2 className="h-8 w-8 text-rose-600" />
+            </div>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">¿Eliminar este grupo?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 mt-2 leading-relaxed">Esta acción no se puede deshacer y afectará a la programación asociada.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="h-10 rounded-lg font-bold text-sm">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6">Confirmar</AlertDialogAction>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-10 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-8">Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-lg border-none shadow-2xl p-6">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[450px]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-gray-900">Aviso</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-gray-600 bg-amber-50 p-4 rounded-lg border border-amber-100">{errorMessage}</AlertDialogDescription>
+            <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 border border-amber-100">
+              <Layers className="h-8 w-8 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">Aviso del Sistema</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 bg-amber-50/50 p-4 rounded-xl border border-amber-100 mt-4 leading-relaxed">{errorMessage}</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-lg bg-[#003366] hover:bg-[#002244] text-white font-black text-sm px-8">Cerrar</AlertDialogAction>
+          <AlertDialogFooter className="mt-8">
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-xl bg-[#1a237e] hover:bg-[#121858] text-white font-bold text-xs px-10 shadow-lg shadow-indigo-900/10">Entendido</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

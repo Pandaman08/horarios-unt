@@ -1,13 +1,14 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { startOfDay, endOfDay } from 'date-fns';
+import { formatVentanaCategoria } from '@/lib/dashboard-labels';
 
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id_periodo_str = searchParams.get('id_periodo');
     const id_periodo = id_periodo_str ? parseInt(id_periodo_str) : NaN;
-    
+
     if (isNaN(id_periodo)) {
       return NextResponse.json({ error: 'Falta id_periodo o es inválido' }, { status: 400 });
     }
@@ -16,121 +17,152 @@ export async function GET(request: Request) {
     const inicioHoy = startOfDay(hoy);
     const finHoy = endOfDay(hoy);
 
-    // 1. KPIs Generales
-    const [totalDocentes, totalAsignacionesHoy, totalConflictos] = await Promise.all([
+    const periodo = await prisma.periodoAcademico.findUnique({
+      where: { id_periodo },
+      select: { nombre: true, codigo: true },
+    });
+
+    const ventanaActiva = await prisma.ventanaAtencion.findFirst({
+      where: {
+        id_periodo,
+        activo: true,
+        fecha: { gte: inicioHoy, lte: finHoy },
+        completado: false,
+      },
+      orderBy: { orden_prioridad: 'asc' },
+    });
+
+    const [totalDocentes, docentesAtendidos, totalAsignacionesHoy, totalConflictos] = await Promise.all([
       prisma.docente.count({ where: { activo: true } }),
-      prisma.horarioAsignado.count({
-        where: {
-          id_periodo: id_periodo,
-          // Usamos la fecha de creación si existiera, o simplemente el conteo total por ahora
-          // En una implementación real filtraríamos por fecha_creacion
-        }
-      }),
+      prisma.horarioAsignado.groupBy({
+        by: ['id_docente'],
+        where: { id_periodo },
+      }).then((r) => r.length),
+      prisma.horarioAsignado.count({ where: { id_periodo } }),
       prisma.conflictoHorario.count({
-        where: { id_periodo: id_periodo, resuelto: false }
-      })
+        where: { id_periodo, resuelto: false },
+      }),
     ]);
 
-    // 2. Carga por Categoría Real (Suma de horas asignadas)
-    const cargaPorCategoria = await prisma.horarioAsignado.findMany({
-      where: { id_periodo: id_periodo },
-      include: {
-        docente: {
-          select: { categoria: true }
-        }
-      }
+    const docentesPorGrupo = await prisma.docente.groupBy({
+      by: ['modalidad', 'categoria'],
+      where: { activo: true },
+      _count: { id_docente: true },
     });
 
-    const distribucionCarga = cargaPorCategoria.reduce((acc: any, curr) => {
-      const cat = curr.docente?.categoria || 'Sin Categoría';
-      if (!acc[cat]) acc[cat] = { name: cat, value: 0 };
-      acc[cat].value += 1; // Cada registro es una hora/bloque
+    const atendidosPorGrupo = await prisma.horarioAsignado.findMany({
+      where: { id_periodo },
+      select: {
+        id_docente: true,
+        docente: { select: { modalidad: true, categoria: true } },
+      },
+    });
+
+    const atendidosMap = atendidosPorGrupo.reduce((acc: Record<string, Set<number>>, h) => {
+      const key = `${h.docente?.modalidad}|${h.docente?.categoria}`;
+      if (!acc[key]) acc[key] = new Set();
+      acc[key].add(h.id_docente);
       return acc;
-    }, {});
+    }, {} as Record<string, Set<number>>);
 
-    const avanceCategoria = Object.values(distribucionCarga);
+    const avanceCategoria = docentesPorGrupo.map((g) => {
+      const key = `${g.modalidad}|${g.categoria}`;
+      const atendidos = atendidosMap[key]?.size ?? 0;
+      const total = g._count.id_docente;
+      const percent = total > 0 ? Math.round((atendidos / total) * 100) : 0;
+      return {
+        name: formatVentanaCategoria(g.modalidad, g.categoria),
+        value: atendidos,
+        total,
+        percent,
+      };
+    }).sort((a, b) => b.percent - a.percent);
 
-    // 3. Ocupación de Ambientes (Top 10)
-    const ocupacionAmbientes = await prisma.horarioAsignado.groupBy({
+    const ocupacionRaw = await prisma.horarioAsignado.groupBy({
       by: ['id_ambiente'],
       _count: { id_asignacion: true },
-      where: { id_periodo: id_periodo },
+      where: { id_periodo },
       orderBy: { _count: { id_asignacion: 'desc' } },
-      take: 10
     });
 
-    // Enriquecer datos de ambientes
-    const ambientesIds = ocupacionAmbientes.map(a => a.id_ambiente);
+    const ambientesIds = ocupacionRaw.map((a) => a.id_ambiente);
     const ambientesInfo = await prisma.ambiente.findMany({
       where: { id_ambiente: { in: ambientesIds } },
-      select: { id_ambiente: true, nombre: true }
+      select: { id_ambiente: true, nombre: true, codigo: true, tipo: true, capacidad: true },
     });
 
-    const ocupacionData = ocupacionAmbientes.map(oa => ({
-      nombre: ambientesInfo.find(ai => ai.id_ambiente === oa.id_ambiente)?.nombre || 'Desconocido',
-      cantidad: oa._count.id_asignacion
-    }));
+    const buildOcupacion = (tipo: string, maxItems = 4) => {
+      const items = ocupacionRaw
+        .map((oa) => {
+          const amb = ambientesInfo.find((ai) => ai.id_ambiente === oa.id_ambiente);
+          if (!amb || amb.tipo !== tipo) return null;
+          const porcentaje = Math.min(
+            100,
+            Math.round((oa._count.id_asignacion / Math.max(amb.capacidad, 1)) * 100)
+          );
+          return {
+            nombre: amb.codigo,
+            cantidad: oa._count.id_asignacion,
+            porcentaje,
+          };
+        })
+        .filter(Boolean) as { nombre: string; cantidad: number; porcentaje: number }[];
 
-    // 4. Distribución de Carga Docente (Top 10)
-    const cargaDocente = await prisma.horarioAsignado.groupBy({
-      by: ['id_docente'],
+      return items.slice(0, maxItems);
+    };
+
+    const ocupacionTeoria = buildOcupacion('teoria');
+    const ocupacionLaboratorios = buildOcupacion('laboratorio');
+
+    const mapaCalorRaw = await prisma.horarioAsignado.groupBy({
+      by: ['dia_semana', 'hora_inicio'],
       _count: { id_asignacion: true },
-      where: { id_periodo: id_periodo },
-      orderBy: { _count: { id_asignacion: 'desc' } },
-      take: 10
+      where: { id_periodo, dia_semana: { gte: 1, lte: 5 } },
     });
 
-    const docentesIds = cargaDocente.map(cd => cd.id_docente);
-    const docentesInfo = await prisma.docente.findMany({
-      where: { id_docente: { in: docentesIds } },
-      select: { id_docente: true, nombres: true, apellidos: true }
-    });
-
-    const cargaData = cargaDocente.map(cd => ({
-      nombre: `${docentesInfo.find(di => di.id_docente === cd.id_docente)?.nombres} ${docentesInfo.find(di => di.id_docente === cd.id_docente)?.apellidos.charAt(0)}.`,
-      asignaciones: cd._count.id_asignacion
+    const mapaCalor = mapaCalorRaw.map((m) => ({
+      dia: m.dia_semana,
+      hora: m.hora_inicio,
+      valor: m._count.id_asignacion,
     }));
 
-    // 5. Conflictos Detallados
     const listaConflictos = await prisma.conflictoHorario.findMany({
-      where: { 
-        id_periodo: id_periodo, 
-        resuelto: false 
-      },
+      where: { id_periodo, resuelto: false },
       take: 5,
-      orderBy: { fecha_deteccion: 'desc' }
+      orderBy: { fecha_deteccion: 'desc' },
     });
 
-    // 6. Actividad Reciente Real (Últimas asignaciones)
-    const actividadReciente = await prisma.horarioAsignado.findMany({
-      where: { id_periodo: id_periodo },
-      take: 5,
-      orderBy: { id_asignacion: 'desc' },
-      include: {
-        docente: { select: { nombres: true, apellidos: true } },
-        ambiente: { select: { nombre: true } }
-      }
-    });
+    const porcentajeAvance =
+      totalDocentes > 0 ? Math.round((docentesAtendidos / totalDocentes) * 100) : 0;
 
-    const actividadesData = actividadReciente.map(act => ({
-      id: act.id_asignacion,
-      mensaje: `${act.docente?.nombres} ${act.docente?.apellidos.split(' ')[0]} asignó horario en ${act.ambiente?.nombre}`,
-      fecha: "Reciente",
-      tipo: 'success'
-    }));
+    const ventanaLabel = ventanaActiva
+      ? formatVentanaCategoria(ventanaActiva.modalidad, ventanaActiva.categoria)
+      : 'Sin ventana activa';
 
     return NextResponse.json({
+      periodo: periodo?.codigo || periodo?.nombre || '—',
+      ventanaActiva: ventanaActiva
+        ? {
+            nombre: ventanaLabel,
+            hora_fin: ventanaActiva.hora_fin,
+            hora_inicio: ventanaActiva.hora_inicio,
+            porcentajeAvance: ventanaActiva.cantidad_docentes > 0
+              ? Math.round((ventanaActiva.cantidad_atendidos / ventanaActiva.cantidad_docentes) * 100)
+              : porcentajeAvance,
+          }
+        : { nombre: ventanaLabel, hora_fin: null, porcentajeAvance },
       kpis: {
         totalDocentes,
+        docentesAtendidos,
         asignacionesRealizadas: totalAsignacionesHoy,
         conflictosPendientes: totalConflictos,
-        porcentajeAvance: totalDocentes > 0 ? Math.round((totalAsignacionesHoy / (totalDocentes * 2)) * 100) : 0 // Estimado
+        porcentajeAvance,
       },
       avanceCategoria,
-      ocupacionAmbientes: ocupacionData,
-      cargaDocente: cargaData,
+      ocupacionTeoria,
+      ocupacionLaboratorios,
+      mapaCalor,
       listaConflictos,
-      actividadesRecientes: actividadesData
     });
   } catch (error) {
     console.error(error);
