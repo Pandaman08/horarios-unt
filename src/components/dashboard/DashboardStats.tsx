@@ -194,54 +194,48 @@ export function DashboardStats({
     : avanceFallback;
 
   return (
-    <div className="space-y-6">
-      {/* Encabezado */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+    <div className="space-y-4 sm:space-y-6 w-full overflow-x-hidden">
+      {/* Encabezado - Mejorado según mockup */}
+      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
         <div>
-          <h1 className="text-2xl font-bold text-[#1a237e] tracking-tight">
+          <h1 className="text-lg md:text-xl font-bold text-slate-800 tracking-tight">
             Consola de Control General
           </h1>
-          <p className="text-sm text-slate-500 mt-1">
-            Escuela de Ingeniería de Sistemas — Universidad Nacional de Trujillo
+          <p className="text-xs md:text-sm text-slate-500 mt-1">
+            Escuela de Ingeniería de Sistemas - Universidad Nacional de Trujillo
           </p>
         </div>
 
-        <div className="flex flex-wrap items-center bg-white border border-slate-200 rounded-xl shadow-sm divide-x divide-slate-200 text-sm">
-          <div className="px-4 py-3 flex items-center gap-2">
-            <span className="text-slate-500">Período</span>
-            <select
-              value={selectedPeriodo}
-              onChange={(e) => onPeriodoChange(e.target.value)}
-              className="font-bold text-[#1a237e] bg-transparent outline-none cursor-pointer"
-            >
-              {periodos.map((p) => (
-                <option key={p.id_periodo} value={p.id_periodo}>
-                  {p.codigo || p.nombre}
-                </option>
-              ))}
-            </select>
+        <div className="flex flex-col sm:flex-row flex-wrap items-center bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm">
+          <div className="px-3 md:px-4 py-2 md:py-3 flex items-center gap-2 border-b sm:border-b-0 sm:border-r border-slate-200 w-full sm:w-auto">
+            <span className="text-slate-700 font-semibold">Período</span>
+            <span className="font-bold text-[#1a237e]">
+              {periodos.find(p => p.id_periodo.toString() === selectedPeriodo)?.codigo || "2026-1"}
+            </span>
           </div>
-          <div className="px-4 py-3">
+          <div className="px-3 md:px-4 py-2 md:py-3 border-b sm:border-b-0 sm:border-r border-slate-200 w-full sm:w-auto">
             <span className="text-slate-500">Ventana actual: </span>
-            <span className="font-bold text-[#1a237e]">{ventana?.nombre || "—"}</span>
+            <span className="font-bold text-indigo-600">{ventana?.nombre || "—"}</span>
           </div>
-          <div className="px-4 py-3 flex items-center gap-2">
+          <div className="px-3 md:px-4 py-2 md:py-3 flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
             <span className="text-slate-500">Tiempo restante:</span>
-            <CountdownTimer horaFin={ventana?.hora_fin} />
+            <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
+              <CountdownTimer horaFin={ventana?.hora_fin} />
+            </span>
           </div>
         </div>
       </div>
 
-      {/* KPIs */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+      {/* KPIs - Mejorados según mockup - RESPONSIVE VISIBLE */}
+      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             Ventana actual
           </p>
-          <p className="text-xl font-bold text-[#1a237e] mt-2 leading-tight">
+          <p className="text-base sm:text-lg md:text-xl font-bold text-[#1a237e] mt-1 sm:mt-2 leading-tight">
             {ventana?.nombre || "Sin ventana"}
           </p>
-          <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-3 flex items-center justify-between text-[10px] sm:text-xs text-slate-500">
             <span>Progreso general</span>
             <span className="font-bold text-slate-700">{pctGeneral}%</span>
           </div>
@@ -250,44 +244,44 @@ export function DashboardStats({
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             Docentes atendidos
           </p>
-          <p className="text-xl font-bold text-[#1a237e] mt-2 tabular-nums">
-            {kpis?.docentesAtendidos ?? 0} / {kpis?.totalDocentes ?? 0}
+          <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 mt-1 sm:mt-2 tabular-nums">
+            {kpis?.docentesAtendidos ?? 0} <span className="text-sm sm:text-lg md:text-xl text-slate-400">/ {kpis?.totalDocentes ?? 0}</span>
           </p>
-          <div className="mt-4 flex items-center justify-between text-xs text-slate-500">
+          <div className="mt-3 flex items-center justify-between text-[10px] sm:text-xs text-slate-500">
             <span>Tasa de respuesta</span>
-            <span className="font-bold text-slate-700">{pctDocentes}%</span>
+            <span className="font-bold text-emerald-700">{pctDocentes}%</span>
           </div>
           <div className="mt-2">
             <ProgressBar percent={pctDocentes} colorClass="bg-emerald-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             Asignaciones hoy
           </p>
-          <p className="text-xl font-bold text-[#1a237e] mt-2 tabular-nums">
+          <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#1a237e] mt-1 sm:mt-2 tabular-nums">
             {kpis?.asignacionesRealizadas ?? 0}
           </p>
-          <p className="mt-6 text-xs font-semibold text-emerald-600">↑ 15% vs ayer</p>
+          <p className="mt-3 text-[10px] sm:text-xs font-semibold text-emerald-600">↑ 15% vs ayer</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-5">
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
             Cruces pendientes
           </p>
-          <p className="text-3xl font-bold text-rose-500 mt-2 tabular-nums">
+          <p className="text-xl sm:text-2xl md:text-3xl font-bold text-rose-600 mt-1 sm:mt-2 tabular-nums">
             {kpis?.conflictosPendientes ?? 0}
           </p>
-          <div className="mt-4 flex items-center justify-between">
-            <span className="text-xs text-slate-500">Conflictos</span>
+          <div className="mt-3 flex items-center justify-between gap-2">
+            <span className="text-[10px] sm:text-xs text-slate-500">Conflictos</span>
             <Link
               href="/dashboard/reportes"
-              className="text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-3 py-1 rounded-lg hover:bg-rose-100 transition-colors"
+              className="text-[10px] sm:text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 sm:px-3 py-1 rounded-lg hover:bg-rose-100 transition-colors"
             >
               Ver
             </Link>
@@ -295,15 +289,15 @@ export function DashboardStats({
         </div>
       </div>
 
-      {/* Avance por categoría */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-        <h2 className="text-base font-bold text-[#1a237e] mb-6">
+      {/* Avance por categoría - Mejorado según mockup */}
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
+        <h2 className="text-base md:text-lg font-bold text-slate-800 mb-4 md:mb-6">
           Avance de Selección de Horarios por Categoría
         </h2>
-        <div className="space-y-4">
+        <div className="space-y-3">
           {categorias.map((cat, i) => (
-            <div key={cat.name} className="flex items-center gap-4">
-              <span className="text-sm text-slate-600 w-44 shrink-0">{cat.name}</span>
+            <div key={cat.name} className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
+              <span className="text-xs md:text-sm font-medium text-slate-700 w-full md:w-48 shrink-0">{cat.name}</span>
               <div className="flex-1">
                 <ProgressBar
                   percent={cat.percent}
@@ -311,16 +305,16 @@ export function DashboardStats({
                     cat.percent === 100
                       ? "bg-[#1a237e]"
                       : cat.percent > 0
-                        ? "bg-[#3949ab]"
+                        ? "bg-[#5c6bc0]"
                         : "bg-slate-200"
                   }
                 />
               </div>
-              <div className="flex items-center gap-3 shrink-0 text-sm tabular-nums">
+              <div className="flex items-center justify-between md:gap-3 shrink-0 text-xs md:text-sm tabular-nums w-full md:w-auto">
                 <span className="text-slate-500 font-medium">
                   {cat.value}/{cat.total}
                 </span>
-                <span className="font-bold text-slate-800 w-10 text-right">{cat.percent}%</span>
+                <span className="font-bold text-slate-800 w-12 text-right">{cat.percent}%</span>
               </div>
             </div>
           ))}
@@ -410,6 +404,50 @@ export function DashboardStats({
             ))}
           </tbody>
         </table>
+      </div>
+
+      {/* Actividad en Tiempo Real y Consolidación */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Actividad de Selección en Tiempo Real */}
+        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6 lg:col-span-2">
+          <h2 className="text-base md:text-lg font-bold text-slate-800 mb-4">
+            Actividad de Selección en Tiempo Real
+          </h2>
+          <div className="space-y-3">
+            <div className="flex items-center gap-3 text-xs">
+              <span className="text-slate-400 font-mono">--:--:--</span>
+              <span className="text-slate-500">Sin actividad registrada aún</span>
+            </div>
+          </div>
+        </div>
+
+        {/* Consolidación de Horarios */}
+        <div className="bg-[#1a237e] rounded-2xl shadow-sm p-4 md:p-6 text-white">
+          <h2 className="text-base md:text-lg font-bold mb-4">
+            Consolidación de Horarios
+          </h2>
+          <p className="text-xs text-indigo-200 mb-4">
+            Acceda rápidamente a los generadores oficiales de reportes administrativos en formato PDF.
+          </p>
+          <div className="space-y-2">
+            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
+              <span className="text-xs">📋</span>
+              Horario por Aula
+            </Link>
+            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
+              <span className="text-xs">🔬</span>
+              Horario por Laboratorio
+            </Link>
+            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
+              <span className="text-xs">👨‍🏫</span>
+              Horario por Docente
+            </Link>
+            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
+              <span className="text-xs">📊</span>
+              Reporte de Gestión
+            </Link>
+          </div>
+        </div>
       </div>
     </div>
   );

@@ -277,35 +277,23 @@ export default function AsignacionOperadorPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700">
-      {/* Header de la Página Estilo Moderno */}
-      <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mx-4 md:mx-6 mt-4 md:mt-6 mb-6">
-        <div className="flex items-center gap-6">
-          <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
-            <LayoutIcon className="h-7 w-7 text-[#1a237e]" />
+    <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700 w-full overflow-x-hidden">
+      {/* Header de la Página Estilo Moderno - Mejorado según mockup */}
+      <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mx-3 md:mx-6 mt-3 md:mt-6 mb-5">
+        <div className="flex items-center gap-4 md:gap-6">
+          <div className="h-10 md:h-14 w-10 md:w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm shrink-0">
+            <LayoutIcon className="h-5 md:h-7 w-5 md:w-7 text-[#1a237e]" />
           </div>
           <div>
-            <span className="text-[10px] bg-indigo-50 text-[#1a237e] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Operador de Turno</span>
-            <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight mt-2">Centro de Asignación</h1>
-            <p className="text-slate-500 text-xs mt-1">Gestión de horarios en tiempo real para el período activo</p>
+            <span className="text-[9px] md:text-[10px] bg-indigo-50 text-[#1a237e] uppercase tracking-wider font-extrabold px-2 py-1 rounded-lg">MÓDULO DE ATENCIÓN PRESENCIAL</span>
+            <h1 className="text-lg md:text-xl md:text-2xl font-bold text-slate-800 tracking-tight mt-2">Atención al Docente – Operador</h1>
+            <p className="text-slate-500 text-xs mt-1">Fecha de atención: 08/06/2026 | Ventana activa: <span className="font-bold text-[#1a237e]">Principal Nombrado (8:00am - 9:30am)</span></p>
           </div>
         </div>
 
-        <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200 w-full md:w-auto">
-          <div className="flex items-center gap-2 px-3">
-            <Clock className="h-4 w-4 text-slate-400" />
-            <span className="text-xs font-bold text-slate-600">Período:</span>
-            <Select value={idPeriodo} onValueChange={setIdPeriodo}>
-              <SelectTrigger className="w-[140px] h-9 border border-slate-200 bg-white rounded-xl shadow-sm font-bold text-xs focus:ring-2 focus:ring-[#1a237e]">
-                <SelectValue placeholder="Ciclo" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                {periodos.map(p => (
-                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold">Ciclo {p.codigo}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+        <div className="flex items-center gap-2 md:gap-4 bg-rose-50 p-3 md:p-4 rounded-2xl border border-rose-100 w-full md:w-auto">
+          <span className="text-xs md:text-sm text-slate-700 font-medium">Tiempo restante de ventana</span>
+          <span className="font-bold text-rose-600 text-base md:text-lg">45 minutos</span>
         </div>
       </div>
 

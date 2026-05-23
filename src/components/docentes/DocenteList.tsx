@@ -118,8 +118,8 @@ export function DocenteList() {
       </div>
 
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto custom-scrollbar">
-          <Table>
+        <div className="overflow-x-auto">
+          <Table className="min-w-[900px] w-full">
             <TableHeader className="bg-slate-50/50">
               <TableRow className="border-b border-slate-100 hover:bg-transparent">
                 <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">Cód.</TableHead>
@@ -171,7 +171,7 @@ export function DocenteList() {
                           size="icon" 
                           onClick={() => { setSelectedDocente(docente); setIsAsignarOpen(true); }} 
                           title="Asignar Cursos" 
-                          className="h-7 w-7 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all opacity-0 group-hover:opacity-100"
+                          className="h-7 w-7 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all"
                         >
                           <BookOpen className="h-3.5 w-3.5" />
                         </Button>

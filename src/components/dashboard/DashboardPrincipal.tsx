@@ -32,7 +32,7 @@ export default function DashboardPrincipal() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 pb-6">
+    <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 pb-6 w-full overflow-x-hidden">
       {selectedPeriodo && (
         <DashboardStats
           id_periodo={parseInt(selectedPeriodo)}

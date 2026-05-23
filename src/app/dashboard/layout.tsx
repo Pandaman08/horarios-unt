@@ -286,8 +286,8 @@ export default function DashboardLayout({
         </header>
 
         {/* CONTENIDO DE PANTALLAS COMPACTO */}
-        <main className="flex-grow p-4 space-y-4 overflow-y-auto custom-scrollbar">
-          <div className="max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-1 duration-300">
+        <main className="flex-grow p-3 sm:p-4 space-y-4 overflow-x-hidden overflow-y-auto custom-scrollbar">
+          <div className="w-full max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-1 duration-300">
             {children}
           </div>
         </main>

@@ -4,8 +4,11 @@ import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Send, CheckCircle2, XCircle } from "lucide-react";
+import { Mail, Send, CheckCircle2, XCircle, MessageSquare, Plane, Clock } from "lucide-react";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function PreferenciasNotificacion() {
@@ -59,87 +62,142 @@ export function PreferenciasNotificacion() {
   const prefCorreo = getCanal('correo');
 
   return (
-    <div className="space-y-0">
-      <Card className="rounded-none border-none shadow-none bg-white">
-        <CardHeader className="p-8 pb-4 border-b border-slate-50">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
-              <Send className="h-5 w-5 text-[#1a237e]" />
+    <div className="space-y-6 w-full overflow-x-hidden">
+      {/* Encabezado */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-2">Preferencias de Notificación</h2>
+        <p className="text-slate-500 text-sm">
+          Configure cómo desea recibir los recordatorios de selección de horarios. Recibirá notificaciones 24 horas antes y 15 minutos antes de su turno de atención.
+        </p>
+      </div>
+
+      {/* Tarjetas de canales */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 md:gap-6">
+        {/* Correo Electrónico */}
+        <Card className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:border-indigo-100 transition-all">
+          <CardHeader className="p-5 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Mail className="h-5 w-5 text-indigo-600" />
+                <div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Correo Electrónico</CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">Verificado y Principal</p>
+                </div>
+              </div>
+              <Switch 
+                className="data-[state=checked]:bg-[#1a237e]"
+                checked={prefCorreo?.activo || false} 
+                onCheckedChange={(val) => toggleCanal('correo', val)}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 pt-0 space-y-3">
+            <Input 
+              value="juan.perez@unitru.edu.pe" 
+              disabled 
+              className="h-10 rounded-lg border-slate-200 bg-slate-50" 
+            />
+            <div className="flex items-center justify-between">
+              <span className="flex items-center gap-1.5 text-xs font-bold text-emerald-600">
+                <CheckCircle2 className="h-4 w-4" />
+                Verificado
+              </span>
+              <Button className="h-9 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-4 font-bold text-sm">
+                Verificar Canal
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+
+        {/* Telegram Bot */}
+        <Card className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden hover:border-sky-100 transition-all">
+          <CardHeader className="p-5 pb-4">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <Plane className="h-5 w-5 text-sky-600" />
+                <div>
+                  <CardTitle className="text-lg font-bold text-slate-800">Telegram Bot</CardTitle>
+                  <p className="text-xs text-slate-500 mt-0.5">Automatizaciones instantáneas</p>
+                </div>
+              </div>
+              <Switch 
+                className="data-[state=checked]:bg-sky-500"
+                checked={prefTelegram?.activo || false} 
+                onCheckedChange={(val) => toggleCanal('telegram', val)}
+              />
+            </div>
+          </CardHeader>
+          <CardContent className="p-5 pt-0 space-y-3">
+            <div className="space-y-1.5">
+              <p className="text-xs text-slate-600">
+                1. Abra Telegram y busque: <span className="font-bold text-[#1a237e]">@UNT_Horarios_Bot</span>
+              </p>
+              <p className="text-xs text-slate-600">
+                2. Envíe el comando: <code className="bg-slate-100 px-1.5 py-0.5 rounded text-[#1a237e] font-bold">/registrar DOC001</code>
+              </p>
+            </div>
+            <div className="flex items-center justify-between">
+              <span className={cn(
+                "flex items-center gap-1.5 text-xs font-bold",
+                prefTelegram?.verificado ? "text-emerald-600" : "text-amber-600"
+              )}>
+                {prefTelegram?.verificado ? (
+                  <CheckCircle2 className="h-4 w-4" />
+                ) : (
+                  <Clock className="h-4 w-4" />
+                )}
+                {prefTelegram?.verificado ? "Verificado" : "Desconectado"}
+              </span>
+              <Button className="h-9 bg-slate-200 hover:bg-slate-300 text-slate-700 rounded-xl px-4 font-bold text-sm">
+                Mostrar QR
+              </Button>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Línea de tiempo */}
+      <Card className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <CardHeader className="p-5 pb-4">
+          <CardTitle className="text-base font-bold text-slate-800 uppercase tracking-widest">
+            Línea de tiempo de notificaciones del turno
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-5 pt-0 space-y-4">
+          <div className="flex items-start gap-3">
+            <div className="mt-1 h-8 w-8 rounded-full bg-indigo-50 flex items-center justify-center border border-indigo-100 shrink-0">
+              <Clock className="h-4 w-4 text-indigo-600" />
             </div>
             <div>
-              <CardTitle className="text-lg font-black text-slate-800 tracking-tight">Canales de Notificación</CardTitle>
-              <CardDescription className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Configura tus alertas y recordatorios</CardDescription>
+              <p className="font-semibold text-slate-800 text-sm">Turno - 24 horas antes</p>
+              <p className="text-slate-500 text-xs mt-0.5">
+                Se enviará un resumen de su carga y fecha/hora programada a todos los canales activos habilitados.
+              </p>
             </div>
           </div>
-        </CardHeader>
-        <CardContent className="p-8 space-y-6">
-          {/* Correo Electrónico */}
-          <div className="flex items-center justify-between p-5 border border-slate-100 rounded-2xl bg-slate-50/30 group hover:bg-white hover:border-indigo-100 transition-all">
-            <div className="flex items-center gap-4">
-              <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 text-[#1a237e] group-hover:scale-110 transition-transform">
-                <Mail className="h-5 w-5" />
-              </div>
-              <div>
-                <p className="text-[14px] font-black text-slate-800">Correo Electrónico Institucional</p>
-                <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-relaxed">Alertas de cambios en la matriz y recordatorios 24 horas antes.</p>
-              </div>
+          <div className="flex items-start gap-3">
+            <div className="mt-1 h-8 w-8 rounded-full bg-rose-50 flex items-center justify-center border border-rose-100 shrink-0">
+              <MessageSquare className="h-4 w-4 text-rose-600" />
             </div>
-            <Switch 
-              className="data-[state=checked]:bg-[#1a237e]"
-              checked={prefCorreo?.activo || false} 
-              onCheckedChange={(val) => toggleCanal('correo', val)}
-            />
+            <div>
+              <p className="font-semibold text-slate-800 text-sm">Turno - 15 minutos antes</p>
+              <p className="text-slate-500 text-xs mt-0.5">
+                Se enviará un recordatorio urgente con el enlace de conexión y acceso directo solo por WhatsApp y Telegram.
+              </p>
+            </div>
           </div>
-
-          {/* Telegram */}
-          <div className="flex items-center justify-between p-5 border border-slate-100 rounded-2xl bg-slate-50/30 group hover:bg-white hover:border-sky-100 transition-all">
-            <div className="flex items-center gap-4">
-              <div className="bg-sky-50 p-3 rounded-xl border border-sky-100 text-sky-600 group-hover:scale-110 transition-transform">
-                <Send className="h-5 w-5" />
-              </div>
-              <div>
-                <div className="flex items-center gap-3">
-                  <p className="text-[14px] font-black text-slate-800">Telegram Bot (Alertas Instantáneas)</p>
-                  {prefTelegram?.verificado ? (
-                    <span className="inline-flex items-center text-[9px] font-black text-emerald-600 border border-emerald-200 bg-emerald-50 px-2 py-0.5 rounded-lg tracking-wider">
-                      <CheckCircle2 className="h-3 w-3 mr-1" /> VINCULADO
-                    </span>
-                  ) : (
-                    <span className="inline-flex items-center text-[9px] font-black text-amber-600 border border-amber-200 bg-amber-50 px-2 py-0.5 rounded-lg tracking-wider">
-                      <XCircle className="h-3 w-3 mr-1" /> NO VINCULADO
-                    </span>
-                  )}
-                </div>
-                <p className="text-[11px] text-slate-500 font-medium mt-0.5 leading-relaxed">Notificaciones críticas y alertas 15 minutos antes de la sesión.</p>
-              </div>
-            </div>
-            <Switch 
-              className="data-[state=checked]:bg-sky-500"
-              checked={prefTelegram?.activo || false} 
-              onCheckedChange={(val) => toggleCanal('telegram', val)}
-            />
-          </div>
-
-          {!prefTelegram?.verificado && (
-            <div className="bg-sky-50/50 p-6 rounded-2xl border border-sky-100 mt-4 flex items-start gap-4">
-              <div className="h-10 w-10 bg-white rounded-xl flex items-center justify-center border border-sky-100 text-sky-600 shadow-sm shrink-0">
-                <span className="text-lg font-black">?</span>
-              </div>
-              <div>
-                <h4 className="text-[12px] font-black text-sky-900 uppercase tracking-widest mb-1.5">¿Cómo vincular mi cuenta?</h4>
-                <p className="text-[12px] text-sky-800 font-medium leading-relaxed">
-                  Busque el bot <b className="font-black">@HorariosUNT_Bot</b> en Telegram y envíe el siguiente comando:
-                </p>
-                <div className="mt-3 inline-block">
-                  <code className="bg-white px-4 py-2 rounded-xl border border-sky-200 font-mono font-bold text-sky-700 shadow-sm">
-                    /start {session?.user?.codigo || "TU_CODIGO"}
-                  </code>
-                </div>
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
+
+      {/* Botones de acción */}
+      <div className="flex flex-col sm:flex-row justify-end items-center gap-3 pt-2">
+        <Button className="h-10 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl px-6 font-bold text-sm">
+          Probar Notificación
+        </Button>
+        <Button className="h-10 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-indigo-900/10">
+          Guardar Preferencias
+        </Button>
+      </div>
     </div>
   );
 }

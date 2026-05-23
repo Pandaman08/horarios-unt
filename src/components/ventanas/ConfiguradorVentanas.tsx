@@ -168,28 +168,29 @@ export function ConfiguradorVentanas() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-6">
-          <div className="h-12 w-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
-            <CalendarIcon className="h-6 w-6 text-[#1a237e]" />
+    <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-x-hidden">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-3 md:p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-4">
+          <div className="h-10 md:h-12 w-10 md:w-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm shrink-0">
+            <CalendarIcon className="h-5 md:h-6 w-5 md:w-6 text-[#1a237e]" />
           </div>
           <div>
-            <h2 className="text-[20px] font-black text-slate-800 tracking-tight">Ventanas de Atención</h2>
-            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Programación de Turnos para Autogestión</p>
+            <h2 className="text-base md:text-lg md:text-xl font-bold text-slate-800 tracking-tight">Configuración de Ventanas de Atención</h2>
+            <p className="text-[10px] md:text-xs text-slate-500 mt-1">Define el orden jerárquico de prioridad para la selección de horarios.</p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-3 bg-slate-50/50 px-4 h-11 rounded-xl border border-slate-100">
-            <span className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Periodo Activo</span>
+          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
+            <span className="text-xs font-medium text-slate-600">Período:</span>
             <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-              <SelectTrigger className="w-[110px] h-8 border-none bg-transparent font-black text-[#1a237e] p-0 focus:ring-0 text-[13px]">
+              <SelectTrigger className="w-auto border-none bg-transparent font-bold text-[#1a237e] p-0 focus:ring-0 text-sm">
                 <SelectValue placeholder="Periodo" />
+                <span className="text-slate-400 ml-1 text-xs">(Activo)</span>
               </SelectTrigger>
               <SelectContent className="rounded-xl border-slate-100 shadow-xl">
                 {periodos.map((p) => (
-                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-[13px] py-2 focus:bg-indigo-50 focus:text-[#1a237e]">Ciclo {p.codigo}</SelectItem>
+                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-sm py-2 focus:bg-indigo-50 focus:text-[#1a237e]">{p.codigo}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -197,7 +198,7 @@ export function ConfiguradorVentanas() {
 
           <Dialog open={isAutoDialogOpen} onOpenChange={setIsAutoDialogOpen}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-6 font-bold text-[13px] shadow-lg shadow-indigo-100 transition-all active:scale-95">
+              <Button className="h-10 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-5 font-bold text-sm shadow-lg shadow-indigo-100 transition-all active:scale-95">
                 <Wand2 className="mr-2 h-4 w-4" /> Generar Programación
               </Button>
             </DialogTrigger>
@@ -279,157 +280,142 @@ export function ConfiguradorVentanas() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-4 gap-6">
-        <div className="xl:col-span-3">
-          <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader className="bg-slate-50/50">
-                  <TableRow className="border-none hover:bg-transparent">
-                    <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Fecha Programada</TableHead>
-                    <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Franja Horaria</TableHead>
-                    <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Filtros de Acceso</TableHead>
-                    <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-center">Cupos</TableHead>
-                    <TableHead className="w-[100px] text-right text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Acciones</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {loading ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-20 text-center">
-                        <div className="flex flex-col items-center gap-3">
-                          <div className="h-10 w-10 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin" />
-                          <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">Sincronizando Calendario...</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : ventanas.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={5} className="py-20 text-center">
-                        <div className="flex flex-col items-center gap-2 opacity-30">
-                          <CalendarIcon className="h-12 w-12 text-slate-400" />
-                          <p className="text-[15px] font-bold text-slate-500">No hay ventanas programadas</p>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ) : (
-                    ventanas.map((v) => (
-                      <TableRow key={v.id_ventana} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-all">
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center border border-indigo-100 text-[#1a237e]">
-                              <CalendarCheck className="h-4 w-4" />
-                            </div>
-                            <span className="font-bold text-slate-800 text-[13px] uppercase">
-                              {format(new Date(v.fecha), "EEEE dd 'de' MMMM", { locale: es })}
-                            </span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-2.5 text-[13px] font-bold text-slate-500 font-mono">
-                            <Clock className="h-3.5 w-3.5 text-slate-300" />
-                            <span>{v.hora_inicio} - {v.hora_fin}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex items-center gap-2">
-                            <span className="px-2.5 py-1 rounded-lg bg-indigo-50 text-indigo-700 text-[9px] font-black uppercase tracking-wider border border-indigo-100 shadow-sm">{v.modalidad}</span>
-                            <span className="px-2.5 py-1 rounded-lg bg-slate-50 text-slate-600 text-[9px] font-black uppercase tracking-wider border border-slate-100 shadow-sm">{v.categoria}</span>
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4 text-center">
-                          <div className="inline-flex items-center justify-center h-8 w-8 rounded-full bg-slate-50 border border-slate-100 text-[13px] font-black text-slate-800">
-                            {v.cantidad_docentes}
-                          </div>
-                        </TableCell>
-                        <TableCell className="px-6 py-4">
-                          <div className="flex justify-end opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button 
-                              variant="ghost" 
-                              size="icon" 
-                              onClick={() => handleDelete(v.id_ventana)} 
-                              title="Eliminar Turno" 
-                              className="h-8 w-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 text-slate-400 transition-colors"
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          </div>
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
+        <div className="lg:col-span-2 space-y-4 md:space-y-6">
+          {loading ? (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12">
+              <div className="flex flex-col items-center gap-3">
+                <div className="h-10 w-10 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin" />
+                <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">Sincronizando Calendario...</p>
+              </div>
             </div>
-          </div>
+          ) : ventanas.length === 0 ? (
+            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12">
+              <div className="flex flex-col items-center gap-2 opacity-30">
+                <CalendarIcon className="h-12 w-12 text-slate-400" />
+                <p className="text-[15px] font-bold text-slate-500">No hay ventanas programadas</p>
+              </div>
+            </div>
+          ) : (
+            <>
+              {[...new Set(ventanas.map((v) => v.fecha))].map((fecha, idx) => (
+                <div key={idx} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+                  <div className="p-4 md:p-5 border-b border-slate-100 flex items-center gap-3">
+                    <CalendarIcon className="h-5 w-5 text-[#1a237e]" />
+                    <h3 className="font-bold text-slate-800 text-base">
+                      Día: {format(new Date(fecha), "dd/MM/yyyy", { locale: es })}
+                    </h3>
+                  </div>
+                  <div className="overflow-x-auto">
+                    <Table className="min-w-[800px] w-full">
+                      <TableHeader className="bg-slate-50/50">
+                        <TableRow className="border-none hover:bg-transparent">
+                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Orden</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Categoría</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Modalidad</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Desde</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Hasta</TableHead>
+                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Estado</TableHead>
+                          <TableHead className="w-[100px] text-right text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Acciones</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {ventanas.filter((v) => v.fecha === fecha).map((v, vIdx) => (
+                          <TableRow key={v.id_ventana} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+                            <TableCell className="px-6 py-4">
+                              <span className="font-bold text-slate-600 text-[13px]">#{vIdx + 1}</span>
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <div className="flex flex-col gap-1.5">
+                                <span className="font-bold text-slate-800 text-[13px]">
+                                  {v.categoria}
+                                </span>
+                                {v.cantidad_docentes > 0 && (
+                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[9px] font-black uppercase border border-amber-200 w-fit">
+                                    {v.cantidad_docentes} docentes pendientes
+                                  </span>
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <span className="text-slate-600 text-[13px]">{v.modalidad}</span>
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <span className="text-[#1a237e] font-bold font-mono text-[13px]">{v.hora_inicio}</span>
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <span className="text-[#1a237e] font-bold font-mono text-[13px]">{v.hora_fin}</span>
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <span className={cn(
+                                "px-3 py-1 rounded-full text-[10px] font-black uppercase border",
+                                v.completado 
+                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
+                                  : "bg-slate-50 text-slate-600 border-slate-200"
+                              )}>
+                                {v.completado ? "Completado" : "Pendiente"}
+                              </span>
+                            </TableCell>
+                            <TableCell className="px-6 py-4">
+                              <div className="flex justify-end">
+                                <Button 
+                                  variant="ghost" 
+                                  size="icon" 
+                                  onClick={() => handleDelete(v.id_ventana)} 
+                                  title="Eliminar Turno" 
+                                  className="h-8 w-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 text-slate-400 transition-colors"
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </div>
+                </div>
+              ))}
+            </>
+          )}
         </div>
 
-        <div className="space-y-6">
-          <Card className="rounded-2xl border-none shadow-xl bg-[#1a237e] text-white overflow-hidden relative group">
-            <div className="absolute top-0 right-0 w-40 h-40 bg-white/10 rounded-full -mr-20 -mt-20 blur-3xl group-hover:bg-white/20 transition-all duration-700" />
-            <CardHeader className="p-8 pb-4 relative z-10">
-              <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-indigo-200">Panel de Estadísticas</CardTitle>
+        <div className="space-y-4 md:space-y-6">
+          <Card className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+            <CardHeader className="p-5 md:p-6 pb-4">
+              <CardTitle className="text-[11px] font-black uppercase tracking-widest text-slate-400">Docentes Pendientes por Categoría</CardTitle>
             </CardHeader>
-            <CardContent className="p-8 pt-0 relative z-10 space-y-8">
-              <div className="flex items-center justify-between group/item">
-                <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 rounded-xl bg-white/10 flex items-center justify-center border border-white/10 shadow-lg group-hover/item:scale-110 transition-transform">
-                    <CalendarCheck className="h-6 w-6 text-indigo-200" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-indigo-300 uppercase tracking-widest">Total Turnos</p>
-                    <p className="text-2xl font-black">{stats?.total_ventanas || 0}</p>
-                  </div>
+            <CardContent className="p-5 md:p-6 pt-0 space-y-3">
+              {[
+                { categoria: "Auxiliar Nombrado", cantidad: 6, color: "bg-amber-100 text-amber-800" },
+                { categoria: "JP Nombrado", cantidad: 4, color: "bg-slate-100 text-slate-700" },
+                { categoria: "Principal Contratado", cantidad: 3, color: "bg-slate-100 text-slate-700" },
+                { categoria: "Asociado Contratado", cantidad: 5, color: "bg-slate-100 text-slate-700" },
+                { categoria: "Auxiliar Contratado", cantidad: 14, color: "bg-slate-100 text-slate-700" },
+                { categoria: "JP Contratado", cantidad: 6, color: "bg-slate-100 text-slate-700" },
+              ].map((item, idx) => (
+                <div key={idx} className="flex items-center justify-between">
+                  <span className="text-slate-600 text-[13px] font-medium">{item.categoria}</span>
+                  <span className={cn("px-3 py-1.5 rounded-full text-[11px] font-bold", item.color)}>
+                    {item.cantidad} pendientes
+                  </span>
                 </div>
-              </div>
-              
-              <div className="flex items-center justify-between group/item">
-                <div className="flex items-center gap-4">
-                  <div className="h-11 w-11 rounded-xl bg-emerald-500/20 flex items-center justify-center border border-emerald-500/30 shadow-lg group-hover/item:scale-110 transition-transform">
-                    <ShieldCheck className="h-6 w-6 text-emerald-400" />
-                  </div>
-                  <div>
-                    <p className="text-[11px] font-bold text-emerald-300 uppercase tracking-widest">Completados</p>
-                    <p className="text-2xl font-black text-emerald-400">{stats?.ventanas_completadas || 0}</p>
-                  </div>
-                </div>
-              </div>
-
-              <div className="pt-4 border-t border-white/10">
-                <div className="flex justify-between items-center text-[11px] font-bold text-indigo-300 uppercase tracking-widest mb-2">
-                  <span>Progreso Global</span>
-                  <span>{stats?.total_ventanas ? Math.round((stats.ventanas_completadas / stats.total_ventanas) * 100) : 0}%</span>
-                </div>
-                <div className="h-2 bg-white/10 rounded-full overflow-hidden">
-                  <div 
-                    className="h-full bg-emerald-400 transition-all duration-1000" 
-                    style={{ width: `${stats?.total_ventanas ? (stats.ventanas_completadas / stats.total_ventanas) * 100 : 0}%` }}
-                  />
-                </div>
-              </div>
+              ))}
             </CardContent>
           </Card>
 
-          <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm space-y-5">
-            <h4 className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Herramientas</h4>
-            <div className="space-y-2">
-              <Button 
-                variant="outline" 
-                className="w-full h-12 rounded-xl border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50 hover:text-[#1a237e] hover:border-indigo-100 transition-all justify-start group"
-                onClick={() => fetchData()}
-              >
-                <RefreshCw className="mr-3 h-4 w-4 text-slate-400 group-hover:rotate-180 transition-transform duration-500" /> 
-                Sincronizar Datos
-              </Button>
-              <Button 
-                variant="outline" 
-                className="w-full h-12 rounded-xl border-slate-200 text-slate-600 font-bold text-[13px] hover:bg-slate-50 hover:text-indigo-600 hover:border-indigo-100 transition-all justify-start"
-              >
-                <Plus className="mr-3 h-4 w-4 text-slate-400" /> 
-                Crear Manualmente
-              </Button>
-            </div>
-          </div>
+          <Card className="rounded-2xl border-none shadow-xl bg-slate-900 text-white overflow-hidden">
+            <CardHeader className="p-5 md:p-6 pb-4">
+              <CardTitle className="text-[11px] font-black uppercase tracking-widest text-indigo-200 flex items-center gap-2">
+                <span className="text-yellow-400">💡</span> TIP DE OPERADOR
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="p-5 md:p-6 pt-0">
+              <p className="text-slate-300 text-[13px] leading-relaxed">
+                Las horas desde/hasta pueden ser modificadas directamente haciendo doble clic en el valor dentro de la grilla. El sistema propagará automáticamente los cambios al guardar.
+              </p>
+            </CardContent>
+          </Card>
         </div>
       </div>
     </div>

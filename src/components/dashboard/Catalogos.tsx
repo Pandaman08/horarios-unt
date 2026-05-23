@@ -29,21 +29,21 @@ export default function CatalogosPage() {
   }, [searchParams]);
 
   return (
-    <div className="max-w-[1400px] mx-auto space-y-4 animate-in fade-in duration-500 pb-4">
+    <div className="w-full max-w-[1400px] mx-auto space-y-4 animate-in fade-in duration-500 pb-4 px-3 sm:px-4 overflow-x-hidden">
       {/* Header Compacto */}
-      <div className="bg-white p-3 rounded-xl border border-slate-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+      <div className="bg-white p-3 md:p-4 rounded-xl border border-slate-100 shadow-sm flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
         <div className="flex items-center gap-3">
-          <div className="h-9 w-9 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 shadow-sm">
+          <div className="h-9 w-9 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 shadow-sm shrink-0">
             <Database className="h-5 w-5 text-[#1a237e]" />
           </div>
           <div>
-            <h1 className="text-base font-bold text-slate-800 tracking-tight leading-none">Catálogos Académicos</h1>
-            <p className="text-[9px] text-slate-400 font-semibold uppercase tracking-wider mt-1">Gestión de datos maestros UNT</p>
+            <h1 className="text-base md:text-lg font-bold text-slate-800 tracking-tight leading-none">Catálogos Académicos</h1>
+            <p className="text-[9px] md:text-[10px] text-slate-400 font-semibold uppercase tracking-wider mt-1">Gestión de datos maestros UNT</p>
           </div>
         </div>
       </div>
 
-      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden p-4">
+      <div className="bg-white rounded-xl shadow-sm border border-slate-100 overflow-hidden p-3 md:p-4 w-full">
         {activeTab === "docentes" && <DocenteList />}
         {activeTab === "cursos" && <CursoList />}
         {activeTab === "ciclos" && <CicloList />}
