@@ -67,18 +67,25 @@ export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
     },
   ];
 
+  let adminDniSeq = 0;
   for (const admin of administrativos) {
     const correo = generarCorreo(admin.nombres, admin.apellidos);
-    const dni = admin.dni || '99999999';
+    const dni = admin.dni ?? `8${String(++adminDniSeq).padStart(7, '0')}`;
     const contrasenaHash = await bcrypt.hash(dni, 10);
     await prisma.usuario.upsert({
       where: { correo_electronico: correo },
-      update: {},
+      update: {
+        nombres: admin.nombres,
+        apellidos: admin.apellidos,
+        dni,
+        contrasena_hash: contrasenaHash,
+        rol: admin.rol,
+      },
       create: {
         codigo: `ADM_${admin.apellidos.replace(/\s/g, '')}_${admin.nombres.split(' ')[0]}`,
         nombres: admin.nombres,
         apellidos: admin.apellidos,
-        dni: dni,
+        dni,
         correo_electronico: correo,
         contrasena_hash: contrasenaHash,
         rol: admin.rol,

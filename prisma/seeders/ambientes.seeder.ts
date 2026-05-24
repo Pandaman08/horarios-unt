@@ -12,6 +12,7 @@ export async function seedAmbientes(prisma: PrismaClient) {
     { codigo: 'A-301', nombre: 'Aula 301', tipo: 'aula', capacidad: 30, piso: '3', pabellon: 'A', equipamiento: 'Proyector', activo: true },
     { codigo: 'A-307', nombre: 'Posgrado A-307', tipo: 'aula', capacidad: 30, piso: '3', pabellon: 'A', equipamiento: 'Proyector', activo: true },
     { codigo: 'A-303', nombre: 'Posgrado A-303', tipo: 'aula', capacidad: 30, piso: '3', pabellon: 'A', equipamiento: 'Proyector', activo: true },
+    { codigo: 'A-311', nombre: 'Aula 311', tipo: 'aula', capacidad: 35, piso: '3', pabellon: 'A', equipamiento: 'Proyector, pizarra acrílica', activo: true },
     { codigo: 'EPG-202', nombre: 'EPG-202 (Posgrado)', tipo: 'aula', capacidad: 40, piso: '2', pabellon: 'Posgrado', equipamiento: 'Proyector, aire acondicionado', activo: true },
     { codigo: 'EPG-203', nombre: 'EPG-203 (Posgrado)', tipo: 'aula', capacidad: 40, piso: '2', pabellon: 'Posgrado', equipamiento: 'Proyector, aire acondicionado', activo: true },
     { codigo: 'EPG-205', nombre: 'EPG-205 (Posgrado)', tipo: 'aula', capacidad: 40, piso: '2', pabellon: 'Posgrado', equipamiento: 'Proyector', activo: true },
@@ -30,6 +31,7 @@ export async function seedAmbientes(prisma: PrismaClient) {
     // Otros laboratorios
     { codigo: 'LAB-FISICA', nombre: 'Laboratorio de Física', tipo: 'laboratorio', capacidad: 20, piso: '1', pabellon: 'Física', equipamiento: 'Equipos de física', activo: true },
     { codigo: 'TALLER-CONF', nombre: 'Taller de Confecciones', tipo: 'taller', capacidad: 30, piso: '1', pabellon: 'Industrial', equipamiento: 'Máquinas de confección', activo: true },
+    { codigo: 'AUDIOVISUALES', nombre: 'Sala Audiovisuales', tipo: 'especializado', capacidad: 40, piso: '2', pabellon: 'A', equipamiento: 'Proyector, equipos audiovisuales', activo: true },
   ];
 
   for (const ambiente of ambientes) {

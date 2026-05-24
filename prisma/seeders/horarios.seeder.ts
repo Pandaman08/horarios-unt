@@ -180,8 +180,8 @@ const horariosPlan: HorarioPlan[] = [
   { periodoKey: '2026-I', cursoCodigo: 'EG-104', docenteCodigo: 's99999999', ambienteCodigo: 'LAB-4', tipoClase: 'laboratorio', diaSemana: 1, horaInicio: '09:00', horaFin: '10:00' },
   { periodoKey: '2026-I', cursoCodigo: 'EG-104', docenteCodigo: 's99999999', ambienteCodigo: 'LAB-4', tipoClase: 'laboratorio', diaSemana: 1, horaInicio: '11:00', horaFin: '12:00' },
   // Bertha Urtecho Zavaleta / Martha Cardoso - Estadística General
-  // Asignamos a Bertha (b99999999) como principal
-  { periodoKey: '2026-I', cursoCodigo: 'EG-105', docenteCodigo: 'b99999999', ambienteCodigo: 'LAB-3', tipoClase: 'laboratorio', diaSemana: 4, horaInicio: '09:00', horaFin: '11:00' },
+  // Asignamos a Bertha (b18165597) como principal
+  { periodoKey: '2026-I', cursoCodigo: 'EG-105', docenteCodigo: 'b18165597', ambienteCodigo: 'LAB-3', tipoClase: 'laboratorio', diaSemana: 4, horaInicio: '09:00', horaFin: '11:00' },
   // Jose Luis Ponte Bejarano - Desarrollo del Pensamiento Lógico Matemático
   { periodoKey: '2026-I', cursoCodigo: 'EG-101', docenteCodigo: 'j99999999', ambienteCodigo: 'A-303', tipoClase: 'teoria', diaSemana: 5, horaInicio: '07:00', horaFin: '09:00' },
   // Alberto Mendoza de los Santos - Introducción a la Ingeniería de Sistemas
@@ -190,7 +190,7 @@ const horariosPlan: HorarioPlan[] = [
   { periodoKey: '2026-I', cursoCodigo: 'EG-102', docenteCodigo: 'j99999999', ambienteCodigo: 'A-307', tipoClase: 'teoria', diaSemana: 4, horaInicio: '09:00', horaFin: '10:00' },
   { periodoKey: '2026-I', cursoCodigo: 'EG-102', docenteCodigo: 'j99999999', ambienteCodigo: 'A-303', tipoClase: 'teoria', diaSemana: 5, horaInicio: '09:00', horaFin: '10:00' },
   // Bertha Urtecho Zavaleta - Desarrollo Personal
-  { periodoKey: '2026-I', cursoCodigo: 'EG-103', docenteCodigo: 'b99999999', ambienteCodigo: 'A-307', tipoClase: 'teoria', diaSemana: 4, horaInicio: '11:00', horaFin: '12:00' },
+  { periodoKey: '2026-I', cursoCodigo: 'EG-103', docenteCodigo: 'b18165597', ambienteCodigo: 'A-307', tipoClase: 'teoria', diaSemana: 4, horaInicio: '11:00', horaFin: '12:00' },
 
   // ---------------------- CICLO III -------------------------
   // Zoraida Vidal Melgarejo - Programación Orientada a Objetos II

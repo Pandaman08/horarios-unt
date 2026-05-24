@@ -45,6 +45,7 @@ export async function seedCursos(prisma: PrismaClient) {
     { codigo: 'EP-302', nombre: 'Estadística Aplicada', horas_teoria: 1, horas_practica: 2, horas_laboratorio: 2, creditos: 3, id_ciclo: cicloMap.get(3), tipo_curso: 'linea_carrera', activo: true },
     { codigo: 'EP-303', nombre: 'Matemática Aplicada I', horas_teoria: 1, horas_practica: 2, horas_laboratorio: 2, creditos: 3, id_ciclo: cicloMap.get(3), tipo_curso: 'linea_carrera', activo: true },
     { codigo: 'EP-304', nombre: 'Física Electrónica', horas_teoria: 1, horas_practica: 2, horas_laboratorio: 2, creditos: 3, id_ciclo: cicloMap.get(3), tipo_curso: 'linea_carrera', activo: true },
+    { codigo: 'EP-305', nombre: 'Química General', horas_teoria: 2, horas_practica: 2, horas_laboratorio: 2, creditos: 4, id_ciclo: cicloMap.get(3), tipo_curso: 'linea_carrera', activo: true },
     { codigo: 'EE-302', nombre: 'Programación Orientada a Objetos II', horas_teoria: 2, horas_practica: 0, horas_laboratorio: 4, creditos: 4, id_ciclo: cicloMap.get(3), tipo_curso: 'linea_carrera', activo: true },
     { codigo: 'EL-301', nombre: 'Ingeniería Gráfica', horas_teoria: 1, horas_practica: 1, horas_laboratorio: 3, creditos: 3, id_ciclo: cicloMap.get(3), tipo_curso: 'electivo', activo: true },
     { codigo: 'EL-302', nombre: 'Sicología Organizacional', horas_teoria: 2, horas_practica: 2, horas_laboratorio: 0, creditos: 3, id_ciclo: cicloMap.get(3), tipo_curso: 'electivo', activo: true },

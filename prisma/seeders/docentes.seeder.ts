@@ -216,7 +216,7 @@ export async function seedDocentes(prisma: PrismaClient) {
       apellidos: "Ponte Bejarano",
       dni: "43616041",
       fecha_ingreso: new Date("2012-03-01"),
-      modalidad: "contratodo",
+      modalidad: "contratado",
       categoria: "principal",
       grado: "Licenciado en matemáticas",
       especialidad: "Matemáticas",
@@ -462,23 +462,29 @@ export async function seedDocentes(prisma: PrismaClient) {
       especialidad: "Ingeniería de Sistemas",
     },
   ];
-   for (const data of docentesData) {
+  for (const data of docentesData) {
     const primerNombre = data.nombres.split(' ')[0];
     const inicial = primerNombre.charAt(0).toLowerCase();
-    const dni = data.dni || '99999999';
-    const codigoDocente = `${inicial}${dni}`; // ejemplo: e18161457
+    const dni = data.dni ?? null;
+    const codigoDocente = dni ? `${inicial}${dni}` : `${inicial}99999999`;
 
     const correo = generarCorreo(data.nombres, data.apellidos);
-    const contrasenaHash = await bcrypt.hash(dni, 10);
+    const contrasenaHash = await bcrypt.hash(dni ?? codigoDocente, 10);
 
     const usuario = await prisma.usuario.upsert({
       where: { correo_electronico: correo },
-      update: { nombres: data.nombres, apellidos: data.apellidos, dni, contrasena_hash: contrasenaHash, rol: 'docente' },
+      update: {
+        nombres: data.nombres,
+        apellidos: data.apellidos,
+        ...(dni !== null ? { dni } : {}),
+        contrasena_hash: contrasenaHash,
+        rol: 'docente',
+      },
       create: {
         codigo: `USR_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
         nombres: data.nombres,
         apellidos: data.apellidos,
-        dni,
+        ...(dni !== null ? { dni } : {}),
         correo_electronico: correo,
         contrasena_hash: contrasenaHash,
         rol: 'docente',

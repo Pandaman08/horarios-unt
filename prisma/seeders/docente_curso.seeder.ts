@@ -103,7 +103,7 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'm17865408', cursoCodigo: 'EE-102', tipoClase: 'laboratorio' },
     { docenteCodigo: 'a17434055', cursoCodigo: 'EE-101', tipoClase: 'teoria' },
     { docenteCodigo: 'p99999999', cursoCodigo: 'EE-102', tipoClase: 'laboratorio' },   // Paul Cotrina Castellanos
-    { docenteCodigo: 'b99999999', cursoCodigo: 'EG-103', tipoClase: 'teoria' },        // Bertha Urtecho Zavaleta
+    { docenteCodigo: 'b18165597', cursoCodigo: 'EG-103', tipoClase: 'teoria' },        // Bertha Urtecho Zavaleta
     { docenteCodigo: 'j99999999', cursoCodigo: 'EG-101', tipoClase: 'teoria' },        // Jose Luis Ponte Bejarano
     { docenteCodigo: 'j99999999', cursoCodigo: 'EG-102', tipoClase: 'teoria' },        // Jorge Luis Rios Gonzales
     { docenteCodigo: 's99999999', cursoCodigo: 'EG-104', tipoClase: 'teoria' },        // Segunda Gubar Obeso
