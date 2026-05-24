@@ -4,16 +4,17 @@ import bcrypt from 'bcryptjs';
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
+    const { id } = await params;
+    const idNumber = parseInt(id);
     const data = await request.json();
 
     const result = await prisma.$transaction(async (tx) => {
       // 1. Actualizar Usuario
       const usuario = await tx.usuario.update({
-        where: { id_usuario: id },
+        where: { id_usuario: idNumber },
         data: {
           nombres: data.nombres,
           apellidos: data.apellidos,
@@ -27,7 +28,7 @@ export async function PUT(
       // 2. Si es docente, actualizar o crear registro de Docente
       if (data.rol === 'docente') {
         await tx.docente.upsert({
-          where: { id_usuario: id },
+          where: { id_usuario: idNumber },
           update: {
             nombres: data.nombres,
             apellidos: data.apellidos,
@@ -40,7 +41,7 @@ export async function PUT(
             activo: data.activo
           },
           create: {
-            id_usuario: id,
+            id_usuario: idNumber,
             codigo_docente: usuario.codigo,
             nombres: data.nombres,
             apellidos: data.apellidos,
@@ -66,11 +67,12 @@ export async function PUT(
 
 export async function DELETE(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const id = parseInt(params.id);
-    await prisma.usuario.delete({ where: { id_usuario: id } });
+    const { id } = await params;
+    const idNumber = parseInt(id);
+    await prisma.usuario.delete({ where: { id_usuario: idNumber } });
     return NextResponse.json({ success: true });
   } catch (error) {
     return NextResponse.json({ error: 'Error al eliminar usuario' }, { status: 500 });

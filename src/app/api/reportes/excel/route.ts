@@ -25,7 +25,7 @@ export async function GET(request: Request) {
       activo: true,
     };
     if (ciclo && ciclo !== 'todos') {
-      whereCursos.ciclo = parseInt(ciclo);
+      whereCursos.id_ciclo = parseInt(ciclo);
     }
 
     const cursos = await prisma.curso.findMany({
@@ -48,7 +48,7 @@ export async function GET(request: Request) {
 
     // Agrupar cursos por ciclo para las pestañas
     const cursosPorCiclo = cursos.reduce((acc: any, curso) => {
-      const c = curso.ciclo || 0;
+      const c = curso.id_ciclo || 0;
       if (!acc[c]) acc[c] = [];
       acc[c].push(curso);
       return acc;
@@ -64,7 +64,7 @@ export async function GET(request: Request) {
     const horas = [
       '7-8', '8-9', '9-10', '10-11', '11-12', '12-1',
       'RECESO',
-      '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8', '8-9'
+      '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8'
     ];
 
     // Paleta de colores para cursos (colores pasteles suaves)
@@ -72,10 +72,6 @@ export async function GET(request: Request) {
       'E3F2FD', 'F1F8E9', 'FFFDE7', 'F3E5F5', 'E8EAF6', 
       'E0F2F1', 'FFF3E0', 'FBE9E7', 'EFEBE9', 'FAFAFA'
     ];
-
-    // Iterar por cada ciclo para crear una hoja
-    const ciclosSorted = Object.keys(cursosPorCiclo).sort((a, b) => parseInt(a) - parseInt(b));
-    let sheetsCreated = 0;
 
     // Paleta de colores SÓLIDOS (según imagen 2)
     const coloresSolidos = [
@@ -103,26 +99,21 @@ export async function GET(request: Request) {
       return roman;
     };
 
-    for (const c of ciclosSorted) {
-      const cicloNum = parseInt(c);
-      const cursosDelCiclo = cursosPorCiclo[c];
+    // Generamos las hojas dependiendo de la selección
+    let ciclosAGenerar: number[] = [];
+    
+    if (ciclo && ciclo !== 'todos') {
+      // Si se selecciona un ciclo individual
+      ciclosAGenerar = [parseInt(ciclo)];
+    } else {
+      // Si se selecciona "Todos los ciclos", generar 10 hojas
+      ciclosAGenerar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    }
 
-      // VALIDACIÓN: Contar docentes únicos asignados en este ciclo
-      const docentesUnicos = new Set();
-      cursosDelCiclo.forEach((curso: any) => {
-        curso.docente_cursos.forEach((dc: any) => {
-          if (dc.docente) docentesUnicos.add(dc.id_docente);
-        });
-      });
+    for (const cicloNum of ciclosAGenerar) {
+      const cursosDelCiclo = cursosPorCiclo[cicloNum] || [];
 
-      // Si no hay al menos 7 docentes asignados, no generamos esta hoja
-      if (docentesUnicos.size < 7) {
-        console.log(`Ciclo ${cicloNum} saltado por tener solo ${docentesUnicos.size} docentes.`);
-        continue;
-      }
-
-      sheetsCreated++;
-      const sheetName = cicloNum === 0 ? 'Electivos' : `Ciclo ${cicloNum}`;
+      const sheetName = `CICLO ${toRoman(cicloNum)}`;
       const worksheet = workbook.addWorksheet(sheetName);
 
       // --- CONFIGURACIÓN DE COLUMNAS (Ajustadas para coincidir con imagen 2) ---
@@ -147,7 +138,7 @@ export async function GET(request: Request) {
         { text: 'UNIVERSIDAD NACIONAL DE TRUJILLO', bold: true, size: 11 },
         { text: 'FACULTAD DE INGENIERÍA TRUJILLO', bold: true, size: 10 },
         { text: `ESCUELA:  INGENIERIA DE SISTEMAS`, bold: true, size: 10, blue: true },
-        { text: `CICLO:  ${cicloNum === 0 ? 'VARIOS' : toRoman(cicloNum)}      SECCION:  A`, bold: true, size: 10, blue: true },
+        { text: `CICLO:  ${toRoman(cicloNum)}      SECCION:  A`, bold: true, size: 10, blue: true },
         { text: `AÑO ACADEMICO:  ${periodo.anio}      SEMESTRE:  ${periodo.semestre === 1 ? 'I' : 'II'}`, bold: true, size: 10, blue: true },
         { text: `Inicio del Ciclo: ${periodo.fecha_inicio.toLocaleDateString()} Termino Ciclo: ${periodo.fecha_fin.toLocaleDateString()}`, bold: true, size: 9, blue: true }
       ];
@@ -266,7 +257,7 @@ export async function GET(request: Request) {
             }
 
             const cell = worksheet.getRow(startRow).getCell(colIdx);
-            cell.value = `${cursoNum}\n(${asig.ambiente.nombre})`;
+            cell.value = `${cursoNum}\n${asig.ambiente ? asig.ambiente.nombre : ''}`;
             cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
             cell.font = { bold: true, size: 8 };
             cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
@@ -275,21 +266,18 @@ export async function GET(request: Request) {
       });
     }
 
-    if (sheetsCreated === 0) {
-      return NextResponse.json({ error: 'No hay ciclos que cumplan con el mínimo de 7 docentes asignados.' }, { status: 400 });
-    }
-
+    // --- GENERAR ARCHIVO ---
     const buffer = await workbook.xlsx.writeBuffer();
-
     return new NextResponse(buffer, {
+      status: 200,
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename=Horarios_${periodo.codigo}.xlsx`
+        'Content-Disposition': `attachment; filename="Horarios_Sistemas_${periodo.anio}_${periodo.semestre}.xlsx"`
       }
     });
 
-  } catch (error) {
+  } catch (error: any) {
     console.error('Error al generar Excel:', error);
-    return NextResponse.json({ error: 'Error interno al generar el reporte Excel' }, { status: 500 });
+    return NextResponse.json({ error: 'Error interno del servidor', detalle: error.message }, { status: 500 });
   }
 }
