@@ -111,10 +111,10 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'm99999999', cursoCodigo: 'EG-105', tipoClase: 'teoria' },        // Martha Cardoso
 
     // Ciclo III
-    { docenteCodigo: 'z18153095', cursoCodigo: 'EE-301', tipoClase: 'teoria' },
-    { docenteCodigo: 'z18153095', cursoCodigo: 'EE-301', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'e18161457', cursoCodigo: 'EE-302', tipoClase: 'teoria' },
-    { docenteCodigo: 'e18161457', cursoCodigo: 'EE-302', tipoClase: 'laboratorio' },
+    { docenteCodigo: 'e18161457', cursoCodigo: 'EE-301', tipoClase: 'teoria' },
+    { docenteCodigo: 'e18161457', cursoCodigo: 'EE-301', tipoClase: 'laboratorio' },
+    { docenteCodigo: 'z18153095', cursoCodigo: 'EE-302', tipoClase: 'teoria' },
+    { docenteCodigo: 'z18153095', cursoCodigo: 'EE-302', tipoClase: 'laboratorio' },
     { docenteCodigo: 'j18122605', cursoCodigo: 'EL-301', tipoClase: 'teoria' },
     { docenteCodigo: 'j18122605', cursoCodigo: 'EL-301', tipoClase: 'laboratorio' },
     { docenteCodigo: 'm99999999', cursoCodigo: 'EP-304', tipoClase: 'teoria' },        // Marcos Ferrer Reyna
@@ -161,6 +161,35 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'o18126940', cursoCodigo: 'EE-702', tipoClase: 'teoria' },
     { docenteCodigo: 'o18126940', cursoCodigo: 'EE-702', tipoClase: 'laboratorio' },
     { docenteCodigo: 'j99999999', cursoCodigo: 'EP-701', tipoClase: 'teoria' },        // Jhoe Alexis González Vásquez (Cadena de Suministro)
+
+    // ==================== CICLO IX (2026-I) ====================
+    // 1. Juan Pedro Santos Fernández - Tesis I
+    { docenteCodigo: 'j17896289', cursoCodigo: 'EI-901', tipoClase: 'teoria' },
+    { docenteCodigo: 'j17896289', cursoCodigo: 'EI-901', tipoClase: 'laboratorio' },
+    // 2. Ricardo Mendoza Rivera - Tesis I
+    { docenteCodigo: 'r18070765', cursoCodigo: 'EI-901', tipoClase: 'teoria' },
+    { docenteCodigo: 'r18070765', cursoCodigo: 'EI-901', tipoClase: 'laboratorio' },
+    // 3. Ricardo Mendoza Rivera - Analítica de Negocios
+    { docenteCodigo: 'r18070765', cursoCodigo: 'EE-903', tipoClase: 'teoria' },
+    { docenteCodigo: 'r18070765', cursoCodigo: 'EE-903', tipoClase: 'laboratorio' },
+    // 4. Alberto Mendoza de los Santos - Auditoría Informática
+    { docenteCodigo: 'a17434055', cursoCodigo: 'EE-902', tipoClase: 'teoria' },
+    { docenteCodigo: 'a17434055', cursoCodigo: 'EE-902', tipoClase: 'laboratorio' },
+    // 5. José Gómez Ávila - Gestión de Proyectos de TI
+    { docenteCodigo: 'j40990648', cursoCodigo: 'EE-901', tipoClase: 'teoria' },
+    { docenteCodigo: 'j40990648', cursoCodigo: 'EE-901', tipoClase: 'laboratorio' },
+    // 6. Oscar Romel Alcántara Moreno - Emprendimiento Tecnológico
+    { docenteCodigo: 'o18126940', cursoCodigo: 'EL-901', tipoClase: 'teoria' },
+    { docenteCodigo: 'o18126940', cursoCodigo: 'EL-901', tipoClase: 'laboratorio' },
+    // 7. Marcelino Torres Villanueva - Ingeniería Web
+    { docenteCodigo: 'm17865408', cursoCodigo: 'EE-905', tipoClase: 'teoria' },
+    { docenteCodigo: 'm17865408', cursoCodigo: 'EE-905', tipoClase: 'laboratorio' },
+    // 8. José Gómez Ávila - Computación en la Nube
+    { docenteCodigo: 'j40990648', cursoCodigo: 'EE-904', tipoClase: 'teoria' },
+    { docenteCodigo: 'j40990648', cursoCodigo: 'EE-904', tipoClase: 'laboratorio' },
+    // 9. Camilo Suarez Rebaza - Hackeo Ético
+    { docenteCodigo: 'c32978627', cursoCodigo: 'EL-902', tipoClase: 'teoria' },
+    { docenteCodigo: 'c32978627', cursoCodigo: 'EL-902', tipoClase: 'laboratorio' },
   ];
 
   let insertados = 0;

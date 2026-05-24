@@ -371,7 +371,7 @@ export function DashboardStats({
           <thead>
             <tr className="border-b border-slate-100">
               <th className="text-left py-3 px-2 font-semibold text-slate-500 w-36">Hora</th>
-              {[1, 2, 3, 4, 5].map((d) => (
+              {[0, 1, 2, 3, 4].map((d) => (
                 <th key={d} className="text-center py-3 px-2 font-semibold text-slate-600">
                   {DIAS_SEMANA[d]}
                 </th>
@@ -384,7 +384,7 @@ export function DashboardStats({
                 <td className="py-3 px-2 text-slate-500 font-medium whitespace-nowrap">
                   {formatRangoHora(hora)}
                 </td>
-                {[1, 2, 3, 4, 5].map((dia) => {
+                {[0, 1, 2, 3, 4].map((dia) => {
                   const valor = getCalorValor(dia, hora);
                   const nivel = heatmapLevel(valor);
                   return (

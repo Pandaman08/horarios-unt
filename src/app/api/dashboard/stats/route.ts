@@ -117,7 +117,7 @@ export async function GET(request: Request) {
     const mapaCalorRaw = await prisma.horarioAsignado.groupBy({
       by: ['dia_semana', 'hora_inicio'],
       _count: { id_asignacion: true },
-      where: { id_periodo, dia_semana: { gte: 1, lte: 5 } },
+      where: { id_periodo, dia_semana: { gte: 0, lte: 4 } },
     });
 
     const mapaCalor = mapaCalorRaw.map((m) => ({

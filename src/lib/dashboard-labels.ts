@@ -16,7 +16,7 @@ export function formatVentanaCategoria(modalidad: string, categoria: string): st
   return `${cat} ${mod}`;
 }
 
-export const DIAS_SEMANA = ["", "Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+export const DIAS_SEMANA = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
 export const HORAS_MAPA_CALOR = [
   "07:00",
