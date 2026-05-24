@@ -43,7 +43,7 @@ export async function GET(request: Request) {
             activo: true
           }
         },
-        OR: ventanasActivas.map(v => ({
+        OR: ventanasActivas.map((v: any) => ({
           modalidad: v.modalidad,
           categoria: v.categoria
         }))

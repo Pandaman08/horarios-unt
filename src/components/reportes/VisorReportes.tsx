@@ -149,9 +149,9 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
   return (
     <div className="space-y-6 animate-in fade-in duration-700 w-full overflow-x-hidden">
       {/* Encabezado como la imagen */}
-      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-2">Centro de Reportes Académicos</h2>
-        <p className="text-slate-500 text-sm">
+      <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
+        <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">Centro de Reportes Académicos</h2>
+        <p className="text-muted-foreground text-sm">
           Configure parámetros de aulas, laboratorios y docentes para exportar consolidados oficiales en formato PDF.
         </p>
       </div>
@@ -163,17 +163,17 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           const isActive = selectedReporte === reporte.id;
           
           const colors = {
-            indigo: 'border-indigo-200 bg-indigo-50/30',
-            emerald: 'border-emerald-200 bg-emerald-50/30',
-            amber: 'border-amber-200 bg-amber-50/30',
-            slate: 'border-slate-200 bg-slate-50/30',
+            indigo: 'border-primary/20 bg-primary/5',
+            emerald: 'border-emerald-500/20 bg-emerald-500/5',
+            amber: 'border-amber-500/20 bg-amber-500/5',
+            slate: 'border-muted-foreground/20 bg-muted-foreground/5',
           };
 
           const borderActive = {
-            indigo: 'border-[#1a237e]',
+            indigo: 'border-primary',
             emerald: 'border-emerald-600',
             amber: 'border-amber-600',
-            slate: 'border-slate-700',
+            slate: 'border-foreground',
           };
 
           return (
@@ -181,19 +181,19 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
               key={reporte.id}
               onClick={() => setSelectedReporte(reporte.id)}
               className={cn(
-                "bg-white p-5 md:p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-md",
-                isActive ? borderActive[reporte.color as keyof typeof borderActive] : "border-slate-100",
+                "bg-card p-5 md:p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-md",
+                isActive ? borderActive[reporte.color as keyof typeof borderActive] : "border-border",
                 colors[reporte.color as keyof typeof colors]
               )}
             >
               <div className="flex items-center gap-3 mb-3">
-                <Icon className={cn("h-6 w-6", isActive ? "text-[#1a237e]" : "text-slate-400")} />
-                <h3 className={cn("font-bold text-lg", isActive ? "text-[#1a237e]" : "text-slate-700")}>
+                <Icon className={cn("h-6 w-6", isActive ? "text-primary" : "text-muted-foreground")} />
+                <h3 className={cn("font-bold text-lg", isActive ? "text-primary" : "text-foreground")}>
                   {reporte.title}
                 </h3>
               </div>
-              <p className="text-xs text-slate-500 mb-4">{reporte.description}</p>
-              <button className="text-sm font-bold text-[#1a237e] flex items-center gap-1">
+              <p className="text-xs text-muted-foreground mb-4">{reporte.description}</p>
+              <button className="text-sm font-bold text-primary flex items-center gap-1">
                 Configurar →
               </button>
             </div>
@@ -203,28 +203,28 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
 
       {/* Parámetros del Reporte */}
       {selectedReporte && (
-        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+            <h3 className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
               PARÁMETROS DEL REPORTE ({selectedReporte === 'aula' ? 'AULA' : selectedReporte.toUpperCase()})
             </h3>
             <button onClick={() => setSelectedReporte(null)}>
-              <X className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+              <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
             </button>
           </div>
           
           {(selectedReporte === 'aula' || selectedReporte === 'laboratorio') ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
-                <Label className="text-sm font-semibold text-slate-700 mb-2 block">
+                <Label className="text-sm font-semibold text-foreground mb-2 block">
                   {selectedReporte === 'aula' ? 'Seleccionar Aula de Teoría' : 'Seleccionar Laboratorio'}
                 </Label>
                 <Select 
                   value={selectedAmbiente} 
                   onValueChange={setSelectedAmbiente}
                 >
-                  <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50">
+                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
                     <SelectValue placeholder="Aula A-101" />
                   </SelectTrigger>
                   <SelectContent>
@@ -248,12 +248,12 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           ) : selectedReporte === 'docente' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
-                <Label className="text-sm font-semibold text-slate-700 mb-2 block">Seleccionar Docente</Label>
+                <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Docente</Label>
                 <Select 
                   value={selectedDocente} 
                   onValueChange={setSelectedDocente}
                 >
-                  <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50">
+                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
                     <SelectValue placeholder="Juan Pérez" />
                   </SelectTrigger>
                   <SelectContent>
@@ -290,49 +290,49 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
       )}
 
       {/* Vista Previa Ejemplo */}
-      <div className="bg-white p-5 md:p-6 rounded-2xl border-2 border-dashed border-slate-200 shadow-sm">
+      <div className="bg-card p-5 md:p-6 rounded-2xl border-2 border-dashed border-border shadow-sm">
         <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-widest">
+          <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">
             🔍 VISTA PREVIA DE EJEMPLO - HORARIO DE AULA A-101
           </h3>
-          <span className="text-[10px] text-slate-400 uppercase tracking-widest">
+          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
             EJEMPLO ILUSTRATIVO DE IMPRESIÓN
           </span>
         </div>
         
-        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+        <div className="bg-muted/50 rounded-xl p-4 border border-border">
           <table className="w-full text-xs">
             <thead>
-              <tr className="border-b border-slate-200">
-                <th className="text-left py-2 px-3 text-slate-500 font-semibold">Hora</th>
-                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Lunes</th>
-                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Martes</th>
-                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Miércoles</th>
-                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Jueves</th>
-                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Viernes</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 px-3 text-muted-foreground font-semibold">Hora</th>
+                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Lunes</th>
+                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Martes</th>
+                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Miércoles</th>
+                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Jueves</th>
+                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Viernes</th>
               </tr>
             </thead>
             <tbody className="text-center">
-              <tr className="border-b border-slate-100">
-                <td className="py-2 px-3 text-slate-500 text-left">08:00 - 10:00</td>
-                <td className="py-2 px-3 bg-indigo-50 text-indigo-800 rounded">Programación I - A-101</td>
+              <tr className="border-b border-border">
+                <td className="py-2 px-3 text-muted-foreground text-left">08:00 - 10:00</td>
+                <td className="py-2 px-3 bg-primary/10 text-primary rounded">Programación I - A-101</td>
                 <td className="py-2 px-3">-</td>
-                <td className="py-2 px-3 bg-indigo-50 text-indigo-800 rounded">Estructura de Datos - A-101</td>
+                <td className="py-2 px-3 bg-primary/10 text-primary rounded">Estructura de Datos - A-101</td>
                 <td className="py-2 px-3">-</td>
                 <td className="py-2 px-3">-</td>
               </tr>
-              <tr className="border-b border-slate-100">
-                <td className="py-2 px-3 text-slate-500 text-left">10:00 - 12:00</td>
+              <tr className="border-b border-border">
+                <td className="py-2 px-3 text-muted-foreground text-left">10:00 - 12:00</td>
                 <td className="py-2 px-3">-</td>
-                <td className="py-2 px-3 bg-emerald-50 text-emerald-800 rounded">Taller Sistemas - LAB-2</td>
+                <td className="py-2 px-3 bg-emerald-500/10 text-emerald-600 rounded">Taller Sistemas - LAB-2</td>
                 <td className="py-2 px-3">-</td>
-                <td className="py-2 px-3 bg-emerald-50 text-emerald-800 rounded">Programación I (L) - LAB-1</td>
+                <td className="py-2 px-3 bg-emerald-500/10 text-emerald-600 rounded">Programación I (L) - LAB-1</td>
                 <td className="py-2 px-3">-</td>
               </tr>
               <tr>
-                <td className="py-2 px-3 text-slate-500 text-left">12:00 - 14:00</td>
+                <td className="py-2 px-3 text-muted-foreground text-left">12:00 - 14:00</td>
                 <td className="py-2 px-3" colSpan={5}>
-                  <span className="text-slate-300">Receso o Almuerzo Institucional</span>
+                  <span className="text-muted-foreground/30">Receso o Almuerzo Institucional</span>
                 </td>
               </tr>
             </tbody>
@@ -341,27 +341,27 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
       </div>
 
       {/* Historial de Reportes */}
-      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
-        <h3 className="text-base font-bold text-slate-800 mb-4 uppercase tracking-wide">
+      <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
+        <h3 className="text-base font-bold text-foreground mb-4 uppercase tracking-wide">
           HISTORIAL DE REPORTES GENERADOS RECIENTEMENTE
         </h3>
         <div className="overflow-x-auto">
           <table className="w-full">
             <thead>
-              <tr className="border-b border-slate-100">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Fecha</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Tipo de Reporte</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Parámetro</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Estado</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Descargar</th>
+              <tr className="border-b border-border">
+                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Fecha</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Tipo de Reporte</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Parámetro</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Estado</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Descargar</th>
               </tr>
             </thead>
             <tbody>
               {historial.map((item, index) => (
-                <tr key={index} className="border-b border-slate-50 hover:bg-slate-50/50">
-                  <td className="py-3 px-4 text-sm text-slate-700">{item.fecha}</td>
-                  <td className="py-3 px-4 text-sm font-medium text-[#1a237e]">{item.tipo}</td>
-                  <td className="py-3 px-4 text-sm text-slate-700">{item.parametro}</td>
+                <tr key={index} className="border-b border-border hover:bg-muted/50">
+                  <td className="py-3 px-4 text-sm text-foreground">{item.fecha}</td>
+                  <td className="py-3 px-4 text-sm font-medium text-primary">{item.tipo}</td>
+                  <td className="py-3 px-4 text-sm text-foreground">{item.parametro}</td>
                   <td className="py-3 px-4">
                     <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
                       <CheckCircle2 className="h-4 w-4" />
@@ -369,7 +369,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
                     </span>
                   </td>
                   <td className="py-3 px-4">
-                    <button className="px-4 py-1.5 rounded-full border border-[#1a237e] text-[#1a237e] text-sm font-bold hover:bg-[#1a237e] hover:text-white transition-colors">
+                    <button className="px-4 py-1.5 rounded-full border border-primary text-primary text-sm font-bold hover:bg-primary hover:text-primary-foreground transition-colors">
                       {item.accion}
                     </button>
                   </td>
@@ -382,28 +382,28 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
 
       {/* Mantenemos la sección de Excel y los demás botones de reportes para preservar funcionalidad */}
       <div className="hidden">
-        <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden group">
-          <div className="h-1.5 bg-[#1a237e] w-full" />
+        <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group">
+          <div className="h-1.5 bg-primary w-full" />
           <CardHeader className="p-6">
             <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
               <div className="flex items-center gap-5">
-                <div className="p-3.5 rounded-xl bg-indigo-50 text-[#1a237e] border border-indigo-100 shadow-sm transition-transform duration-500 group-hover:scale-105">
+                <div className="p-3.5 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-sm transition-transform duration-500 group-hover:scale-105">
                   <FileText className="h-7 w-7" />
                 </div>
                 <div>
-                  <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Horarios Académicos</CardTitle>
-                  <CardDescription className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">Generación de Reportes en Excel</CardDescription>
+                  <CardTitle className="text-xl font-bold text-foreground tracking-tight">Horarios Académicos</CardTitle>
+                  <CardDescription className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest mt-1">Generación de Reportes en Excel</CardDescription>
                 </div>
               </div>
               
-              <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+              <div className="flex flex-wrap items-center gap-4 bg-muted/50 p-3 rounded-2xl border border-border">
                 <div className="space-y-1.5 px-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Seleccionar Ciclo</Label>
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Seleccionar Ciclo</Label>
                   <Select value={selectedCiclo} onValueChange={setSelectedCiclo}>
-                    <SelectTrigger className="w-[180px] h-10 rounded-xl border border-slate-200 bg-white px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all">
+                    <SelectTrigger className="w-[180px] h-10 rounded-xl border border-border bg-card px-4 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all">
                       <SelectValue placeholder="Todos los ciclos" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                    <SelectContent className="rounded-xl border-border shadow-xl">
                       {ciclos.map(c => (
                         <SelectItem key={c.value} value={c.value} className="font-bold py-2 text-xs">{c.label}</SelectItem>
                       ))}
@@ -416,7 +416,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           <CardContent className="p-6 pt-0">
             <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
               <Button
-                className="h-16 rounded-xl bg-white border border-slate-200 hover:border-[#1a237e] text-[#1a237e] hover:bg-indigo-50 font-bold text-xs uppercase tracking-widest transition-all shadow-sm hover:shadow-md active:scale-95"
+                className="h-16 rounded-xl bg-card border border-border hover:border-primary text-primary hover:bg-primary/10 font-bold text-xs uppercase tracking-widest transition-all shadow-sm hover:shadow-md active:scale-95"
                 onClick={() => handleDownloadExcel()}
                 disabled={generatingExcel}
               >
@@ -430,8 +430,8 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
                 className={cn(
                   "h-16 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-sm active:scale-95",
                   isAdmin 
-                    ? "bg-[#1a237e] hover:bg-[#121858] text-white shadow-indigo-900/10 hover:shadow-indigo-900/20" 
-                    : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/10 hover:shadow-primary/20" 
+                    : "bg-muted text-muted-foreground cursor-not-allowed shadow-none"
                 )}
                 onClick={() => isAdmin && handleDownloadExcel()}
                 disabled={generatingExcel || !isAdmin}
@@ -445,7 +445,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
 
               <Button
                 variant="outline"
-                className="h-16 rounded-xl border border-slate-200 hover:border-slate-400 text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+                className="h-16 rounded-xl border border-border hover:border-muted-foreground text-muted-foreground hover:text-foreground hover:bg-muted/50 font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
                 onClick={() => toast.info("Vista previa no disponible")}
               >
                 <div className="flex items-center gap-3">
@@ -458,27 +458,27 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
         </Card>
 
         <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden group">
-            <div className="h-1 bg-indigo-500 w-full" />
+          <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group">
+            <div className="h-1 bg-primary w-full" />
             <CardHeader className="p-6 pb-4">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 transition-transform duration-300 group-hover:scale-105">
+                <div className="p-3 rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
                   <User className="h-6 w-6" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Reporte por Docente</CardTitle>
-                  <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Horario individual oficial</CardDescription>
+                  <CardTitle className="text-lg font-bold text-foreground tracking-tight">Reporte por Docente</CardTitle>
+                  <CardDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Horario individual oficial</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 pt-2 space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Seleccionar Docente</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Seleccionar Docente</Label>
                 <Select value={selectedDocente} onValueChange={setSelectedDocente}>
-                  <SelectTrigger className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all">
+                  <SelectTrigger className="w-full h-11 rounded-xl border border-border bg-muted/50 px-4 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all">
                     <SelectValue placeholder="Busca un docente..." />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                  <SelectContent className="rounded-xl border-border shadow-xl">
                     {docentes.map(d => (
                       <SelectItem key={d.id_docente} value={d.id_docente.toString()} className="py-2 text-xs font-medium">
                         {d.nombres} {d.apellidos}
@@ -488,13 +488,13 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
                 </Select>
               </div>
               <Button
-                className="w-full h-12 rounded-xl bg-[#1a237e] hover:bg-[#121858] text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/10 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
+                className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/10 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
                 disabled={generatingDocente}
                 onClick={() => handleDownload('docente', selectedDocente)}
               >
                 {generatingDocente ? (
                   <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
                     <span>Generando...</span>
                   </div>
                 ) : (
@@ -507,27 +507,27 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
             </CardContent>
           </Card>
 
-          <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden group">
+          <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group">
             <div className="h-1 bg-emerald-500 w-full" />
             <CardHeader className="p-6 pb-4">
               <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-105">
+                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 transition-transform duration-300 group-hover:scale-105">
                   <Home className="h-6 w-6" />
                 </div>
                 <div>
-                  <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Reporte por Ambiente</CardTitle>
-                  <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Uso de aulas y laboratorios</CardDescription>
+                  <CardTitle className="text-lg font-bold text-foreground tracking-tight">Reporte por Ambiente</CardTitle>
+                  <CardDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Uso de aulas y laboratorios</CardDescription>
                 </div>
               </div>
             </CardHeader>
             <CardContent className="p-6 pt-2 space-y-4">
               <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Seleccionar Ambiente</Label>
+                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Seleccionar Ambiente</Label>
                 <Select value={selectedAmbiente} onValueChange={setSelectedAmbiente}>
-                  <SelectTrigger className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-4 font-bold text-xs focus:ring-2 focus:ring-emerald-100 transition-all">
+                  <SelectTrigger className="w-full h-11 rounded-xl border border-border bg-muted/50 px-4 font-bold text-xs focus:ring-2 focus:ring-emerald-500/10 transition-all">
                     <SelectValue placeholder="Busca un ambiente..." />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                  <SelectContent className="rounded-xl border-border shadow-xl">
                     {ambientes.map(a => (
                       <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()} className="py-2 text-xs font-medium">
                         {a.nombre} ({a.tipo.replace('_', ' ')})
@@ -557,16 +557,16 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           </Card>
         </div>
 
-        <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden">
-          <div className="h-1.5 bg-indigo-600 w-full" />
+        <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden">
+          <div className="h-1.5 bg-primary w-full" />
           <CardHeader className="p-6">
             <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600">
+              <div className="p-3 rounded-xl bg-primary/10 text-primary">
                 <FileText className="h-6 w-6" />
               </div>
               <div>
-                <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Reportes de Gestión</CardTitle>
-                <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Resúmenes ejecutivos del periodo</CardDescription>
+                <CardTitle className="text-xl font-bold text-foreground tracking-tight">Reportes de Gestión</CardTitle>
+                <CardDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Resúmenes ejecutivos del periodo</CardDescription>
               </div>
             </div>
           </CardHeader>
@@ -574,44 +574,44 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <Button
                 variant="outline"
-                className="h-20 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50/50 flex flex-col gap-2 group transition-all"
+                className="h-20 rounded-xl border border-border hover:border-primary hover:bg-primary/5 flex flex-col gap-2 group transition-all"
                 onClick={() => handleDownload('consolidado')}
                 disabled={generatingConsolidado}
               >
                 {generatingConsolidado ? (
-                  <div className="h-5 w-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                  <div className="h-5 w-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
                 ) : (
-                  <Download className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                  <Download className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
                 )}
-                <span className="font-bold text-[10px] uppercase tracking-wider text-slate-600 group-hover:text-indigo-900">Consolidado Carga</span>
+                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-primary">Consolidado Carga</span>
               </Button>
 
               <Button
                 variant="outline"
-                className="h-20 rounded-xl border border-slate-200 hover:border-amber-600 hover:bg-amber-50/50 flex flex-col gap-2 group transition-all"
+                className="h-20 rounded-xl border border-border hover:border-amber-600 hover:bg-amber-500/5 flex flex-col gap-2 group transition-all"
                 onClick={() => handleDownload('conflictos')}
                 disabled={generatingConflictos}
               >
                 {generatingConflictos ? (
-                  <div className="h-5 w-5 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
+                  <div className="h-5 w-5 border-2 border-amber-500/20 border-t-amber-600 rounded-full animate-spin" />
                 ) : (
-                  <Download className="h-5 w-5 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                  <Download className="h-5 w-5 text-muted-foreground group-hover:text-amber-600 transition-colors" />
                 )}
-                <span className="font-bold text-[10px] uppercase tracking-wider text-slate-600 group-hover:text-amber-900">Registro Conflictos</span>
+                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-amber-600">Registro Conflictos</span>
               </Button>
 
               <Button
                 variant="outline"
-                className="h-20 rounded-xl border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/50 flex flex-col gap-2 group transition-all"
+                className="h-20 rounded-xl border border-border hover:border-emerald-600 hover:bg-emerald-500/5 flex flex-col gap-2 group transition-all"
                 onClick={() => handleDownload('estadisticas')}
                 disabled={generatingEstadisticas}
               >
                 {generatingEstadisticas ? (
-                  <div className="h-5 w-5 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+                  <div className="h-5 w-5 border-2 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin" />
                 ) : (
-                  <Download className="h-5 w-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                  <Download className="h-5 w-5 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
                 )}
-                <span className="font-bold text-[10px] uppercase tracking-wider text-slate-600 group-hover:text-emerald-900">Estadísticas Finales</span>
+                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-emerald-600">Estadísticas Finales</span>
               </Button>
             </div>
           </CardContent>

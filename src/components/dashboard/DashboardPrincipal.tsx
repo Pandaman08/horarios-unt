@@ -35,9 +35,8 @@ export default function DashboardPrincipal() {
     <div className="space-y-4 sm:space-y-6 animate-in fade-in duration-500 pb-6 w-full overflow-x-hidden">
       {selectedPeriodo && (
         <DashboardStats
-          id_periodo={parseInt(selectedPeriodo)}
+          id_periodo={Number.parseInt(selectedPeriodo, 10)}
           periodos={periodos}
-          onPeriodoChange={setSelectedPeriodo}
           selectedPeriodo={selectedPeriodo}
         />
       )}
