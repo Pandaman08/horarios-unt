@@ -53,15 +53,15 @@ function DashboardLayoutInner({
           "director_escuela",
           "coordinador_academico",
           "docente",
+          "operador_horarios",
         ],
       },
-      // Ocultado temporalmente según requerimiento del usuario
-      /* {
+      {
         title: t("navAttention"),
         href: "/dashboard/horarios/asignacion",
         icon: Users,
         roles: ["administrador_sistema", "operador_horarios"],
-      }, */
+      },
       {
         isGroup: true,
         title: t("navAcademic"),
@@ -111,6 +111,7 @@ function DashboardLayoutInner({
           "administrador_sistema",
           "director_escuela",
           "coordinador_academico",
+          "operador_horarios",
         ],
       },
       {
@@ -450,8 +451,8 @@ function DashboardLayoutInner({
           <span>{t("helpTip")}</span>
         </div>
 
-        <main className="flex-1 p-4 overflow-x-auto overflow-y-auto">
-          <div className="w-full min-w-max">{children}</div>
+        <main className="flex-1 p-4 overflow-x-hidden overflow-y-auto">
+          <div className="w-full max-w-full">{children}</div>
         </main>
       </div>
     </div>
