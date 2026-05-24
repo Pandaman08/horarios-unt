@@ -42,7 +42,8 @@ export async function PUT(
         horas_laboratorio: parseInt(data.horas_laboratorio) || 0,
         horas_practica: parseInt(data.horas_practica) || 0,
         creditos: parseInt(data.creditos) || 0,
-        ciclo: parseInt(data.ciclo) || null,
+        id_ciclo: parseInt(data.id_ciclo) || null,
+        tipo_curso: data.tipo_curso || "linea_carrera",
         plan_estudios: data.plan_estudios,
         prerequisitos: data.prerequisitos,
         activo: data.activo

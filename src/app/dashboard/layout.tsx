@@ -18,7 +18,12 @@ import {
   X,
   ChevronLeft,
   ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  Bell,
+  MapPin,
+  Layers,
+  Settings,
+  ChevronDown
 } from "lucide-react";
 
 export default function DashboardLayout({
@@ -30,215 +35,259 @@ export default function DashboardLayout({
   const pathname = usePathname();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false);
-
-  // Bloquear scroll cuando el menú está abierto (Mejora UX Mobile)
-  useEffect(() => {
-    const mainContent = document.querySelector('main');
-    if (isSidebarOpen) {
-      document.body.style.overflow = "hidden";
-      if (mainContent) mainContent.style.overflow = "hidden";
-    } else {
-      document.body.style.overflow = "auto";
-      if (mainContent) mainContent.style.overflow = "auto";
-    }
-    return () => {
-      document.body.style.overflow = "auto";
-      if (mainContent) mainContent.style.overflow = "auto";
-    };
-  }, [isSidebarOpen]);
+  const [userDropdownOpen, setUserDropdownOpen] = useState(false);
+  const [gestionAcademicaOpen, setGestionAcademicaOpen] = useState(true);
 
   const menuItems = [
     {
-      title: "Inicio",
+      title: "Dashboard",
       href: "/dashboard",
       icon: LayoutDashboard,
       roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "docente"]
     },
     {
-      title: "Mantenimiento",
-      href: "/dashboard/catalogos",
-      icon: ClipboardList,
-      roles: ["administrador_sistema", "director_escuela", "coordinador_academico"]
-    },
-    {
-      title: "Usuarios",
-      href: "/dashboard/usuarios",
-      icon: ShieldCheck,
-      roles: ["administrador_sistema"]
-    },
-    {
-      title: "Centro de Asignación",
+      title: "Atención",
       href: "/dashboard/horarios/asignacion",
       icon: Users,
-      roles: ["administrador_sistema", "operador_horarios"]
+      roles: ["administrador_sistema", "operador_horarios"],
+    },
+    {
+      isGroup: true,
+      title: "Gestión Académica",
+      roles: ["administrador_sistema", "director_escuela", "coordinador_academico"],
+      items: [
+        { title: "Docentes", href: "/dashboard/catalogos?tab=docentes", icon: Users },
+        { title: "Cursos", href: "/dashboard/catalogos?tab=cursos", icon: BookOpen },
+        { title: "Ambientes", href: "/dashboard/catalogos?tab=ambientes", icon: MapPin },
+        { title: "Ciclos", href: "/dashboard/catalogos?tab=ciclos", icon: Layers },
+        { title: "Períodos", href: "/dashboard/catalogos?tab=periodos", icon: Calendar },
+      ]
+    },
+    {
+      title: "Ventanas",
+      href: "/dashboard/catalogos?tab=ventanas",
+      icon: ClipboardList,
+      roles: ["administrador_sistema", "director_escuela", "coordinador_academico"],
+    },
+    {
+      title: "Horarios",
+      href: "/dashboard/horarios/seleccion",
+      icon: Calendar,
+      roles: ["docente"],
     },
     {
       title: "Reportes",
       href: "/dashboard/reportes",
       icon: FileText,
-      roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"]
+      roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"],
     },
     {
-      title: "Gestionar Horario",
-      href: "/dashboard/horarios/seleccion",
-      icon: Calendar,
-      roles: ["docente"]
+      title: "Notificaciones",
+      href: "/dashboard/notificaciones",
+      icon: Bell,
+      roles: ["administrador_sistema", "director_escuela", "coordinador_academico", "docente"],
+    },
+    {
+      isGroup: true,
+      title: "Configuración",
+      roles: ["administrador_sistema"],
+      items: [
+        { title: "Usuarios", href: "/dashboard/usuarios", icon: ShieldCheck },
+        { title: "Otros ajustes", href: "/dashboard/configuracion", icon: Settings },
+      ]
     },
   ];
 
-  const filteredMenu = menuItems.filter(item =>
-    session?.user?.rol && item.roles.includes(session.user.rol)
-  );
+  const userRol = session?.user?.rol;
+
+  const filteredMenu = menuItems
+    .filter((item) => !item.roles || (userRol && item.roles.includes(userRol)))
+    .map((item) => {
+      if (!("isGroup" in item) || !item.items) return item;
+      const items = item.items.filter(
+        (sub) => !sub.roles || (userRol && sub.roles.includes(userRol))
+      );
+      return items.length > 0 ? { ...item, items } : null;
+    })
+    .filter((item): item is (typeof menuItems)[number] => item !== null);
 
   return (
-    <div className="flex h-screen bg-[#f8fafc] overflow-hidden">
-      {/* Mobile Backdrop */}
-      {isSidebarOpen && (
-        <div 
-          className="lg:hidden fixed inset-0 bg-black/60 backdrop-blur-sm z-[45] transition-opacity duration-300"
-          onClick={() => setIsSidebarOpen(false)}
-        />
-      )}
-
-      {/* Sidebar */}
+    <div className="min-h-screen bg-slate-50 text-slate-800 flex font-sans overflow-x-hidden">
+      {/* SIDEBAR LATERAL IZQUIERDO */}
       <aside className={cn(
-        "fixed left-0 z-50 bg-[#003366] text-white flex flex-col shadow-2xl transition-all duration-300 ease-in-out lg:static lg:h-screen",
-        isSidebarCollapsed ? "lg:w-24" : "lg:w-72",
-        "w-[78%] max-w-[300px] top-16 h-[calc(100vh-4rem)] lg:top-0",
-        isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
+        "fixed inset-y-0 left-0 z-40 bg-[#1a237e] text-white transition-all duration-300 ease-in-out flex flex-col shadow-2xl",
+        isSidebarCollapsed ? "w-16" : "w-56",
+        isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
       )}>
-        <div className={cn("p-8 relative", isSidebarCollapsed && "p-4")}>
-          <div className="flex items-center justify-between lg:justify-start gap-4">
-            <div className={cn(
-              "flex items-center gap-4 bg-white/10 p-4 rounded-2xl border border-white/10 backdrop-blur-sm shadow-inner flex-1 overflow-hidden transition-all",
-              isSidebarCollapsed && "p-2 justify-center"
-            )}>
-              <img 
-                src="/logount.png" 
-                alt="UNT Logo" 
-                className={cn("h-10 w-auto transition-all", isSidebarCollapsed && "h-8")}
-              />
-              {!isSidebarCollapsed && (
-                <>
-                  <div className="h-8 w-[1px] bg-white/20" />
-                  <h1 className="text-sm font-black leading-tight tracking-tighter uppercase">
-                    Horarios <br />
-                    <span className="text-blue-300">UNT</span>
-                  </h1>
-                </>
-              )}
-            </div>
-            
-            {/* Toggle Button for Desktop */}
-            <button
-              onClick={() => setIsSidebarCollapsed(!isSidebarCollapsed)}
-              className="hidden lg:flex absolute -right-4 top-1/2 -translate-y-1/2 h-8 w-8 rounded-full bg-white text-[#003366] items-center justify-center shadow-lg border border-gray-100 z-50 hover:scale-110 transition-transform"
-            >
-              {isSidebarCollapsed ? <ChevronRight className="h-5 w-5" /> : <ChevronLeft className="h-5 w-5" />}
-            </button>
-
-            {/* Close button for mobile */}
-            <button 
-              onClick={() => setIsSidebarOpen(false)}
-              className="lg:hidden h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10"
-            >
-              <X className="h-6 w-6 text-white" />
-            </button>
+        <div className={cn("p-4 border-b border-white/10 flex items-center gap-2", isSidebarCollapsed && "p-3 justify-center")}>
+          <div className="bg-white p-1.5 rounded-lg text-[#1a237e] shrink-0 shadow-sm">
+            <svg className="w-5 h-5" fill="currentColor" viewBox="0 0 20 20">
+              <path d="M10.394 2.08a1 1 0 00-.788 0l-7 3a1 1 0 000 1.84L5.25 8.051a.999.999 0 01.356-.257l4-1.714a1 1 0 11.788 1.838L7.667 9.088l1.94.831a1 1 0 00.787 0l7-3a1 1 0 000-1.838l-7-3zM3.31 9.397L5 10.12v4.102a8.969 8.969 0 00-1.05-.174 1 1 0 01-.89-.89 11.115 11.115 0 01.25-3.762zM9.3 16.573A9.04 9.04 0 017 14.94V11.8l2.3 1a1 1 0 00.78 0l7-3a1 1 0 00.313-1.633L15 7.445v5.022c0 .54-.408 1.001-.946 1.058a9.011 9.011 0 01-4.754 3.048 1 1 0 01-.3-.02z" />
+            </svg>
           </div>
-        </div>
-
-        <nav className="flex-1 px-4 space-y-2 overflow-y-auto custom-scrollbar">
           {!isSidebarCollapsed && (
-            <div className="px-4 py-2 mb-2">
-              <p className="text-[10px] font-black text-blue-300/40 uppercase tracking-[0.2em]">Menú Principal</p>
+            <div className="overflow-hidden">
+              <h1 className="font-bold text-xs leading-tight whitespace-nowrap">SGH Sistemas</h1>
+              <p className="text-[9px] text-white/60 whitespace-nowrap uppercase tracking-tighter">UNT Trujillo</p>
             </div>
           )}
-          {filteredMenu.map((item) => (
-            <Link
-              key={item.title}
-              href={item.href}
-              onClick={() => setIsSidebarOpen(false)}
-              className={cn(
-                "flex items-center p-4 rounded-2xl transition-all duration-300 group relative overflow-hidden",
-                pathname === item.href
-                  ? "bg-white text-[#003366] shadow-lg shadow-blue-900/20 translate-x-2"
-                  : "text-blue-100 hover:bg-white/5 hover:translate-x-1",
-                isSidebarCollapsed && "justify-center px-0 translate-x-0 hover:translate-x-0"
-              )}
-              title={isSidebarCollapsed ? item.title : ""}
-            >
-              {pathname === item.href && !isSidebarCollapsed && (
-                <div className="absolute left-0 top-0 bottom-0 w-1.5 bg-yellow-400" />
-              )}
-              <item.icon className={cn(
-                "h-5 w-5 transition-transform group-hover:scale-110 shrink-0",
-                !isSidebarCollapsed && "mr-3",
-                pathname === item.href ? "text-[#003366]" : "text-blue-300"
-              )} />
-              {!isSidebarCollapsed && (
-                <span className="text-sm font-bold tracking-tight whitespace-nowrap">{item.title}</span>
-              )}
-            </Link>
-          ))}
+        </div>
+
+        <nav className="flex-1 px-2 py-3 space-y-0.5 overflow-y-auto custom-scrollbar">
+          {filteredMenu.map((item: any, idx: number) => {
+            if (item.isGroup) {
+              const isGestion = item.title === "Gestión Académica";
+              const isOpen = isGestion ? gestionAcademicaOpen : true;
+              return (
+                <div key={idx} className="space-y-0.5 pt-1.5 first:pt-0">
+                  {!isSidebarCollapsed && (
+                    <button 
+                      onClick={() => isGestion && setGestionAcademicaOpen(!gestionAcademicaOpen)}
+                      className="w-full flex items-center justify-between px-3 py-1 text-[9px] font-semibold text-white/40 uppercase tracking-widest hover:text-white/60 transition-colors"
+                    >
+                      <span>{item.title}</span>
+                      {isGestion && <ChevronDown className={cn("w-2.5 h-2.5 transition-transform", !isOpen && "-rotate-90")} />}
+                    </button>
+                  )}
+                  {(!isSidebarCollapsed && isOpen || isSidebarCollapsed) && item.items.map((sub: any) => {
+                    const isActive = pathname === sub.href;
+                    const SubIcon = sub.icon;
+                    return (
+                      <Link
+                        key={sub.title}
+                        href={sub.href}
+                        className={cn(
+                          "w-full flex items-center px-3 py-1 rounded-lg transition-all duration-200 group relative",
+                          isActive 
+                            ? 'bg-white/10 text-white font-semibold shadow-sm' 
+                            : 'text-white/70 hover:bg-white/5 hover:text-white',
+                          isSidebarCollapsed && "justify-center px-0"
+                        )}
+                        title={isSidebarCollapsed ? sub.title : ""}
+                      >
+                        <SubIcon className={cn("w-3.5 h-3.5 shrink-0", isActive ? "text-white" : "text-white/50 group-hover:text-white")} />
+                        {!isSidebarCollapsed && <span className="text-[11px] ml-3">{sub.title}</span>}
+                        {isActive && !isSidebarCollapsed && <div className="absolute left-0 w-0.5 h-3 bg-white rounded-r-full" />}
+                      </Link>
+                    );
+                  })}
+                </div>
+              );
+            }
+
+            const isActive = pathname === item.href;
+            const ItemIcon = item.icon;
+            return (
+              <Link
+                key={item.title}
+                href={item.href}
+                className={cn(
+                  "w-full flex items-center px-3 py-1.5 rounded-lg transition-all duration-200 group relative",
+                  isActive 
+                    ? 'bg-white/10 text-white font-semibold shadow-sm' 
+                    : 'text-white/70 hover:bg-white/5 hover:text-white',
+                  isSidebarCollapsed && "justify-center px-0"
+                )}
+                title={isSidebarCollapsed ? item.title : ""}
+              >
+                <ItemIcon className={cn("w-4 h-4 shrink-0", isActive ? "text-white" : "text-white/50 group-hover:text-white")} />
+                {!isSidebarCollapsed && <span className="text-xs ml-3">{item.title}</span>}
+                {isActive && !isSidebarCollapsed && <div className="absolute left-0 w-0.5 h-4 bg-white rounded-r-full" />}
+              </Link>
+            );
+          })}
         </nav>
 
-        <div className={cn("p-6 mt-auto", isSidebarCollapsed && "p-2")}>
-          <div className={cn("bg-white/5 rounded-3xl p-4 border border-white/10 backdrop-blur-md shadow-xl", isSidebarCollapsed && "rounded-2xl p-2")}>
-            <div className={cn("flex items-center gap-3 mb-6", isSidebarCollapsed && "justify-center mb-4")}>
-              <div className="bg-gradient-to-br from-blue-400 to-blue-600 rounded-2xl p-0.5 shadow-lg shrink-0">
-                <div className="bg-[#003366] rounded-[14px] p-2">
-                  <UserCircle className="h-6 w-6 text-white" />
-                </div>
-              </div>
-              {!isSidebarCollapsed && (
-                <div className="overflow-hidden">
-                  <p className="text-xs font-black text-white truncate leading-none mb-1">{session?.user?.name}</p>
-                  <div className="inline-flex items-center px-2 py-0.5 rounded-full bg-blue-400/10 border border-blue-400/20">
-                    <p className="text-[9px] font-bold text-blue-300 uppercase tracking-tighter truncate">
-                      {session?.user?.rol?.replace("_", " ")}
-                    </p>
-                  </div>
-                </div>
-              )}
-            </div>
-            <button
-              onClick={() => signOut({ callbackUrl: "/auth/login" })}
-              className={cn(
-                "flex items-center justify-center w-full py-3 px-4 bg-white/5 hover:bg-red-500/10 text-blue-200 hover:text-red-400 rounded-2xl border border-white/10 hover:border-red-500/20 transition-all duration-300 group",
-                isSidebarCollapsed && "px-0"
-              )}
-              title="Cerrar Sesión"
-            >
-              <LogOut className={cn("h-4 w-4 transition-transform group-hover:-translate-x-1", !isSidebarCollapsed && "mr-2")} />
-              {!isSidebarCollapsed && (
-                <span className="text-xs font-black uppercase tracking-widest">Cerrar Sesión</span>
-              )}
-            </button>
+        <div className="p-2.5 border-t border-white/10 bg-indigo-950/40 text-[9px] text-white/60">
+          <div className="flex justify-between items-center">
+            {!isSidebarCollapsed && <span className="uppercase tracking-tighter font-semibold">{session?.user?.rol?.replace("_", " ")}</span>}
+            <span className="h-1.5 w-1.5 rounded-full bg-emerald-400 inline-block animate-pulse shrink-0"></span>
           </div>
+          {!isSidebarCollapsed && (
+            <p className="mt-0.5 text-[10px] text-white font-semibold truncate opacity-90">{session?.user?.name}</p>
+          )}
         </div>
       </aside>
 
-      {/* Mobile Header */}
-      <div className="lg:hidden fixed top-0 left-0 right-0 h-16 bg-[#003366] flex items-center justify-between px-6 z-40 shadow-lg">
-        <button 
-          onClick={() => setIsSidebarOpen(true)}
-          className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10"
-        >
-          <Menu className="h-6 w-6 text-white" />
-        </button>
-        <div className="flex items-center gap-3">
-          <img src="/logount.png" alt="UNT" className="h-8 w-auto" />
-          <span className="text-white font-black text-sm tracking-tighter">SGH UNT</span>
-        </div>
-        <div className="h-10 w-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
-          <UserCircle className="h-6 w-6 text-white" />
-        </div>
-      </div>
+      {/* Mobile Backdrop */}
+      {isSidebarOpen && (
+        <div 
+          onClick={() => setIsSidebarOpen(false)} 
+          className="fixed inset-0 z-30 bg-slate-900/40 backdrop-blur-sm md:hidden transition-opacity duration-300"
+        />
+      )}
 
-      {/* Main Content Area */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
-        <main className="flex-1 overflow-y-auto pt-16 lg:pt-0 custom-scrollbar">
-          <div className="min-h-full animate-in fade-in duration-700">
+      {/* CONTENEDOR PRINCIPAL */}
+      <div className={cn(
+        "flex-1 flex flex-col min-h-screen transition-all duration-300",
+        isSidebarCollapsed ? "md:pl-16" : "md:pl-56"
+      )}>
+        {/* BARRA SUPERIOR COMPACTA */}
+        <header className="h-11 bg-white border-b border-slate-100 flex items-center justify-between px-4 sticky top-0 z-20 shadow-sm">
+          <div className="flex items-center space-x-3 flex-1">
+            <button 
+              onClick={() => setIsSidebarOpen(true)} 
+              className="p-1 text-slate-500 hover:text-slate-800 md:hidden" 
+            >
+              <Menu className="w-4 h-4" />
+            </button>
+            <div className="relative max-w-[220px] w-full hidden sm:block">
+              <span className="absolute inset-y-0 left-0 pl-2.5 flex items-center pointer-events-none text-slate-400">
+                <LayoutDashboard className="w-3 h-3" />
+              </span>
+              <input 
+                type="text" 
+                placeholder="Buscar módulo..." 
+                className="w-full pl-7 pr-3 py-1 text-[10px] bg-slate-50 border border-slate-200 rounded-lg focus:outline-none focus:ring-1 focus:ring-[#1a237e] focus:bg-white transition"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-3">
+            <button className="p-1.5 text-slate-400 hover:text-slate-700 hover:bg-slate-50 rounded-lg transition relative group">
+              <Bell className="w-3.5 h-3.5" />
+              <span className="absolute top-1 right-1 block h-1.5 w-1.5 rounded-full bg-rose-500 ring-1 ring-white"></span>
+            </button>
+
+            <div className="h-6 w-px bg-slate-100 mx-1 hidden sm:block" />
+
+            <div className="relative">
+              <button 
+                onClick={() => setUserDropdownOpen(!userDropdownOpen)} 
+                className="flex items-center space-x-2 p-0.5 rounded-lg hover:bg-slate-50 transition focus:outline-none"
+              >
+                <div className="w-6 h-6 rounded-lg bg-[#1a237e] text-white flex items-center justify-center font-bold text-[9px] shadow-sm uppercase">
+                  {session?.user?.name?.substring(0, 2) || "U"}
+                </div>
+                <div className="hidden sm:block text-left">
+                  <p className="text-[10px] font-semibold text-slate-800 leading-none truncate max-w-[80px]">
+                    {session?.user?.name?.split(' ')[0]}
+                  </p>
+                </div>
+                <ChevronDown className={cn(
+                  "w-2.5 h-2.5 text-slate-400 transition-transform",
+                  userDropdownOpen ? 'rotate-180' : 'rotate-0'
+                )} />
+              </button>
+
+              {userDropdownOpen && (
+                <div className="absolute right-0 mt-1.5 w-36 bg-white border border-slate-100 rounded-xl shadow-xl py-1 z-30 text-[10px] text-slate-700 animate-in fade-in slide-in-from-top-1">
+                  <div className="px-3 py-1 border-b border-slate-50 text-[8px] text-slate-400 uppercase tracking-wider font-bold">Sesión</div>
+                  <button 
+                    onClick={() => signOut({ callbackUrl: "/auth/login" })} 
+                    className="w-full text-left px-3 py-1.5 hover:bg-rose-50 text-rose-600 transition font-semibold flex items-center gap-2"
+                  >
+                    <LogOut className="w-3 h-3" /> Cerrar sesión
+                  </button>
+                </div>
+              )}
+            </div>
+          </div>
+        </header>
+
+        {/* CONTENIDO DE PANTALLAS COMPACTO */}
+        <main className="flex-grow p-3 sm:p-4 space-y-4 overflow-x-hidden overflow-y-auto custom-scrollbar">
+          <div className="w-full max-w-[1400px] mx-auto animate-in fade-in slide-in-from-bottom-1 duration-300">
             {children}
           </div>
         </main>

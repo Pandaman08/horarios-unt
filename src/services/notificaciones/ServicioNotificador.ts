@@ -8,18 +8,29 @@ export class ServicioNotificador {
    */
   static async procesarCola() {
     const ahora = new Date();
-    const pendientes = await prisma.colaNotificaciones.findMany({
-      where: {
-        estado: 'pendiente',
-        fecha_programada: { lte: ahora },
-        intentos: { lt: 3 }
-      },
-      include: { docente: { include: { preferencias_notificacion: true } } },
-      take: 10 // Procesar en bloques
-    });
+    console.log(`[Notificador] Iniciando procesamiento de cola a las ${ahora.toISOString()}`);
+    
+    try {
+      const pendientes = await prisma.colaNotificaciones.findMany({
+        where: {
+          estado: 'pendiente',
+          fecha_programada: { lte: ahora },
+          intentos: { lt: 3 }
+        },
+        include: { docente: { include: { preferencias_notificacion: true } } },
+        take: 20
+      });
 
-    for (const notificacion of pendientes) {
-      await this.enviarNotificacion(notificacion);
+      console.log(`[Notificador] Encontradas ${pendientes.length} notificaciones pendientes para enviar.`);
+
+      for (const notificacion of pendientes) {
+        console.log(`[Notificador] Procesando id_cola: ${notificacion.id_cola} para docente: ${notificacion.docente.nombres} (${notificacion.canal})`);
+        await this.enviarNotificacion(notificacion);
+      }
+      
+      console.log(`[Notificador] Fin del procesamiento de cola.`);
+    } catch (error) {
+      console.error(`[Notificador] Error crítico en procesarCola:`, error);
     }
   }
 
@@ -110,8 +121,10 @@ export class ServicioNotificador {
 
   /**
    * Programa notificaciones para una ventana de atención
+   * @param id_ventana ID de la ventana
+   * @param ids_docentes_especificos Lista opcional de IDs de docentes para notificar. Si no se provee, notifica a todos los de la categoría.
    */
-  static async programarNotificacionesVentana(id_ventana: number) {
+  static async programarNotificacionesVentana(id_ventana: number, ids_docentes_especificos?: number[]) {
     const ventana = await prisma.ventanaAtencion.findUnique({
       where: { id_ventana },
       include: { periodo: true }
@@ -122,8 +135,9 @@ export class ServicioNotificador {
     // Obtener docentes que pertenecen a esta ventana
     const docentes = await prisma.docente.findMany({
       where: { 
-        modalidad: ventana.modalidad, 
-        categoria: ventana.categoria,
+        id_docente: ids_docentes_especificos ? { in: ids_docentes_especificos } : undefined,
+        modalidad: ids_docentes_especificos ? undefined : ventana.modalidad, 
+        categoria: ids_docentes_especificos ? undefined : ventana.categoria,
         activo: true 
       }
     });
@@ -174,13 +188,17 @@ export class ServicioNotificador {
       const asuntoDefault = 'Recordatorio: Tu ventana de selección de horarios';
       const htmlDefault = `<p>Hola {{nombre}}, te recordamos que tu ventana de atención para la selección de horarios es el {{fecha}} a las {{hora}}.</p><p>Por favor, asegúrate de tener tus cursos listos.</p>`;
 
-      // EVITAR DUPLICADOS: No enviar más de un recordatorio de 24h por periodo/docente si ya existe uno pendiente o enviado recientemente
+      // EVITAR DUPLICADOS: No enviar más de un recordatorio de 24h por periodo/docente si ya existe uno programado para la misma fecha
+      const margenError = 5 * 60 * 1000; // 5 minutos
       const existe = await prisma.colaNotificaciones.findFirst({
         where: { 
           id_docente, 
           tipo_notificacion: tipo, 
           canal: 'correo',
-          fecha_creacion: { gte: new Date(Date.now() - 24 * 60 * 60 * 1000) } // Creado en las últimas 24h
+          fecha_programada: {
+            gte: new Date(fecha.getTime() - margenError),
+            lte: new Date(fecha.getTime() + margenError)
+          }
         }
       });
 
@@ -193,7 +211,8 @@ export class ServicioNotificador {
             fecha_programada: fecha,
             datos_mensaje: {
               asunto: configCorreo?.configuracion_adicional ? (configCorreo.configuracion_adicional as any).asunto : asuntoDefault,
-              html: replacePlaceholders(configCorreo ? configCorreo.plantilla_mensaje : htmlDefault, docente)
+              html: replacePlaceholders(configCorreo ? configCorreo.plantilla_mensaje : htmlDefault, docente),
+              id_ventana: ventana.id_ventana
             }
           }
         });
@@ -203,13 +222,18 @@ export class ServicioNotificador {
     // 2. Programar Telegram (Tanto para 24h como 15min)
     const textoDefault = `🔔 <b>RECORDATORIO</b>\n\nHola {{nombre}}, tu ventana de atención es el {{fecha}} a las {{hora}}.\n\n<i>Sistema de Horarios UNT</i>`;
 
-    // EVITAR DUPLICADOS: No enviar más de una alerta del mismo tipo si ya se envió una recientemente
+    // EVITAR DUPLICADOS: No enviar más de una alerta del mismo tipo si ya se envió una recientemente o está pendiente
+    // Buscamos si ya existe una notificación para este docente, canal y tipo programada para la misma fecha (aprox)
+    const margenErrorTelegram = 5 * 60 * 1000; // 5 minutos
     const existeTelegram = await prisma.colaNotificaciones.findFirst({
       where: { 
         id_docente, 
         tipo_notificacion: tipo, 
         canal: 'telegram',
-        fecha_creacion: { gte: new Date(Date.now() - 1 * 60 * 60 * 1000) } // Creado en la última hora
+        fecha_programada: {
+          gte: new Date(fecha.getTime() - margenErrorTelegram),
+          lte: new Date(fecha.getTime() + margenErrorTelegram)
+        }
       }
     });
 
@@ -221,7 +245,8 @@ export class ServicioNotificador {
           canal: 'telegram',
           fecha_programada: fecha,
           datos_mensaje: {
-            texto: replacePlaceholders(configTelegram ? configTelegram.plantilla_mensaje : textoDefault, docente)
+            texto: replacePlaceholders(configTelegram ? configTelegram.plantilla_mensaje : textoDefault, docente),
+            id_ventana: ventana.id_ventana // Guardamos el ID de ventana en los metadatos
           }
         }
       });

@@ -44,67 +44,80 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
   };
 
   return (
-    <Card className="h-full">
-      <CardHeader className="flex flex-row items-center justify-between pb-2">
-        <CardTitle className="text-lg font-bold">Cola de Espera</CardTitle>
-        <span className="inline-flex items-center bg-gray-100 text-gray-600 px-2 py-0.5 rounded-full text-xs font-bold">{cola.length} en espera</span>
-      </CardHeader>
-      <CardContent className="p-0">
-        <div className="divide-y max-h-[600px] overflow-y-auto">
-          {loading ? (
-            <div className="p-4 text-center text-sm text-muted-foreground">Cargando cola...</div>
-          ) : cola.length === 0 ? (
-            <div className="p-8 text-center space-y-2">
-              <Clock className="mx-auto h-8 w-8 text-muted-foreground" />
-              <p className="text-sm text-muted-foreground">No hay docentes en espera actualmente.</p>
+    <div className="h-full bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden">
+      <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
+        <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Cola de Espera</h4>
+        <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-bold">
+          {cola.length} en espera
+        </span>
+      </div>
+      
+      <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50">
+        {loading ? (
+          <div className="p-8 text-center">
+            <div className="animate-spin h-5 w-5 border-2 border-[#1a237e] border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Cargando cola...</p>
+          </div>
+        ) : cola.length === 0 ? (
+          <div className="p-12 text-center space-y-4">
+            <div className="h-12 w-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+              <Clock className="h-6 w-6 text-slate-300" />
             </div>
-          ) : (
-            cola.map((docente, index) => {
-              const esActual = docente.id_docente === docenteActualId;
-              return (
-                <div 
-                  key={docente.id_docente}
-                  className={cn(
-                    "p-4 flex items-center justify-between hover:bg-gray-50 transition-colors",
-                    esActual && "bg-blue-50 border-l-4 border-l-blue-500"
-                  )}
-                >
-                  <div className="flex items-center space-x-3">
-                    <div className="flex-shrink-0 bg-gray-100 rounded-full p-2">
-                      <User className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div>
-                      <h4 className="text-sm font-bold leading-none">
-                        {docente.nombres} {docente.apellidos}
-                      </h4>
-                      <div className="flex items-center space-x-2 mt-1">
-                        <span className="text-[10px] uppercase font-bold text-muted-foreground">{docente.modalidad}</span>
-                        <span className="text-[10px] uppercase font-bold text-blue-600 bg-blue-50 px-1 rounded">
-                          {docente.categoria.replace("_", " ")}
-                        </span>
-                      </div>
+            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">No hay docentes en espera actualmente.</p>
+          </div>
+        ) : (
+          cola.map((docente, index) => {
+            const esActual = docente.id_docente === docenteActualId;
+            return (
+              <div 
+                key={docente.id_docente}
+                className={cn(
+                  "p-4 flex items-center justify-between transition-all duration-200 group",
+                  esActual ? "bg-indigo-50/50" : "hover:bg-slate-50/80"
+                )}
+              >
+                <div className="flex items-center space-x-3 min-w-0">
+                  <div className={cn(
+                    "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm font-bold text-xs uppercase",
+                    esActual ? "bg-white text-[#1a237e] ring-2 ring-indigo-100" : "bg-slate-100 text-slate-500"
+                  )}>
+                    {docente.nombres.charAt(0)}{docente.apellidos.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <h4 className="text-sm font-bold text-slate-800 leading-none truncate">
+                      {docente.nombres} {docente.apellidos}
+                    </h4>
+                    <div className="flex items-center gap-1.5 mt-1.5">
+                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter font-mono">{docente.codigo_docente}</span>
+                      <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
+                      <span className="text-[9px] font-bold text-[#1a237e] uppercase tracking-tighter bg-indigo-50 px-1.5 py-0.5 rounded">
+                        {docente.categoria.replace("_", " ")}
+                      </span>
                     </div>
                   </div>
-                  
-                  {!esActual && (
+                </div>
+                
+                <div className="ml-3 shrink-0">
+                  {esActual ? (
+                    <span className="inline-flex items-center bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-100 animate-pulse">
+                      Atendiendo
+                    </span>
+                  ) : (
                     <Button 
                       size="sm" 
                       variant="ghost" 
                       onClick={() => onLlamarDocente(docente)}
-                      className="text-blue-600 hover:text-blue-700 hover:bg-blue-100"
+                      className="text-[#1a237e] hover:text-[#1a237e] hover:bg-white h-8 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-transparent hover:border-indigo-100 transition-all opacity-0 group-hover:opacity-100"
                     >
-                      Llamar <ChevronRight className="ml-1 h-4 w-4" />
+                      Llamar
                     </Button>
                   )}
-                  {esActual && (
-                    <span className="inline-flex items-center bg-blue-500 text-white px-2 py-0.5 rounded-full text-[10px] font-bold">En Atención</span>
-                  )}
                 </div>
-              );
-            })
-          )}
-        </div>
-      </CardContent>
-    </Card>
+              </div>
+            );
+          })
+        )}
+      </div>
+    </div>
   );
 }

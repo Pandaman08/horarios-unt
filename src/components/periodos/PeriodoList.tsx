@@ -95,14 +95,30 @@ export function PeriodoList() {
   const fetchPeriodos = async () => {
     try {
       const res = await fetch("/api/periodos");
+      const contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar periodos");
+      }
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/periodos:", text.substring(0, 200));
+        throw new Error("La respuesta de periodos no es un JSON válido");
+      }
+
       const data = await res.json();
       if (Array.isArray(data)) {
         setPeriodos(data);
       } else {
         setPeriodos([]);
       }
-    } catch (error) {
-      toast.error("Error al cargar periodos");
+    } catch (error: any) {
+      console.error("Error en fetchPeriodos:", error);
+      toast.error(error.message || "Error al cargar periodos");
     } finally {
       setLoading(false);
     }
@@ -184,40 +200,40 @@ export function PeriodoList() {
 
   const getStatusBadge = (estado: string) => {
     const states: Record<string, { label: string, color: string, icon: any }> = {
-      planificacion: { label: "Planificación", color: "bg-blue-50 text-blue-700", icon: Clock },
-      asignacion_horarios: { label: "Asignación", color: "bg-yellow-50 text-yellow-700", icon: Timer },
-      en_curso: { label: "En Curso", color: "bg-emerald-50 text-emerald-700", icon: CheckCircle2 },
-      finalizado: { label: "Finalizado", color: "bg-gray-50 text-gray-700", icon: AlertCircle },
+      planificacion: { label: "Planificación", color: "bg-indigo-50 text-indigo-700 border-indigo-100", icon: Clock },
+      asignacion_horarios: { label: "Asignación", color: "bg-amber-50 text-amber-700 border-amber-100", icon: Timer },
+      en_curso: { label: "En Curso", color: "bg-emerald-50 text-emerald-700 border-emerald-100", icon: CheckCircle2 },
+      finalizado: { label: "Finalizado", color: "bg-slate-50 text-slate-700 border-slate-200", icon: AlertCircle },
     };
     const state = states[estado] || states.planificacion;
     const Icon = state.icon;
     return (
-      <span className={cn("px-3 py-1 rounded-lg text-[12px] font-black uppercase tracking-tight flex items-center gap-2", state.color)}>
-        <Icon className="h-4 w-4" />
+      <span className={cn("px-2.5 py-0.5 rounded-lg text-[10px] font-bold uppercase tracking-widest flex items-center gap-1.5 border", state.color)}>
+        <Icon className="h-3.5 w-3.5" />
         {state.label}
       </span>
     );
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center">
-            <Calendar className="h-6 w-6 text-[#003366]" />
+    <div className="space-y-3 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 shadow-sm">
+            <Calendar className="h-4 w-4 text-[#1a237e]" />
           </div>
           <div>
-            <h2 className="text-[20px] font-black text-gray-900 tracking-tight">Periodos</h2>
-            <p className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Ciclos académicos</p>
+            <h2 className="text-base font-bold text-slate-800 tracking-tight leading-none">Periodos Académicos</h2>
+            <p className="text-slate-500 text-[10px] mt-1">Configuración de ciclos y estados del sistema</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:min-w-[280px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
             <Input 
               placeholder="Buscar periodo..." 
-              className="pl-12 h-11 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-[14px] focus:ring-2 focus:ring-blue-100 transition-all"
+              className="pl-9 h-9 rounded-lg border-slate-200 bg-slate-50/50 font-semibold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -230,29 +246,30 @@ export function PeriodoList() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold text-[14px] shadow-sm transition-all">
-                <Plus className="mr-2 h-5 w-5" /> Nuevo Periodo
+              <Button className="h-9 bg-[#1a237e] hover:bg-[#121858] text-white rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-3xl rounded-2xl p-6 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+            <DialogContent className="sm:max-w-xl rounded-xl p-6 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
               <DialogHeader className="mb-6">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 bg-blue-50 rounded-xl flex items-center justify-center">
-                    <Calendar className="h-8 w-8 text-[#003366]" />
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100">
+                    <Calendar className="h-5 w-5 text-[#1a237e]" />
                   </div>
                   <div>
-                    <DialogTitle className="text-[24px] font-black text-gray-900 tracking-tight">
+                    <DialogTitle className="text-lg font-bold text-slate-800 tracking-tight">
                       {editingPeriodo ? "Actualizar Periodo" : "Registrar Periodo"}
                     </DialogTitle>
+                    <p className="text-slate-500 text-xs mt-1 font-medium">Configure los parámetros del ciclo lectivo</p>
                   </div>
                 </div>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Código</Label>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Código</Label>
                     <Input 
-                      className={cn("h-11 rounded-xl border-gray-200 font-bold text-[16px]", editingPeriodo && "bg-gray-50")} 
+                      className={cn("h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all", editingPeriodo && "bg-slate-100")} 
                       value={formData.codigo} 
                       onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase().slice(0, 10) })} 
                       required 
@@ -260,21 +277,21 @@ export function PeriodoList() {
                       placeholder="Ej: 2024-I"
                     />
                   </div>
-                  <div className="md:col-span-2 space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Nombre</Label>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nombre</Label>
                     <Input 
-                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
+                      className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
                       value={formData.nombre} 
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value.slice(0, 50) })} 
                       required 
                       maxLength={50}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Año</Label>
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Año</Label>
                     <Input 
                       type="number" 
-                      className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
+                      className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
                       value={formData.anio} 
                       onChange={(e) => {
                         const val = Math.max(2020, Math.min(2100, parseInt(e.target.value) || 2024));
@@ -285,18 +302,35 @@ export function PeriodoList() {
                       max={2100}
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Fecha Inicio</Label>
-                    <Input type="date" className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.fecha_inicio} onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })} required />
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Inicio</Label>
+                    <Input type="date" className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" value={formData.fecha_inicio} onChange={(e) => setFormData({ ...formData, fecha_inicio: e.target.value })} required />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Fecha Fin</Label>
-                    <Input type="date" className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.fecha_fin} onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })} required />
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Fin</Label>
+                    <Input type="date" className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" value={formData.fecha_fin} onChange={(e) => setFormData({ ...formData, fecha_fin: e.target.value })} required />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Estado</Label>
+                    <Select 
+                      value={formData.estado} 
+                      onValueChange={(val) => setFormData({ ...formData, estado: val })}
+                    >
+                      <SelectTrigger className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all">
+                        <SelectValue placeholder="Estado" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg border-slate-100 shadow-xl">
+                        <SelectItem value="planificacion" className="font-bold text-[11px] py-1.5">Planificación</SelectItem>
+                        <SelectItem value="asignacion_horarios" className="font-bold text-[11px] py-1.5">Asignación</SelectItem>
+                        <SelectItem value="en_curso" className="font-bold text-[11px] py-1.5">En Curso</SelectItem>
+                        <SelectItem value="finalizado" className="font-bold text-[11px] py-1.5">Finalizado</SelectItem>
+                      </SelectContent>
+                    </Select>
                   </div>
                 </div>
-                <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-gray-500 px-8 text-[16px]">Cancelar</Button>
-                  <Button type="submit" className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-10 font-black text-[16px]">
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-slate-400 hover:bg-slate-50 px-6 text-[11px]">Cancelar</Button>
+                  <Button type="submit" className="h-9 bg-[#1a237e] hover:bg-[#121858] text-white rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
                     {editingPeriodo ? "Actualizar" : "Crear"}
                   </Button>
                 </div>
@@ -306,38 +340,43 @@ export function PeriodoList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
           <Table>
-            <TableHeader className="bg-gray-50/50">
-              <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="w-[100px]">Código</TableHead>
-                <TableHead>Nombre del Periodo</TableHead>
-                <TableHead className="w-[200px]">Rango de Fechas</TableHead>
-                <TableHead className="w-[180px] text-center">Estado</TableHead>
-                <TableHead className="w-[150px] text-right">Acciones</TableHead>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 w-[100px]">Código</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">Nombre</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">Rango</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-center">Estado</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="divide-y divide-slate-50">
               {loading ? (
-                <TableRow><TableCell colSpan={5} className="py-12 text-center text-[16px] font-bold text-gray-400">Cargando periodos...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : filteredPeriodos.length === 0 ? (
-                <TableRow><TableCell colSpan={5} className="py-12 text-center text-[16px] font-bold text-gray-400">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={5} className="py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 filteredPeriodos.map((periodo) => (
-                  <TableRow key={periodo.id_periodo} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                    <TableCell className="font-bold text-[14px] text-gray-500">{periodo.codigo}</TableCell>
-                    <TableCell className="font-bold text-gray-900 text-[16px]">{periodo.nombre}</TableCell>
-                    <TableCell className="text-[14px] font-bold text-gray-500">
-                      {format(new Date(periodo.fecha_inicio), "dd MMM yyyy", { locale: es })} - {format(new Date(periodo.fecha_fin), "dd MMM yyyy", { locale: es })}
+                  <TableRow key={periodo.id_periodo} className="group hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="px-4 py-2">
+                      <span className="font-mono text-[10px] font-bold text-[#1a237e]">{periodo.codigo}</span>
                     </TableCell>
-                    <TableCell className="text-center">
+                    <TableCell className="px-4 py-2 font-semibold text-slate-800 text-[11px]">{periodo.nombre}</TableCell>
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center gap-2 text-[10px] font-bold text-slate-500">
+                        <Timer className="h-3.5 w-3.5 text-slate-300" />
+                        <span>{format(new Date(periodo.fecha_inicio), "dd MMM", { locale: es })} - {format(new Date(periodo.fecha_fin), "dd MMM yy", { locale: es })}</span>
+                      </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
                       <div className="flex justify-center">{getStatusBadge(periodo.estado)}</div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
-                        <Button variant="ghost" size="icon" onClick={() => handleEdit(periodo)} title="Editar" className="h-9 w-9 hover:bg-blue-50 hover:text-[#003366]"><Edit className="h-5 w-5" /></Button>
-                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(periodo.id_periodo); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-9 w-9 hover:bg-red-50 hover:text-red-600"><Trash2 className="h-5 w-5" /></Button>
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(periodo)} title="Editar" className="h-7 w-7 rounded-lg hover:bg-indigo-50 hover:text-[#1a237e] transition-all opacity-0 group-hover:opacity-100"><Edit className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(periodo.id_periodo); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-7 w-7 rounded-lg hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -349,26 +388,32 @@ export function PeriodoList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-lg border-none shadow-2xl p-6">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[400px]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-gray-900">¿Eliminar este periodo?</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-gray-500">Esta acción eliminará el periodo y toda la información asociada.</AlertDialogDescription>
+            <div className="h-14 w-14 bg-rose-50 rounded-2xl flex items-center justify-center mb-4 border border-rose-100">
+              <AlertCircle className="h-8 w-8 text-rose-600" />
+            </div>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">¿Eliminar periodo?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 mt-2 leading-relaxed">Esta acción eliminará el periodo y toda la información asociada. Esta acción no se puede deshacer.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="h-10 rounded-lg font-bold text-sm">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-lg bg-red-600 hover:bg-red-700 text-white font-black text-sm px-6">Confirmar</AlertDialogAction>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-10 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-8">Confirmar</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-lg border-none shadow-2xl p-6">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[450px]">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-gray-900">Error</AlertDialogTitle>
-            <AlertDialogDescription className="text-sm font-medium text-gray-600 bg-amber-50 p-4 rounded-lg border border-amber-100">{errorMessage}</AlertDialogDescription>
+            <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 border border-amber-100">
+              <AlertCircle className="h-8 w-8 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">Aviso del Sistema</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 bg-amber-50/50 p-4 rounded-xl border border-amber-100 mt-4 leading-relaxed">{errorMessage}</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-lg bg-[#003366] hover:bg-[#002244] text-white font-black text-sm px-8">Cerrar</AlertDialogAction>
+          <AlertDialogFooter className="mt-8">
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-xl bg-[#1a237e] hover:bg-[#121858] text-white font-bold text-xs px-10 shadow-lg shadow-indigo-900/10">Entendido</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
