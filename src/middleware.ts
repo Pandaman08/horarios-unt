@@ -3,10 +3,7 @@ import { withAuth } from "next-auth/middleware";
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-// Rutas públicas que no requieren autenticación
-const publicRoutes = ["/auth/login", "/api/auth"];
-
-// Mapa de roles permitidos por ruta (opcional)
+// Mapa de roles permitidos por ruta
 const rolePermissions: Record<string, string[]> = {
   "/dashboard/horarios/seleccion": ["docente"],
   "/dashboard/horarios/asignacion": ["operador_horarios", "administrador_sistema"],
@@ -23,18 +20,17 @@ export default withAuth(
     const token = req.nextauth?.token as any;
     const pathname = req.nextUrl.pathname;
 
-    // Si no hay token y la ruta no es pública, redirigir a login
-    if (!token && !publicRoutes.some(route => pathname.startsWith(route))) {
+    // Si no hay token y la ruta no es login, redirigir a login
+    if (!token) {
       const loginUrl = new URL("/auth/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);
     }
 
-    // Verificar permisos por rol si la ruta está restringida
+    // Verificar permisos por rol
     for (const [route, allowedRoles] of Object.entries(rolePermissions)) {
       if (pathname.startsWith(route)) {
         if (!allowedRoles.includes(token?.rol)) {
-          // Redirigir a dashboard o mostrar página de no autorizado
           return NextResponse.redirect(new URL("/dashboard", req.url));
         }
         break;
@@ -45,25 +41,33 @@ export default withAuth(
   },
   {
     callbacks: {
-      authorized: ({ token }) => {
-        // Permitir acceso a rutas públicas siempre
+      authorized: ({ token, req }) => {
+        // Permitir acceso a rutas de NextAuth sin token
+        const pathname = req.nextUrl.pathname;
+        if (pathname.startsWith("/api/auth") || pathname.startsWith("/auth/login")) {
+          return true;
+        }
+        // Para el resto, requerir token
         return !!token;
       },
     },
   }
 );
 
-// Configurar rutas en las que se ejecutará el middleware
+// Configurar rutas (solo aplicar a dashboard y APIs protegidas)
 export const config = {
   matcher: [
-    /*
-     * Match all request paths except for the ones starting with:
-     * - api/auth (NextAuth internal routes)
-     * - auth/login (Public login page)
-     * - _next/static (static files)
-     * - _next/image (image optimization files)
-     * - favicon.ico (favicon file)
-     */
-    "/((?!api/auth|auth/login|_next/static|_next/image|favicon.ico).*)",
+    "/dashboard/:path*",
+    "/api/admin/:path*",
+    "/api/ciclos/:path*",
+    "/api/cursos/:path*",
+    "/api/docentes/:path*",
+    "/api/grupos/:path*",
+    "/api/horarios/:path*",
+    "/api/notificaciones/admin/:path*",
+    "/api/periodos/:path*",
+    "/api/reportes/:path*",
+    "/api/usuarios/:path*",
+    "/api/ventanas/:path*",
   ],
 };
