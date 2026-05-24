@@ -199,24 +199,24 @@ export function UsuarioList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-4 rounded-xl border border-gray-100 shadow-sm">
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
         <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-blue-50 rounded-xl flex items-center justify-center">
-            <ShieldCheck className="h-6 w-6 text-[#003366]" />
+          <div className="h-12 w-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
+            <ShieldCheck className="h-6 w-6 text-[#1a237e]" />
           </div>
           <div>
-            <h2 className="text-[20px] font-black text-gray-900 tracking-tight">Usuarios</h2>
-            <p className="text-[14px] font-bold text-gray-400 uppercase tracking-widest leading-none">Control de accesos y roles</p>
+            <h2 className="text-[20px] font-black text-slate-800 tracking-tight">Usuarios del Sistema</h2>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest leading-none mt-1">Gestión de Accesos y Privilegios</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-          <div className="relative flex-1 sm:min-w-[280px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-gray-400" />
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:min-w-[320px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
             <Input 
               placeholder="Buscar por nombre, código o email..." 
-              className="pl-12 h-11 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-[14px] focus:ring-2 focus:ring-blue-100 transition-all"
+              className="pl-11 h-11 rounded-xl border-slate-100 bg-slate-50/50 font-bold text-[13px] focus:ring-2 focus:ring-indigo-100 focus:bg-white transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -229,108 +229,159 @@ export function UsuarioList() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold text-[14px] shadow-sm">
-                <UserPlus className="mr-2 h-5 w-5" /> Nuevo Usuario
+              <Button className="h-11 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-6 font-bold text-[13px] shadow-lg shadow-indigo-100 transition-all active:scale-95">
+                <UserPlus className="mr-2 h-4 w-4" /> Nuevo Registro
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-2xl rounded-2xl p-6 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
-              <DialogHeader className="mb-6">
+            <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-2xl rounded-2xl p-0 border-none shadow-2xl overflow-hidden bg-white">
+              <div className="bg-[#1a237e] p-6 text-white">
                 <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 bg-blue-50 rounded-xl flex items-center justify-center">
-                    <UserCircle2 className="h-8 w-8 text-[#003366]" />
+                  <div className="h-14 w-14 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
+                    <UserCircle2 className="h-8 w-8 text-white" />
                   </div>
                   <div>
-                    <DialogTitle className="text-[24px] font-black text-gray-900 tracking-tight">
-                      {editingUsuario ? "Editar Usuario" : "Registrar Usuario"}
+                    <DialogTitle className="text-[22px] font-black text-white tracking-tight">
+                      {editingUsuario ? "Editar Perfil de Usuario" : "Registrar Nuevo Usuario"}
                     </DialogTitle>
+                    <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest mt-0.5">
+                      {editingUsuario ? "Actualizar credenciales y permisos" : "Crear nueva cuenta de acceso al sistema"}
+                    </p>
                   </div>
                 </div>
-              </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Código</Label>
-                    <div className="relative">
+              </div>
+              
+              <form onSubmit={handleSubmit} className="p-8 space-y-8 bg-white">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
+                  <div className="space-y-2.5">
+                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Identificador (Código)</Label>
+                    <div className="relative group">
                       <Input 
-                        className="h-11 rounded-xl border-gray-200 font-bold text-[16px] bg-gray-50 pr-10" 
+                        className="h-12 rounded-xl border-slate-200 font-bold text-[15px] bg-slate-50 pr-10 border-dashed focus:border-indigo-500 transition-colors" 
                         value={formData.codigo} 
                         readOnly
                         required 
                       />
-                      <Lock className="absolute right-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
+                      <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400 group-hover:text-indigo-500 transition-colors" />
                     </div>
-                    <p className="text-[10px] font-bold text-blue-600 uppercase tracking-tight">Generado automáticamente según rol</p>
+                    <p className="text-[9px] font-bold text-indigo-500 uppercase tracking-tighter ml-1">🔒 Asignado automáticamente por el sistema</p>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Rol de Usuario</Label>
+
+                  <div className="space-y-2.5">
+                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Nivel de Acceso (Rol)</Label>
                     <Select value={formData.rol} onValueChange={(v) => setFormData({ ...formData, rol: v })}>
-                      <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"><SelectValue /></SelectTrigger>
-                      <SelectContent className="rounded-xl">
-                        <SelectItem value="admin" className="font-bold text-[16px]">Administrador</SelectItem>
-                        <SelectItem value="operador" className="font-bold text-[16px]">Operador</SelectItem>
-                        <SelectItem value="docente" className="font-bold text-[16px]">Docente</SelectItem>
+                      <SelectTrigger className="h-12 rounded-xl border-slate-200 font-bold text-[15px] bg-white focus:ring-indigo-100 transition-all">
+                        <SelectValue />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                        <SelectItem value="admin" className="font-bold text-[14px] focus:bg-indigo-50 focus:text-[#1a237e]">Administrador General</SelectItem>
+                        <SelectItem value="operador" className="font-bold text-[14px] focus:bg-indigo-50 focus:text-[#1a237e]">Operador de Turno</SelectItem>
+                        <SelectItem value="docente" className="font-bold text-[14px] focus:bg-indigo-50 focus:text-[#1a237e]">Docente Académico</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Nombres</Label>
-                    <Input className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.nombres} onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} required />
+
+                  <div className="space-y-2.5">
+                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Nombres</Label>
+                    <Input 
+                      className="h-12 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
+                      value={formData.nombres} 
+                      onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} 
+                      required 
+                      placeholder="Ej. Juan Carlos"
+                    />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Apellidos</Label>
-                    <Input className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.apellidos} onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} required />
+
+                  <div className="space-y-2.5">
+                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Apellidos</Label>
+                    <Input 
+                      className="h-12 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
+                      value={formData.apellidos} 
+                      onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} 
+                      required 
+                      placeholder="Ej. Pérez Gómez"
+                    />
                   </div>
-                  <div className="space-y-2 md:col-span-2">
-                    <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Correo Electrónico</Label>
-                    <Input className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" type="email" value={formData.correo_electronico} onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} required />
+
+                  <div className="space-y-2.5 md:col-span-2">
+                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Correo Institucional</Label>
+                    <div className="relative">
+                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                      <Input 
+                        className="h-12 pl-11 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
+                        type="email" 
+                        value={formData.correo_electronico} 
+                        onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} 
+                        required 
+                        placeholder="usuario@unitru.edu.pe"
+                      />
+                    </div>
                   </div>
+
                   {!editingUsuario && (
-                    <div className="space-y-2 md:col-span-2">
-                      <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Contraseña</Label>
-                      <Input className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" type="password" value={formData.contrasena} onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })} required minLength={8} />
+                    <div className="space-y-2.5 md:col-span-2">
+                      <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Contraseña de Acceso</Label>
+                      <div className="relative">
+                        <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                        <Input 
+                          className="h-12 pl-11 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
+                          type="password" 
+                          value={formData.contrasena} 
+                          onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })} 
+                          required 
+                          minLength={8} 
+                          placeholder="Mínimo 8 caracteres"
+                        />
+                      </div>
                     </div>
                   )}
 
                   {formData.rol === 'docente' && (
-                    <>
-                      <div className="md:col-span-2 grid grid-cols-2 gap-6">
-                        <div className="space-y-2">
-                          <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Categoría</Label>
+                    <div className="md:col-span-2 pt-4 border-t border-slate-100 mt-2">
+                      <div className="flex items-center gap-2 mb-6">
+                        <div className="h-6 w-1 bg-indigo-500 rounded-full" />
+                        <h4 className="text-[12px] font-black text-slate-800 uppercase tracking-widest">Información Académica</h4>
+                      </div>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                        <div className="space-y-2.5">
+                          <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Categoría</Label>
                           <Select value={formData.categoria} onValueChange={(v) => setFormData({ ...formData, categoria: v })}>
-                            <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-12 rounded-xl border-slate-200 font-bold text-[15px] bg-white"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
-                              <SelectItem value="principal" className="font-bold">Principal</SelectItem>
-                              <SelectItem value="asociado" className="font-bold">Asociado</SelectItem>
-                              <SelectItem value="auxiliar" className="font-bold">Auxiliar</SelectItem>
+                              <SelectItem value="principal" className="font-bold">Docente Principal</SelectItem>
+                              <SelectItem value="asociado" className="font-bold">Docente Asociado</SelectItem>
+                              <SelectItem value="auxiliar" className="font-bold">Docente Auxiliar</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Modalidad</Label>
+                        <div className="space-y-2.5">
+                          <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Modalidad</Label>
                           <Select value={formData.modalidad} onValueChange={(v) => setFormData({ ...formData, modalidad: v })}>
-                            <SelectTrigger className="h-11 rounded-xl border-gray-200 font-bold text-[16px]"><SelectValue /></SelectTrigger>
+                            <SelectTrigger className="h-12 rounded-xl border-slate-200 font-bold text-[15px] bg-white"><SelectValue /></SelectTrigger>
                             <SelectContent className="rounded-xl">
                               <SelectItem value="nombrado" className="font-bold">Nombrado</SelectItem>
                               <SelectItem value="contratado" className="font-bold">Contratado</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
+                        <div className="space-y-2.5">
+                          <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Grado Académico</Label>
+                          <Input className="h-12 rounded-xl border-slate-200 font-bold text-[15px]" value={formData.grado_academico} onChange={(e) => setFormData({ ...formData, grado_academico: e.target.value })} placeholder="Ej. Doctor en Ingeniería" />
+                        </div>
+                        <div className="space-y-2.5">
+                          <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Especialidad</Label>
+                          <Input className="h-12 rounded-xl border-slate-200 font-bold text-[15px]" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} placeholder="Ej. Inteligencia Artificial" />
+                        </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Grado Académico</Label>
-                        <Input className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.grado_academico} onChange={(e) => setFormData({ ...formData, grado_academico: e.target.value })} />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-[14px] font-black uppercase tracking-widest text-gray-400">Especialidad</Label>
-                        <Input className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} />
-                      </div>
-                    </>
+                    </div>
                   )}
                 </div>
-                <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-gray-500 px-8 text-[16px]">Cancelar</Button>
-                  <Button type="submit" className="h-11 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-10 font-black text-[16px]">
-                    {editingUsuario ? "Actualizar" : "Crear"}
+                
+                <div className="flex justify-end gap-3 pt-6 border-t border-slate-50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-12 rounded-xl font-bold text-slate-500 px-8 text-[14px] hover:bg-slate-50 transition-colors">
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="h-12 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-10 font-black text-[14px] shadow-lg shadow-indigo-100 active:scale-95 transition-all">
+                    {editingUsuario ? "Guardar Cambios" : "Finalizar Registro"}
                   </Button>
                 </div>
               </form>
@@ -339,61 +390,91 @@ export function UsuarioList() {
         </div>
       </div>
 
-      <div className="bg-white rounded-xl border border-gray-100 shadow-sm overflow-hidden">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
           <Table>
-            <TableHeader className="bg-gray-50/50">
+            <TableHeader className="bg-slate-50/50">
               <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="w-[120px]">Código</TableHead>
-                <TableHead>Usuario</TableHead>
-                <TableHead>Rol</TableHead>
-                <TableHead>Estado</TableHead>
-                <TableHead>Último Acceso</TableHead>
-                <TableHead className="w-[150px] text-right">Acciones</TableHead>
+                <TableHead className="w-[120px] text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Código</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Usuario</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Rol</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Estado</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Último Acceso</TableHead>
+                <TableHead className="w-[150px] text-right text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="py-12 text-center text-[16px] font-bold text-gray-400">Cargando usuarios...</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-3">
+                      <div className="h-10 w-10 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin" />
+                      <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">Sincronizando Usuarios...</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : filteredUsuarios.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="py-12 text-center text-[16px] font-bold text-gray-400">No se encontraron registros</TableCell></TableRow>
+                <TableRow>
+                  <TableCell colSpan={6} className="py-20 text-center">
+                    <div className="flex flex-col items-center gap-2 opacity-30">
+                      <Search className="h-12 w-12 text-slate-400" />
+                      <p className="text-[15px] font-bold text-slate-500">No se encontraron registros</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
               ) : (
                 filteredUsuarios.map((usuario) => (
-                  <TableRow key={usuario.id_usuario} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                    <TableCell className="font-bold text-[14px] text-gray-500">{usuario.codigo}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <UserCircle2 className="h-5 w-5 text-[#003366]/50" />
+                  <TableRow key={usuario.id_usuario} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-all">
+                    <TableCell className="px-6 py-4">
+                      <span className="font-mono font-bold text-[12px] text-slate-500 bg-slate-50 px-2 py-1 rounded-md border border-slate-100">
+                        {usuario.codigo}
+                      </span>
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center gap-4">
+                        <div className="h-10 w-10 rounded-xl bg-indigo-50 flex items-center justify-center border border-indigo-100 text-[#1a237e] shadow-sm">
+                          <UserCircle2 className="h-5 w-5" />
+                        </div>
                         <div>
-                          <p className="font-bold text-gray-900 text-[16px] leading-tight">{usuario.apellidos}, {usuario.nombres}</p>
-                          <p className="text-[12px] text-gray-400 font-medium">{usuario.correo_electronico}</p>
+                          <p className="font-bold text-slate-800 text-[14px] leading-tight">{usuario.apellidos}, {usuario.nombres}</p>
+                          <p className="text-[11px] text-slate-400 font-medium mt-0.5">{usuario.correo_electronico}</p>
                         </div>
                       </div>
                     </TableCell>
-                    <TableCell>
+                    <TableCell className="px-6 py-4">
                       <span className={cn(
-                        "px-3 py-1 rounded-lg text-[11px] font-black uppercase tracking-tight",
-                        usuario.rol === 'admin' ? "bg-red-50 text-red-700" : 
-                        usuario.rol === 'operador' ? "bg-blue-50 text-blue-700" : 
-                        "bg-green-50 text-green-700"
+                        "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm",
+                        usuario.rol === 'admin' ? "bg-rose-50 text-rose-700 border border-rose-100" : 
+                        usuario.rol === 'operador' ? "bg-indigo-50 text-indigo-700 border border-indigo-100" : 
+                        "bg-emerald-50 text-emerald-700 border border-emerald-100"
                       )}>
                         {usuario.rol}
                       </span>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className={cn("h-2 w-2 rounded-full", usuario.activo ? "bg-emerald-500" : "bg-gray-300")} />
-                        <span className="text-[14px] font-bold text-gray-600">{usuario.activo ? "Activo" : "Inactivo"}</span>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center gap-2.5">
+                        <div className={cn(
+                          "h-2 w-2 rounded-full", 
+                          usuario.activo ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-slate-300"
+                        )} />
+                        <span className={cn(
+                          "text-[12px] font-bold",
+                          usuario.activo ? "text-emerald-600" : "text-slate-400"
+                        )}>
+                          {usuario.activo ? "Activo" : "Inactivo"}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2 text-gray-500">
-                        <Activity className="h-4 w-4" />
-                        <span className="text-[13px] font-medium">{usuario.ultimo_acceso || 'Nunca'}</span>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center gap-2 text-slate-400">
+                        <Activity className="h-3.5 w-3.5" />
+                        <span className="text-[12px] font-bold font-mono uppercase">
+                          {usuario.ultimo_acceso ? usuario.ultimo_acceso : 'S/I'}
+                        </span>
                       </div>
                     </TableCell>
-                    <TableCell>
-                      <div className="flex items-center justify-end gap-2">
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -402,9 +483,9 @@ export function UsuarioList() {
                             setIsAdminConfirmOpen(true);
                           }} 
                           title="Cambiar Contraseña" 
-                          className="h-9 w-9 hover:bg-amber-50 hover:text-amber-600"
+                          className="h-8 w-8 rounded-lg hover:bg-amber-50 hover:text-amber-600 text-slate-400 transition-colors"
                         >
-                          <Key className="h-5 w-5" />
+                          <Key className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -426,10 +507,10 @@ export function UsuarioList() {
                             });
                             setIsDialogOpen(true);
                           }} 
-                          title="Editar" 
-                          className="h-9 w-9 hover:bg-blue-50 hover:text-[#003366]"
+                          title="Editar Perfil" 
+                          className="h-8 w-8 rounded-lg hover:bg-indigo-50 hover:text-[#1a237e] text-slate-400 transition-colors"
                         >
-                          <Edit className="h-5 w-5" />
+                          <Edit className="h-4 w-4" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -438,10 +519,10 @@ export function UsuarioList() {
                             setDeletingId(usuario.id_usuario);
                             setIsDeleteDialogOpen(true);
                           }}
-                          title="Eliminar" 
-                          className="h-9 w-9 hover:bg-red-50 hover:text-red-600"
+                          title="Eliminar Registro" 
+                          className="h-8 w-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 text-slate-400 transition-colors"
                         >
-                          <Trash2 className="h-5 w-5" />
+                          <Trash2 className="h-4 w-4" />
                         </Button>
                       </div>
                     </TableCell>
@@ -454,60 +535,82 @@ export function UsuarioList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-6">
-          <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-black text-gray-900">¿Eliminar usuario?</AlertDialogTitle>
-            <AlertDialogDescription className="text-[14px] font-medium text-gray-500">
-              Esta acción eliminará permanentemente la cuenta de acceso. Esta acción no se puede deshacer.
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-0 overflow-hidden max-w-md">
+          <div className="bg-rose-600 p-6 text-white flex items-center gap-4">
+            <div className="h-12 w-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30">
+              <Trash2 className="h-6 w-6 text-white" />
+            </div>
+            <div>
+              <AlertDialogTitle className="text-xl font-black text-white">¿Eliminar Usuario?</AlertDialogTitle>
+              <p className="text-rose-100 text-[11px] font-bold uppercase tracking-widest mt-0.5">Esta acción es irreversible</p>
+            </div>
+          </div>
+          <div className="p-8 bg-white">
+            <AlertDialogDescription className="text-[14px] font-bold text-slate-500 leading-relaxed">
+              ¿Está seguro que desea eliminar permanentemente esta cuenta de acceso? El usuario perderá el acceso al sistema de forma inmediata.
             </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6 gap-3">
-            <AlertDialogCancel className="h-11 rounded-xl font-bold text-[14px]">Cancelar</AlertDialogCancel>
-            <AlertDialogAction 
-              onClick={() => deletingId && handleDelete(deletingId)}
-              className="h-11 rounded-xl bg-red-600 hover:bg-red-700 text-white font-black text-[14px] px-8"
-            >
-              Confirmar Eliminación
-            </AlertDialogAction>
-          </AlertDialogFooter>
+            <div className="flex justify-end gap-3 mt-8">
+              <AlertDialogCancel className="h-11 rounded-xl font-bold text-[13px] border-slate-200 hover:bg-slate-50 px-6">
+                No, Mantener
+              </AlertDialogCancel>
+              <AlertDialogAction 
+                onClick={() => deletingId && handleDelete(deletingId)}
+                className="h-11 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-black text-[13px] px-8 shadow-lg shadow-rose-100 transition-all active:scale-95"
+              >
+                Sí, Confirmar Eliminación
+              </AlertDialogAction>
+            </div>
+          </div>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={isAdminConfirmOpen} onOpenChange={setIsAdminConfirmOpen}>
-        <DialogContent className="rounded-2xl p-6 border-none shadow-2xl max-w-md">
-          <DialogHeader className="mb-4">
-            <div className="flex items-center gap-4">
-              <div className="h-12 w-12 bg-amber-50 rounded-xl flex items-center justify-center">
-                <Lock className="h-6 w-6 text-amber-600" />
-              </div>
-              <DialogTitle className="text-[20px] font-black text-gray-900 tracking-tight">Seguridad de Acceso</DialogTitle>
+        <DialogContent className="rounded-2xl p-0 border-none shadow-2xl max-w-md overflow-hidden">
+          <div className="bg-amber-500 p-6 text-white flex items-center gap-4">
+            <div className="h-12 w-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30">
+              <Lock className="h-6 w-6 text-white" />
             </div>
-          </DialogHeader>
-          <div className="space-y-6">
-            <p className="text-[14px] font-medium text-gray-500">Confirma tu identidad como administrador para resetear la contraseña del usuario.</p>
+            <div>
+              <DialogTitle className="text-xl font-black text-white">Seguridad de Acceso</DialogTitle>
+              <p className="text-amber-100 text-[11px] font-bold uppercase tracking-widest mt-0.5">Reset de credenciales</p>
+            </div>
+          </div>
+          <div className="p-8 space-y-6 bg-white">
+            <p className="text-[13px] font-bold text-slate-500 leading-relaxed">
+              Para resetear la contraseña del usuario, confirme su identidad como administrador del sistema.
+            </p>
             <div className="space-y-4">
               <div className="space-y-2">
-                <Label className="text-[12px] font-black uppercase tracking-widest text-gray-400">Tu Contraseña (Admin)</Label>
-                <Input 
-                  type="password" 
-                  className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
-                  value={adminPassword}
-                  onChange={(e) => setAdminPassword(e.target.value)}
-                />
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Tu Contraseña (Admin)</Label>
+                <div className="relative">
+                  <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    type="password" 
+                    className="h-12 pl-11 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-amber-100" 
+                    value={adminPassword}
+                    onChange={(e) => setAdminPassword(e.target.value)}
+                    placeholder="Contraseña de administrador"
+                  />
+                </div>
               </div>
               <div className="space-y-2">
-                <Label className="text-[12px] font-black uppercase tracking-widest text-gray-400">Nueva Contraseña</Label>
-                <Input 
-                  type="password" 
-                  className="h-11 rounded-xl border-gray-200 font-bold text-[16px]" 
-                  value={newPassword}
-                  onChange={(e) => setNewPassword(e.target.value)}
-                  placeholder="Mín. 8 caracteres"
-                />
+                <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Nueva Contraseña del Usuario</Label>
+                <div className="relative">
+                  <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                  <Input 
+                    type="password" 
+                    className="h-12 pl-11 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-amber-100" 
+                    value={newPassword}
+                    onChange={(e) => setNewPassword(e.target.value)}
+                    placeholder="Mínimo 8 caracteres"
+                  />
+                </div>
               </div>
             </div>
-            <div className="flex justify-end gap-3">
-              <Button variant="ghost" onClick={() => setIsAdminConfirmOpen(false)} className="font-bold">Cancelar</Button>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button variant="ghost" onClick={() => setIsAdminConfirmOpen(false)} className="h-11 font-bold text-slate-500">
+                Cancelar
+              </Button>
               <Button 
                 onClick={async () => {
                   if (newPassword.length < 8) {
@@ -522,7 +625,7 @@ export function UsuarioList() {
                       body: JSON.stringify({ contrasena: newPassword })
                     });
                     if (res.ok) {
-                      toast.success("Contraseña actualizada");
+                      toast.success("Contraseña actualizada correctamente");
                       setIsAdminConfirmOpen(false);
                       setAdminPassword("");
                       setNewPassword("");
@@ -531,7 +634,7 @@ export function UsuarioList() {
                     toast.error("Error al actualizar contraseña");
                   }
                 }} 
-                className="bg-[#003366] hover:bg-[#002244] text-white font-black px-8 rounded-xl h-11"
+                className="bg-amber-500 hover:bg-amber-600 text-white font-black px-8 rounded-xl h-11 shadow-lg shadow-amber-100 transition-all active:scale-95"
               >
                 Actualizar Acceso
               </Button>

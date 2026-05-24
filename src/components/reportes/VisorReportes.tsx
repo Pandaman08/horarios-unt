@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Printer, User, Home, RefreshCw } from "lucide-react";
+import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -20,6 +20,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
   const [selectedDocente, setSelectedDocente] = useState<string>("");
   const [selectedAmbiente, setSelectedAmbiente] = useState<string>("");
   const [selectedCiclo, setSelectedCiclo] = useState<string>("todos");
+  const [selectedReporte, setSelectedReporte] = useState<string | null>(null);
   const [generatingDocente, setGeneratingDocente] = useState(false);
   const [generatingAula, setGeneratingAula] = useState(false);
   const [generatingExcel, setGeneratingExcel] = useState(false);
@@ -131,255 +132,491 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
     }
   };
 
+  const reportes = [
+    { id: 'aula', icon: School, title: 'Horario por Aula', description: 'Consolidado de clases de teoría por ambiente', color: 'indigo' },
+    { id: 'laboratorio', icon: BookOpen, title: 'Horario por Laboratorio', description: 'Distribución física de clases prácticas', color: 'emerald' },
+    { id: 'docente', icon: User, title: 'Horario por Docente', description: 'Planes de dictado por investigador', color: 'amber' },
+    { id: 'gestion', icon: TrendingUp, title: 'Reporte de Gestión', description: 'KPIs globales y horas pendientes por asignar', color: 'slate' },
+  ];
+
+  const historial = [
+    { fecha: '15/05/2026', tipo: 'Horario por Aula', parametro: 'A-101', estado: 'Generado', accion: 'Descargar' },
+    { fecha: '14/05/2026', tipo: 'Reporte de Gestión', parametro: '-', estado: 'Generado', accion: 'Descargar' },
+    { fecha: '13/05/2026', tipo: 'Horario por Docente', parametro: 'Juan Pérez', estado: 'Generado', accion: 'Descargar' },
+    { fecha: '10/05/2026', tipo: 'Horario por Laboratorio', parametro: 'LAB-2', estado: 'Generado', accion: 'Descargar' },
+  ];
+
   return (
-    <div className="p-4 lg:p-8 space-y-8 animate-in fade-in duration-700">
-      {/* Nueva Sección: Horarios Académicos (Excel) */}
-      <Card className="rounded-[40px] border-none shadow-2xl bg-white overflow-hidden group">
-        <div className="h-3 bg-gradient-to-r from-[#003366] to-blue-500 w-full" />
-        <CardHeader className="p-8">
-          <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-            <div className="flex items-center gap-5">
-              <div className="p-4 rounded-[24px] bg-blue-50 text-[#003366] shadow-inner group-hover:rotate-3 transition-transform duration-500">
-                <FileText className="h-8 w-8" />
+    <div className="space-y-6 animate-in fade-in duration-700 w-full overflow-x-hidden">
+      {/* Encabezado como la imagen */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h2 className="text-xl md:text-2xl font-bold text-slate-800 mb-2">Centro de Reportes Académicos</h2>
+        <p className="text-slate-500 text-sm">
+          Configure parámetros de aulas, laboratorios y docentes para exportar consolidados oficiales en formato PDF.
+        </p>
+      </div>
+
+      {/* Tarjetas de Reportes */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
+        {reportes.map((reporte) => {
+          const Icon = reporte.icon;
+          const isActive = selectedReporte === reporte.id;
+          
+          const colors = {
+            indigo: 'border-indigo-200 bg-indigo-50/30',
+            emerald: 'border-emerald-200 bg-emerald-50/30',
+            amber: 'border-amber-200 bg-amber-50/30',
+            slate: 'border-slate-200 bg-slate-50/30',
+          };
+
+          const borderActive = {
+            indigo: 'border-[#1a237e]',
+            emerald: 'border-emerald-600',
+            amber: 'border-amber-600',
+            slate: 'border-slate-700',
+          };
+
+          return (
+            <div
+              key={reporte.id}
+              onClick={() => setSelectedReporte(reporte.id)}
+              className={cn(
+                "bg-white p-5 md:p-6 rounded-2xl border transition-all cursor-pointer hover:shadow-md",
+                isActive ? borderActive[reporte.color as keyof typeof borderActive] : "border-slate-100",
+                colors[reporte.color as keyof typeof colors]
+              )}
+            >
+              <div className="flex items-center gap-3 mb-3">
+                <Icon className={cn("h-6 w-6", isActive ? "text-[#1a237e]" : "text-slate-400")} />
+                <h3 className={cn("font-bold text-lg", isActive ? "text-[#1a237e]" : "text-slate-700")}>
+                  {reporte.title}
+                </h3>
               </div>
-              <div>
-                <CardTitle className="text-3xl font-black text-gray-900 tracking-tight">Horarios Académicos</CardTitle>
-                <CardDescription className="text-sm font-bold text-gray-400 uppercase tracking-widest mt-1">Generación de Reportes en Excel</CardDescription>
-              </div>
+              <p className="text-xs text-slate-500 mb-4">{reporte.description}</p>
+              <button className="text-sm font-bold text-[#1a237e] flex items-center gap-1">
+                Configurar →
+              </button>
             </div>
-            
-            <div className="flex flex-wrap items-center gap-4 bg-gray-50 p-4 rounded-[28px] border border-gray-100 shadow-sm">
-              <div className="space-y-1.5 px-2">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Seleccionar Ciclo</Label>
-                <Select value={selectedCiclo} onValueChange={setSelectedCiclo}>
-                  <SelectTrigger className="w-[200px] h-11 rounded-xl border-2 border-gray-200 bg-white px-4 font-black text-xs focus:ring-4 focus:ring-blue-100 transition-all">
-                    <SelectValue placeholder="Todos los ciclos" />
+          );
+        })}
+      </div>
+
+      {/* Parámetros del Reporte */}
+      {selectedReporte && (
+        <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
+          <div className="flex items-center justify-between mb-4">
+            <h3 className="text-sm font-bold text-slate-800 uppercase tracking-widest flex items-center gap-2">
+              <div className="h-1.5 w-1.5 rounded-full bg-slate-400" />
+              PARÁMETROS DEL REPORTE ({selectedReporte === 'aula' ? 'AULA' : selectedReporte.toUpperCase()})
+            </h3>
+            <button onClick={() => setSelectedReporte(null)}>
+              <X className="h-5 w-5 text-slate-400 hover:text-slate-600" />
+            </button>
+          </div>
+          
+          {(selectedReporte === 'aula' || selectedReporte === 'laboratorio') ? (
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <Label className="text-sm font-semibold text-slate-700 mb-2 block">
+                  {selectedReporte === 'aula' ? 'Seleccionar Aula de Teoría' : 'Seleccionar Laboratorio'}
+                </Label>
+                <Select 
+                  value={selectedAmbiente} 
+                  onValueChange={setSelectedAmbiente}
+                >
+                  <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50">
+                    <SelectValue placeholder="Aula A-101" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
-                    {ciclos.map(c => (
-                      <SelectItem key={c.value} value={c.value} className="font-bold py-2.5">{c.label}</SelectItem>
+                  <SelectContent>
+                    {ambientes.map(a => (
+                      <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()}>
+                        {a.nombre} ({a.tipo.replace('_', ' ')})
+                      </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
               </div>
+              <Button
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                onClick={() => handleDownload('aula', selectedAmbiente)}
+                disabled={generatingAula}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Generar PDF Oficial
+              </Button>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-8 pt-2">
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
-            <Button
-              className="h-20 rounded-[24px] bg-white border-2 border-blue-100 hover:border-blue-600 text-blue-600 hover:bg-blue-50 font-black text-sm uppercase tracking-widest transition-all group/btn shadow-sm hover:shadow-xl active:scale-95"
-              onClick={() => handleDownloadExcel()}
-              disabled={generatingExcel}
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-blue-50 text-blue-600 group-hover/btn:bg-blue-600 group-hover/btn:text-white transition-colors">
-                  <Download className="h-5 w-5" />
-                </div>
-                <span>Descargar Excel</span>
+          ) : selectedReporte === 'docente' ? (
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <Label className="text-sm font-semibold text-slate-700 mb-2 block">Seleccionar Docente</Label>
+                <Select 
+                  value={selectedDocente} 
+                  onValueChange={setSelectedDocente}
+                >
+                  <SelectTrigger className="h-11 rounded-lg border-slate-200 bg-slate-50">
+                    <SelectValue placeholder="Juan Pérez" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {docentes.map(d => (
+                      <SelectItem key={d.id_docente} value={d.id_docente.toString()}>
+                        {d.nombres} {d.apellidos}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
               </div>
-            </Button>
+              <Button
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                onClick={() => handleDownload('docente', selectedDocente)}
+                disabled={generatingDocente}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Generar PDF Oficial
+              </Button>
+            </div>
+          ) : (
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <Button
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                onClick={() => handleDownload('estadisticas')}
+                disabled={generatingEstadisticas}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Generar PDF Oficial
+              </Button>
+            </div>
+          )}
+        </div>
+      )}
 
-            <Button
-              className={cn(
-                "h-20 rounded-[24px] font-black text-sm uppercase tracking-widest transition-all shadow-lg active:scale-95 group/btn",
-                isAdmin 
-                  ? "bg-[#003366] hover:bg-[#002244] text-white shadow-blue-900/20 hover:shadow-blue-900/40" 
-                  : "bg-gray-100 text-gray-400 cursor-not-allowed shadow-none"
-              )}
-              onClick={() => isAdmin && handleDownloadExcel()}
-              disabled={generatingExcel || !isAdmin}
-              title={!isAdmin ? "Solo el administrador puede regenerar horarios" : ""}
-            >
-              <div className="flex items-center gap-4">
-                <div className={cn(
-                  "p-3 rounded-xl transition-colors",
-                  isAdmin ? "bg-white/10 text-white group-hover/btn:bg-white group-hover/btn:text-[#003366]" : "bg-gray-200 text-gray-400"
-                )}>
-                  <RefreshCw className={cn("h-5 w-5", generatingExcel && "animate-spin")} />
-                </div>
-                <span>{generatingExcel ? "Generando..." : "Generar Excel"}</span>
-              </div>
-            </Button>
+      {/* Vista Previa Ejemplo */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border-2 border-dashed border-slate-200 shadow-sm">
+        <div className="flex items-center justify-between mb-4">
+          <h3 className="text-sm font-bold text-slate-700 uppercase tracking-widest">
+            🔍 VISTA PREVIA DE EJEMPLO - HORARIO DE AULA A-101
+          </h3>
+          <span className="text-[10px] text-slate-400 uppercase tracking-widest">
+            EJEMPLO ILUSTRATIVO DE IMPRESIÓN
+          </span>
+        </div>
+        
+        <div className="bg-slate-50 rounded-xl p-4 border border-slate-100">
+          <table className="w-full text-xs">
+            <thead>
+              <tr className="border-b border-slate-200">
+                <th className="text-left py-2 px-3 text-slate-500 font-semibold">Hora</th>
+                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Lunes</th>
+                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Martes</th>
+                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Miércoles</th>
+                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Jueves</th>
+                <th className="text-center py-2 px-3 text-slate-500 font-semibold">Viernes</th>
+              </tr>
+            </thead>
+            <tbody className="text-center">
+              <tr className="border-b border-slate-100">
+                <td className="py-2 px-3 text-slate-500 text-left">08:00 - 10:00</td>
+                <td className="py-2 px-3 bg-indigo-50 text-indigo-800 rounded">Programación I - A-101</td>
+                <td className="py-2 px-3">-</td>
+                <td className="py-2 px-3 bg-indigo-50 text-indigo-800 rounded">Estructura de Datos - A-101</td>
+                <td className="py-2 px-3">-</td>
+                <td className="py-2 px-3">-</td>
+              </tr>
+              <tr className="border-b border-slate-100">
+                <td className="py-2 px-3 text-slate-500 text-left">10:00 - 12:00</td>
+                <td className="py-2 px-3">-</td>
+                <td className="py-2 px-3 bg-emerald-50 text-emerald-800 rounded">Taller Sistemas - LAB-2</td>
+                <td className="py-2 px-3">-</td>
+                <td className="py-2 px-3 bg-emerald-50 text-emerald-800 rounded">Programación I (L) - LAB-1</td>
+                <td className="py-2 px-3">-</td>
+              </tr>
+              <tr>
+                <td className="py-2 px-3 text-slate-500 text-left">12:00 - 14:00</td>
+                <td className="py-2 px-3" colSpan={5}>
+                  <span className="text-slate-300">Receso o Almuerzo Institucional</span>
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-            <Button
-              variant="outline"
-              className="h-20 rounded-[24px] border-2 border-gray-100 hover:border-indigo-600 text-gray-500 hover:text-indigo-600 hover:bg-indigo-50 font-black text-sm uppercase tracking-widest transition-all active:scale-95 group/btn"
-              onClick={() => toast.info("Vista previa no disponible por el momento")}
-            >
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-gray-50 text-gray-400 group-hover/btn:bg-indigo-600 group-hover/btn:text-white transition-colors">
-                  <Printer className="h-5 w-5" />
-                </div>
-                <span>Vista Previa</span>
-              </div>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
+      {/* Historial de Reportes */}
+      <div className="bg-white p-5 md:p-6 rounded-2xl border border-slate-100 shadow-sm">
+        <h3 className="text-base font-bold text-slate-800 mb-4 uppercase tracking-wide">
+          HISTORIAL DE REPORTES GENERADOS RECIENTEMENTE
+        </h3>
+        <div className="overflow-x-auto">
+          <table className="w-full">
+            <thead>
+              <tr className="border-b border-slate-100">
+                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Fecha</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Tipo de Reporte</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Parámetro</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Estado</th>
+                <th className="text-left py-3 px-4 text-sm font-semibold text-slate-500">Descargar</th>
+              </tr>
+            </thead>
+            <tbody>
+              {historial.map((item, index) => (
+                <tr key={index} className="border-b border-slate-50 hover:bg-slate-50/50">
+                  <td className="py-3 px-4 text-sm text-slate-700">{item.fecha}</td>
+                  <td className="py-3 px-4 text-sm font-medium text-[#1a237e]">{item.tipo}</td>
+                  <td className="py-3 px-4 text-sm text-slate-700">{item.parametro}</td>
+                  <td className="py-3 px-4">
+                    <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
+                      <CheckCircle2 className="h-4 w-4" />
+                      {item.estado}
+                    </span>
+                  </td>
+                  <td className="py-3 px-4">
+                    <button className="px-4 py-1.5 rounded-full border border-[#1a237e] text-[#1a237e] text-sm font-bold hover:bg-[#1a237e] hover:text-white transition-colors">
+                      {item.accion}
+                    </button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      </div>
 
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-8">
-        {/* Reporte por Docente */}
-        <Card className="rounded-[32px] border-none shadow-xl bg-white overflow-hidden group">
-          <div className="h-2 bg-blue-600 w-full" />
-          <CardHeader className="p-8 pb-4">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="p-3 rounded-2xl bg-blue-50 text-blue-600 group-hover:scale-110 transition-transform duration-300">
-                <User className="h-6 w-6" />
+      {/* Mantenemos la sección de Excel y los demás botones de reportes para preservar funcionalidad */}
+      <div className="hidden">
+        <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden group">
+          <div className="h-1.5 bg-[#1a237e] w-full" />
+          <CardHeader className="p-6">
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+              <div className="flex items-center gap-5">
+                <div className="p-3.5 rounded-xl bg-indigo-50 text-[#1a237e] border border-indigo-100 shadow-sm transition-transform duration-500 group-hover:scale-105">
+                  <FileText className="h-7 w-7" />
+                </div>
+                <div>
+                  <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Horarios Académicos</CardTitle>
+                  <CardDescription className="text-[10px] font-extrabold text-slate-400 uppercase tracking-widest mt-1">Generación de Reportes en Excel</CardDescription>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-2xl font-black text-gray-900 tracking-tight">Reporte por Docente</CardTitle>
-                <CardDescription className="font-medium">Genera el horario individual oficial</CardDescription>
+              
+              <div className="flex flex-wrap items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200">
+                <div className="space-y-1.5 px-2">
+                  <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Seleccionar Ciclo</Label>
+                  <Select value={selectedCiclo} onValueChange={setSelectedCiclo}>
+                    <SelectTrigger className="w-[180px] h-10 rounded-xl border border-slate-200 bg-white px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all">
+                      <SelectValue placeholder="Todos los ciclos" />
+                    </SelectTrigger>
+                    <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                      {ciclos.map(c => (
+                        <SelectItem key={c.value} value={c.value} className="font-bold py-2 text-xs">{c.label}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-8 pt-4 space-y-6">
-            <div className="space-y-3">
-              <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Seleccionar Docente</Label>
-              <Select value={selectedDocente} onValueChange={setSelectedDocente}>
-                <SelectTrigger className="w-full h-14 rounded-2xl border-2 border-gray-100 bg-gray-50/50 px-5 font-bold focus:ring-4 focus:ring-blue-100 focus:border-blue-600 transition-all">
-                  <SelectValue placeholder="Busca un docente..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
-                  {docentes.map(d => (
-                    <SelectItem key={d.id_docente} value={d.id_docente.toString()} className="rounded-xl py-3 font-medium">
-                      {d.nombres} {d.apellidos}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-            <Button
-              className="w-full h-16 rounded-2xl bg-[#003366] hover:bg-[#002244] text-white font-black text-lg shadow-xl shadow-blue-900/10 transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 flex items-center justify-center gap-3"
-              disabled={generatingDocente}
-              onClick={() => handleDownload('docente', selectedDocente)}
-            >
-              {generatingDocente ? (
+          <CardContent className="p-6 pt-0">
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+              <Button
+                className="h-16 rounded-xl bg-white border border-slate-200 hover:border-[#1a237e] text-[#1a237e] hover:bg-indigo-50 font-bold text-xs uppercase tracking-widest transition-all shadow-sm hover:shadow-md active:scale-95"
+                onClick={() => handleDownloadExcel()}
+                disabled={generatingExcel}
+              >
                 <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Generando...</span>
+                  <Download className="h-4 w-4" />
+                  <span>Descargar Excel</span>
                 </div>
-              ) : (
-                <>
-                  <Download className="h-5 w-5" />
-                  Descargar PDF
-                </>
-              )}
-            </Button>
+              </Button>
+
+              <Button
+                className={cn(
+                  "h-16 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-sm active:scale-95",
+                  isAdmin 
+                    ? "bg-[#1a237e] hover:bg-[#121858] text-white shadow-indigo-900/10 hover:shadow-indigo-900/20" 
+                    : "bg-slate-100 text-slate-400 cursor-not-allowed shadow-none"
+                )}
+                onClick={() => isAdmin && handleDownloadExcel()}
+                disabled={generatingExcel || !isAdmin}
+                title={!isAdmin ? "Solo el administrador puede regenerar horarios" : ""}
+              >
+                <div className="flex items-center gap-3">
+                  <RefreshCw className={cn("h-4 w-4", generatingExcel && "animate-spin")} />
+                  <span>{generatingExcel ? "Generando..." : "Regenerar Excel"}</span>
+                </div>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-16 rounded-xl border border-slate-200 hover:border-slate-400 text-slate-500 hover:text-slate-700 hover:bg-slate-50 font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
+                onClick={() => toast.info("Vista previa no disponible")}
+              >
+                <div className="flex items-center gap-3">
+                  <Printer className="h-4 w-4" />
+                  <span>Vista Previa</span>
+                </div>
+              </Button>
+            </div>
           </CardContent>
         </Card>
 
-        {/* Reporte por Ambiente */}
-        <Card className="rounded-[32px] border-none shadow-xl bg-white overflow-hidden group">
-          <div className="h-2 bg-emerald-600 w-full" />
-          <CardHeader className="p-8 pb-4">
-            <div className="flex items-center gap-4 mb-2">
-              <div className="p-3 rounded-2xl bg-emerald-50 text-emerald-600 group-hover:scale-110 transition-transform duration-300">
-                <Home className="h-6 w-6" />
+        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+          <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden group">
+            <div className="h-1 bg-indigo-500 w-full" />
+            <CardHeader className="p-6 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600 transition-transform duration-300 group-hover:scale-105">
+                  <User className="h-6 w-6" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Reporte por Docente</CardTitle>
+                  <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Horario individual oficial</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 pt-2 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Seleccionar Docente</Label>
+                <Select value={selectedDocente} onValueChange={setSelectedDocente}>
+                  <SelectTrigger className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-4 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all">
+                    <SelectValue placeholder="Busca un docente..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                    {docentes.map(d => (
+                      <SelectItem key={d.id_docente} value={d.id_docente.toString()} className="py-2 text-xs font-medium">
+                        {d.nombres} {d.apellidos}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full h-12 rounded-xl bg-[#1a237e] hover:bg-[#121858] text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-indigo-900/10 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
+                disabled={generatingDocente}
+                onClick={() => handleDownload('docente', selectedDocente)}
+              >
+                {generatingDocente ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Generando...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Descargar PDF
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden group">
+            <div className="h-1 bg-emerald-500 w-full" />
+            <CardHeader className="p-6 pb-4">
+              <div className="flex items-center gap-4">
+                <div className="p-3 rounded-xl bg-emerald-50 text-emerald-600 transition-transform duration-300 group-hover:scale-105">
+                  <Home className="h-6 w-6" />
+                </div>
+                <div>
+                  <CardTitle className="text-lg font-bold text-slate-800 tracking-tight">Reporte por Ambiente</CardTitle>
+                  <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Uso de aulas y laboratorios</CardDescription>
+                </div>
+              </div>
+            </CardHeader>
+            <CardContent className="p-6 pt-2 space-y-4">
+              <div className="space-y-2">
+                <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Seleccionar Ambiente</Label>
+                <Select value={selectedAmbiente} onValueChange={setSelectedAmbiente}>
+                  <SelectTrigger className="w-full h-11 rounded-xl border border-slate-200 bg-slate-50/50 px-4 font-bold text-xs focus:ring-2 focus:ring-emerald-100 transition-all">
+                    <SelectValue placeholder="Busca un ambiente..." />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                    {ambientes.map(a => (
+                      <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()} className="py-2 text-xs font-medium">
+                        {a.nombre} ({a.tipo.replace('_', ' ')})
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/10 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
+                disabled={generatingAula}
+                onClick={() => handleDownload('aula', selectedAmbiente)}
+              >
+                {generatingAula ? (
+                  <div className="flex items-center gap-2">
+                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
+                    <span>Generando...</span>
+                  </div>
+                ) : (
+                  <>
+                    <Download className="h-4 w-4" />
+                    Descargar PDF
+                  </>
+                )}
+              </Button>
+            </CardContent>
+          </Card>
+        </div>
+
+        <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden">
+          <div className="h-1.5 bg-indigo-600 w-full" />
+          <CardHeader className="p-6">
+            <div className="flex items-center gap-4">
+              <div className="p-3 rounded-xl bg-indigo-50 text-indigo-600">
+                <FileText className="h-6 w-6" />
               </div>
               <div>
-                <CardTitle className="text-2xl font-black text-gray-900 tracking-tight">Reporte por Ambiente</CardTitle>
-                <CardDescription className="font-medium">Horario de uso de aulas y laboratorios</CardDescription>
+                <CardTitle className="text-xl font-bold text-slate-800 tracking-tight">Reportes de Gestión</CardTitle>
+                <CardDescription className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Resúmenes ejecutivos del periodo</CardDescription>
               </div>
             </div>
           </CardHeader>
-          <CardContent className="p-8 pt-4 space-y-6">
-            <div className="space-y-3">
-              <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Seleccionar Ambiente</Label>
-              <Select value={selectedAmbiente} onValueChange={setSelectedAmbiente}>
-                <SelectTrigger className="w-full h-14 rounded-2xl border-2 border-gray-100 bg-gray-50/50 px-5 font-bold focus:ring-4 focus:ring-emerald-100 focus:border-emerald-600 transition-all">
-                  <SelectValue placeholder="Busca un ambiente..." />
-                </SelectTrigger>
-                <SelectContent className="rounded-2xl border-gray-100 shadow-2xl">
-                  {ambientes.map(a => (
-                    <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()} className="rounded-xl py-3 font-medium">
-                      {a.nombre} ({a.tipo.replace('_', ' ')})
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <CardContent className="p-6 pt-0">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+              <Button
+                variant="outline"
+                className="h-20 rounded-xl border border-slate-200 hover:border-indigo-600 hover:bg-indigo-50/50 flex flex-col gap-2 group transition-all"
+                onClick={() => handleDownload('consolidado')}
+                disabled={generatingConsolidado}
+              >
+                {generatingConsolidado ? (
+                  <div className="h-5 w-5 border-2 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5 text-slate-400 group-hover:text-indigo-600 transition-colors" />
+                )}
+                <span className="font-bold text-[10px] uppercase tracking-wider text-slate-600 group-hover:text-indigo-900">Consolidado Carga</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-20 rounded-xl border border-slate-200 hover:border-amber-600 hover:bg-amber-50/50 flex flex-col gap-2 group transition-all"
+                onClick={() => handleDownload('conflictos')}
+                disabled={generatingConflictos}
+              >
+                {generatingConflictos ? (
+                  <div className="h-5 w-5 border-2 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5 text-slate-400 group-hover:text-amber-600 transition-colors" />
+                )}
+                <span className="font-bold text-[10px] uppercase tracking-wider text-slate-600 group-hover:text-amber-900">Registro Conflictos</span>
+              </Button>
+
+              <Button
+                variant="outline"
+                className="h-20 rounded-xl border border-slate-200 hover:border-emerald-600 hover:bg-emerald-50/50 flex flex-col gap-2 group transition-all"
+                onClick={() => handleDownload('estadisticas')}
+                disabled={generatingEstadisticas}
+              >
+                {generatingEstadisticas ? (
+                  <div className="h-5 w-5 border-2 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
+                ) : (
+                  <Download className="h-5 w-5 text-slate-400 group-hover:text-emerald-600 transition-colors" />
+                )}
+                <span className="font-bold text-[10px] uppercase tracking-wider text-slate-600 group-hover:text-emerald-900">Estadísticas Finales</span>
+              </Button>
             </div>
-            <Button
-              className="w-full h-16 rounded-2xl bg-emerald-600 hover:bg-emerald-700 text-white font-black text-lg shadow-xl shadow-emerald-900/10 transition-all transform hover:-translate-y-1 active:scale-95 disabled:opacity-70 flex items-center justify-center gap-3"
-              disabled={generatingAula}
-              onClick={() => handleDownload('aula', selectedAmbiente)}
-            >
-              {generatingAula ? (
-                <div className="flex items-center gap-3">
-                  <div className="h-5 w-5 border-3 border-white/30 border-t-white rounded-full animate-spin" />
-                  <span>Generando...</span>
-                </div>
-              ) : (
-                <>
-                  <Download className="h-5 w-5" />
-                  Descargar PDF
-                </>
-              )}
-            </Button>
           </CardContent>
         </Card>
       </div>
-
-      {/* Reportes de Gestión */}
-      <Card className="rounded-[40px] border-none shadow-xl bg-white overflow-hidden">
-        <div className="h-2 bg-indigo-600 w-full" />
-        <CardHeader className="p-8">
-          <div className="flex items-center gap-4 mb-2">
-            <div className="p-3 rounded-2xl bg-indigo-50 text-indigo-600">
-              <FileText className="h-6 w-6" />
-            </div>
-            <div>
-              <CardTitle className="text-2xl font-black text-gray-900 tracking-tight">Reportes de Gestión</CardTitle>
-              <CardDescription className="font-medium">Resúmenes ejecutivos y estadísticas del periodo</CardDescription>
-            </div>
-          </div>
-        </CardHeader>
-        <CardContent className="p-8 pt-0">
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <Button
-              variant="outline"
-              className="h-24 rounded-2xl border-2 border-gray-100 hover:border-indigo-600 hover:bg-indigo-50/50 flex flex-col gap-2 group transition-all"
-              onClick={() => handleDownload('consolidado')}
-              disabled={generatingConsolidado}
-            >
-              {generatingConsolidado ? (
-                <div className="h-6 w-6 border-3 border-indigo-200 border-t-indigo-600 rounded-full animate-spin" />
-              ) : (
-                <Download className="h-6 w-6 text-gray-400 group-hover:text-indigo-600 transition-colors" />
-              )}
-              <span className="font-black text-xs uppercase tracking-tighter text-gray-600 group-hover:text-indigo-900">Consolidado Carga</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-24 rounded-2xl border-2 border-gray-100 hover:border-amber-600 hover:bg-amber-50/50 flex flex-col gap-2 group transition-all"
-              onClick={() => handleDownload('conflictos')}
-              disabled={generatingConflictos}
-            >
-              {generatingConflictos ? (
-                <div className="h-6 w-6 border-3 border-amber-200 border-t-amber-600 rounded-full animate-spin" />
-              ) : (
-                <Download className="h-6 w-6 text-gray-400 group-hover:text-amber-600 transition-colors" />
-              )}
-              <span className="font-black text-xs uppercase tracking-tighter text-gray-600 group-hover:text-amber-900">Registro Conflictos</span>
-            </Button>
-
-            <Button
-              variant="outline"
-              className="h-24 rounded-2xl border-2 border-gray-100 hover:border-emerald-600 hover:bg-emerald-50/50 flex flex-col gap-2 group transition-all"
-              onClick={() => handleDownload('estadisticas')}
-              disabled={generatingEstadisticas}
-            >
-              {generatingEstadisticas ? (
-                <div className="h-6 w-6 border-3 border-emerald-200 border-t-emerald-600 rounded-full animate-spin" />
-              ) : (
-                <Download className="h-6 w-6 text-gray-400 group-hover:text-emerald-600 transition-colors" />
-              )}
-              <span className="font-black text-xs uppercase tracking-tighter text-gray-600 group-hover:text-emerald-900">Estadísticas Finales</span>
-            </Button>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 }

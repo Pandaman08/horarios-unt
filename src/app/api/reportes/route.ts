@@ -74,7 +74,7 @@ export async function GET(request: Request) {
             <tbody>
               ${docente.horarios_asignados.sort((a: any, b: any) => a.dia_semana - b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio)).map((h: any, index: number) => `
                 <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}">
-                  <td class="p-3 font-semibold text-slate-800 whitespace-nowrap border-b border-slate-100">${['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.dia_semana]}</td>
+                  <td class="p-3 font-semibold text-slate-800 whitespace-nowrap border-b border-slate-100">${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.dia_semana] ?? '—'}</td>
                   <td class="p-3 font-mono text-indigo-600 font-medium whitespace-nowrap border-b border-slate-100">${h.hora_inicio} - ${h.hora_fin}</td>
                   <td class="p-3 font-medium border-b border-slate-100 text-slate-700">${h.curso.nombre}</td>
                   <td class="p-3 whitespace-nowrap border-b border-slate-100"><span class="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-bold">${h.grupo.codigo_grupo}</span></td>
@@ -150,7 +150,7 @@ export async function GET(request: Request) {
                 const ocupacionColor = porcentaje > 90 ? 'text-red-600' : porcentaje > 70 ? 'text-amber-600' : 'text-emerald-600';
                 return `
                 <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}">
-                  <td class="p-3 font-semibold text-slate-800 whitespace-nowrap border-b border-slate-100">${['', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.dia_semana]}</td>
+                  <td class="p-3 font-semibold text-slate-800 whitespace-nowrap border-b border-slate-100">${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.dia_semana] ?? '—'}</td>
                   <td class="p-3 font-mono text-indigo-600 font-medium whitespace-nowrap border-b border-slate-100">${h.hora_inicio} - ${h.hora_fin}</td>
                   <td class="p-3 font-medium border-b border-slate-100 text-slate-700">${h.curso.nombre}</td>
                   <td class="p-3 whitespace-nowrap border-b border-slate-100 text-slate-700">${h.docente.nombres} ${h.docente.apellidos}</td>
