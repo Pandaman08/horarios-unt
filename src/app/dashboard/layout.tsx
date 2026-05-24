@@ -450,8 +450,8 @@ function DashboardLayoutInner({
           <span>{t("helpTip")}</span>
         </div>
 
-        <main className="flex-1 p-4 overflow-x-hidden overflow-y-auto">
-          <div className="w-full max-w-[1880px] mx-auto">{children}</div>
+        <main className="flex-1 p-4 overflow-x-auto overflow-y-auto">
+          <div className="w-full min-w-max">{children}</div>
         </main>
       </div>
     </div>

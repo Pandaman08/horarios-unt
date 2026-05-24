@@ -509,28 +509,34 @@ export async function seedDocentes(prisma: PrismaClient) {
     },
   ];
 
+  let contadorDniDefault = 1;
   for (const data of docentesData) {
     const primerNombre = data.nombres.split(' ')[0];
     const inicial = primerNombre.charAt(0).toLowerCase();
-    const dni = data.dni || '99999999';
+    let dni = data.dni;
+    if (!dni) {
+      dni = `9${String(contadorDniDefault++).padStart(7, '0')}`;
+    }
     const codigoDocente = `${inicial}${dni}`; // formato: inicial + DNI
     const correo = generarCorreo(data.nombres, data.apellidos);
     const contrasenaHash = await bcrypt.hash(dni, 10);
+    const nombresMayusculas = data.nombres.toUpperCase();
+    const apellidosMayusculas = data.apellidos.toUpperCase();
 
     // Crear o actualizar usuario
     const usuario = await prisma.usuario.upsert({
       where: { correo_electronico: correo },
       update: {
-        nombres: data.nombres,
-        apellidos: data.apellidos,
+        nombres: nombresMayusculas,
+        apellidos: apellidosMayusculas,
         dni: dni,
         contrasena_hash: contrasenaHash,
         rol: 'docente',
       },
       create: {
-        codigo: `USR_${Date.now()}_${Math.random().toString(36).substr(2, 5)}`,
-        nombres: data.nombres,
-        apellidos: data.apellidos,
+        codigo: dni,
+        nombres: nombresMayusculas,
+        apellidos: apellidosMayusculas,
         dni: dni,
         correo_electronico: correo,
         contrasena_hash: contrasenaHash,
@@ -543,8 +549,8 @@ export async function seedDocentes(prisma: PrismaClient) {
       where: { codigo_docente: codigoDocente },
       update: {
         id_usuario: usuario.id_usuario,
-        nombres: data.nombres,
-        apellidos: data.apellidos,
+        nombres: nombresMayusculas,
+        apellidos: apellidosMayusculas,
         modalidad: data.modalidad,
         categoria: data.categoria,
         fecha_ingreso: data.fecha_ingreso,
@@ -557,8 +563,8 @@ export async function seedDocentes(prisma: PrismaClient) {
       create: {
         codigo_docente: codigoDocente,
         id_usuario: usuario.id_usuario,
-        nombres: data.nombres,
-        apellidos: data.apellidos,
+        nombres: nombresMayusculas,
+        apellidos: apellidosMayusculas,
         modalidad: data.modalidad,
         categoria: data.categoria,
         fecha_ingreso: data.fecha_ingreso,

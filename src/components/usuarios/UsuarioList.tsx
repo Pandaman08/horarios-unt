@@ -84,6 +84,7 @@ export function UsuarioList() {
 
   const [formData, setFormData] = useState({
     codigo: "",
+    dni: "",
     nombres: "",
     apellidos: "",
     correo_electronico: "",
@@ -94,12 +95,18 @@ export function UsuarioList() {
     modalidad: "contratado",
     especialidad: "",
     grado_academico: "",
-    antiguedad: "0",
+    fecha_ingreso: "",
   });
 
   useEffect(() => {
+    if (formData.dni) {
+      setFormData(prev => ({ ...prev, codigo: formData.dni }));
+    }
+  }, [formData.dni]);
+
+  useEffect(() => {
     if (!editingUsuario && isDialogOpen) {
-      generarNuevoCodigo(formData.rol);
+      // No necesitamos generar código, se usará el DNI
     }
   }, [formData.rol, isDialogOpen]);
 
@@ -160,11 +167,19 @@ export function UsuarioList() {
       ? `/api/usuarios/${editingUsuario.id_usuario}` 
       : "/api/usuarios";
 
+    // Convertir nombres y apellidos a mayúsculas y usar DNI como código
+    const datosParaEnviar = {
+      ...formData,
+      nombres: formData.nombres.toUpperCase(),
+      apellidos: formData.apellidos.toUpperCase(),
+      codigo: formData.dni || formData.codigo,
+    };
+
     try {
       const res = await fetch(url, {
         method,
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        body: JSON.stringify(datosParaEnviar),
       });
 
       if (res.ok) {
@@ -203,11 +218,17 @@ export function UsuarioList() {
   const resetForm = () => {
     setFormData({
       codigo: "",
+      dni: "",
       nombres: "",
       apellidos: "",
       correo_electronico: "",
       contrasena: "",
       rol: "operador",
+      categoria: "auxiliar",
+      modalidad: "contratado",
+      especialidad: "",
+      grado_academico: "",
+      fecha_ingreso: "",
     });
   };
 
@@ -249,81 +270,80 @@ export function UsuarioList() {
                 <UserPlus className="mr-2 h-4 w-4" /> Nuevo Registro
               </Button>
             </DialogTrigger>
-            <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-2xl rounded-2xl p-0 border-none shadow-2xl overflow-hidden bg-card">
-              <div className="bg-primary p-6 text-primary-foreground">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
-                    <UserCircle2 className="h-8 w-8 text-white" />
+            <DialogContent className="w-[95vw] md:max-w-xl lg:max-w-2xl rounded-lg p-0 border-none shadow-xl overflow-hidden bg-card">
+              <div className="bg-primary p-3 text-primary-foreground">
+                <div className="flex items-center gap-2.5">
+                  <div className="h-8 w-8 bg-white/10 backdrop-blur-md rounded-md flex items-center justify-center border border-white/20">
+                    <UserCircle2 className="h-4 w-4 text-white" />
                   </div>
                   <div>
-                    <DialogTitle className="text-[22px] font-black text-white tracking-tight">
-                      {editingUsuario ? "Editar Perfil de Usuario" : "Registrar Nuevo Usuario"}
+                    <DialogTitle className="text-base font-bold text-white tracking-tight">
+                      {editingUsuario ? "Editar" : "Nuevo Usuario"}
                     </DialogTitle>
-                    <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest mt-0.5">
-                      {editingUsuario ? "Actualizar credenciales y permisos" : "Crear nueva cuenta de acceso al sistema"}
+                    <p className="text-white/70 text-[9px] font-semibold uppercase tracking-wider">
+                      {editingUsuario ? "Actualizar datos" : "Crear cuenta"}
                     </p>
                   </div>
                 </div>
               </div>
               
-              <form onSubmit={handleSubmit} className="p-8 space-y-8 bg-card">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Identificador (Código)</Label>
-                    <div className="relative group">
+              <form onSubmit={handleSubmit} className="p-4 space-y-3 bg-card">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">DNI</Label>
+                    <div className="relative">
                       <Input 
-                        className="h-12 rounded-xl border-border font-bold text-[15px] bg-muted/50 pr-10 border-dashed focus:border-primary transition-colors" 
-                        value={formData.codigo} 
-                        readOnly
+                        className="h-8 rounded-md border-border font-semibold text-[12px] bg-card focus:ring-primary/10 transition-colors" 
+                        value={formData.dni} 
+                        onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
                         required 
+                        placeholder="DNI"
                       />
-                      <Lock className="absolute right-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground group-hover:text-primary transition-colors" />
                     </div>
-                    <p className="text-[9px] font-bold text-primary uppercase tracking-tighter ml-1">🔒 Asignado automáticamente por el sistema</p>
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nivel de Acceso (Rol)</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Rol</Label>
                     <Select value={formData.rol} onValueChange={(v) => setFormData({ ...formData, rol: v })}>
-                      <SelectTrigger className="h-12 rounded-xl border-border font-bold text-[15px] bg-card focus:ring-primary/10 transition-all">
+                      <SelectTrigger className="h-8 rounded-md border-border font-semibold text-[12px] bg-card focus:ring-primary/10 transition-all">
                         <SelectValue />
                       </SelectTrigger>
-                      <SelectContent className="rounded-xl border-border shadow-xl">
-                        <SelectItem value="admin" className="font-bold text-[14px] focus:bg-primary/10 focus:text-primary">Administrador General</SelectItem>
-                        <SelectItem value="operador" className="font-bold text-[14px] focus:bg-primary/10 focus:text-primary">Operador de Turno</SelectItem>
-                        <SelectItem value="docente" className="font-bold text-[14px] focus:bg-primary/10 focus:text-primary">Docente Académico</SelectItem>
+                      <SelectContent className="rounded-md border-border shadow-md">
+                        <SelectItem value="admin" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Admin</SelectItem>
+                        <SelectItem value="operador" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Operador</SelectItem>
+                        <SelectItem value="docente" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Docente</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nombres</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Nombres</Label>
                     <Input 
-                      className="h-12 rounded-xl border-border font-bold text-[15px] focus:ring-primary/10" 
+                      className="h-8 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
                       value={formData.nombres} 
                       onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} 
                       required 
-                      placeholder="Ej. Juan Carlos"
+                      placeholder="Nombres"
                     />
                   </div>
 
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Apellidos</Label>
+                  <div className="space-y-1">
+                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Apellidos</Label>
                     <Input 
-                      className="h-12 rounded-xl border-border font-bold text-[15px] focus:ring-primary/10" 
+                      className="h-8 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
                       value={formData.apellidos} 
                       onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} 
                       required 
-                      placeholder="Ej. Pérez Gómez"
+                      placeholder="Apellidos"
                     />
                   </div>
 
-                  <div className="space-y-2.5 md:col-span-2">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Correo Institucional</Label>
+                  <div className="space-y-1 md:col-span-2">
+                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Correo</Label>
                     <div className="relative">
-                      <Mail className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                      <Mail className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                       <Input 
-                        className="h-12 pl-11 rounded-xl border-border font-bold text-[15px] focus:ring-primary/10" 
+                        className="h-8 pl-7 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
                         type="email" 
                         value={formData.correo_electronico} 
                         onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} 
@@ -334,70 +354,79 @@ export function UsuarioList() {
                   </div>
 
                   {!editingUsuario && (
-                    <div className="space-y-2.5 md:col-span-2">
-                      <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Contraseña de Acceso</Label>
+                    <div className="space-y-1 md:col-span-2">
+                      <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Contraseña</Label>
                       <div className="relative">
-                        <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                        <Key className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
                         <Input 
-                          className="h-12 pl-11 rounded-xl border-border font-bold text-[15px] focus:ring-primary/10" 
+                          className="h-8 pl-7 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
                           type="password" 
                           value={formData.contrasena} 
                           onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })} 
                           required 
                           minLength={8} 
-                          placeholder="Mínimo 8 caracteres"
+                          placeholder="Mín 8 caracteres"
                         />
                       </div>
                     </div>
                   )}
 
                   {formData.rol === 'docente' && (
-                    <div className="md:col-span-2 pt-4 border-t border-border mt-2">
-                      <div className="flex items-center gap-2 mb-6">
-                        <div className="h-6 w-1 bg-primary rounded-full" />
-                        <h4 className="text-[12px] font-black text-foreground uppercase tracking-widest">Información Académica</h4>
+                    <div className="md:col-span-2 pt-2 border-t border-border mt-1">
+                      <div className="flex items-center gap-1 mb-2">
+                        <div className="h-3 w-0.5 bg-primary rounded-full" />
+                        <h4 className="text-[9px] font-bold text-foreground uppercase tracking-wider">Datos Académicos</h4>
                       </div>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                        <div className="space-y-2.5">
-                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Categoría</Label>
                           <Select value={formData.categoria} onValueChange={(v) => setFormData({ ...formData, categoria: v })}>
-                            <SelectTrigger className="h-12 rounded-xl border-border bg-card font-bold text-[15px]"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
-                              <SelectItem value="principal" className="font-bold">Docente Principal</SelectItem>
-                              <SelectItem value="asociado" className="font-bold">Docente Asociado</SelectItem>
-                              <SelectItem value="auxiliar" className="font-bold">Docente Auxiliar</SelectItem>
+                            <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-md border-border">
+                              <SelectItem value="principal" className="font-semibold">Principal</SelectItem>
+                              <SelectItem value="asociado" className="font-semibold">Asociado</SelectItem>
+                              <SelectItem value="auxiliar" className="font-semibold">Auxiliar</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2.5">
-                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Modalidad</Label>
                           <Select value={formData.modalidad} onValueChange={(v) => setFormData({ ...formData, modalidad: v })}>
-                            <SelectTrigger className="h-12 rounded-xl border-border bg-card font-bold text-[15px]"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
-                              <SelectItem value="nombrado" className="font-bold">Nombrado</SelectItem>
-                              <SelectItem value="contratado" className="font-bold">Contratado</SelectItem>
+                            <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
+                            <SelectContent className="rounded-md border-border">
+                              <SelectItem value="nombrado" className="font-semibold">Nombrado</SelectItem>
+                              <SelectItem value="contratado" className="font-semibold">Contratado</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2.5">
-                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Grado Académico</Label>
-                          <Input className="h-12 rounded-xl border-border bg-card font-bold text-[15px]" value={formData.grado_academico} onChange={(e) => setFormData({ ...formData, grado_academico: e.target.value })} placeholder="Ej. Doctor en Ingeniería" />
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Grado</Label>
+                          <Input className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" value={formData.grado_academico} onChange={(e) => setFormData({ ...formData, grado_academico: e.target.value })} placeholder="Grado académico" />
                         </div>
-                        <div className="space-y-2.5">
-                          <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Especialidad</Label>
-                          <Input className="h-12 rounded-xl border-border bg-card font-bold text-[15px]" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} placeholder="Ej. Inteligencia Artificial" />
+                        <div className="space-y-1">
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Especialidad</Label>
+                          <Input className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} placeholder="Especialidad" />
+                        </div>
+                        <div className="space-y-1 md:col-span-2">
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Fecha Ingreso</Label>
+                          <Input 
+                            type="date" 
+                            className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" 
+                            value={formData.fecha_ingreso} 
+                            onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} 
+                          />
                         </div>
                       </div>
                     </div>
                   )}
                 </div>
                 
-                <div className="flex justify-end gap-3 pt-6 border-t border-border">
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-12 rounded-xl font-bold text-muted-foreground px-8 text-[14px] hover:bg-muted transition-colors">
+                <div className="flex justify-end gap-2 pt-2 border-t border-border">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-8 rounded-md font-semibold text-muted-foreground px-4 text-[12px] hover:bg-muted transition-colors">
                     Cancelar
                   </Button>
-                  <Button type="submit" className="h-12 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-black text-[14px] shadow-lg shadow-primary/10 active:scale-95 transition-all">
-                    {editingUsuario ? "Guardar Cambios" : "Finalizar Registro"}
+                  <Button type="submit" className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md px-5 font-bold text-[12px] shadow-sm shadow-primary/10 active:scale-95 transition-all">
+                    {editingUsuario ? "Guardar" : "Registrar"}
                   </Button>
                 </div>
               </form>
@@ -443,7 +472,7 @@ export function UsuarioList() {
                   <TableRow key={usuario.id_usuario} className="group border-b border-border hover:bg-muted/50 transition-all">
                     <TableCell className="px-6 py-4">
                       <span className="font-mono font-bold text-[12px] text-primary bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
-                        {usuario.codigo}
+                        {(usuario as any).dni || usuario.codigo}
                       </span>
                     </TableCell>
                     <TableCell className="px-6 py-4">
@@ -452,7 +481,7 @@ export function UsuarioList() {
                           <UserCircle2 className="h-5 w-5" />
                         </div>
                         <div>
-                          <p className="font-bold text-foreground text-[14px] leading-tight">{usuario.apellidos}, {usuario.nombres}</p>
+                          <p className="font-bold text-foreground text-[14px] leading-tight">{usuario.apellidos.toUpperCase()}, {usuario.nombres.toUpperCase()}</p>
                           <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{usuario.correo_electronico}</p>
                         </div>
                       </div>
@@ -509,7 +538,8 @@ export function UsuarioList() {
                           onClick={() => {
                             setEditingUsuario(usuario);
                             setFormData({
-                              codigo: usuario.codigo,
+                              codigo: (usuario as any).dni || usuario.codigo,
+                              dni: (usuario as any).dni || "",
                               nombres: usuario.nombres,
                               apellidos: usuario.apellidos,
                               correo_electronico: usuario.correo_electronico,
@@ -519,7 +549,7 @@ export function UsuarioList() {
                               modalidad: usuario.docente?.modalidad || "contratado",
                               especialidad: usuario.docente?.especialidad || "",
                               grado_academico: usuario.docente?.grado_academico || "",
-                              antiguedad: usuario.docente?.antiguedad?.toString() || "0",
+                              fecha_ingreso: usuario.docente?.fecha_ingreso ? new Date(usuario.docente.fecha_ingreso).toISOString().split('T')[0] : "",
                             });
                             setIsDialogOpen(true);
                           }} 
