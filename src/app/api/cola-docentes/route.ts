@@ -34,10 +34,15 @@ export async function GET(request: Request) {
     }
 
     // 2. Obtener docentes que pertenecen a esas ventanas (modalidad y categoría)
-    // y que no hayan completado su horario aún (simplificado: que no tengan todas sus horas asignadas)
+    // y que tengan al menos un curso asignado para dictar
     const docentes = await prisma.docente.findMany({
       where: {
         activo: true,
+        docente_cursos: {
+          some: {
+            activo: true
+          }
+        },
         OR: ventanasActivas.map(v => ({
           modalidad: v.modalidad,
           categoria: v.categoria

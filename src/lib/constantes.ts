@@ -1,10 +1,10 @@
 export const DIAS_SEMANA = [
-  { id: 1, nombre: 'Lunes' },
-  { id: 2, nombre: 'Martes' },
-  { id: 3, nombre: 'Miércoles' },
-  { id: 4, nombre: 'Jueves' },
-  { id: 5, nombre: 'Viernes' },
-  { id: 6, nombre: 'Sábado' },
+  { id: 0, nombre: 'Lunes' },
+  { id: 1, nombre: 'Martes' },
+  { id: 2, nombre: 'Miércoles' },
+  { id: 3, nombre: 'Jueves' },
+  { id: 4, nombre: 'Viernes' },
+  { id: 5, nombre: 'Sábado' },
 ]
 
 export const FRANJA_INICIO = '07:00'

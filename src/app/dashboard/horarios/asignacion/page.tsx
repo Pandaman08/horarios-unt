@@ -23,7 +23,7 @@ import {
   Calendar,
   BarChart3,
   HelpCircle,
-  MousePointer2
+  MousePointer2,
   Search,
   FileText
 } from "lucide-react";
@@ -34,14 +34,14 @@ import { Input } from "@/components/ui/input";
 // Componente para el progreso general solicitado por Melanie
 function ProgresoGeneral({ id_periodo }: { id_periodo: string }) {
   return (
-    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 space-y-6 animate-in fade-in duration-700">
+    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6 animate-in fade-in duration-700">
       <div className="flex items-center gap-3">
-        <div className="h-10 w-10 bg-gray-50 rounded-xl flex items-center justify-center">
-          <BarChart3 className="h-5 w-5 text-[#003366]" />
+        <div className="h-10 w-10 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
+          <BarChart3 className="h-5 w-5 text-[#1a237e]" />
         </div>
         <div>
-          <h3 className="text-sm font-black text-gray-900 uppercase tracking-wider">Progreso de Asignación</h3>
-          <p className="text-[10px] font-bold text-gray-400 uppercase tracking-tight">Porcentaje de avance general</p>
+          <h3 className="text-xs font-black text-slate-700 uppercase tracking-wider">Progreso de Asignación</h3>
+          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Avance general del período</p>
         </div>
       </div>
 
@@ -55,7 +55,7 @@ function ProgresoGeneral({ id_periodo }: { id_periodo: string }) {
               stroke="currentColor"
               strokeWidth="8"
               fill="transparent"
-              className="text-gray-100"
+              className="text-slate-100"
             />
             <circle
               cx="40"
@@ -65,27 +65,27 @@ function ProgresoGeneral({ id_periodo }: { id_periodo: string }) {
               strokeWidth="8"
               fill="transparent"
               strokeDasharray={213.6}
-              strokeDashoffset={213.6} // 0% por defecto
+              strokeDashoffset={213.6}
               className="text-emerald-500 transition-all duration-1000"
             />
           </svg>
-          <span className="absolute text-xl font-black text-gray-900">0%</span>
+          <span className="absolute text-lg font-black text-slate-800">0%</span>
         </div>
 
         <div className="space-y-1">
-          <p className="text-xs font-black text-gray-900">0 <span className="text-gray-300 mx-1">/</span> 0</p>
-          <p className="text-[10px] font-bold text-gray-400 uppercase leading-tight">
-            Horas asignadas <br /> de 0 horas totales
+          <p className="text-xs font-black text-slate-800">0 <span className="text-slate-300 mx-1">/</span> 0</p>
+          <p className="text-[10px] font-bold text-slate-400 uppercase leading-tight">
+            Horas asignadas <br /> de 0 totales
           </p>
-          <div className="w-24 h-1.5 bg-gray-100 rounded-full overflow-hidden mt-2">
-            <div className="h-full bg-gray-200 w-0" />
+          <div className="w-24 h-1.5 bg-slate-100 rounded-full overflow-hidden mt-2">
+            <div className="h-full bg-slate-200 w-0" />
           </div>
         </div>
       </div>
 
-      <div className="p-4 bg-blue-50/50 border border-blue-100 rounded-2xl flex items-start gap-3">
-        <Info className="h-4 w-4 text-blue-600 shrink-0 mt-0.5" />
-        <p className="text-[10px] font-medium text-blue-800 leading-relaxed">
+      <div className="p-3 bg-indigo-50/50 border border-indigo-100 rounded-xl flex items-start gap-3">
+        <Info className="h-4 w-4 text-[#1a237e] shrink-0 mt-0.5" />
+        <p className="text-[10px] font-medium text-[#1a237e] leading-relaxed">
           El progreso se actualiza automáticamente conforme se asignan cursos.
         </p>
       </div>
@@ -129,11 +129,14 @@ export default function AsignacionOperadorPage() {
     try {
       const res = await fetch(`/api/docentes?search=${encodeURIComponent(searchTerm)}`);
       const data = await res.json();
-      setSearchResults(data.filter((d: any) => 
+      const filtered = data.filter((d: any) => 
         d.nombres.toLowerCase().includes(searchTerm.toLowerCase()) || 
         d.apellidos.toLowerCase().includes(searchTerm.toLowerCase()) ||
         d.codigo_docente.toLowerCase().includes(searchTerm.toLowerCase())
-      ));
+      );
+      // Asegurar resultados únicos por ID
+      const resultadosUnicos = Array.from(new Map(filtered.map((d: any) => [d.id_docente, d])).values());
+      setSearchResults(resultadosUnicos);
     } catch (error) {
       console.error("Error al buscar docentes:", error);
     } finally {
@@ -157,51 +160,48 @@ export default function AsignacionOperadorPage() {
   const fetchPeriodos = async () => {
     const res = await fetch("/api/periodos");
     const data = await res.json();
-    setPeriodos(data);
-    if (data.length > 0) setIdPeriodo(data[0].id_periodo.toString());
+    // Asegurar periodos únicos por ID
+    const periodosUnicos = Array.from(new Map(data.map((p: any) => [p.id_periodo, p])).values());
+    setPeriodos(periodosUnicos);
+    if (periodosUnicos.length > 0) setIdPeriodo(periodosUnicos[0].id_periodo.toString());
   };
 
   const fetchDocenteCursos = async () => {
     if (!docenteActual || !idPeriodo) return;
     
-    // 1. Obtener cursos que el docente tiene asignados para dictar
-    const resCursos = await fetch(`/api/docentes/${docenteActual.id_docente}/cursos`);
-    const cursosData = await resCursos.json();
-    
-    // 2. Obtener lo que ya tiene asignado en el horario para este periodo
-    const resHorarios = await fetch(`/api/horarios/validar?id_docente=${docenteActual.id_docente}&id_periodo=${idPeriodo}`);
-    const horariosData = await resHorarios.json();
-    
-    const transformado = cursosData.map((dc: any) => {
-      // Contar horas ya asignadas (permanentemente o temporalmente)
-      const horasAsignadas = (horariosData.asignados || [])
-        .filter((h: any) => h.id_curso === dc.id_curso && h.tipo_clase === dc.tipo_clase)
-        .length; // Asumiendo que cada registro es 1 hora (ajustar si es diferente)
-
-      return {
-        id_curso: dc.id_curso,
-        nombre: dc.curso.nombre,
-        codigo: dc.curso.codigo,
-        tipo_clase: dc.tipo_clase,
-        horas_requeridas: dc.tipo_clase === 'teoria' ? dc.curso.horas_teoria : dc.curso.horas_laboratorio,
-        horas_asignadas: horasAsignadas
-      };
-    });
-    setCursosProgreso(transformado);
+    try {
+      // Usamos la API mis-cursos con el parámetro id_docente_manual para que el operador vea el progreso real
+      const res = await fetch(`/api/docentes/mis-cursos?id_periodo=${idPeriodo}&id_docente_manual=${docenteActual.id_docente}`);
+      if (res.ok) {
+        const data = await res.json();
+        // Los cursos ya vienen únicos por curso-tipo desde la API, pero podemos asegurar por si acaso
+        setCursosProgreso(data);
+      } else {
+        console.error("Error al cargar cursos del docente");
+        setCursosProgreso([]);
+      }
+    } catch (error) {
+      console.error("Error en fetchDocenteCursos:", error);
+      setCursosProgreso([]);
+    }
   };
 
   const fetchGrupos = async () => {
     const res = await fetch(`/api/grupos?id_curso=${cursoSeleccionado.id_curso}&id_periodo=${idPeriodo}`);
     const data = await res.json();
-    setGrupos(data);
-    if (data.length > 0) setIdGrupo(data[0].id_grupo.toString());
+    // Asegurar grupos únicos por ID
+    const gruposUnicos = Array.from(new Map(data.map((g: any) => [g.id_grupo, g])).values());
+    setGrupos(gruposUnicos);
+    if (gruposUnicos.length > 0) setIdGrupo(gruposUnicos[0].id_grupo.toString());
   };
 
   const fetchAmbientesValidos = async () => {
     const res = await fetch(`/api/cursos/${cursoSeleccionado.id_curso}/ambientes`);
     const data = await res.json();
-    setAmbientes(data.map((ca: any) => ca.ambiente));
-    if (data.length > 0) setIdAmbiente(data[0].id_ambiente.toString());
+    // Unificar ambientes por ID para evitar duplicados si un curso tiene el mismo ambiente para teoría y lab
+    const ambientesUnicos = Array.from(new Map(data.map((ca: any) => [ca.ambiente.id_ambiente, ca.ambiente])).values());
+    setAmbientes(ambientesUnicos);
+    if (ambientesUnicos.length > 0) setIdAmbiente(ambientesUnicos[0].id_ambiente.toString());
   };
 
   const handleLlamarDocente = (docente: any) => {
@@ -216,6 +216,8 @@ export default function AsignacionOperadorPage() {
     setDocenteActual(null);
     setCursosProgreso([]);
     setCursoSeleccionado(null);
+    setSearchTerm(""); // Limpiar búsqueda al finalizar
+    setSearchResults([]);
     toast.success("Atención finalizada");
   };
 
@@ -275,144 +277,124 @@ export default function AsignacionOperadorPage() {
   };
 
   return (
-    <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700">
-      {/* Header de la Página */}
-      <div className="bg-white border-b border-gray-100 p-6 shadow-sm z-20">
-        <div className="max-w-[1800px] mx-auto flex flex-col md:flex-row md:items-center justify-between gap-6">
-          <div className="flex items-center gap-6">
-            <div className="h-12 w-12 bg-[#003366] rounded-2xl flex items-center justify-center shadow-lg shadow-blue-900/20">
-              <LayoutIcon className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <h1 className="text-2xl font-black text-gray-900 tracking-tight">Centro de Asignación</h1>
-              <div className="flex items-center gap-2 mt-0.5">
-                <p className="text-[10px] font-black text-[#003366]/40 uppercase tracking-[0.2em]">Gestión en Tiempo Real</p>
-                <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-              </div>
-            </div>
+    <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700 w-full overflow-x-hidden">
+      {/* Header de la Página Estilo Moderno - Mejorado según mockup */}
+      <div className="bg-white p-4 md:p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mx-3 md:mx-6 mt-3 md:mt-6 mb-5">
+        <div className="flex items-center gap-4 md:gap-6">
+          <div className="h-10 md:h-14 w-10 md:w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm shrink-0">
+            <LayoutIcon className="h-5 md:h-7 w-5 md:w-7 text-[#1a237e]" />
           </div>
+          <div>
+            <span className="text-[9px] md:text-[10px] bg-indigo-50 text-[#1a237e] uppercase tracking-wider font-extrabold px-2 py-1 rounded-lg">MÓDULO DE ATENCIÓN PRESENCIAL</span>
+            <h1 className="text-lg md:text-xl md:text-2xl font-bold text-slate-800 tracking-tight mt-2">Atención al Docente – Operador</h1>
+            <p className="text-slate-500 text-xs mt-1">Fecha de atención: 08/06/2026 | Ventana activa: <span className="font-bold text-[#1a237e]">Principal Nombrado (8:00am - 9:30am)</span></p>
+          </div>
+        </div>
 
-          <div className="flex items-center gap-4 bg-gray-50 p-2 rounded-2xl border border-gray-100">
-            <div className="flex items-center gap-2 px-3">
-              <Clock className="h-4 w-4 text-gray-400" />
-              <span className="text-xs font-bold text-gray-600">Periodo:</span>
-              <Select value={idPeriodo} onValueChange={setIdPeriodo}>
-                <SelectTrigger className="w-[140px] h-9 border-none bg-white rounded-xl shadow-sm font-black text-xs focus:ring-2 focus:ring-blue-100">
-                  <SelectValue placeholder="Ciclo" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-gray-100 shadow-xl">
-                  {periodos.map(p => (
-                    <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold">Ciclo {p.codigo}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
-          </div>
+        <div className="flex items-center gap-2 md:gap-4 bg-rose-50 p-3 md:p-4 rounded-2xl border border-rose-100 w-full md:w-auto">
+          <span className="text-xs md:text-sm text-slate-700 font-medium">Tiempo restante de ventana</span>
+          <span className="font-bold text-rose-600 text-base md:text-lg">45 minutos</span>
         </div>
       </div>
 
       {/* Contenido Principal */}
       <div className="flex-1 flex overflow-hidden">
         {/* Sidebar Izquierdo: Cola y Búsqueda */}
-        <aside className="w-80 bg-gray-50/50 border-r border-gray-100 flex flex-col shrink-0">
-          <Tabs defaultValue="cola" className="w-full flex flex-col h-full">
-            <div className="p-4 border-b border-gray-100 bg-white/50">
-              <TabsList className="grid w-full grid-cols-2">
-                <TabsTrigger value="cola" className="text-[10px] font-black uppercase tracking-widest">Cola</TabsTrigger>
-                <TabsTrigger value="buscar" className="text-[10px] font-black uppercase tracking-widest">Buscar</TabsTrigger>
-              </TabsList>
-            </div>
-
-            <TabsContent value="cola" className="flex-1 overflow-hidden flex flex-col mt-0">
-              <div className="flex-1 overflow-y-auto custom-scrollbar">
-                <ColaEspera 
-                  id_periodo={parseInt(idPeriodo)} 
-                  onLlamarDocente={handleLlamarDocente}
-                  docenteActualId={docenteActual?.id_docente}
-                />
+        {!docenteActual && (
+          <aside className="w-80 bg-white border-r border-slate-100 flex flex-col shrink-0 animate-in slide-in-from-left duration-500">
+            <Tabs defaultValue="cola" className="w-full flex flex-col h-full">
+              <div className="p-4 border-b border-slate-100 bg-slate-50/50">
+                <TabsList className="grid w-full grid-cols-2 bg-slate-200/50 p-1 rounded-xl">
+                  <TabsTrigger value="cola" className="text-[10px] font-black uppercase tracking-widest rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#1a237e] data-[state=active]:shadow-sm transition-all">Cola</TabsTrigger>
+                  <TabsTrigger value="buscar" className="text-[10px] font-black uppercase tracking-widest rounded-lg data-[state=active]:bg-white data-[state=active]:text-[#1a237e] data-[state=active]:shadow-sm transition-all">Buscar</TabsTrigger>
+                </TabsList>
               </div>
-            </TabsContent>
 
-            <TabsContent value="buscar" className="flex-1 overflow-hidden flex flex-col mt-0">
-              <div className="p-4 space-y-4">
-                <div className="relative">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-                  <Input 
-                    placeholder="Nombre o código..." 
-                    className="pl-10 h-10 rounded-xl border-gray-100 bg-white shadow-sm font-bold text-xs focus:ring-2 focus:ring-blue-100"
-                    value={searchTerm}
-                    onChange={(e) => setSearchTerm(e.target.value)}
+              <TabsContent value="cola" className="flex-1 overflow-hidden flex flex-col mt-0">
+                <div className="flex-1 overflow-y-auto custom-scrollbar">
+                  <ColaEspera 
+                    id_periodo={parseInt(idPeriodo)} 
+                    onLlamarDocente={handleLlamarDocente}
+                    docenteActualId={docenteActual?.id_docente}
                   />
                 </div>
+              </TabsContent>
 
-                <div className="divide-y divide-gray-100 bg-white rounded-2xl border border-gray-100 overflow-hidden max-h-[500px] overflow-y-auto custom-scrollbar">
-                  {isSearching ? (
-                    <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">Buscando...</div>
-                  ) : searchResults.length === 0 ? (
-                    <div className="p-8 text-center text-[10px] font-black text-gray-400 uppercase tracking-widest">
-                      {searchTerm ? "No se encontraron resultados" : "Ingrese un término para buscar"}
-                    </div>
-                  ) : (
-                    searchResults.map((docente) => (
-                      <div
-                        key={docente.id_docente}
-                        className={cn(
-                          "w-full p-4 flex items-center justify-between hover:bg-gray-50 transition-colors",
-                          docenteActual?.id_docente === docente.id_docente && "bg-blue-50"
-                        )}
-                      >
-                        <div className="flex flex-col items-start gap-1">
-                          <span className="text-sm font-black text-gray-900">{docente.nombres} {docente.apellidos}</span>
-                          <div className="flex items-center gap-2">
-                            <span className="text-[9px] font-black text-gray-400 uppercase tracking-tighter">{docente.codigo_docente}</span>
-                            <span className="w-1 h-1 rounded-full bg-gray-200" />
-                            <span className="text-[9px] font-black text-[#003366] uppercase tracking-tighter">{docente.modalidad}</span>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="ghost"
-                          onClick={() => handleLlamarDocente(docente)}
-                          className="text-blue-600 hover:text-blue-700 hover:bg-blue-100 h-8 px-2 text-[10px] font-black uppercase tracking-widest"
-                        >
-                          Verificar
-                        </Button>
+              <TabsContent value="buscar" className="flex-1 overflow-hidden flex flex-col mt-0">
+                <div className="p-4 space-y-4">
+                  <div className="relative">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+                    <Input 
+                      placeholder="Nombre o código..." 
+                      className="pl-10 h-10 rounded-xl border-slate-200 bg-white shadow-sm font-bold text-xs focus:ring-2 focus:ring-[#1a237e] transition-all"
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                    />
+                  </div>
+
+                  <div className="divide-y divide-slate-100 bg-white rounded-2xl border border-slate-100 overflow-hidden max-h-[500px] overflow-y-auto custom-scrollbar shadow-sm">
+                    {isSearching ? (
+                      <div className="p-8 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">Buscando...</div>
+                    ) : searchResults.length === 0 ? (
+                      <div className="p-8 text-center text-[10px] font-black text-slate-400 uppercase tracking-widest">
+                        {searchTerm ? "No se encontraron resultados" : "Ingrese un término para buscar"}
                       </div>
-                    ))
-                  )}
+                    ) : (
+                      searchResults.map((docente) => (
+                        <div
+                          key={docente.id_docente}
+                          className={cn(
+                            "w-full p-4 flex items-center justify-between hover:bg-slate-50 transition-colors group",
+                            docenteActual?.id_docente === docente.id_docente && "bg-indigo-50"
+                          )}
+                        >
+                          <div className="flex flex-col items-start gap-1">
+                            <span className="text-sm font-bold text-slate-800">{docente.nombres} {docente.apellidos}</span>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter font-mono">{docente.codigo_docente}</span>
+                              <span className="w-1 h-1 rounded-full bg-slate-200" />
+                              <span className="text-[9px] font-bold text-[#1a237e] uppercase tracking-tighter">{docente.modalidad}</span>
+                            </div>
+                          </div>
+                          <Button
+                            size="sm"
+                            variant="ghost"
+                            onClick={() => handleLlamarDocente(docente)}
+                            className="text-[#1a237e] hover:text-[#1a237e] hover:bg-indigo-50 h-8 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-transparent hover:border-indigo-100 transition-all"
+                          >
+                            Llamar
+                          </Button>
+                        </div>
+                      ))
+                    )}
+                  </div>
                 </div>
-              </div>
-            </TabsContent>
-          </Tabs>
-        </aside>
+              </TabsContent>
+            </Tabs>
+          </aside>
+        )}
 
         {/* Área de Trabajo Central (Scrollable) */}
-        <main className="flex-1 overflow-y-auto bg-gray-50/30 custom-scrollbar min-w-0 relative">
+        <main className={cn(
+          "flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar relative transition-all duration-500",
+          docenteActual ? "p-0" : "min-w-0"
+        )}>
           {!docenteActual ? (
             <div className="max-w-[1600px] mx-auto p-4 sm:p-8 space-y-8">
-              {/* Card de Cola de Espera (Solo visible en Mobile para facilitar el flujo) */}
-              <div className="lg:hidden animate-in slide-in-from-top-4 duration-500">
-                <ColaEspera 
-                  id_periodo={parseInt(idPeriodo)} 
-                  onLlamarDocente={handleLlamarDocente}
-                  docenteActualId={docenteActual?.id_docente}
-                />
-              </div>
-
               <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                {/* Card de Instrucciones (Operación) */}
-                <div className="bg-white p-8 rounded-[40px] border border-gray-100 shadow-xl shadow-blue-900/5 flex flex-col items-center text-center space-y-6 animate-in fade-in duration-700">
-                  <div className="h-20 w-20 bg-blue-50 rounded-[28px] flex items-center justify-center">
-                    <MousePointer2 className="h-10 w-10 text-[#003366] opacity-40" />
+                {/* Card de Instrucciones */}
+                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm flex flex-col items-center text-center space-y-6 animate-in fade-in duration-700">
+                  <div className="h-20 w-20 bg-indigo-50 rounded-2xl flex items-center justify-center shadow-inner">
+                    <MousePointer2 className="h-10 w-10 text-[#1a237e] opacity-20" />
                   </div>
                   <div>
-                    <h3 className="text-xl font-black text-gray-900 uppercase tracking-widest mb-2">Operación</h3>
-                    <p className="text-sm font-medium text-gray-400 leading-relaxed max-w-[280px] mx-auto">
-                      Seleccione un docente de la cola de atención para iniciar el proceso de asignación.
+                    <h3 className="text-lg font-black text-slate-800 uppercase tracking-widest mb-2">Operación Pendiente</h3>
+                    <p className="text-sm font-medium text-slate-500 leading-relaxed max-w-[280px] mx-auto">
+                      Seleccione un docente de la cola de atención o use el buscador para iniciar el proceso de asignación.
                     </p>
                   </div>
-                  <div className="pt-4 w-full border-t border-gray-50">
-                    <div className="flex items-center justify-center gap-2 text-[10px] font-black text-blue-400 uppercase tracking-tighter">
+                  <div className="pt-4 w-full border-t border-slate-50">
+                    <div className="flex items-center justify-center gap-2 text-[10px] font-black text-indigo-400 uppercase tracking-tighter">
                       <Info className="h-3 w-3" /> Requiere selección previa
                     </div>
                   </div>
@@ -423,22 +405,23 @@ export default function AsignacionOperadorPage() {
               </div>
             </div>
           ) : (
-            <div className="max-w-[1600px] mx-auto p-6 space-y-6">
+            <div className="max-w-[1800px] mx-auto p-4 sm:p-6 space-y-6 animate-in fade-in duration-700">
               {/* Card de Docente en Atención */}
-              <div className="p-6 bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+              <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
                 <div className="flex items-center gap-6">
-                  <div className="h-16 w-16 bg-blue-50 rounded-2xl flex items-center justify-center ring-4 ring-blue-50/50">
-                    <User className="h-8 w-8 text-[#003366]" />
+                  <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center ring-4 ring-indigo-50/30 shadow-sm">
+                    <User className="h-8 w-8 text-[#1a237e]" />
                   </div>
                   <div>
-                    <h2 className="text-2xl font-black text-gray-900 tracking-tight leading-none mb-2">
+                    <span className="text-[10px] bg-amber-50 text-amber-800 font-bold px-2 py-0.5 rounded uppercase font-mono animate-pulse">En Atención Directa</span>
+                    <h2 className="text-2xl font-bold text-slate-800 tracking-tight leading-none mt-2">
                       {docenteActual.nombres} {docenteActual.apellidos}
                     </h2>
-                    <div className="flex items-center gap-2">
-                      <span className="inline-flex items-center bg-emerald-50 text-emerald-700 border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg">
+                    <div className="flex items-center gap-2 mt-2">
+                      <span className="inline-flex items-center bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-100">
                         {docenteActual.modalidad}
                       </span>
-                      <span className="inline-flex items-center bg-blue-50 text-blue-700 border-none font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg">
+                      <span className="inline-flex items-center bg-indigo-50 text-indigo-700 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-indigo-100">
                         {docenteActual.categoria.replace("_", " ")}
                       </span>
                     </div>
@@ -449,7 +432,7 @@ export default function AsignacionOperadorPage() {
                   <Button 
                     variant="outline" 
                     onClick={handleGenerarReporte}
-                    className="h-10 px-4 rounded-xl font-bold text-blue-600 border-blue-100 hover:bg-blue-50 transition-all text-xs"
+                    className="h-10 px-4 rounded-xl font-bold text-[#1a237e] border-slate-200 hover:bg-slate-50 transition-all text-xs"
                   >
                     <FileText className="mr-2 h-4 w-4" /> Reporte
                   </Button>
@@ -457,14 +440,14 @@ export default function AsignacionOperadorPage() {
                     variant="ghost" 
                     onClick={handleFinalizarAtencion}
                     disabled={isConfirming}
-                    className="h-10 px-4 rounded-xl font-bold text-gray-400 hover:text-red-600 hover:bg-red-50 transition-all text-xs"
+                    className="h-10 px-4 rounded-xl font-bold text-slate-400 hover:text-rose-600 hover:bg-rose-50 transition-all text-xs"
                   >
                     <XCircle className="mr-2 h-4 w-4" /> Cancelar
                   </Button>
                   <Button 
                     onClick={handleConfirmarAsignacion}
                     disabled={isConfirming}
-                    className="h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-black shadow-lg shadow-emerald-900/20 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
+                    className="h-10 px-6 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
                   >
                     <CheckCircle className="mr-2 h-4 w-4" /> 
                     {isConfirming ? "Confirmando..." : "Confirmar Asignación"}
@@ -474,7 +457,7 @@ export default function AsignacionOperadorPage() {
 
               {/* Grid de Pasos 1 y 2 */}
               <div className="flex flex-col xl:flex-row gap-6 items-stretch">
-                <div className="flex-1 bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5">
+                <div className="flex-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                   <ProgresoCursos 
                     cursos={cursosProgreso}
                     cursoSeleccionadoId={cursoSeleccionado?.id_curso}
@@ -485,11 +468,11 @@ export default function AsignacionOperadorPage() {
 
                 <div className="flex-1">
                   {cursoSeleccionado ? (
-                    <div className="bg-white p-6 rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 space-y-6 h-full animate-in zoom-in-95 duration-500">
+                    <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6 h-full animate-in zoom-in-95 duration-500">
                       <div className="flex items-center justify-between gap-4">
                         <div className="flex items-center gap-3 min-w-0">
-                          <div className="h-8 w-8 bg-blue-50 rounded-lg flex items-center justify-center shrink-0">
-                            <Settings2 className="h-4 w-4 text-[#003366]" />
+                          <div className="h-8 w-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
+                            <Settings2 className="h-4 w-4 text-[#1a237e]" />
                           </div>
                           <h4 className="text-sm font-black text-gray-900 uppercase tracking-wider truncate">Configuración de Bloque</h4>
                         </div>

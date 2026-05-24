@@ -54,16 +54,6 @@ export async function POST(request: Request) {
         intervalo_por_docente: parseInt(data.intervalo_por_docente) || 15
       });
 
-      // Programar notificaciones para cada ventana creada
-      for (const v of ventanas) {
-        try {
-          await ServicioNotificador.programarNotificacionesVentana(v.id_ventana);
-        } catch (notifError) {
-          console.error(`Error al programar notificaciones para ventana ${v.id_ventana}:`, notifError);
-          // Continuamos con la siguiente ventana aunque falle la notificación
-        }
-      }
-
       return NextResponse.json({ message: 'Ventanas programadas correctamente', count: ventanas.length });
     }
 

@@ -11,18 +11,24 @@ export class ServicioCorreo {
     },
   });
 
-  static async enviarCorreo(to: string, subject: string, html: string) {
+  static async enviarCorreo(to: string | null | undefined, subject: string, html: string) {
+    if (!to) {
+      console.warn('[Correo] Error: No hay destinatario especificado.');
+      return { success: false, error: 'No hay destinatario' };
+    }
     try {
+      console.log(`[Correo] Intentando enviar correo a: ${to} - Asunto: ${subject}`);
       const info = await this.transporter.sendMail({
         from: `"Horarios UNT" <${process.env.SMTP_USER}>`,
         to,
         subject,
         html,
       });
+      console.log(`[Correo] Correo enviado exitosamente. ID: ${info.messageId}`);
       return { success: true, messageId: info.messageId };
-    } catch (error) {
-      console.error('Error enviando correo:', error);
-      return { success: false, error };
+    } catch (error: any) {
+      console.error('[Correo] Error al enviar:', error.message || error);
+      return { success: false, error: error.message || 'Error desconocido' };
     }
   }
 }
