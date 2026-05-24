@@ -9,7 +9,9 @@ import {
   LayoutDashboard, 
   Users, 
   Calendar, 
-  BookOpen 
+  BookOpen,
+  Clock,
+  Grid3X3
 } from "lucide-react";
 
 import { CountdownTimer } from "@/components/dashboard/CountdownTimer";
@@ -33,7 +35,7 @@ export default async function DashboardPage() {
   // El docente ve su saludo y pestañas para selección y perfil
   return (
     <ProteccionVentana>
-      <div className="max-w-4xl mx-auto space-y-3 animate-in fade-in duration-500">
+      <div className="max-w-6xl mx-auto space-y-3 animate-in fade-in duration-500">
         <div className="flex flex-col sm:flex-row gap-3 justify-between items-start sm:items-center bg-card p-3 rounded-xl border border-border shadow-sm">
           <div className="flex items-center gap-3">
             <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm shrink-0">
@@ -65,43 +67,70 @@ export default async function DashboardPage() {
           </TabsList>
 
           <TabsContent value="home" className="space-y-3 outline-none focus:outline-none">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-              <div className="p-3 bg-card rounded-xl border border-primary/20 shadow-sm flex flex-col justify-between group hover:border-primary/40 transition-all">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+              {/* Disponibilidad */}
+              <div className="p-3 bg-card rounded-xl border border-blue-200 dark:border-blue-900 shadow-sm flex flex-col justify-between group hover:border-blue-300 dark:hover:border-blue-800 transition-all bg-blue-50 dark:bg-blue-950/30">
                 <div className="flex items-start justify-between mb-2">
-                  <div className="h-8 w-8 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 text-primary">
-                    <Calendar className="h-4 w-4" />
+                  <div className="h-8 w-8 bg-blue-100 dark:bg-blue-900/50 rounded-lg flex items-center justify-center border border-blue-200 dark:border-blue-800 text-blue-600 dark:text-blue-400">
+                    <Grid3X3 className="h-4 w-4" />
                   </div>
-                  <span className="text-[7px] font-black bg-primary/10 text-primary px-1.5 py-0.5 rounded uppercase tracking-widest">Disponible</span>
+                  <span className="text-[7px] font-black bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 px-1.5 py-0.5 rounded uppercase tracking-widest">Activo</span>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-foreground tracking-tight">Selección de Horarios</h3>
+                  <h3 className="text-xs font-bold text-foreground tracking-tight">Mi Disponibilidad</h3>
                   <p className="text-[10px] text-muted-foreground mt-1 mb-3 leading-tight line-clamp-2">
-                    Acceda a la matriz de elección para programar sus sesiones académicas.
+                    Define los horarios donde puedes impartir tus clases.
                   </p>
                   <a 
-                    href="/dashboard/horarios/seleccion" 
-                    className="inline-flex items-center justify-center bg-primary text-primary-foreground px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-primary/90 transition-all shadow-md shadow-primary/10 w-full active:scale-95"
+                    href="/dashboard/disponibilidad" 
+                    className="inline-flex items-center justify-center bg-blue-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-blue-700 transition-all shadow-md w-full active:scale-95"
                   >
-                    ACCEDER A LA MATRIZ
+                    EDITAR DISPONIBILIDAD
                   </a>
                 </div>
               </div>
 
-              <div className="p-3 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between group hover:border-border transition-all">
+              {/* Mi Horario */}
+              <div className="p-3 bg-card rounded-xl border border-emerald-200 dark:border-emerald-900 shadow-sm flex flex-col justify-between group hover:border-emerald-300 dark:hover:border-emerald-800 transition-all bg-emerald-50 dark:bg-emerald-950/30">
                 <div className="flex items-start justify-between mb-2">
-                  <div className="h-8 w-8 bg-muted rounded-lg flex items-center justify-center border border-border text-muted-foreground">
-                    <BookOpen className="h-4 w-4" />
+                  <div className="h-8 w-8 bg-emerald-100 dark:bg-emerald-900/50 rounded-lg flex items-center justify-center border border-emerald-200 dark:border-emerald-800 text-emerald-600 dark:text-emerald-400">
+                    <Clock className="h-4 w-4" />
                   </div>
-                  <span className="text-[7px] font-black bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-widest">Soporte</span>
+                  <span className="text-[7px] font-black bg-emerald-100 dark:bg-emerald-900 text-emerald-700 dark:text-emerald-300 px-1.5 py-0.5 rounded uppercase tracking-widest">Automático</span>
                 </div>
                 <div>
-                  <h3 className="text-xs font-bold text-foreground tracking-tight">Guía de Usuario</h3>
+                  <h3 className="text-xs font-bold text-foreground tracking-tight">Mi Horario</h3>
                   <p className="text-[10px] text-muted-foreground mt-1 mb-3 leading-tight line-clamp-2">
-                    ¿Tiene dudas? Consulte nuestro manual interactivo para personal académico.
+                    Visualiza los horarios asignados para cada periodo.
                   </p>
-                  <button className="inline-flex items-center justify-center border border-border text-muted-foreground px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-muted transition-all w-full active:scale-95">
-                    VER TUTORIAL
-                  </button>
+                  <a 
+                    href="/dashboard/horarios/mi-horario" 
+                    className="inline-flex items-center justify-center bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-emerald-700 transition-all shadow-md w-full active:scale-95"
+                  >
+                    VER MI HORARIO
+                  </a>
+                </div>
+              </div>
+
+              {/* Selección de Horarios (solo durante ventana) */}
+              <div className="p-3 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between group hover:border-border transition-all opacity-60">
+                <div className="flex items-start justify-between mb-2">
+                  <div className="h-8 w-8 bg-muted rounded-lg flex items-center justify-center border border-border text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                  </div>
+                  <span className="text-[7px] font-black bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-widest">Inactivo</span>
+                </div>
+                <div>
+                  <h3 className="text-xs font-bold text-foreground tracking-tight">Selección de Cursos</h3>
+                  <p className="text-[10px] text-muted-foreground mt-1 mb-3 leading-tight line-clamp-2">
+                    Disponible solo durante ventana de atención programada.
+                  </p>
+                  <a 
+                    href="/dashboard/horarios/seleccion" 
+                    className="inline-flex items-center justify-center bg-muted text-muted-foreground px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-not-allowed w-full"
+                  >
+                    NO DISPONIBLE AHORA
+                  </a>
                 </div>
               </div>
             </div>

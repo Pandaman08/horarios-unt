@@ -3,10 +3,9 @@
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState } from "react";
-import { DisponibilidadList } from "@/components/disponibilidad/DisponibilidadList";
-import { DisponibilidadDocenteView } from "@/components/disponibilidad/DisponibilidadDocenteView";
+import { MiHorarioDocenteView } from "@/components/horarios/MiHorarioDocenteView";
 
-export default function DisponibilidadPage() {
+export default function MiHorarioPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [isReady, setIsReady] = useState(false);
@@ -17,6 +16,11 @@ export default function DisponibilidadPage() {
       router.push("/auth/login");
       return;
     }
+    // Solo docentes pueden acceder a esta vista
+    if (session.user?.rol !== "docente") {
+      router.push("/dashboard/horarios/asignacion");
+      return;
+    }
     setIsReady(true);
   }, [session, status, router]);
 
@@ -24,19 +28,9 @@ export default function DisponibilidadPage() {
     return <div className="p-8 text-center text-muted-foreground">Cargando...</div>;
   }
 
-  // Si es docente, mostrar su propia disponibilidad
-  if (session?.user?.rol === "docente") {
-    return (
-      <div className="p-4 md:p-6 max-w-7xl mx-auto">
-        <DisponibilidadDocenteView />
-      </div>
-    );
-  }
-
-  // Si es admin/operador, mostrar lista de todos los docentes
   return (
-    <div className="p-4 md:p-6 max-w-[1600px] mx-auto">
-      <DisponibilidadList />
+    <div className="p-4 md:p-6 max-w-7xl mx-auto">
+      <MiHorarioDocenteView />
     </div>
   );
 }
