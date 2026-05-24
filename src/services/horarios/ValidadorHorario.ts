@@ -8,7 +8,7 @@ export interface SolicitudAsignacion {
   grupoId: number;
   tipoClase: string;
   ambienteId: number;
-  diaSemana: number;   // 1=Lunes,...,6=Sábado
+  diaSemana: number;   // 0=Lunes,...,5=Sábado
   horaInicio: string;  // formato 'HH:MM'
   horaFin: string;
   periodoId: number;   // id del período académico
