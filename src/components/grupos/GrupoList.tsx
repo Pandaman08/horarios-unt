@@ -33,12 +33,19 @@ import {
   Trash2, 
   Search, 
   Layers, 
-  Users, 
-  BookOpen, 
-  Calendar,
-  Hash
+  BookOpen
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Grupo {
   id_grupo: number;
@@ -69,6 +76,10 @@ export function GrupoList() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingGrupo, setEditingGrupo] = useState<Grupo | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
 
   const filteredGrupos = grupos.filter(g => 
     `${g.curso.nombre} ${g.codigo_grupo} ${g.periodo.codigo}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -92,16 +103,33 @@ export function GrupoList() {
         fetch("/api/cursos"),
         fetch("/api/periodos"),
       ]);
+
+      const processRes = async (res: Response, name: string) => {
+        const contentType = res.headers.get("content-type");
+        if (!res.ok) {
+          const errorData = contentType?.includes("application/json") ? await res.json() : {};
+          throw new Error(errorData.error || `Error al cargar ${name}`);
+        }
+        if (!contentType?.includes("application/json")) {
+          const text = await res.text();
+          console.error(`Respuesta no es JSON de /api/${name}:`, text.substring(0, 200));
+          throw new Error(`La respuesta de ${name} no es un JSON válido`);
+        }
+        return res.json();
+      };
+
       const [gruposData, cursosData, periodosData] = await Promise.all([
-        gruposRes.json(),
-        cursosRes.json(),
-        periodosRes.json(),
+        processRes(gruposRes, "grupos"),
+        processRes(cursosRes, "cursos"),
+        processRes(periodosRes, "periodos"),
       ]);
+
       setGrupos(Array.isArray(gruposData) ? gruposData : []);
       setCursos(Array.isArray(cursosData) ? cursosData : []);
       setPeriodos(Array.isArray(periodosData) ? periodosData : []);
-    } catch (error) {
-      toast.error("Error al cargar datos");
+    } catch (error: any) {
+      console.error("Error en fetchData:", error);
+      toast.error(error.message || "Error al cargar datos");
     } finally {
       setLoading(false);
     }
@@ -136,18 +164,22 @@ export function GrupoList() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Está seguro de eliminar este grupo?")) return;
-
     try {
       const res = await fetch(`/api/grupos/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
       if (res.ok) {
         toast.success("Grupo eliminado");
         fetchData();
       } else {
-        toast.error("Error al eliminar grupo");
+        setErrorMessage(data.error || "Error al eliminar grupo");
+        setIsErrorDialogOpen(true);
       }
     } catch (error) {
       toast.error("Error de conexión");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
     }
   };
 
@@ -173,210 +205,152 @@ export function GrupoList() {
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header y Acciones */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Buscar por curso o grupo..." 
-            className="pl-10 bg-white border-gray-200 rounded-xl focus:ring-[#003366]/10 font-medium"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-6">
+          <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
+            <Layers className="h-7 w-7 text-[#1a237e]" />
+          </div>
+          <div>
+            <span className="text-[10px] bg-indigo-50 text-[#1a237e] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Organización</span>
+            <h2 className="text-xl font-bold text-slate-800 tracking-tight mt-2">Grupos Académicos</h2>
+            <p className="text-slate-500 text-xs mt-1">Gestión de secciones y capacidades por curso</p>
+          </div>
         </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingGrupo(null);
-            resetForm();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] md:w-[90vw] lg:max-w-5xl rounded-[32px] p-8 border-none shadow-2xl overflow-y-auto max-h-[95vh] overflow-x-hidden">
-            <DialogHeader className="mb-6">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 bg-blue-50 rounded-2xl flex items-center justify-center">
-                  <Layers className="h-8 w-8 text-[#003366]" />
-                </div>
-                <div>
-                  <DialogTitle className="text-3xl font-black text-gray-900 tracking-tight">
-                    {editingGrupo ? "Editar Configuración" : "Nuevo Grupo de Estudios"}
-                  </DialogTitle>
-                  <p className="text-base text-gray-500 font-medium">Asocie un grupo a un curso y periodo específico.</p>
-                </div>
-              </div>
-            </DialogHeader>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-5">
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Periodo Académico</Label>
-                  <Select
-                    value={formData.id_periodo}
-                    onValueChange={(value) => setFormData({ ...formData, id_periodo: value })}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl border-gray-200 font-bold text-base">
-                      <SelectValue placeholder="Seleccione el periodo" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-100 shadow-xl">
-                      {periodos.map((p) => (
-                        <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold">
-                          {p.codigo}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
 
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Asignatura / Curso</Label>
-                  <Select
-                    value={formData.id_curso}
-                    onValueChange={(value) => setFormData({ ...formData, id_curso: value })}
-                  >
-                    <SelectTrigger className="h-12 rounded-xl border-gray-200 font-bold text-base">
-                      <SelectValue placeholder="Seleccione el curso" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-gray-100 shadow-xl max-h-[300px]">
-                      {cursos.map((c) => (
-                        <SelectItem key={c.id_curso} value={c.id_curso.toString()} className="font-bold">
-                          {`${c.codigo} - ${c.nombre}`}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
+          <div className="relative flex-1 sm:min-w-[320px]">
+            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
+            <Input 
+              placeholder="Buscar por curso, grupo o periodo..." 
+              className="pl-11 h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingGrupo(null);
+              resetForm();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="h-11 bg-[#1a237e] hover:bg-[#121858] text-white rounded-xl px-6 font-bold text-xs shadow-lg shadow-indigo-900/10 transition-all active:scale-95">
+                <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-2xl rounded-2xl p-8 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+              <DialogHeader className="mb-8">
+                <div className="flex items-center gap-4">
+                  <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100">
+                    <Layers className="h-8 w-8 text-[#1a237e]" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">
+                      {editingGrupo ? "Actualizar Grupo" : "Registrar Grupo"}
+                    </DialogTitle>
+                    <p className="text-slate-500 text-sm mt-1 font-medium">Configure la sección para la asignatura</p>
+                  </div>
                 </div>
-
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Identificador de Grupo</Label>
-                  <Input
-                    placeholder="Ej: A, B, C1"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.codigo_grupo}
-                    onChange={(e) => setFormData({ ...formData, codigo_grupo: e.target.value })}
-                    required
-                  />
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-8">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Periodo Académico</Label>
+                    <Select value={formData.id_periodo} onValueChange={(v) => setFormData({ ...formData, id_periodo: v })}>
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                        {periodos.map(p => <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-xs py-2">{p.codigo}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Asignatura</Label>
+                    <Select value={formData.id_curso} onValueChange={(v) => setFormData({ ...formData, id_curso: v })}>
+                      <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all"><SelectValue /></SelectTrigger>
+                      <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                        {cursos.map(c => <SelectItem key={c.id_curso} value={c.id_curso.toString()} className="font-bold text-xs py-2">{c.nombre}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Código de Grupo</Label>
+                    <Input 
+                      className={cn("h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all", editingGrupo && "bg-slate-100")} 
+                      value={formData.codigo_grupo} 
+                      onChange={(e) => setFormData({ ...formData, codigo_grupo: e.target.value.toUpperCase().slice(0, 5) })} 
+                      required 
+                      readOnly={!!editingGrupo}
+                      placeholder="Ej: A"
+                    />
+                  </div>
+                  <div className="space-y-2">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-slate-400 ml-1">Capacidad Máxima</Label>
+                    <Input 
+                      type="number" 
+                      className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all" 
+                      value={formData.capacidad_maxima} 
+                      onChange={(e) => {
+                        const val = Math.max(1, Math.min(100, parseInt(e.target.value) || 1));
+                        setFormData({ ...formData, capacidad_maxima: val.toString() });
+                      }} 
+                      required 
+                      min={1}
+                      max={100}
+                    />
+                  </div>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Capacidad Máxima</Label>
-                  <Input
-                    type="number"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.capacidad_maxima}
-                    onChange={(e) => setFormData({ ...formData, capacidad_maxima: e.target.value })}
-                    required
-                  />
+                <div className="flex justify-end gap-4 pt-6 border-t border-slate-50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-slate-400 hover:bg-slate-50 px-8 text-xs">Cancelar</Button>
+                  <Button type="submit" className="h-11 bg-[#1a237e] hover:bg-[#121858] text-white rounded-xl px-10 font-bold text-xs shadow-lg shadow-indigo-900/10 transition-all active:scale-95">
+                    {editingGrupo ? "Actualizar Grupo" : "Crear Grupo"}
+                  </Button>
                 </div>
-              </div>
-              
-              <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => setIsDialogOpen(false)}
-                  className="h-12 rounded-xl font-bold text-gray-500 px-8 hover:bg-gray-100"
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" className="h-12 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-12 font-black shadow-xl shadow-blue-900/20 transition-all hover:scale-[1.02]">
-                  {editingGrupo ? "Actualizar Configuración" : "Crear Grupo"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
           <Table>
-            <TableHeader className="bg-gray-50/50">
-              <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="w-[150px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8">Periodo</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Curso / Asignatura</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Grupo</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Capacidad</TableHead>
-                <TableHead className="w-[150px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8 text-right">Acciones</TableHead>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Nombre de la Asignatura</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-center">Periodo</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-center">Grupo</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-center">Capacidad</TableHead>
+                <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="divide-y divide-slate-50">
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-10 w-10 border-4 border-blue-100 border-t-[#003366] rounded-full animate-spin" />
-                      <p className="text-sm font-bold text-gray-400">Cargando grupos...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={5} className="py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">Cargando grupos...</TableCell></TableRow>
               ) : filteredGrupos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-2">
-                        <Layers className="h-8 w-8 text-gray-300" />
-                      </div>
-                      <p className="text-lg font-black text-gray-400 tracking-tight">No hay grupos registrados</p>
-                      <p className="text-sm text-gray-400 font-medium">Asocie grupos a los cursos del catálogo.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={5} className="py-20 text-center text-xs font-bold text-slate-400 uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 filteredGrupos.map((grupo) => (
-                  <TableRow key={grupo.id_grupo} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                    <TableCell className="px-8 font-black text-xs text-gray-400">
-                      <div className="flex items-center gap-2">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {grupo.periodo.codigo}
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-4 py-2">
-                        <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-[#003366] transition-colors">
-                          <BookOpen className="h-5 w-5 text-[#003366] group-hover:text-white transition-colors" />
+                  <TableRow key={grupo.id_grupo} className="group hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center gap-3">
+                        <div className="h-8 w-8 rounded-lg bg-indigo-50 flex items-center justify-center border border-indigo-100 text-[#1a237e] shadow-sm">
+                          <BookOpen className="h-4 w-4" />
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 tracking-tight">{grupo.curso.nombre}</span>
-                          <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">{grupo.curso.codigo}</span>
-                        </div>
+                        <span className="font-bold text-slate-800 text-xs">{grupo.curso.nombre}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <span className="inline-flex items-center bg-[#003366] text-white border-none font-black text-xs px-4 py-1 rounded-lg">
-                        {grupo.codigo_grupo}
-                      </span>
+                    <TableCell className="px-6 py-4 text-center text-xs font-bold text-slate-500">{grupo.periodo.codigo}</TableCell>
+                    <TableCell className="px-6 py-4 text-center">
+                      <span className="px-2 py-0.5 rounded-lg bg-indigo-50 text-[#1a237e] text-[10px] font-bold border border-indigo-100 uppercase tracking-widest">{grupo.codigo_grupo}</span>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="inline-flex items-center gap-2 px-3 py-1 bg-gray-50 rounded-lg">
-                        <Users className="h-3.5 w-3.5 text-gray-400" />
-                        <span className="text-sm font-black text-[#003366]">{grupo.capacidad_maxima}</span>
-                      </div>
+                    <TableCell className="px-6 py-4 text-center">
+                      <span className="px-2 py-0.5 rounded-lg bg-slate-100 text-slate-600 text-[10px] font-bold border border-slate-200">{grupo.capacidad_maxima}</span>
                     </TableCell>
-                    <TableCell className="px-8">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleEdit(grupo)}
-                          title="Editar"
-                          className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-[#003366]"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDelete(grupo.id_grupo)}
-                          title="Eliminar"
-                          className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                    <TableCell className="px-6 py-4">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(grupo)} title="Editar" className="h-8 w-8 rounded-lg hover:bg-indigo-50 hover:text-[#1a237e] transition-all opacity-0 group-hover:opacity-100"><Edit className="h-4 w-4" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(grupo.id_grupo); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-8 w-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="h-4 w-4" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -386,6 +360,37 @@ export function GrupoList() {
           </Table>
         </div>
       </div>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[400px]">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-rose-50 rounded-2xl flex items-center justify-center mb-4 border border-rose-100">
+              <Trash2 className="h-8 w-8 text-rose-600" />
+            </div>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">¿Eliminar este grupo?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 mt-2 leading-relaxed">Esta acción no se puede deshacer y afectará a la programación asociada.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-10 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-8">Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[450px]">
+          <AlertDialogHeader>
+            <div className="h-14 w-14 bg-amber-50 rounded-2xl flex items-center justify-center mb-4 border border-amber-100">
+              <Layers className="h-8 w-8 text-amber-600" />
+            </div>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">Aviso del Sistema</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 bg-amber-50/50 p-4 rounded-xl border border-amber-100 mt-4 leading-relaxed">{errorMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8">
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-xl bg-[#1a237e] hover:bg-[#121858] text-white font-bold text-xs px-10 shadow-lg shadow-indigo-900/10">Entendido</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

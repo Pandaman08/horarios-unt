@@ -10,16 +10,24 @@ export async function GET(request: Request) {
 
     const { searchParams } = new URL(request.url);
     const id_periodo = searchParams.get('id_periodo');
+    const id_docente_manual = searchParams.get('id_docente_manual');
+    
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
 
-    const docente = await prisma.docente.findFirst({
-      where: { id_usuario: parseInt(session.user.id_usuario) }
-    });
+    let docenteId: number;
 
-    if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
+    if (id_docente_manual && (session.user.rol === 'administrador_sistema' || session.user.rol === 'operador_horarios')) {
+      docenteId = parseInt(id_docente_manual);
+    } else {
+      const docente = await prisma.docente.findFirst({
+        where: { id_usuario: parseInt(session.user.id_usuario) }
+      });
+      if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
+      docenteId = docente.id_docente;
+    }
 
     const cursosAsignados = await prisma.docenteCurso.findMany({
-      where: { id_docente: docente.id_docente, activo: true },
+      where: { id_docente: docenteId, activo: true },
       include: { curso: true }
     });
 
@@ -34,7 +42,7 @@ export async function GET(request: Request) {
       // 1. Asignaciones confirmadas (Estas deben contarse)
       const asignaciones = await prisma.horarioAsignado.findMany({
         where: {
-          id_docente: docente.id_docente,
+          id_docente: docenteId,
           id_curso: dc.id_curso,
           tipo_clase: dc.tipo_clase,
           id_periodo: parseInt(id_periodo)
@@ -44,7 +52,7 @@ export async function GET(request: Request) {
       // 2. Selecciones temporales vigentes (Estas también para el progreso en tiempo real)
       const temporales = await prisma.seleccionTemporalHorario.findMany({
         where: {
-          id_docente: docente.id_docente,
+          id_docente: docenteId,
           id_curso: dc.id_curso,
           tipo_clase: dc.tipo_clase,
           id_periodo: parseInt(id_periodo),

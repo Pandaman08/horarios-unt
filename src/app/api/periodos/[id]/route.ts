@@ -54,6 +54,29 @@ export async function DELETE(
   try {
     const { id: idStr } = await params;
     const id = parseInt(idStr);
+
+    // Verificar dependencias antes de eliminar
+    const [grupos, asignaciones, selecciones, ventanas, disponibilidad, conflictos] = await Promise.all([
+      prisma.grupo.count({ where: { id_periodo: id } }),
+      prisma.horarioAsignado.count({ where: { id_periodo: id } }),
+      prisma.seleccionTemporalHorario.count({ where: { id_periodo: id } }),
+      prisma.ventanaAtencion.count({ where: { id_periodo: id } }),
+      prisma.disponibilidadDocente.count({ where: { id_periodo: id } }),
+      prisma.conflictoHorario.count({ where: { id_periodo: id } })
+    ]);
+
+    if (grupos > 0 || asignaciones > 0 || selecciones > 0 || ventanas > 0 || disponibilidad > 0 || conflictos > 0) {
+      let mensaje = "No se puede eliminar el periodo porque tiene dependencias:";
+      if (grupos > 0) mensaje += ` ${grupos} grupos.`;
+      if (asignaciones > 0) mensaje += ` ${asignaciones} horarios asignados.`;
+      if (selecciones > 0) mensaje += ` ${selecciones} selecciones temporales.`;
+      if (ventanas > 0) mensaje += ` ${ventanas} ventanas de atención.`;
+      if (disponibilidad > 0) mensaje += ` ${disponibilidad} registros de disponibilidad.`;
+      if (conflictos > 0) mensaje += ` ${conflictos} conflictos registrados.`;
+      
+      return NextResponse.json({ error: mensaje }, { status: 400 });
+    }
+
     await prisma.periodoAcademico.update({
       where: { id_periodo: id },
       data: { activo: false }

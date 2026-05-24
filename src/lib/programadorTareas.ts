@@ -1,13 +1,24 @@
 import cron from 'node-cron';
 import { GestorSeleccionTemporal } from '@/services/horarios/GestorSeleccionTemporal';
 import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
+import { ServicioTelegram } from '@/services/notificaciones/ServicioTelegram';
 import { iniciarTelegramPolling } from '@/lib/telegramPolling';
 
 export const iniciarCronJobs = () => {
   console.log("Iniciando cron jobs...");
 
-  // Iniciar polling de Telegram (para desarrollo local sin webhook)
-  iniciarTelegramPolling();
+  // Configurar Telegram según el entorno
+  const isProd = process.env.NODE_ENV === 'production';
+  const appUrl = process.env.NEXT_PUBLIC_APP_URL || process.env.VERCEL_URL;
+
+  if (isProd && appUrl) {
+    const webhookUrl = `${appUrl.startsWith('http') ? '' : 'https://'}${appUrl}/api/telegram/webhook`;
+    console.log(`Configurando webhook de Telegram en: ${webhookUrl}`);
+    ServicioTelegram.setWebhook(webhookUrl);
+  } else {
+    console.log("Entorno local detectado, iniciando polling de Telegram...");
+    iniciarTelegramPolling();
+  }
 
   // Limpieza de selecciones temporales cada 5 minutos
   cron.schedule('*/5 * * * *', async () => {

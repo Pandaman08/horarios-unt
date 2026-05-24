@@ -18,6 +18,13 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { 
@@ -27,13 +34,21 @@ import {
   MapPin, 
   Search, 
   BookOpen, 
-  Clock, 
-  Star, 
-  Layers,
-  GraduationCap
+  GraduationCap,
+  AlertCircle
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AsignarAmbientesDialog } from "./AsignarAmbientesDialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
 
 interface Curso {
   id_curso: number;
@@ -43,7 +58,12 @@ interface Curso {
   horas_laboratorio: number;
   horas_practica: number;
   creditos: number;
-  ciclo: number;
+  id_ciclo?: number;
+  tipo_curso: string;
+  ciclo_rel?: {
+    id_ciclo: number;
+    nombre: string;
+  };
 }
 
 export function CursoList() {
@@ -54,6 +74,11 @@ export function CursoList() {
   const [isAmbientesOpen, setIsAmbientesOpen] = useState(false);
   const [selectedCurso, setSelectedCurso] = useState<Curso | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [ciclos, setCiclos] = useState<any[]>([]);
 
   const filteredCursos = cursos.filter(c => 
     `${c.nombre} ${c.codigo}`.toLowerCase().includes(searchTerm.toLowerCase())
@@ -66,26 +91,67 @@ export function CursoList() {
     horas_laboratorio: "0",
     horas_practica: "0",
     creditos: "0",
-    ciclo: "",
+    id_ciclo: "",
+    tipo_curso: "linea_carrera",
     plan_estudios: "",
     prerequisitos: "",
   });
 
   useEffect(() => {
     fetchCursos();
+    fetchCiclos();
   }, []);
+
+  const fetchCiclos = async () => {
+    try {
+      const res = await fetch("/api/ciclos");
+      const contentType = res.headers.get("content-type");
+      
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar ciclos");
+      }
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/ciclos:", text.substring(0, 200));
+        throw new Error("La respuesta de ciclos no es un JSON válido (posible 404 o redirección)");
+      }
+
+      const data = await res.json();
+      setCiclos(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Error al cargar ciclos:", error);
+      setCiclos([]);
+    }
+  };
 
   const fetchCursos = async () => {
     try {
       const res = await fetch("/api/cursos");
-      const data = await res.json();
-      if (Array.isArray(data)) {
-        setCursos(data);
-      } else {
-        setCursos([]);
+      const contentType = res.headers.get("content-type");
+
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar cursos");
       }
-    } catch (error) {
-      toast.error("Error al cargar cursos");
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/cursos:", text.substring(0, 200));
+        throw new Error("La respuesta de cursos no es un JSON válido (posible 404 o redirección)");
+      }
+
+      const data = await res.json();
+      setCursos(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Error en fetchCursos:", error);
+      toast.error(error.message || "Error al cargar cursos");
+      setCursos([]);
     } finally {
       setLoading(false);
     }
@@ -120,22 +186,26 @@ export function CursoList() {
   };
 
   const handleDelete = async (id: number) => {
-    if (!confirm("¿Está seguro de eliminar este curso?")) return;
-
     try {
       const res = await fetch(`/api/cursos/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
       if (res.ok) {
         toast.success("Curso eliminado");
         fetchCursos();
       } else {
-        toast.error("Error al eliminar curso");
+        setErrorMessage(data.error || "Error al eliminar curso");
+        setIsErrorDialogOpen(true);
       }
     } catch (error) {
       toast.error("Error de conexión");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
     }
   };
 
-  const handleEdit = (curso: Curso) => {
+  const handleEdit = (curso: any) => {
     setEditingCurso(curso);
     setFormData({
       codigo: curso.codigo,
@@ -144,9 +214,10 @@ export function CursoList() {
       horas_laboratorio: curso.horas_laboratorio.toString(),
       horas_practica: curso.horas_practica.toString(),
       creditos: curso.creditos.toString(),
-      ciclo: curso.ciclo?.toString() || "",
-      plan_estudios: "",
-      prerequisitos: "",
+      id_ciclo: curso.id_ciclo?.toString() || "",
+      tipo_curso: curso.tipo_curso || "linea_carrera",
+      plan_estudios: curso.plan_estudios || "",
+      prerequisitos: curso.prerequisitos || "",
     });
     setIsDialogOpen(true);
   };
@@ -159,245 +230,239 @@ export function CursoList() {
       horas_laboratorio: "0",
       horas_practica: "0",
       creditos: "0",
-      ciclo: "",
+      id_ciclo: "",
+      tipo_curso: "linea_carrera",
       plan_estudios: "",
       prerequisitos: "",
     });
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Header y Acciones */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 bg-gray-50/50 p-4 rounded-2xl border border-gray-100">
-        <div className="relative flex-1 max-w-md">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-gray-400" />
-          <Input 
-            placeholder="Buscar curso por nombre o código..." 
-            className="pl-10 bg-white border-gray-200 rounded-xl focus:ring-[#003366]/10 font-medium"
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+    <div className="space-y-3 animate-in fade-in duration-500">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-white p-3 rounded-xl border border-slate-100 shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100 shadow-sm">
+            <BookOpen className="h-4 w-4 text-[#1a237e]" />
+          </div>
+          <div>
+            <h2 className="text-base font-bold text-slate-800 tracking-tight leading-none">Cursos</h2>
+            <p className="text-slate-500 text-[10px] mt-1">Mantenimiento de asignaturas y planes de estudio</p>
+          </div>
         </div>
-        
-        <Dialog open={isDialogOpen} onOpenChange={(open) => {
-          setIsDialogOpen(open);
-          if (!open) {
-            setEditingCurso(null);
-            resetForm();
-          }
-        }}>
-          <DialogTrigger asChild>
-            <Button className="bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-6 font-bold shadow-lg shadow-blue-900/20 transition-all hover:scale-[1.02] active:scale-[0.98]">
-              <Plus className="mr-2 h-4 w-4" /> Nuevo Curso
-            </Button>
-          </DialogTrigger>
-          <DialogContent className="w-[95vw] md:w-[90vw] lg:max-w-5xl rounded-[32px] p-8 border-none shadow-2xl overflow-y-auto max-h-[95vh] overflow-x-hidden">
-            <DialogHeader className="mb-6">
-              <div className="flex items-center gap-4">
-                <div className="h-14 w-14 bg-blue-50 rounded-2xl flex items-center justify-center">
-                  <BookOpen className="h-8 w-8 text-[#003366]" />
+
+        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
+          <div className="relative flex-1 sm:min-w-[280px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-slate-400" />
+            <Input 
+              placeholder="Buscar curso..." 
+              className="pl-9 h-9 rounded-lg border-slate-200 bg-slate-50/50 font-semibold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Dialog open={isDialogOpen} onOpenChange={(open) => {
+            setIsDialogOpen(open);
+            if (!open) {
+              setEditingCurso(null);
+              resetForm();
+            }
+          }}>
+            <DialogTrigger asChild>
+              <Button className="h-9 bg-[#1a237e] hover:bg-[#121858] text-white rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo
+              </Button>
+            </DialogTrigger>
+            <DialogContent className="sm:max-w-xl rounded-xl p-6 border-none shadow-2xl overflow-y-auto max-h-[90vh]">
+              <DialogHeader className="mb-6">
+                <div className="flex items-center gap-3">
+                  <div className="h-10 w-10 bg-indigo-50 rounded-lg flex items-center justify-center border border-indigo-100">
+                    <BookOpen className="h-5 w-5 text-[#1a237e]" />
+                  </div>
+                  <div>
+                    <DialogTitle className="text-lg font-bold text-slate-800 tracking-tight">
+                      {editingCurso ? "Actualizar Curso" : "Registrar Curso"}
+                    </DialogTitle>
+                    <p className="text-slate-500 text-xs mt-1 font-medium">Complete la información de la asignatura</p>
+                  </div>
                 </div>
-                <div>
-                  <DialogTitle className="text-3xl font-black text-gray-900 tracking-tight">
-                    {editingCurso ? "Actualizar Curso" : "Registrar Nuevo Curso"}
-                  </DialogTitle>
-                  <p className="text-base text-gray-500 font-medium">Defina los parámetros académicos de la asignatura.</p>
+              </DialogHeader>
+              <form onSubmit={handleSubmit} className="space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Código</Label>
+                    <Input 
+                      className={cn("h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all", editingCurso && "bg-slate-100")} 
+                      value={formData.codigo} 
+                      onChange={(e) => setFormData({ ...formData, codigo: e.target.value.toUpperCase().slice(0, 10) })} 
+                      required 
+                      readOnly={!!editingCurso}
+                    />
+                  </div>
+                  <div className="md:col-span-2 space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Nombre</Label>
+                    <Input 
+                      className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
+                      value={formData.nombre} 
+                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value.slice(0, 100) })} 
+                      required 
+                      maxLength={100}
+                    />
+                  </div>
+                  <div className="grid grid-cols-3 gap-4 md:col-span-3">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">T (hrs)</Label>
+                      <Input 
+                        type="number" 
+                        className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
+                        value={formData.horas_teoria} 
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(20, parseInt(e.target.value) || 0));
+                          setFormData({ ...formData, horas_teoria: val.toString() });
+                        }} 
+                        min={0}
+                        max={20}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">L (hrs)</Label>
+                      <Input 
+                        type="number" 
+                        className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
+                        value={formData.horas_laboratorio} 
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(20, parseInt(e.target.value) || 0));
+                          setFormData({ ...formData, horas_laboratorio: val.toString() });
+                        }} 
+                        min={0}
+                        max={20}
+                      />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">P (hrs)</Label>
+                      <Input 
+                        type="number" 
+                        className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
+                        value={formData.horas_practica} 
+                        onChange={(e) => {
+                          const val = Math.max(0, Math.min(20, parseInt(e.target.value) || 0));
+                          setFormData({ ...formData, horas_practica: val.toString() });
+                        }} 
+                        min={0}
+                        max={20}
+                      />
+                    </div>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Créditos</Label>
+                    <Input 
+                      type="number" 
+                      className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all" 
+                      value={formData.creditos} 
+                      onChange={(e) => {
+                        const val = Math.max(1, Math.min(10, parseInt(e.target.value) || 1));
+                        setFormData({ ...formData, creditos: val.toString() });
+                      }} 
+                      min={1}
+                      max={10}
+                    />
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Ciclo</Label>
+                    <Select 
+                      value={formData.id_ciclo} 
+                      onValueChange={(val) => setFormData({ ...formData, id_ciclo: val })}
+                    >
+                      <SelectTrigger className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all">
+                        <SelectValue placeholder="Ciclo" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg border-slate-100 shadow-xl">
+                        {ciclos.map((c) => (
+                          <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="font-bold text-[11px] py-1.5">
+                            {c.nombre}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-slate-400 ml-1">Tipo</Label>
+                    <Select 
+                      value={formData.tipo_curso} 
+                      onValueChange={(val) => setFormData({ ...formData, tipo_curso: val })}
+                    >
+                      <SelectTrigger className="h-9 rounded-lg border-slate-200 bg-slate-50/50 font-bold text-[11px] focus:ring-1 focus:ring-[#1a237e] transition-all">
+                        <SelectValue placeholder="Tipo" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-lg border-slate-100 shadow-xl">
+                        <SelectItem value="general" className="font-bold text-[11px] py-1.5">General</SelectItem>
+                        <SelectItem value="linea_carrera" className="font-bold text-[11px] py-1.5">Línea de Carrera</SelectItem>
+                        <SelectItem value="electivo" className="font-bold text-[11px] py-1.5">Electivo</SelectItem>
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
-              </div>
-            </DialogHeader>
-            
-            <form onSubmit={handleSubmit} className="space-y-6">
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-x-8 gap-y-5">
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Código del Curso</Label>
-                  <Input
-                    placeholder="Ej: CUR-001"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.codigo}
-                    onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                    required
-                  />
+                <div className="flex justify-end gap-3 pt-4 border-t border-slate-50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-slate-400 hover:bg-slate-50 px-6 text-[11px]">Cancelar</Button>
+                  <Button type="submit" className="h-9 bg-[#1a237e] hover:bg-[#121858] text-white rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                    {editingCurso ? "Actualizar" : "Crear"}
+                  </Button>
                 </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Créditos Académicos</Label>
-                  <Input
-                    type="number"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.creditos}
-                    onChange={(e) => setFormData({ ...formData, creditos: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Ciclo Académico</Label>
-                  <Input
-                    type="number"
-                    placeholder="1 al 10"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.ciclo}
-                    onChange={(e) => setFormData({ ...formData, ciclo: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="md:col-span-2 lg:col-span-3 space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Nombre Completo de la Asignatura</Label>
-                  <Input
-                    placeholder="Ej: Ingeniería de Software I"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base"
-                    value={formData.nombre}
-                    onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                    required
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Horas Teoría (Semanales)</Label>
-                  <Input
-                    type="number"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base text-center"
-                    value={formData.horas_teoria}
-                    onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Horas Laboratorio</Label>
-                  <Input
-                    type="number"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base text-center"
-                    value={formData.horas_laboratorio}
-                    onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })}
-                  />
-                </div>
-                <div className="space-y-3">
-                  <Label className="text-xs font-black uppercase tracking-widest text-gray-400 ml-1">Horas Práctica</Label>
-                  <Input
-                    type="number"
-                    className="h-12 rounded-xl border-gray-200 focus:border-[#003366] focus:ring-4 focus:ring-blue-50 font-bold text-base text-center"
-                    value={formData.horas_practica}
-                    onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })}
-                  />
-                </div>
-              </div>
-              
-              <div className="flex justify-end gap-4 pt-6 border-t border-gray-50">
-                <Button 
-                  type="button" 
-                  variant="ghost" 
-                  onClick={() => setIsDialogOpen(false)}
-                  className="h-12 rounded-xl font-bold text-gray-500 px-8 hover:bg-gray-100"
-                >
-                  Cancelar
-                </Button>
-                <Button type="submit" className="h-12 bg-[#003366] hover:bg-[#002244] text-white rounded-xl px-12 font-black shadow-xl shadow-blue-900/20 transition-all hover:scale-[1.02]">
-                  {editingCurso ? "Actualizar Asignatura" : "Crear Asignatura"}
-                </Button>
-              </div>
-            </form>
-          </DialogContent>
-        </Dialog>
+              </form>
+            </DialogContent>
+          </Dialog>
+        </div>
       </div>
 
-      <div className="bg-white rounded-[32px] border border-gray-100 shadow-xl shadow-blue-900/5 overflow-hidden">
-        <div className="overflow-x-auto">
+      <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
+        <div className="overflow-x-auto custom-scrollbar">
           <Table>
-            <TableHeader className="bg-gray-50/50">
-              <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="w-[120px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8">Código</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6">Asignatura</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Créditos</TableHead>
-                <TableHead className="font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 text-center">Horas (TEO/LAB)</TableHead>
-                <TableHead className="w-[150px] font-black text-[10px] uppercase tracking-widest text-gray-400 py-6 px-8 text-right">Acciones</TableHead>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="border-b border-slate-100 hover:bg-transparent">
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">Cód.</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">Asignatura</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-center">T</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-center">L</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-center">P</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-center">Créd.</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2">Ciclo</TableHead>
+                <TableHead className="text-[9px] font-bold text-slate-400 uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
-            <TableBody>
+            <TableBody className="divide-y divide-slate-50">
               {loading ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-10 w-10 border-4 border-blue-100 border-t-[#003366] rounded-full animate-spin" />
-                      <p className="text-sm font-bold text-gray-400">Cargando catálogo...</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : filteredCursos.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={5} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-16 w-16 bg-gray-50 rounded-2xl flex items-center justify-center mb-2">
-                        <BookOpen className="h-8 w-8 text-gray-300" />
-                      </div>
-                      <p className="text-lg font-black text-gray-400 tracking-tight">No hay cursos registrados</p>
-                      <p className="text-sm text-gray-400 font-medium">Comience agregando una nueva asignatura al sistema.</p>
-                    </div>
-                  </TableCell>
-                </TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-[10px] font-bold text-slate-400 uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 filteredCursos.map((curso) => (
-                  <TableRow key={curso.id_curso} className="group border-b border-gray-50 hover:bg-blue-50/30 transition-colors">
-                    <TableCell className="px-8 font-black text-xs text-gray-400">{curso.codigo}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-4 py-2">
-                        <div className="h-10 w-10 bg-blue-50 rounded-xl flex items-center justify-center group-hover:bg-[#003366] transition-colors">
-                          <GraduationCap className="h-5 w-5 text-[#003366] group-hover:text-white transition-colors" />
+                  <TableRow key={curso.id_curso} className="group hover:bg-slate-50/50 transition-colors">
+                    <TableCell className="px-4 py-2">
+                      <span className="font-mono text-[9px] font-bold text-slate-400">{curso.codigo}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center gap-2">
+                        <div className="h-6 w-6 rounded-md bg-indigo-50 flex items-center justify-center border border-indigo-100 text-[#1a237e] shadow-sm">
+                          <GraduationCap className="h-3.5 w-3.5" />
                         </div>
-                        <div className="flex flex-col">
-                          <span className="font-bold text-gray-900 tracking-tight">{curso.nombre}</span>
-                          <div className="flex items-center gap-2 mt-0.5">
-                            <Layers className="h-3 w-3 text-gray-400" />
-                            <span className="text-[10px] font-black text-gray-400 uppercase tracking-widest">Ciclo {curso.ciclo}</span>
-                          </div>
-                        </div>
+                        <span className="font-semibold text-slate-800 text-[11px]">{curso.nombre}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <span className="inline-flex items-center bg-yellow-50 text-yellow-700 border-none font-black text-[10px] px-3 py-1 rounded-lg">
-                        {curso.creditos} CR
+                    <TableCell className="px-4 py-2 text-center text-[11px] font-bold text-slate-500">{curso.horas_teoria}</TableCell>
+                    <TableCell className="px-4 py-2 text-center text-[11px] font-bold text-slate-500">{curso.horas_laboratorio}</TableCell>
+                    <TableCell className="px-4 py-2 text-center text-[11px] font-bold text-slate-500">{curso.horas_practica}</TableCell>
+                    <TableCell className="px-4 py-2 text-center">
+                      <span className="px-1.5 py-0.5 rounded-md bg-indigo-50 text-[#1a237e] text-[9px] font-bold border border-indigo-100">{curso.creditos}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-[10px] font-bold text-slate-500">
+                        {curso.ciclo_rel?.nombre || "-"}
                       </span>
                     </TableCell>
-                    <TableCell className="text-center">
-                      <div className="flex items-center justify-center gap-3">
-                        <div className="flex flex-col items-center">
-                          <span className="text-[10px] font-black text-gray-400 uppercase">Teo</span>
-                          <span className="text-sm font-bold text-[#003366]">{curso.horas_teoria}h</span>
-                        </div>
-                        <div className="w-px h-6 bg-gray-100" />
-                        <div className="flex flex-col items-center">
-                          <span className="text-[10px] font-black text-gray-400 uppercase">Lab</span>
-                          <span className="text-sm font-bold text-purple-600">{curso.horas_laboratorio}h</span>
-                        </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-8">
-                      <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => {
-                            setSelectedCurso(curso);
-                            setIsAmbientesOpen(true);
-                          }}
-                          title="Asignar Ambientes"
-                          className="h-9 w-9 rounded-xl hover:bg-emerald-50 hover:text-emerald-600"
-                        >
-                          <MapPin className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleEdit(curso)}
-                          title="Editar"
-                          className="h-9 w-9 rounded-xl hover:bg-blue-50 hover:text-[#003366]"
-                        >
-                          <Edit className="h-4 w-4" />
-                        </Button>
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDelete(curso.id_curso)}
-                          title="Eliminar"
-                          className="h-9 w-9 rounded-xl hover:bg-red-50 hover:text-red-600"
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center justify-end gap-1">
+                        <Button variant="ghost" size="icon" onClick={() => { setSelectedCurso(curso); setIsAmbientesOpen(true); }} title="Asignar Ambientes" className="h-7 w-7 rounded-lg hover:bg-emerald-50 hover:text-emerald-600 transition-all opacity-0 group-hover:opacity-100"><MapPin className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar" className="h-7 w-7 rounded-lg hover:bg-indigo-50 hover:text-[#1a237e] transition-all opacity-0 group-hover:opacity-100"><Edit className="h-3.5 w-3.5" /></Button>
+                        <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-7 w-7 rounded-lg hover:bg-rose-50 hover:text-rose-600 transition-all opacity-0 group-hover:opacity-100"><Trash2 className="h-3.5 w-3.5" /></Button>
                       </div>
                     </TableCell>
                   </TableRow>
@@ -408,15 +473,35 @@ export function CursoList() {
         </div>
       </div>
 
-      <AsignarAmbientesDialog
-        cursoId={selectedCurso?.id_curso || 0}
-        cursoNombre={selectedCurso?.nombre || ""}
-        isOpen={isAmbientesOpen}
-        onClose={() => {
-          setIsAmbientesOpen(false);
-          setSelectedCurso(null);
-        }}
-      />
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[400px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight">¿Confirmar eliminación?</AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 mt-2">Esta acción marcará el curso como inactivo en el sistema.</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8 gap-3">
+            <AlertDialogCancel className="h-10 rounded-xl font-bold text-xs text-slate-400 hover:bg-slate-50">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-10 rounded-xl bg-rose-600 hover:bg-rose-700 text-white font-bold text-xs px-8">Confirmar</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[450px]">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl font-bold text-slate-800 tracking-tight flex items-center gap-3">
+              <AlertCircle className="h-6 w-6 text-amber-500" />
+              Aviso del Sistema
+            </AlertDialogTitle>
+            <AlertDialogDescription className="text-sm font-medium text-slate-500 bg-amber-50/50 p-4 rounded-xl border border-amber-100 mt-4 leading-relaxed">{errorMessage}</AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="mt-8">
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-xl bg-[#1a237e] hover:bg-[#121858] text-white font-bold text-xs px-10 shadow-lg shadow-indigo-900/10">Entendido</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AsignarAmbientesDialog cursoId={selectedCurso?.id_curso || 0} cursoNombre={selectedCurso?.nombre || ""} isOpen={isAmbientesOpen} onClose={() => { setIsAmbientesOpen(false); setSelectedCurso(null); }} />
     </div>
   );
 }

@@ -58,12 +58,12 @@ interface Props {
 }
 
 const DIAS = [
-  { id: 1, nombre: "Lunes" },
-  { id: 2, nombre: "Martes" },
-  { id: 3, nombre: "Miércoles" },
-  { id: 4, nombre: "Jueves" },
-  { id: 5, nombre: "Viernes" },
-  { id: 6, nombre: "Sábado" },
+  { id: 0, nombre: "Lunes" },
+  { id: 1, nombre: "Martes" },
+  { id: 2, nombre: "Miércoles" },
+  { id: 3, nombre: "Jueves" },
+  { id: 4, nombre: "Viernes" },
+  { id: 5, nombre: "Sábado" },
 ];
 
 export function MatrizDisponibilidad({
@@ -84,6 +84,7 @@ export function MatrizDisponibilidad({
   const [processingCell, setProcessingCell] = useState<string | null>(null);
   const [conflictosActuales, setConflictosActuales] = useState<ConflictoVisual[]>([]);
   const [errorCell, setErrorCell] = useState<string | null>(null);
+  const [filtroHorario, setFiltroHorario] = useState<'todos' | 'libres' | 'ocupados' | 'mios'>('todos');
 
   const soloLectura = propSoloLectura ?? internalSoloLectura;
 
@@ -312,36 +313,36 @@ export function MatrizDisponibilidad({
 
   if (loading) {
     return (
-      <div className="flex flex-col items-center justify-center py-20 space-y-4 bg-white/50 backdrop-blur-sm rounded-[32px] border-2 border-dashed border-blue-100">
+      <div className="flex flex-col items-center justify-center py-20 space-y-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
         <div className="relative">
-          <div className="h-16 w-16 border-4 border-blue-100 border-t-blue-600 rounded-full animate-spin" />
-          <LayoutGrid className="h-6 w-6 text-blue-600 absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          <div className="h-16 w-16 border-4 border-slate-100 border-t-[#1a237e] rounded-full animate-spin" />
+          <LayoutGrid className="h-6 w-6 text-[#1a237e] absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
-        <p className="text-blue-900/60 font-black uppercase tracking-widest text-xs">Cargando Matriz Académica...</p>
+        <p className="text-slate-400 font-bold uppercase tracking-widest text-[10px]">Cargando Matriz Académica...</p>
       </div>
     );
   }
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700">
-      {/* Toolbar de la Matriz */}
-      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-6 rounded-[32px] shadow-xl shadow-blue-900/5 border border-gray-100">
+      {/* Toolbar de la Matriz Moderno */}
+      <div className="flex flex-col lg:flex-row justify-between items-start lg:items-center gap-6 bg-white p-5 rounded-2xl border border-slate-100 shadow-sm">
         <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
-          <div className="h-12 w-12 bg-blue-50 rounded-2xl flex items-center justify-center shrink-0">
-            <Clock className="h-6 w-6 text-[#003366]" />
+          <div className="h-12 w-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm shrink-0">
+            <Clock className="h-6 w-6 text-[#1a237e]" />
           </div>
           <div className="flex-1">
-            <p className="text-[10px] font-black text-blue-900/40 uppercase tracking-[0.2em]">Visualización</p>
+            <p className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Visualización</p>
             <div className="flex items-center gap-2 mt-1">
-              <span className="text-xs font-bold text-gray-700 whitespace-nowrap">Intervalo:</span>
+              <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Intervalo:</span>
               <Select 
                 value={intervalo.toString()} 
                 onValueChange={(v) => setIntervalo(parseInt(v))}
               >
-                <SelectTrigger className="w-[130px] h-9 rounded-xl border-gray-100 bg-gray-50/50 font-bold text-xs focus:ring-4 focus:ring-blue-100">
+                <SelectTrigger className="w-[130px] h-9 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-gray-100 shadow-2xl">
+                <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
                   <SelectItem value="15" className="text-xs font-medium">15 min</SelectItem>
                   <SelectItem value="30" className="text-xs font-medium">30 min</SelectItem>
                   <SelectItem value="60" className="text-xs font-medium">1 hora</SelectItem>
@@ -351,49 +352,68 @@ export function MatrizDisponibilidad({
           </div>
         </div>
 
+        <div className="flex flex-col sm:flex-row items-start sm:items-center gap-4 w-full lg:w-auto">
+          <div className="flex items-center gap-2">
+            <span className="text-xs font-bold text-slate-700 whitespace-nowrap">Filtrar por:</span>
+            <Select 
+              value={filtroHorario} 
+              onValueChange={(v: any) => setFiltroHorario(v)}
+            >
+              <SelectTrigger className="w-[140px] h-9 rounded-xl border-slate-200 bg-slate-50/50 font-bold text-xs focus:ring-2 focus:ring-indigo-100 transition-all">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-slate-100 shadow-2xl">
+                <SelectItem value="todos" className="text-xs font-medium">Todos</SelectItem>
+                <SelectItem value="libres" className="text-xs font-medium">Solo Libres</SelectItem>
+                <SelectItem value="ocupados" className="text-xs font-medium">Solo Ocupados</SelectItem>
+                <SelectItem value="mios" className="text-xs font-medium">Solo Mis Horas</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+        </div>
+
         <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-4 w-full lg:w-auto">
-          <div className="flex flex-wrap items-center gap-3 p-3 bg-gray-50/50 rounded-2xl border border-gray-100 w-full sm:w-auto">
+          <div className="flex flex-wrap items-center gap-3 p-3 bg-slate-50 rounded-2xl border border-slate-100 w-full sm:w-auto">
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.4)]" />
-              <span className="text-[9px] font-black text-gray-500 uppercase">Libre</span>
+              <div className="w-2 h-2 rounded-full bg-emerald-500 shadow-sm" />
+              <span className="text-[9px] font-bold text-slate-500 uppercase">Libre</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-500 shadow-[0_0_8px_rgba(239,68,68,0.4)]" />
-              <span className="text-[9px] font-black text-gray-500 uppercase">Ocupado</span>
+              <div className="w-2 h-2 rounded-full bg-rose-500 shadow-sm" />
+              <span className="text-[9px] font-bold text-slate-500 uppercase">Ocupado</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-yellow-400 shadow-[0_0_8px_rgba(250,204,21,0.4)]" />
-              <span className="text-[9px] font-black text-gray-500 uppercase">Mío</span>
+              <div className="w-2 h-2 rounded-full bg-amber-400 shadow-sm" />
+              <span className="text-[9px] font-bold text-slate-500 uppercase">Mío</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-gray-300" />
-              <span className="text-[9px] font-black text-gray-500 uppercase">Bloqueo</span>
-            </div>
-            <div className="flex items-center gap-1.5">
-              <div className="w-2.5 h-2.5 rounded-full bg-red-600 animate-pulse shadow-[0_0_8px_rgba(220,38,38,0.4)]" />
-              <span className="text-[9px] font-black text-red-600 uppercase">Conflicto</span>
+              <div className="w-2 h-2 rounded-full bg-slate-300 shadow-sm" />
+              <span className="text-[9px] font-bold text-slate-500 uppercase">Bloqueo</span>
             </div>
           </div>
 
           {conflictosActuales.length > 0 && (
-            <div className="flex items-center gap-3 p-2 px-4 bg-red-50 border border-red-100 rounded-2xl animate-in slide-in-from-top-2 duration-300">
-              <AlertCircle className="h-4 w-4 text-red-600 shrink-0" />
+            <div className="flex items-center gap-3 p-2 px-4 bg-rose-50 border border-rose-100 rounded-xl animate-in slide-in-from-top-2 duration-300">
+              <AlertCircle className="h-4 w-4 text-rose-600 shrink-0" />
               <div className="flex flex-col">
-                <p className="text-[10px] font-black text-red-800 uppercase tracking-tight">
-                  Se detectaron {conflictosActuales.length} conflictos:
+                <p className="text-[9px] font-black text-rose-800 uppercase tracking-tight">
+                  Conflictos detectados ({conflictosActuales.length}):
                 </p>
-                <div className="flex flex-wrap gap-x-4">
-                  {conflictosActuales.map((c, i) => (
-                    <span key={i} className="text-[9px] font-bold text-red-600/80 italic">
+                <div className="flex flex-wrap gap-x-3">
+                  {conflictosActuales.slice(0, 2).map((c, i) => (
+                    <span key={i} className="text-[9px] font-bold text-rose-600/80 italic">
                       • {c.mensaje}
                     </span>
                   ))}
+                  {conflictosActuales.length > 2 && (
+                    <span className="text-[9px] font-bold text-rose-600/80 italic">+ {conflictosActuales.length - 2} más</span>
+                  )}
                 </div>
               </div>
               <Button 
                 variant="ghost" 
                 size="icon" 
-                className="h-6 w-6 rounded-full hover:bg-red-100 text-red-600"
+                className="h-6 w-6 rounded-full hover:bg-rose-100 text-rose-600"
                 onClick={() => {
                   setConflictosActuales([]);
                   setErrorCell(null);
@@ -404,54 +424,45 @@ export function MatrizDisponibilidad({
             </div>
           )}
 
-          <div className="flex items-center gap-2 p-2 px-3 bg-amber-50 border border-amber-100 rounded-xl animate-in fade-in duration-500">
+          <div className="flex items-center gap-2 p-2 px-3 bg-amber-50 border border-amber-100 rounded-xl">
             <Info className="h-3.5 w-3.5 text-amber-600 shrink-0" />
             <p className="text-[9px] font-bold text-amber-800 uppercase tracking-tight leading-tight">
-              Nota: El horario de 12:00 PM a 1:00 PM está reservado para receso institucional.
+              Receso Institucional: 12:00 PM - 1:00 PM
             </p>
-          </div>
-
-          <div className="flex items-center gap-2 w-full sm:w-auto overflow-x-auto pb-1 sm:pb-0">
-            <span className="inline-flex items-center bg-blue-50 text-blue-700 border-2 border-blue-200 font-black text-[9px] px-2.5 py-1 rounded-lg shrink-0 shadow-sm">TEORÍA</span>
-            <span className="inline-flex items-center bg-purple-50 text-purple-700 border-2 border-purple-200 font-black text-[9px] px-2.5 py-1 rounded-lg shrink-0 shadow-sm">LAB</span>
-            <span className="inline-flex items-center bg-orange-50 text-orange-700 border-2 border-orange-200 font-black text-[9px] px-2.5 py-1 rounded-lg shrink-0 shadow-sm">PRÁCTICA</span>
           </div>
         </div>
       </div>
 
-      <div className="relative overflow-hidden bg-white rounded-[40px] shadow-2xl shadow-blue-900/10 border border-gray-100">
+      <div className="relative overflow-hidden bg-white rounded-2xl border border-slate-100 shadow-sm">
         <div className="overflow-x-auto custom-scrollbar">
-          <table className="w-full border-collapse min-w-[900px] table-fixed">
+          <table className="w-full border-collapse min-w-[1000px] table-fixed">
             <thead>
-              <tr className="bg-[#003366] sticky top-0 z-30 shadow-md">
+              <tr className="bg-[#1a237e] sticky top-0 z-30 shadow-sm">
                 <th className="w-24 p-4 text-center border-b border-r border-white/10">
                   <div className="flex flex-col items-center">
-                    <Clock className="h-4 w-4 text-blue-200 mb-1" />
+                    <Clock className="h-4 w-4 text-indigo-200 mb-1" />
                     <span className="text-[10px] font-black text-white uppercase tracking-widest">Hora</span>
                   </div>
                 </th>
                 {DIAS.map(dia => (
-                  <th key={dia.id} className="p-4 text-center border-b border-white/10 group">
-                    <div className="flex flex-col items-center group-hover:scale-110 transition-transform">
-                      <span className="text-xs font-black text-white uppercase tracking-[0.2em]">{dia.nombre}</span>
-                      <div className="h-1 w-8 bg-yellow-400 rounded-full mt-1.5 opacity-0 group-hover:opacity-100 transition-opacity" />
-                    </div>
+                  <th key={dia.id} className="p-4 text-center border-b border-white/10">
+                    <span className="text-xs font-bold text-white uppercase tracking-widest">{dia.nombre}</span>
                   </th>
                 ))}
               </tr>
             </thead>
-            <tbody className="divide-y divide-gray-50">
+            <tbody className="divide-y divide-slate-50">
               {timeSlots.map(hora => {
                 const horaInicio = parse(hora, "HH:mm", new Date());
                 const horaFin = format(addMinutes(horaInicio, intervalo), "HH:mm");
                 
                 return (
-                  <tr key={hora} className="group hover:bg-blue-50/20 transition-colors">
-                    <td className="p-3 text-center border-r border-gray-100 bg-gray-50/50 sticky left-0 z-20 backdrop-blur-sm shadow-[2px_0_5px_rgba(0,0,0,0.02)]">
+                  <tr key={hora} className="group hover:bg-slate-50/50 transition-colors">
+                    <td className="p-3 text-center border-r border-slate-100 bg-slate-50/50 sticky left-0 z-20 backdrop-blur-sm">
                       <div className="flex flex-col items-center gap-0.5">
-                        <span className="text-[11px] font-black text-[#003366] tracking-tighter">{hora}</span>
-                        <div className="h-2 w-[1px] bg-gray-300" />
-                        <span className="text-[9px] font-bold text-gray-400 tracking-tighter">{horaFin}</span>
+                        <span className="text-[11px] font-bold text-[#1a237e] tracking-tighter">{hora}</span>
+                        <div className="h-2 w-[1px] bg-slate-300" />
+                        <span className="text-[9px] font-medium text-slate-400 tracking-tighter">{horaFin}</span>
                       </div>
                     </td>
                   {DIAS.map(dia => {
@@ -465,15 +476,17 @@ export function MatrizDisponibilidad({
                       <td
                         key={key}
                         onClick={() => !isProcessing && handleCellClick(dia.id, hora)}
-                        title={info ? `${info.curso_nombre} - Docente: ${info.docente_nombre} - Tipo: ${info.tipo_clase} - Horario: ${dia.nombre} ${hora}` : "Libre"}
                         className={cn(
-                          "p-1.5 h-16 border-r border-gray-50 transition-all duration-300 cursor-pointer relative group/cell",
-                          !info && "hover:bg-emerald-50/50 bg-transparent",
-                          info?.estado === 'ocupado' && !esMia && "bg-red-50/40 cursor-not-allowed bg-[url('data:image/svg+xml;base64,PHN2ZyB3aWR0aD0iNDAiIGhlaWdodD0iNDAiIHZpZXdCb3g9IjAgMCA0MCA0MCIgeG1sbnM9Imh0dHA6Ly93d3cudzMub3JnLzIwMDAvc3ZnIj48ZyBmaWxsPSJub25lIiBmaWxsLXJ1bGU9ImV2ZW5vZGQiPjxnIGZpbGw9IiNmZTUyNTIiIGZpbGwtb3BhY2l0eT0iMC4wNSI+PHBhdGggZD0iTTAgNDBoNDB2LTQwSDB2NDB6bTIwLTQwSDQwTDAgNDBoMjB6Ii8+PC9nPjwvZz48L3N2Zz4=')]",
-                          esMia && "bg-yellow-50/60 z-10",
-                          info?.estado === 'bloqueado' && "bg-gray-100/60 cursor-not-allowed grayscale",
+                          "p-1.5 h-16 border-r border-slate-50 transition-all duration-300 cursor-pointer relative group/cell",
+                          !info && "hover:bg-emerald-50/30",
+                          info?.estado === 'ocupado' && !esMia && "bg-rose-50/30 cursor-not-allowed",
+                          esMia && "bg-amber-50/50 z-10",
+                          info?.estado === 'bloqueado' && "bg-slate-100/50 cursor-not-allowed",
                           isProcessing && "cursor-wait opacity-70",
-                          hasError && "bg-red-100 ring-2 ring-red-500 z-20 animate-pulse"
+                          hasError && "bg-rose-100 ring-2 ring-rose-500 z-20 animate-pulse",
+                          filtroHorario === 'libres' && info && "opacity-20 pointer-events-none grayscale",
+                          filtroHorario === 'ocupados' && !info && "opacity-20 pointer-events-none grayscale",
+                          filtroHorario === 'mios' && !esMia && "opacity-20 pointer-events-none grayscale"
                         )}
                       >
                         {isProcessing && (
