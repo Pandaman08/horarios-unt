@@ -18,7 +18,10 @@ async function main() {
 
   try {
     // 1. Limpiar base de datos (orden inverso a las dependencias)
+
     console.log('-> Limpiando base de datos...');
+    
+    // Eliminar primero las tablas que dependen de otras
     await prisma.horarioAsignado.deleteMany();
     await prisma.seleccionTemporalHorario.deleteMany();
     await prisma.conflictoHorario.deleteMany();
@@ -26,11 +29,17 @@ async function main() {
     await prisma.grupo.deleteMany();
     await prisma.cursoAmbiente.deleteMany();
     await prisma.disponibilidadDocente.deleteMany();
+    
+    // Notificaciones
     await prisma.colaNotificaciones.deleteMany();
     await prisma.historialNotificaciones.deleteMany();
     await prisma.preferenciasNotificacionDocente.deleteMany();
+    
+    // Ventanas y periodos
     await prisma.ventanaAtencion.deleteMany();
     await prisma.periodoAcademico.deleteMany();
+    
+    // Entidades base (orden: Ambiente → Curso → Ciclo, Docente → Usuario)
     await prisma.ambiente.deleteMany();
     await prisma.curso.deleteMany();
     await prisma.ciclo.deleteMany();

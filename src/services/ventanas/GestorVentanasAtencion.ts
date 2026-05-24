@@ -70,7 +70,7 @@ export class GestorVentanasAtencion {
       },
       select: { id_docente: true }
     });
-    const idsDocentesConVentana = new Set(notificacionesExistentes.map(n => n.id_docente));
+    const idsDocentesConVentana = new Set(notificacionesExistentes.map((n: any) => n.id_docente || 0));
 
     // Filtrar la lista para quedarnos solo con los que NO tienen ventana
     const docentesSinVentana = docentes.filter(d => !idsDocentesConVentana.has(d.id_docente));
@@ -107,7 +107,7 @@ export class GestorVentanasAtencion {
 
       fechaActual = new Date(ultimaVentana.fecha);
       horaActual = this.parseHora(ultimaVentana.hora_fin, fechaActual);
-      prioridadActual = Math.max(...ventanasExistentes.map(v => v.orden_prioridad)) + 1;
+      prioridadActual = Math.max(...ventanasExistentes.map((v: any) => v.orden_prioridad || 0)) + 1;
     }
 
     horaLimite = this.parseHora(hora_fin_jornada, fechaActual);

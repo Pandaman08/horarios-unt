@@ -39,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { cn } from "@/lib/utils";
 
 interface Ciclo {
   id_ciclo: number;
@@ -246,7 +247,6 @@ export function CicloList() {
           </Dialog>
         </div>
       </div>
-
       <div className="bg-white rounded-xl border border-slate-100 shadow-sm overflow-hidden">
         <div className="overflow-x-auto custom-scrollbar">
           <Table>
