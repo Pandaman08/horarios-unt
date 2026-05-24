@@ -84,6 +84,7 @@ export function CursoList() {
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [filtroHoras, setFiltroHoras] = useState<string>("todos");
+  const [filtroCiclo, setFiltroCiclo] = useState<string>("todos");
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -92,6 +93,7 @@ export function CursoList() {
   const filteredCursos = cursos.filter(c => {
     const matchesSearch = `${c.nombre} ${c.codigo}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = filtroTipo === "todos" || c.tipo_curso === filtroTipo;
+    const matchesCiclo = filtroCiclo === "todos" || c.id_ciclo?.toString() === filtroCiclo;
     
     const totalHoras = c.horas_teoria + c.horas_laboratorio + c.horas_practica;
     let matchesHoras = true;
@@ -104,10 +106,10 @@ export function CursoList() {
     if (ciclo) {
       const isPar = ciclo.numero % 2 === 0;
       const matchesSemestre = (semestre === 1 && !isPar) || (semestre === 2 && isPar);
-      return matchesSearch && matchesTipo && matchesHoras && matchesSemestre;
+      return matchesSearch && matchesTipo && matchesCiclo && matchesHoras && matchesSemestre;
     }
 
-    return matchesSearch && matchesTipo && matchesHoras;
+    return matchesSearch && matchesTipo && matchesCiclo && matchesHoras;
   });
 
   // Cálculo de paginación
@@ -119,7 +121,7 @@ export function CursoList() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filtroTipo, filtroHoras]);
+  }, [searchTerm, filtroTipo, filtroHoras, filtroCiclo, semestre]);
 
   const [formData, setFormData] = useState({
     codigo: "",
@@ -410,7 +412,7 @@ export function CursoList() {
         </div>
 
         {/* Barra de Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/50">
           <div className="space-y-1.5">
             <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
             <Select value={filtroTipo} onValueChange={setFiltroTipo}>
@@ -422,6 +424,28 @@ export function CursoList() {
                 <SelectItem value="general" className="text-[10px] font-bold">General (EG)</SelectItem>
                 <SelectItem value="linea_carrera" className="text-[10px] font-bold">Línea de Carrera (EE)</SelectItem>
                 <SelectItem value="electivo" className="text-[10px] font-bold">Electivo (EL)</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+            <Select value={filtroCiclo} onValueChange={setFiltroCiclo}>
+              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border">
+                <SelectItem value="todos" className="text-[10px] font-bold">Todos los ciclos</SelectItem>
+                {ciclos
+                  .filter(c => {
+                    const isPar = c.numero % 2 === 0;
+                    return (semestre === 1 && !isPar) || (semestre === 2 && isPar);
+                  })
+                  .map(c => (
+                    <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="text-[10px] font-bold">
+                      {c.nombre}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>
