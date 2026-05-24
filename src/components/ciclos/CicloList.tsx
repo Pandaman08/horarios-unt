@@ -19,6 +19,13 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import { 
   Plus, 
@@ -26,7 +33,8 @@ import {
   Trash2, 
   Search, 
   Layers,
-  RefreshCw
+  RefreshCw,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -57,14 +65,18 @@ export function CicloList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [semestre, setSemestre] = useState<number>(new Date().getMonth() < 6 ? 1 : 2);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredCiclos = ciclos.filter(c => 
-    `${c.nombre} ${c.numero}`.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  const filteredCiclos = ciclos.filter(c => {
+    const matchesSearch = `${c.nombre} ${c.numero}`.toLowerCase().includes(searchTerm.toLowerCase());
+    const isPar = c.numero % 2 === 0;
+    const matchesSemestre = (semestre === 1 && !isPar) || (semestre === 2 && isPar);
+    return matchesSearch && matchesSemestre;
+  });
 
   const totalPages = Math.ceil(filteredCiclos.length / itemsPerPage);
   const currentItems = filteredCiclos.slice(
@@ -183,7 +195,19 @@ export function CicloList() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:min-w-[280px]">
+          <div className="flex items-center gap-2 bg-muted/50 p-1.5 rounded-lg border border-border">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={semestre.toString()} onValueChange={(v) => setSemestre(parseInt(v))}>
+              <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-bold text-[11px] focus:ring-0 w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg border-border">
+                <SelectItem value="1" className="font-bold text-[11px]">I Semestre</SelectItem>
+                <SelectItem value="2" className="font-bold text-[11px]">II Semestre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="relative flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
               placeholder="Buscar ciclo..." 

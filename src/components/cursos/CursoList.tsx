@@ -31,16 +31,15 @@ import {
   Plus, 
   Edit, 
   Trash2, 
-  MapPin, 
   Search, 
   BookOpen, 
   GraduationCap,
   AlertCircle,
   Clock,
-  Filter
+  Filter,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AsignarAmbientesDialog } from "./AsignarAmbientesDialog";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -74,14 +73,13 @@ export function CursoList() {
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingCurso, setEditingCurso] = useState<Curso | null>(null);
-  const [isAmbientesOpen, setIsAmbientesOpen] = useState(false);
-  const [selectedCurso, setSelectedCurso] = useState<Curso | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [ciclos, setCiclos] = useState<any[]>([]);
+  const [semestre, setSemestre] = useState<number>(new Date().getMonth() < 6 ? 1 : 2);
   
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -100,6 +98,14 @@ export function CursoList() {
     if (filtroHoras === "0-3") matchesHoras = totalHoras <= 3;
     else if (filtroHoras === "4-6") matchesHoras = totalHoras > 3 && totalHoras <= 6;
     else if (filtroHoras === "7+") matchesHoras = totalHoras > 6;
+
+    // Filtrar por semestre según ciclo
+    const ciclo = ciclos.find(cy => cy.id_ciclo === c.id_ciclo);
+    if (ciclo) {
+      const isPar = ciclo.numero % 2 === 0;
+      const matchesSemestre = (semestre === 1 && !isPar) || (semestre === 2 && isPar);
+      return matchesSearch && matchesTipo && matchesHoras && matchesSemestre;
+    }
 
     return matchesSearch && matchesTipo && matchesHoras;
   });
@@ -283,15 +289,27 @@ export function CursoList() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:min-w-[280px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar curso..." 
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
+          <div className="flex items-center gap-2 bg-muted/50 p-1.5 rounded-lg border border-border">
+            <Calendar className="h-4 w-4 text-muted-foreground" />
+            <Select value={semestre.toString()} onValueChange={(v) => setSemestre(parseInt(v))}>
+              <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-bold text-[11px] focus:ring-0 w-[120px]">
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg border-border">
+                <SelectItem value="1" className="font-bold text-[11px]">I Semestre</SelectItem>
+                <SelectItem value="2" className="font-bold text-[11px]">II Semestre</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+          <div className="relative flex-1 sm:min-w-[200px]">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+            <Input 
+              placeholder="Buscar curso..." 
+              className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
             
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if(!open) { setEditingCurso(null); resetForm(); } }}>
               <DialogTrigger asChild>
@@ -472,9 +490,6 @@ export function CursoList() {
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
-                        <Button variant="ghost" size="icon" onClick={() => { setSelectedCurso(curso); setIsAmbientesOpen(true); }} title="Ambientes" className="h-7 w-7 rounded-lg hover:bg-primary/10 hover:text-primary transition-all">
-                          <MapPin className="h-3.5 w-3.5" />
-                        </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar" className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-all">
                           <Edit className="h-3.5 w-3.5" />
                         </Button>
@@ -497,8 +512,6 @@ export function CursoList() {
           className="border-t border-border bg-muted/10"
         />
       </div>
-
-      <AsignarAmbientesDialog cursoId={selectedCurso?.id_curso || 0} cursoNombre={selectedCurso?.nombre || ""} isOpen={isAmbientesOpen} onClose={() => { setIsAmbientesOpen(false); setSelectedCurso(null); }} />
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
         <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
