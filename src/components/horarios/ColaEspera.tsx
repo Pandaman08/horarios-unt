@@ -44,26 +44,26 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
   };
 
   return (
-    <div className="h-full bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col overflow-hidden">
-      <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-slate-50/50">
-        <h4 className="text-xs font-black text-slate-700 uppercase tracking-wider">Cola de Espera</h4>
-        <span className="text-[10px] bg-slate-100 text-slate-600 px-2.5 py-0.5 rounded-full font-bold">
+    <div className="h-full bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
+      <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
+        <h4 className="text-xs font-black text-foreground uppercase tracking-wider">Cola de Espera</h4>
+        <span className="text-[10px] bg-muted text-muted-foreground px-2.5 py-0.5 rounded-full font-bold">
           {cola.length} en espera
         </span>
       </div>
       
-      <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-slate-50">
+      <div className="flex-1 overflow-y-auto custom-scrollbar divide-y divide-border">
         {loading ? (
           <div className="p-8 text-center">
-            <div className="animate-spin h-5 w-5 border-2 border-[#1a237e] border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mt-4">Cargando cola...</p>
+            <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-4">Cargando cola...</p>
           </div>
         ) : cola.length === 0 ? (
           <div className="p-12 text-center space-y-4">
-            <div className="h-12 w-12 bg-slate-50 rounded-2xl flex items-center justify-center mx-auto shadow-inner">
-              <Clock className="h-6 w-6 text-slate-300" />
+            <div className="h-12 w-12 bg-muted rounded-2xl flex items-center justify-center mx-auto shadow-inner">
+              <Clock className="h-6 w-6 text-muted-foreground/50" />
             </div>
-            <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest leading-relaxed">No hay docentes en espera actualmente.</p>
+            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">No hay docentes en espera actualmente.</p>
           </div>
         ) : (
           cola.map((docente, index) => {
@@ -73,24 +73,24 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                 key={docente.id_docente}
                 className={cn(
                   "p-4 flex items-center justify-between transition-all duration-200 group",
-                  esActual ? "bg-indigo-50/50" : "hover:bg-slate-50/80"
+                  esActual ? "bg-primary/10" : "hover:bg-muted/50"
                 )}
               >
                 <div className="flex items-center space-x-3 min-w-0">
                   <div className={cn(
                     "h-10 w-10 rounded-xl flex items-center justify-center shrink-0 shadow-sm font-bold text-xs uppercase",
-                    esActual ? "bg-white text-[#1a237e] ring-2 ring-indigo-100" : "bg-slate-100 text-slate-500"
+                    esActual ? "bg-card text-primary ring-2 ring-primary/20" : "bg-muted text-muted-foreground"
                   )}>
                     {docente.nombres.charAt(0)}{docente.apellidos.charAt(0)}
                   </div>
                   <div className="min-w-0">
-                    <h4 className="text-sm font-bold text-slate-800 leading-none truncate">
+                    <h4 className="text-sm font-bold text-foreground leading-none truncate">
                       {docente.nombres} {docente.apellidos}
                     </h4>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-tighter font-mono">{docente.codigo_docente}</span>
-                      <span className="w-0.5 h-0.5 rounded-full bg-slate-300" />
-                      <span className="text-[9px] font-bold text-[#1a237e] uppercase tracking-tighter bg-indigo-50 px-1.5 py-0.5 rounded">
+                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter font-mono">{docente.codigo_docente}</span>
+                      <span className="w-0.5 h-0.5 rounded-full bg-border" />
+                      <span className="text-[9px] font-bold text-primary uppercase tracking-tighter bg-primary/10 px-1.5 py-0.5 rounded">
                         {docente.categoria.replace("_", " ")}
                       </span>
                     </div>
@@ -99,7 +99,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                 
                 <div className="ml-3 shrink-0">
                   {esActual ? (
-                    <span className="inline-flex items-center bg-emerald-50 text-emerald-700 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-100 animate-pulse">
+                    <span className="inline-flex items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-500/20 animate-pulse">
                       Atendiendo
                     </span>
                   ) : (
@@ -107,7 +107,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                       size="sm" 
                       variant="ghost" 
                       onClick={() => onLlamarDocente(docente)}
-                      className="text-[#1a237e] hover:text-[#1a237e] hover:bg-white h-8 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-transparent hover:border-indigo-100 transition-all opacity-0 group-hover:opacity-100"
+                      className="text-primary hover:text-primary hover:bg-card h-8 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-transparent hover:border-primary/20 transition-all opacity-100"
                     >
                       Llamar
                     </Button>

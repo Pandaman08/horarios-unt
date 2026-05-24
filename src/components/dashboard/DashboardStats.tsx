@@ -6,6 +6,13 @@ import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket-client";
 import { CountdownTimer } from "@/components/dashboard/CountdownTimer";
 import { DIAS_SEMANA, HORAS_MAPA_CALOR, formatRangoHora } from "@/lib/dashboard-labels";
+import { useLocale } from "@/contexts/LocaleContext";
+import {
+  FileText,
+  FlaskConical,
+  GraduationCap,
+  BarChart3,
+} from "lucide-react";
 
 interface StatsData {
   periodo: string;
@@ -28,20 +35,24 @@ interface StatsData {
   mapaCalor: { dia: number; hora: string; valor: number }[];
 }
 
-const BLUE_SHADES = ["#1a237e", "#3949ab", "#5c6bc0", "#9fa8da"];
-const GREEN_SHADES = ["#059669", "#10b981", "#6ee7b7", "#a7f3d0"];
+const CHART_COLORS = [
+  "var(--chart-1)",
+  "var(--chart-2)",
+  "var(--chart-3)",
+  "var(--chart-4)",
+];
 
 function ProgressBar({
   percent,
-  colorClass = "bg-[#1a237e]",
+  className,
 }: {
   percent: number;
-  colorClass?: string;
+  className?: string;
 }) {
   return (
-    <div className="h-2 w-full bg-slate-100 rounded-full overflow-hidden">
+    <div className="h-1.5 w-full bg-muted rounded-full overflow-hidden">
       <div
-        className={cn("h-full rounded-full transition-all duration-700", colorClass)}
+        className={cn("h-full rounded-full bg-primary transition-all duration-500", className)}
         style={{ width: `${Math.min(100, percent)}%` }}
       />
     </div>
@@ -50,44 +61,41 @@ function ProgressBar({
 
 function VerticalBarChart({
   data,
-  colors,
   emptyLabel,
 }: {
   data: { nombre: string; porcentaje: number }[];
-  colors: string[];
   emptyLabel: string;
 }) {
-  const items =
-    data.length > 0
-      ? data
-      : [
-          { nombre: "—", porcentaje: 0 },
-          { nombre: "—", porcentaje: 0 },
-          { nombre: "—", porcentaje: 0 },
-        ];
+  if (data.length === 0) {
+    return (
+      <p className="text-xs text-muted-foreground text-center py-8">{emptyLabel}</p>
+    );
+  }
 
   return (
-    <div className="flex items-end justify-center gap-8 h-52 pt-4">
-      {items.map((item, i) => (
-        <div key={`${item.nombre}-${i}`} className="flex flex-col items-center gap-2 flex-1 max-w-[72px]">
-          <span className="text-sm font-bold text-slate-700 tabular-nums">
+    <div className="flex items-end justify-center gap-6 h-36 pt-2">
+      {data.map((item, i) => (
+        <div
+          key={`${item.nombre}-${i}`}
+          className="flex flex-col items-center gap-1.5 flex-1 max-w-[64px]"
+        >
+          <span className="text-xs font-bold tabular-nums">
             {item.porcentaje > 0 ? `${item.porcentaje}%` : "—"}
           </span>
-          <div className="relative w-14 h-40 bg-slate-100 rounded-t-lg flex items-end">
+          <div className="relative w-10 h-28 bg-muted rounded-t-md flex items-end">
             <div
-              className="w-full rounded-t-lg transition-all duration-700"
+              className="w-full rounded-t-md transition-all duration-500"
               style={{
-                height: `${Math.max(item.porcentaje, 4)}%`,
-                backgroundColor: colors[i % colors.length],
+                height: `${Math.max(item.porcentaje, 3)}%`,
+                backgroundColor: CHART_COLORS[i % CHART_COLORS.length],
               }}
             />
           </div>
-          <span className="text-xs font-semibold text-slate-600">{item.nombre}</span>
+          <span className="text-[10px] font-medium text-muted-foreground text-center leading-tight">
+            {item.nombre}
+          </span>
         </div>
       ))}
-      {data.length === 0 && (
-        <p className="text-xs text-slate-400 self-center">{emptyLabel}</p>
-      )}
     </div>
   );
 }
@@ -99,9 +107,9 @@ function heatmapLevel(valor: number): "baja" | "media" | "alta" {
 }
 
 const HEATMAP_STYLES = {
-  baja: "bg-emerald-100 text-emerald-700 border-emerald-200",
-  media: "bg-amber-100 text-amber-700 border-amber-200",
-  alta: "bg-rose-100 text-rose-600 border-rose-200",
+  baja: "bg-emerald-500/15 text-emerald-700 dark:text-emerald-400 border-emerald-500/20",
+  media: "bg-amber-500/15 text-amber-700 dark:text-amber-400 border-amber-500/20",
+  alta: "bg-rose-500/15 text-rose-700 dark:text-rose-400 border-rose-500/20",
 };
 
 interface DashboardStatsProps {
@@ -115,8 +123,8 @@ export function DashboardStats({
   id_periodo,
   periodos,
   selectedPeriodo,
-  onPeriodoChange,
 }: DashboardStatsProps) {
+  const { t } = useLocale();
   const [data, setData] = useState<StatsData | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -133,7 +141,7 @@ export function DashboardStats({
       const res = await fetch(`/api/dashboard/stats?id_periodo=${id_periodo}`);
       const stats = await res.json();
       setData(stats);
-    } catch (error) {
+    } catch {
       console.error("Error al cargar stats");
     } finally {
       setLoading(false);
@@ -152,14 +160,14 @@ export function DashboardStats({
 
   if (loading) {
     return (
-      <div className="space-y-6 animate-pulse">
-        <div className="h-20 bg-white rounded-2xl border border-slate-100" />
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="space-y-3 animate-pulse">
+        <div className="h-14 dashboard-card" />
+        <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
           {[1, 2, 3, 4].map((i) => (
-            <div key={i} className="h-36 bg-white rounded-2xl border border-slate-100" />
+            <div key={i} className="h-24 dashboard-card" />
           ))}
         </div>
-        <div className="h-64 bg-white rounded-2xl border border-slate-100" />
+        <div className="h-48 dashboard-card" />
       </div>
     );
   }
@@ -179,273 +187,215 @@ export function DashboardStats({
     return cell?.valor ?? 0;
   };
 
-  const avanceFallback = [
-    { name: "Principal Nombrado", value: 0, total: 0, percent: 0 },
-    { name: "Principal Contratado", value: 0, total: 0, percent: 0 },
-    { name: "Asociado Nombrado", value: 0, total: 0, percent: 0 },
-    { name: "Asociado Contratado", value: 0, total: 0, percent: 0 },
-    { name: "Auxiliar Nombrado", value: 0, total: 0, percent: 0 },
-    { name: "Auxiliar Contratado", value: 0, total: 0, percent: 0 },
-    { name: "Jefe de Práctica", value: 0, total: 0, percent: 0 },
+  const categorias =
+    data?.avanceCategoria?.length ? data.avanceCategoria : [];
+
+  const periodoCodigo =
+    periodos.find((p) => p.id_periodo.toString() === selectedPeriodo)?.codigo ||
+    "—";
+
+  const reportLinks = [
+    { href: "/dashboard/reportes", label: t("reportByRoom"), icon: FileText },
+    { href: "/dashboard/reportes", label: t("reportByLab"), icon: FlaskConical },
+    { href: "/dashboard/reportes", label: t("reportByTeacher"), icon: GraduationCap },
+    { href: "/dashboard/reportes", label: t("reportManagement"), icon: BarChart3 },
   ];
 
-  const categorias = data?.avanceCategoria?.length
-    ? data.avanceCategoria
-    : avanceFallback;
-
   return (
-    <div className="space-y-4 sm:space-y-6 w-full overflow-x-hidden">
-      {/* Encabezado - Mejorado según mockup */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4 bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
+    <div className="space-y-3 w-full">
+      {/* Encabezado compacto */}
+      <div className="dashboard-card flex flex-wrap items-center justify-between gap-3 px-4 py-3">
         <div>
-          <h1 className="text-lg md:text-xl font-bold text-slate-800 tracking-tight">
-            Consola de Control General
-          </h1>
-          <p className="text-xs md:text-sm text-slate-500 mt-1">
-            Escuela de Ingeniería de Sistemas - Universidad Nacional de Trujillo
-          </p>
+          <h1 className="text-base font-bold tracking-tight">{t("dashboardTitle")}</h1>
+          <p className="text-xs text-muted-foreground mt-0.5">{t("dashboardSubtitle")}</p>
         </div>
-
-        <div className="flex flex-col sm:flex-row flex-wrap items-center bg-slate-50 border border-slate-200 rounded-xl text-xs md:text-sm">
-          <div className="px-3 md:px-4 py-2 md:py-3 flex items-center gap-2 border-b sm:border-b-0 sm:border-r border-slate-200 w-full sm:w-auto">
-            <span className="text-slate-700 font-semibold">Período</span>
-            <span className="font-bold text-[#1a237e]">
-              {periodos.find(p => p.id_periodo.toString() === selectedPeriodo)?.codigo || "2026-1"}
-            </span>
-          </div>
-          <div className="px-3 md:px-4 py-2 md:py-3 border-b sm:border-b-0 sm:border-r border-slate-200 w-full sm:w-auto">
-            <span className="text-slate-500">Ventana actual: </span>
-            <span className="font-bold text-indigo-600">{ventana?.nombre || "—"}</span>
-          </div>
-          <div className="px-3 md:px-4 py-2 md:py-3 flex items-center gap-2 w-full sm:w-auto justify-between sm:justify-start">
-            <span className="text-slate-500">Tiempo restante:</span>
-            <span className="font-bold text-rose-600 bg-rose-50 px-2 py-0.5 rounded-md">
-              <CountdownTimer horaFin={ventana?.hora_fin} />
-            </span>
-          </div>
+        <div className="flex flex-wrap items-center gap-2 text-xs">
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted font-medium">
+            {t("period")}: <strong className="text-primary">{periodoCodigo}</strong>
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-muted">
+            {t("currentWindow")}:{" "}
+            <strong>{ventana?.nombre || t("noWindow")}</strong>
+          </span>
+          <span className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-destructive/10 text-destructive font-semibold tabular-nums">
+            {t("timeRemaining")}: <CountdownTimer horaFin={ventana?.hora_fin} />
+          </span>
         </div>
       </div>
 
-      {/* KPIs - Mejorados según mockup - RESPONSIVE VISIBLE */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Ventana actual
+      {/* KPIs — 4 columnas en 1920 */}
+      <div className="grid grid-cols-2 xl:grid-cols-4 gap-3">
+        <div className="dashboard-card p-4">
+          <p className="kpi-label">{t("kpiWindow")}</p>
+          <p className="text-sm font-bold text-primary mt-1 truncate">
+            {ventana?.nombre || t("noWindow")}
           </p>
-          <p className="text-base sm:text-lg md:text-xl font-bold text-[#1a237e] mt-1 sm:mt-2 leading-tight">
-            {ventana?.nombre || "Sin ventana"}
-          </p>
-          <div className="mt-3 flex items-center justify-between text-[10px] sm:text-xs text-slate-500">
-            <span>Progreso general</span>
-            <span className="font-bold text-slate-700">{pctGeneral}%</span>
+          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+            <span>{t("kpiProgress")}</span>
+            <span className="font-semibold tabular-nums">{pctGeneral}%</span>
           </div>
-          <div className="mt-2">
+          <div className="mt-1.5">
             <ProgressBar percent={pctGeneral} />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Docentes atendidos
+        <div className="dashboard-card p-4">
+          <p className="kpi-label">{t("kpiTeachers")}</p>
+          <p className="kpi-value mt-1">
+            {kpis?.docentesAtendidos ?? 0}
+            <span className="text-base text-muted-foreground font-normal">
+              {" "}/ {kpis?.totalDocentes ?? 0}
+            </span>
           </p>
-          <p className="text-xl sm:text-2xl md:text-3xl font-bold text-slate-800 mt-1 sm:mt-2 tabular-nums">
-            {kpis?.docentesAtendidos ?? 0} <span className="text-sm sm:text-lg md:text-xl text-slate-400">/ {kpis?.totalDocentes ?? 0}</span>
-          </p>
-          <div className="mt-3 flex items-center justify-between text-[10px] sm:text-xs text-slate-500">
-            <span>Tasa de respuesta</span>
-            <span className="font-bold text-emerald-700">{pctDocentes}%</span>
+          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+            <span>{t("kpiResponseRate")}</span>
+            <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
+              {pctDocentes}%
+            </span>
           </div>
-          <div className="mt-2">
-            <ProgressBar percent={pctDocentes} colorClass="bg-emerald-500" />
+          <div className="mt-1.5">
+            <ProgressBar percent={pctDocentes} className="!bg-emerald-500" />
           </div>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Asignaciones hoy
-          </p>
-          <p className="text-xl sm:text-2xl md:text-3xl font-bold text-[#1a237e] mt-1 sm:mt-2 tabular-nums">
+        <div className="dashboard-card p-4">
+          <p className="kpi-label">{t("kpiAssignments")}</p>
+          <p className="kpi-value mt-1 text-primary">
             {kpis?.asignacionesRealizadas ?? 0}
           </p>
-          <p className="mt-3 text-[10px] sm:text-xs font-semibold text-emerald-600">↑ 15% vs ayer</p>
         </div>
 
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-3 sm:p-4 md:p-5">
-          <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-            Cruces pendientes
-          </p>
-          <p className="text-xl sm:text-2xl md:text-3xl font-bold text-rose-600 mt-1 sm:mt-2 tabular-nums">
+        <div className="dashboard-card p-4">
+          <p className="kpi-label">{t("kpiConflicts")}</p>
+          <p className="kpi-value mt-1 text-destructive">
             {kpis?.conflictosPendientes ?? 0}
           </p>
-          <div className="mt-3 flex items-center justify-between gap-2">
-            <span className="text-[10px] sm:text-xs text-slate-500">Conflictos</span>
+          <div className="mt-2 flex justify-end">
             <Link
               href="/dashboard/reportes"
-              className="text-[10px] sm:text-xs font-bold text-rose-600 bg-rose-50 border border-rose-100 px-2 sm:px-3 py-1 rounded-lg hover:bg-rose-100 transition-colors"
+              className="text-[11px] font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-md hover:bg-destructive/15 transition-colors"
             >
-              Ver
+              {t("kpiView")} →
             </Link>
           </div>
         </div>
       </div>
 
-      {/* Avance por categoría - Mejorado según mockup */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6">
-        <h2 className="text-base md:text-lg font-bold text-slate-800 mb-4 md:mb-6">
-          Avance de Selección de Horarios por Categoría
-        </h2>
-        <div className="space-y-3">
-          {categorias.map((cat, i) => (
-            <div key={cat.name} className="flex flex-col md:flex-row md:items-center gap-2 md:gap-4">
-              <span className="text-xs md:text-sm font-medium text-slate-700 w-full md:w-48 shrink-0">{cat.name}</span>
-              <div className="flex-1">
-                <ProgressBar
-                  percent={cat.percent}
-                  colorClass={
-                    cat.percent === 100
-                      ? "bg-[#1a237e]"
-                      : cat.percent > 0
-                        ? "bg-[#5c6bc0]"
-                        : "bg-slate-200"
-                  }
-                />
-              </div>
-              <div className="flex items-center justify-between md:gap-3 shrink-0 text-xs md:text-sm tabular-nums w-full md:w-auto">
-                <span className="text-slate-500 font-medium">
-                  {cat.value}/{cat.total}
+      {/* Avance por categoría */}
+      {categorias.length > 0 && (
+        <div className="dashboard-card p-4">
+          <h2 className="text-sm font-bold mb-3">{t("categoryProgress")}</h2>
+          <div className="space-y-2">
+            {categorias.map((cat) => (
+              <div
+                key={cat.name}
+                className="grid grid-cols-[minmax(120px,180px)_1fr_auto] items-center gap-3"
+              >
+                <span className="text-xs font-medium truncate">{cat.name}</span>
+                <ProgressBar percent={cat.percent} />
+                <span className="text-xs font-bold tabular-nums w-14 text-right">
+                  {cat.percent}%
                 </span>
-                <span className="font-bold text-slate-800 w-12 text-right">{cat.percent}%</span>
               </div>
-            </div>
-          ))}
+            ))}
+          </div>
         </div>
-      </div>
+      )}
 
-      {/* Gráficos de ocupación */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <h2 className="text-base font-bold text-[#1a237e] mb-2">
-            Ocupación de Aulas de Teoría
-          </h2>
+      {/* Gráficos */}
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-3">
+        <div className="dashboard-card p-4">
+          <h2 className="text-sm font-bold text-primary mb-1">{t("theoryOccupancy")}</h2>
           <VerticalBarChart
             data={data?.ocupacionTeoria ?? []}
-            colors={BLUE_SHADES}
-            emptyLabel="Sin datos de aulas"
+            emptyLabel={t("noData")}
           />
         </div>
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6">
-          <h2 className="text-base font-bold text-[#1a237e] mb-2">
-            Ocupación de Laboratorios
-          </h2>
+        <div className="dashboard-card p-4">
+          <h2 className="text-sm font-bold text-primary mb-1">{t("labOccupancy")}</h2>
           <VerticalBarChart
             data={data?.ocupacionLaboratorios ?? []}
-            colors={GREEN_SHADES}
-            emptyLabel="Sin datos de laboratorios"
+            emptyLabel={t("noData")}
           />
         </div>
       </div>
 
-      {/* Mapa de calor */}
-      <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-6 overflow-x-auto">
-        <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 mb-6">
-          <h2 className="text-base font-bold text-[#1a237e]">
-            Mapa de Calor: Ocupación Horaria Global
-          </h2>
-          <div className="flex items-center gap-3 text-xs font-semibold">
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-emerald-200 border border-emerald-300" />
-              Baja (1-2)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-amber-200 border border-amber-300" />
-              Media (3-5)
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-rose-200 border border-rose-300" />
-              Alta (6+)
-            </span>
-          </div>
-        </div>
-
-        <table className="w-full min-w-[600px] text-sm">
-          <thead>
-            <tr className="border-b border-slate-100">
-              <th className="text-left py-3 px-2 font-semibold text-slate-500 w-36">Hora</th>
-              {[0, 1, 2, 3, 4].map((d) => (
-                <th key={d} className="text-center py-3 px-2 font-semibold text-slate-600">
-                  {DIAS_SEMANA[d]}
-                </th>
-              ))}
-            </tr>
-          </thead>
-          <tbody>
-            {HORAS_MAPA_CALOR.map((hora) => (
-              <tr key={hora} className="border-b border-slate-50 last:border-0">
-                <td className="py-3 px-2 text-slate-500 font-medium whitespace-nowrap">
-                  {formatRangoHora(hora)}
-                </td>
-                {[0, 1, 2, 3, 4].map((dia) => {
-                  const valor = getCalorValor(dia, hora);
-                  const nivel = heatmapLevel(valor);
-                  return (
-                    <td key={dia} className="py-3 px-2 text-center">
-                      <span
-                        className={cn(
-                          "inline-flex items-center justify-center min-w-[2rem] h-7 px-2 rounded-md border text-xs font-bold tabular-nums",
-                          HEATMAP_STYLES[nivel]
-                        )}
-                      >
-                        {valor > 0 ? valor : "—"}
-                      </span>
-                    </td>
-                  );
-                })}
-              </tr>
-            ))}
-          </tbody>
-        </table>
-      </div>
-
-      {/* Actividad en Tiempo Real y Consolidación */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-        {/* Actividad de Selección en Tiempo Real */}
-        <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-4 md:p-6 lg:col-span-2">
-          <h2 className="text-base md:text-lg font-bold text-slate-800 mb-4">
-            Actividad de Selección en Tiempo Real
-          </h2>
-          <div className="space-y-3">
-            <div className="flex items-center gap-3 text-xs">
-              <span className="text-slate-400 font-mono">--:--:--</span>
-              <span className="text-slate-500">Sin actividad registrada aún</span>
+      {/* Mapa de calor + reportes rápidos */}
+      <div className="grid grid-cols-1 xl:grid-cols-3 gap-3">
+        <div className="dashboard-card p-4 xl:col-span-2 overflow-x-auto">
+          <div className="flex flex-wrap items-center justify-between gap-2 mb-3">
+            <h2 className="text-sm font-bold text-primary">{t("heatmapTitle")}</h2>
+            <div className="flex items-center gap-2 text-[10px] font-medium text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded bg-emerald-500/40" />
+                {t("heatLow")}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded bg-amber-500/40" />
+                {t("heatMid")}
+              </span>
+              <span className="flex items-center gap-1">
+                <span className="w-2 h-2 rounded bg-rose-500/40" />
+                {t("heatHigh")}
+              </span>
             </div>
           </div>
+
+          <table className="w-full min-w-[520px] text-xs">
+            <thead>
+              <tr className="border-b border-border">
+                <th className="text-left py-2 pr-2 font-medium text-muted-foreground w-28">
+                  Hora
+                </th>
+                {[0, 1, 2, 3, 4].map((d) => (
+                  <th key={d} className="text-center py-2 font-medium">
+                    {DIAS_SEMANA[d]?.slice(0, 3)}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {HORAS_MAPA_CALOR.map((hora) => (
+                <tr key={hora} className="border-b border-border/50 last:border-0">
+                  <td className="py-1.5 pr-2 text-muted-foreground whitespace-nowrap">
+                    {formatRangoHora(hora)}
+                  </td>
+                  {[0, 1, 2, 3, 4].map((dia) => {
+                    const valor = getCalorValor(dia, hora);
+                    const nivel = heatmapLevel(valor);
+                    return (
+                      <td key={dia} className="py-1.5 text-center">
+                        <span
+                          className={cn(
+                            "inline-flex items-center justify-center min-w-[1.75rem] h-6 px-1 rounded border text-[11px] font-bold tabular-nums",
+                            HEATMAP_STYLES[nivel]
+                          )}
+                        >
+                          {valor > 0 ? valor : "—"}
+                        </span>
+                      </td>
+                    );
+                  })}
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
 
-        {/* Consolidación de Horarios */}
-        <div className="bg-[#1a237e] rounded-2xl shadow-sm p-4 md:p-6 text-white">
-          <h2 className="text-base md:text-lg font-bold mb-4">
-            Consolidación de Horarios
-          </h2>
-          <p className="text-xs text-indigo-200 mb-4">
-            Acceda rápidamente a los generadores oficiales de reportes administrativos en formato PDF.
-          </p>
-          <div className="space-y-2">
-            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
-              <span className="text-xs">📋</span>
-              Horario por Aula
-            </Link>
-            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
-              <span className="text-xs">🔬</span>
-              Horario por Laboratorio
-            </Link>
-            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
-              <span className="text-xs">👨‍🏫</span>
-              Horario por Docente
-            </Link>
-            <Link href="/dashboard/reportes" className="flex items-center gap-2 bg-white/10 hover:bg-white/20 px-3 md:px-4 py-2 rounded-lg text-xs md:text-sm transition-colors">
-              <span className="text-xs">📊</span>
-              Reporte de Gestión
-            </Link>
+        <div className="dashboard-card p-4 bg-primary text-primary-foreground border-primary">
+          <h2 className="text-sm font-bold">{t("quickReports")}</h2>
+          <p className="text-[11px] opacity-80 mt-1 mb-3">{t("quickReportsDesc")}</p>
+          <div className="space-y-1.5">
+            {reportLinks.map(({ href, label, icon: Icon }) => (
+              <Link
+                key={label}
+                href={href}
+                className="flex items-center gap-2 bg-primary-foreground/10 hover:bg-primary-foreground/20 px-3 py-2 rounded-lg text-xs transition-colors"
+              >
+                <Icon className="h-3.5 w-3.5 shrink-0 opacity-90" />
+                {label}
+              </Link>
+            ))}
           </div>
         </div>
       </div>
