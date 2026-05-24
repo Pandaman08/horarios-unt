@@ -7,9 +7,9 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id_periodo_str = searchParams.get('id_periodo');
-    const id_periodo = id_periodo_str ? parseInt(id_periodo_str) : NaN;
+    const id_periodo = id_periodo_str ? Number.parseInt(id_periodo_str, 10) : Number.NaN;
 
-    if (isNaN(id_periodo)) {
+    if (Number.isNaN(id_periodo)) {
       return NextResponse.json({ error: 'Falta id_periodo o es inválido' }, { status: 400 });
     }
 
@@ -63,7 +63,7 @@ export async function GET(request: Request) {
       if (!acc[key]) acc[key] = new Set();
       acc[key].add(h.id_docente);
       return acc;
-    }, {} as Record<string, Set<number>>);
+    }, {});
 
     const avanceCategoria = docentesPorGrupo.map((g) => {
       const key = `${g.modalidad}|${g.categoria}`;
@@ -91,11 +91,11 @@ export async function GET(request: Request) {
       select: { id_ambiente: true, nombre: true, codigo: true, tipo: true, capacidad: true },
     });
 
-    const buildOcupacion = (tipo: string, maxItems = 4) => {
+    const buildOcupacion = (tipos: string[], maxItems = 4) => {
       const items = ocupacionRaw
         .map((oa) => {
           const amb = ambientesInfo.find((ai) => ai.id_ambiente === oa.id_ambiente);
-          if (!amb || amb.tipo !== tipo) return null;
+          if (!amb || !tipos.includes(amb.tipo)) return null;
           const porcentaje = Math.min(
             100,
             Math.round((oa._count.id_asignacion / Math.max(amb.capacidad, 1)) * 100)
@@ -111,8 +111,8 @@ export async function GET(request: Request) {
       return items.slice(0, maxItems);
     };
 
-    const ocupacionTeoria = buildOcupacion('teoria');
-    const ocupacionLaboratorios = buildOcupacion('laboratorio');
+    const ocupacionTeoria = buildOcupacion(['aula']);
+    const ocupacionLaboratorios = buildOcupacion(['laboratorio']);
 
     const mapaCalorRaw = await prisma.horarioAsignado.groupBy({
       by: ['dia_semana', 'hora_inicio'],
@@ -146,11 +146,12 @@ export async function GET(request: Request) {
             nombre: ventanaLabel,
             hora_fin: ventanaActiva.hora_fin,
             hora_inicio: ventanaActiva.hora_inicio,
+            activa: true,
             porcentajeAvance: ventanaActiva.cantidad_docentes > 0
               ? Math.round((ventanaActiva.cantidad_atendidos / ventanaActiva.cantidad_docentes) * 100)
               : porcentajeAvance,
           }
-        : { nombre: ventanaLabel, hora_fin: null, porcentajeAvance },
+        : { nombre: 'Sin ventana activa', hora_fin: null, activa: false, porcentajeAvance },
       kpis: {
         totalDocentes,
         docentesAtendidos,

@@ -21,9 +21,9 @@ export function LoginForm() {
 
   const fillLogin = (role: 'admin' | 'operador' | 'docente') => {
     const creds = {
-      admin: { email: 'admin@unt.edu.pe', pass: '123456' },
-      operador: { email: 'operador@unt.edu.pe', pass: '123456' },
-      docente: { email: 'roberto@unt.edu.pe', pass: '123456' },
+      admin: { email: 'admin@unitru.edu.pe', pass: '00000000' },
+      operador: { email: 'dvalerianor@unitru.edu.pe', pass: '80000001' },
+      docente: { email: 'eagredagamboa@unitru.edu.pe', pass: '18161457' },
     };
     setEmail(creds[role].email);
     setPassword(creds[role].pass);
