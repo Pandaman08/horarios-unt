@@ -231,7 +231,7 @@ export function DisponibilidadDocenteView() {
           <SelectContent className="text-xs">
             {periodos.map((p) => (
               <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="text-xs py-1.5">
-                {p.codigo} - {p.nombre}
+                {p.nombre}
               </SelectItem>
             ))}
           </SelectContent>

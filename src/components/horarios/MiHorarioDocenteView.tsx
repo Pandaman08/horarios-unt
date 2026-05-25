@@ -3,7 +3,6 @@
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { toast } from "sonner";
-import { format } from "date-fns";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -18,11 +17,8 @@ import {
   Calendar,
   Clock,
   MapPin,
-  BookOpen,
   Users,
   AlertCircle,
-  CheckCircle2,
-  ArrowRight,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -35,10 +31,36 @@ const DIAS = [
   "Sábado",
 ];
 
-const TIPO_CLASE_COLORES = {
-  teoria: { bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-200 dark:border-blue-900", text: "text-blue-700 dark:text-blue-300", badge: "bg-blue-100 text-blue-800 dark:bg-blue-900 dark:text-blue-200" },
-  laboratorio: { bg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-200 dark:border-purple-900", text: "text-purple-700 dark:text-purple-300", badge: "bg-purple-100 text-purple-800 dark:bg-purple-900 dark:text-purple-200" },
-  practica: { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-200 dark:border-amber-900", text: "text-amber-700 dark:text-amber-300", badge: "bg-amber-100 text-amber-800 dark:bg-amber-900 dark:text-amber-200" },
+const RANGOS_HORARIOS = [
+  "07:00 - 08:00",
+  "08:00 - 09:00",
+  "09:00 - 10:00",
+  "10:00 - 11:00",
+  "11:00 - 12:00",
+  "12:00 - 13:00",
+  "13:00 - 14:00",
+  "14:00 - 15:00",
+  "15:00 - 16:00",
+  "16:00 - 17:00",
+  "17:00 - 18:00",
+  "18:00 - 19:00",
+  "19:00 - 20:00"
+];
+
+const CURSO_COLORES = [
+  { bg: "bg-blue-50 dark:bg-blue-950/30", border: "border-blue-400", text: "text-blue-800 dark:text-blue-200" },
+  { bg: "bg-purple-50 dark:bg-purple-950/30", border: "border-purple-400", text: "text-purple-800 dark:text-purple-200" },
+  { bg: "bg-amber-50 dark:bg-amber-950/30", border: "border-amber-400", text: "text-amber-800 dark:text-amber-200" },
+  { bg: "bg-emerald-50 dark:bg-emerald-950/30", border: "border-emerald-400", text: "text-emerald-800 dark:text-emerald-200" },
+  { bg: "bg-pink-50 dark:bg-pink-950/30", border: "border-pink-400", text: "text-pink-800 dark:text-pink-200" },
+  { bg: "bg-cyan-50 dark:bg-cyan-950/30", border: "border-cyan-400", text: "text-cyan-800 dark:text-cyan-200" },
+  { bg: "bg-orange-50 dark:bg-orange-950/30", border: "border-orange-400", text: "text-orange-800 dark:text-orange-200" },
+  { bg: "bg-rose-50 dark:bg-rose-950/30", border: "border-rose-400", text: "text-rose-800 dark:text-rose-200" },
+];
+
+const getColorPorCurso = (cursoNombre: string, cursosUnicos: string[]) => {
+  const index = cursosUnicos.indexOf(cursoNombre);
+  return CURSO_COLORES[index % CURSO_COLORES.length];
 };
 
 interface HorarioAsignado {
@@ -55,10 +77,7 @@ interface HorarioAsignado {
   dia_semana: number;
   hora_inicio: string;
   hora_fin: string;
-}
-
-interface HorariosPorDia {
-  [key: string]: HorarioAsignado[];
+  ciclo_nombre: string;
 }
 
 export function MiHorarioDocenteView() {
@@ -67,7 +86,7 @@ export function MiHorarioDocenteView() {
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"semana" | "lista">("semana");
+  const [view, setView] = useState<"matriz" | "lista">("matriz");
 
   useEffect(() => {
     fetchPeriodos();
@@ -109,22 +128,24 @@ export function MiHorarioDocenteView() {
     }
   };
 
-  const horariosPorDia: HorariosPorDia = horarios.reduce((acc, h) => {
-    const dia = DIAS[h.dia_semana] || "Desconocido";
-    if (!acc[dia]) acc[dia] = [];
-    acc[dia].push(h);
-    return acc;
-  }, {} as HorariosPorDia);
+  const getHorariosEnCelda = (diaIndex: number, hora: string) => {
+    return horarios.filter(h => {
+      return h.dia_semana === diaIndex && 
+             h.hora_inicio <= hora && 
+             h.hora_fin > hora;
+    });
+  };
 
-  // Ordenar por hora
-  Object.keys(horariosPorDia).forEach((dia) => {
-    horariosPorDia[dia].sort((a, b) =>
-      a.hora_inicio.localeCompare(b.hora_inicio)
-    );
-  });
+  const getEventoAltura = (horaInicio: string, horaFin: string) => {
+    const [hInicio, mInicio] = horaInicio.split(':').map(Number);
+    const [hFin, mFin] = horaFin.split(':').map(Number);
+    const duracionHoras = (hFin - hInicio) + (mFin - mInicio) / 60;
+    return duracionHoras * 80;
+  };
 
-  const diasOrdenados = DIAS.filter((dia) => horariosPorDia[dia]);
   const totalHoras = horarios.length;
+  
+  const cursosUnicos = Array.from(new Set(horarios.map(h => h.curso_nombre)));
 
   if (loading) {
     return (
@@ -158,7 +179,7 @@ export function MiHorarioDocenteView() {
             <SelectContent>
               {periodos.map((p) => (
                 <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
-                  {p.codigo} - {p.nombre}
+                  {p.nombre}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -185,8 +206,7 @@ export function MiHorarioDocenteView() {
   }
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
-      {/* Header */}
+    <div className="space-y-6 max-w-7xl mx-auto">
       <div className="space-y-2">
         <div className="flex items-center justify-between">
           <div className="flex items-center gap-2">
@@ -195,11 +215,11 @@ export function MiHorarioDocenteView() {
           </div>
           <div className="flex gap-2">
             <Button
-              variant={view === "semana" ? "default" : "outline"}
+              variant={view === "matriz" ? "default" : "outline"}
               size="sm"
-              onClick={() => setView("semana")}
+              onClick={() => setView("matriz")}
             >
-              Vista Semanal
+              Vista Matriz
             </Button>
             <Button
               variant={view === "lista" ? "default" : "outline"}
@@ -215,7 +235,6 @@ export function MiHorarioDocenteView() {
         </p>
       </div>
 
-      {/* Selector de Periodo */}
       <div className="space-y-2">
         <label className="text-sm font-semibold text-foreground">
           Periodo Académico
@@ -227,83 +246,96 @@ export function MiHorarioDocenteView() {
           <SelectContent>
             {periodos.map((p) => (
               <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
-                {p.codigo} - {p.nombre}
+                {p.nombre}
               </SelectItem>
             ))}
           </SelectContent>
         </Select>
       </div>
 
-      {/* Vista Semanal */}
-      {view === "semana" ? (
-        <div className="space-y-4">
-          {diasOrdenados.map((dia) => (
-            <Card key={dia} className="overflow-hidden">
-              <CardHeader className="bg-muted/50 pb-3">
-                <CardTitle className="text-base">{dia}</CardTitle>
-              </CardHeader>
-              <CardContent className="p-0">
-                <div className="space-y-1">
-                  {horariosPorDia[dia].map((h) => {
-                    const colores =
-                      TIPO_CLASE_COLORES[h.tipo_clase as keyof typeof TIPO_CLASE_COLORES] ||
-                      TIPO_CLASE_COLORES.teoria;
-                    return (
-                      <div
-                        key={h.id_asignacion}
-                        className={cn(
-                          "p-4 border-b border-border last:border-0",
-                          colores.bg,
-                          "hover:shadow-sm transition-shadow"
-                        )}
-                      >
-                        <div className="space-y-3">
-                          {/* Encabezado */}
-                          <div className="flex items-start justify-between gap-4">
-                            <div>
-                              <div className="flex items-center gap-2 mb-1">
-                                <h3 className="font-bold text-foreground">
-                                  {h.curso_codigo}
-                                </h3>
-                                <Badge className={colores.badge}>
-                                  {h.tipo_clase.charAt(0).toUpperCase() +
-                                    h.tipo_clase.slice(1)}
-                                </Badge>
-                              </div>
-                              <p className="text-sm text-foreground line-clamp-2">
-                                {h.curso_nombre}
-                              </p>
-                            </div>
-                            <div className="text-right">
-                              <div className="flex items-center gap-1 text-sm font-bold">
-                                <Clock className="h-4 w-4" />
-                                {h.hora_inicio} - {h.hora_fin}
-                              </div>
-                            </div>
-                          </div>
-
-                          {/* Detalles */}
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-2 text-xs">
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <Users className="h-4 w-4" />
-                              <span>Grupo {h.grupo_codigo}</span>
-                            </div>
-                            <div className="flex items-center gap-2 text-muted-foreground">
-                              <MapPin className="h-4 w-4" />
-                              <span>{h.ambiente_codigo}</span>
-                            </div>
-                          </div>
-                        </div>
-                      </div>
-                    );
-                  })}
+      {view === "matriz" ? (
+        <>
+          <div className="overflow-x-auto">
+            <div className="min-w-[700px]">
+              <div className="grid grid-cols-7 gap-1 mb-1">
+                <div className="p-2 text-center text-sm font-semibold text-muted-foreground bg-muted rounded">
+                  Hora
                 </div>
-              </CardContent>
-            </Card>
-          ))}
-        </div>
+                {DIAS.map((dia, idx) => (
+                  <div 
+                    key={idx} 
+                    className="p-2 text-center text-sm font-semibold bg-primary text-primary-foreground rounded"
+                  >
+                    {dia}
+                  </div>
+                ))}
+              </div>
+
+              <div className="space-y-1">
+                {RANGOS_HORARIOS.map((rango) => {
+                  const horaInicio = rango.split(' - ')[0];
+                  return (
+                    <div key={rango} className="grid grid-cols-7 gap-1">
+                      <div className="p-2 text-xs font-mono text-muted-foreground bg-muted rounded flex items-center justify-center">
+                        {rango}
+                      </div>
+                      
+                      {DIAS.map((_, diaIndex) => {
+                        const horariosEnCelda = getHorariosEnCelda(diaIndex, horaInicio);
+                        
+                        return (
+                          <div 
+                            key={diaIndex} 
+                            className="relative min-h-[20px] border border-border rounded bg-card p-1"
+                          >
+                            {horariosEnCelda.map((horario) => {
+                              const colores = getColorPorCurso(horario.curso_nombre, cursosUnicos);
+                              
+                              return (
+                                <div
+                                  key={horario.id_asignacion}
+                                  className={cn(
+                                    "mb-0.5 p-1 rounded border-l-2 text-[10px]",
+                                    colores.bg,
+                                    colores.border,
+                                    colores.text
+                                  )}
+                                >
+                                  <div>{horario.ambiente_codigo}</div>
+                                  <div className="opacity-70">{horario.ciclo_nombre}</div>
+                                </div>
+                              );
+                            })}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
+          
+          <Card className="mt-4">
+            <CardHeader>
+              <CardTitle className="text-sm">Leyenda de Cursos</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+                {cursosUnicos.map((cursoNombre) => {
+                  const colores = getColorPorCurso(cursoNombre, cursosUnicos);
+                  return (
+                    <div key={cursoNombre} className="flex items-center gap-2">
+                      <div className={cn("w-4 h-4 rounded border", colores.bg, colores.border)}></div>
+                      <span className="text-xs">{cursoNombre}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            </CardContent>
+          </Card>
+        </>
       ) : (
-        /* Vista Lista */
         <Card>
           <CardHeader>
             <CardTitle className="text-base">Lista de Horarios</CardTitle>

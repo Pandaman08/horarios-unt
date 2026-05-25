@@ -45,14 +45,14 @@ export async function GET(req: NextRequest) {
             id_curso: true,
             codigo: true,
             nombre: true,
-            creditos: true
+            creditos: true,
+            ciclo_rel: true
           }
         },
         grupo: {
           select: {
             id_grupo: true,
-            codigo: true,
-            seccion: true
+            codigo_grupo: true
           }
         },
         ambiente: {
@@ -78,13 +78,14 @@ export async function GET(req: NextRequest) {
       id_ambiente: h.id_ambiente,
       curso_codigo: h.curso.codigo,
       curso_nombre: h.curso.nombre,
-      grupo_codigo: h.grupo.codigo,
+      grupo_codigo: h.grupo.codigo_grupo,
       ambiente_codigo: h.ambiente.codigo,
       ambiente_nombre: h.ambiente.nombre,
       tipo_clase: h.tipo_clase,
       dia_semana: h.dia_semana,
       hora_inicio: h.hora_inicio,
-      hora_fin: h.hora_fin
+      hora_fin: h.hora_fin,
+      ciclo_nombre: h.curso.ciclo_rel?.nombre || ""
     }));
 
     return NextResponse.json(horariosFormato);
