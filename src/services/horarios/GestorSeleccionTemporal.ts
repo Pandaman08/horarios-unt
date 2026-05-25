@@ -1,5 +1,6 @@
 import { prisma } from '@/lib/prisma';
 import { addMinutes } from 'date-fns';
+import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 
 export class GestorSeleccionTemporal {
   /**
@@ -69,7 +70,7 @@ export class GestorSeleccionTemporal {
   /**
    * Confirma todas las selecciones temporales de un docente en un periodo
    */
-  static async confirmarTodo(id_docente: number, id_periodo: number, usuario_id: number) {
+  static async confirmarTodo(id_docente: number, id_periodo: number, usuario_id: number, esAutomatico: boolean = false) {
     const temporales = await prisma.seleccionTemporalHorario.findMany({
       where: { id_docente, id_periodo }
     });
@@ -102,6 +103,29 @@ export class GestorSeleccionTemporal {
         where: { id_docente, id_periodo }
       });
 
+      return asignaciones;
+    }).then(async (asignaciones) => {
+      // Después de confirmar, cargar datos completos y programar notificaciones
+      for (const asignacion of asignaciones) {
+        const horarioCompleto = await prisma.horarioAsignado.findUnique({
+          where: { id_asignacion: asignacion.id_asignacion },
+          include: {
+            docente: true,
+            curso: true,
+            grupo: true,
+            ambiente: true,
+            periodo: true
+          }
+        });
+        
+        if (horarioCompleto) {
+          await ServicioNotificador.programarNotificacionesHorarioConfirmado(
+            horarioCompleto as any,
+            esAutomatico
+          );
+        }
+      }
+      
       return asignaciones;
     });
   }

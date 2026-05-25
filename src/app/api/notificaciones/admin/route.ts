@@ -6,7 +6,7 @@ import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificad
 
 export async function GET(request: Request) {
   const session = await getServerSession(authOptions);
-  if (!session || !['administrador_sistema', 'director_escuela'].includes(session.user.rol)) {
+  if (!session || !['administrador_sistema', 'director_escuela', 'operador_horarios', 'coordinador_academico'].includes(session.user.rol)) {
     return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
   }
 

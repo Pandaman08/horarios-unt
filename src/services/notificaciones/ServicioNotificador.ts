@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { ServicioCorreo } from './ServicioCorreo';
 import { ServicioTelegram } from './ServicioTelegram';
+import type { HorarioAsignado, Docente, Curso, Grupo, Ambiente, PeriodoAcademico } from '@prisma/client';
 
 export class ServicioNotificador {
   /**
@@ -251,5 +252,125 @@ export class ServicioNotificador {
         }
       });
     }
+  }
+
+  /**
+   * Programa notificaciones para docente cuando se confirma un horario
+   */
+  static async programarNotificacionesHorarioConfirmado(
+    horario: HorarioAsignado & {
+      docente: Docente;
+      curso: Curso;
+      grupo: Grupo;
+      ambiente: Ambiente;
+      periodo: PeriodoAcademico;
+    },
+    esAutomatico: boolean = false
+  ) {
+    const docente = horario.docente;
+    const ahora = new Date();
+
+    const replacePlaceholders = (text: string) => {
+      if (!text) return "";
+      const diasSemana = ['Domingo', 'Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+      return text
+        .split('{{nombre_docente}}').join(`${docente.nombres} ${docente.apellidos}`)
+        .split('{{nombre_curso}}').join(horario.curso.nombre)
+        .split('{{codigo_curso}}').join(horario.curso.codigo)
+        .split('{{grupo}}').join(horario.grupo.codigo_grupo)
+        .split('{{ambiente}}').join(`${horario.ambiente.codigo} - ${horario.ambiente.nombre}`)
+        .split('{{dia_semana}}').join(diasSemana[horario.dia_semana])
+        .split('{{hora_inicio}}').join(horario.hora_inicio)
+        .split('{{hora_fin}}').join(horario.hora_fin)
+        .split('{{periodo}}').join(horario.periodo.nombre);
+    };
+
+    // Obtener plantillas de la BD
+    const tipoNotificacion = esAutomatico ? 'horario_asignado_automatico' : 'horario_confirmado_manual';
+    const configs = await prisma.configuracionNotificaciones.findMany({
+      where: { tipo_notificacion: tipoNotificacion, activo: true }
+    });
+    const configCorreo = configs.find((conf: any) => conf.canal === 'correo');
+    const configTelegram = configs.find((conf: any) => conf.canal === 'telegram');
+
+    // Plantillas por defecto
+    const asuntoDefaultManual = 'Horario Confirmado - ' + horario.curso.nombre;
+    const htmlDefaultManual = `
+      <p>Hola {{nombre_docente}},</p>
+      <p>Tu horario ha sido confirmado exitosamente:</p>
+      <ul>
+        <li><strong>Curso:</strong> {{nombre_curso}} ({{codigo_curso}})</li>
+        <li><strong>Grupo:</strong> {{grupo}}</li>
+        <li><strong>Ambiente:</strong> {{ambiente}}</li>
+        <li><strong>Día:</strong> {{dia_semana}}</li>
+        <li><strong>Horario:</strong> {{hora_inicio}} - {{hora_fin}}</li>
+        <li><strong>Periodo:</strong> {{periodo}}</li>
+      </ul>
+      <p>Saludos,<br>Sistema de Horarios UNT</p>
+    `;
+
+    const textoDefaultManual = `✅ <b>HORARIO CONFIRMADO</b>\n\nHola {{nombre_docente}},\nTu horario ha sido confirmado:\n\n📚 Curso: {{nombre_curso}} ({{codigo_curso}})\n👥 Grupo: {{grupo}}\n🏢 Ambiente: {{ambiente}}\n📅 Día: {{dia_semana}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n📆 Periodo: {{periodo}}\n\n<i>Sistema de Horarios UNT</i>`;
+
+    const asuntoDefaultAutomatico = 'Horario Asignado Automáticamente - ' + horario.curso.nombre;
+    const htmlDefaultAutomatico = `
+      <p>Hola {{nombre_docente}},</p>
+      <p>Se te ha asignado un horario automáticamente:</p>
+      <ul>
+        <li><strong>Curso:</strong> {{nombre_curso}} ({{codigo_curso}})</li>
+        <li><strong>Grupo:</strong> {{grupo}}</li>
+        <li><strong>Ambiente:</strong> {{ambiente}}</li>
+        <li><strong>Día:</strong> {{dia_semana}}</li>
+        <li><strong>Horario:</strong> {{hora_inicio}} - {{hora_fin}}</li>
+        <li><strong>Periodo:</strong> {{periodo}}</li>
+      </ul>
+      <p>Si necesitas realizar cambios, por favor contacta al personal administrativo.</p>
+      <p>Saludos,<br>Sistema de Horarios UNT</p>
+    `;
+
+    const textoDefaultAutomatico = `🔔 <b>HORARIO ASIGNADO AUTOMÁTICAMENTE</b>\n\nHola {{nombre_docente}},\nSe te ha asignado un horario:\n\n📚 Curso: {{nombre_curso}} ({{codigo_curso}})\n👥 Grupo: {{grupo}}\n🏢 Ambiente: {{ambiente}}\n📅 Día: {{dia_semana}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n📆 Periodo: {{periodo}}\n\nSi necesitas cambios, contacta al personal administrativo.\n\n<i>Sistema de Horarios UNT</i>`;
+
+    const asuntoDefault = esAutomatico ? asuntoDefaultAutomatico : asuntoDefaultManual;
+    const htmlDefault = esAutomatico ? htmlDefaultAutomatico : htmlDefaultManual;
+    const textoDefault = esAutomatico ? textoDefaultAutomatico : textoDefaultManual;
+
+    // Preferencias del docente
+    const preferencias = await prisma.preferenciasNotificacionDocente.findMany({
+      where: { id_docente: docente.id_docente, activo: true }
+    });
+
+    // Enviar por Correo
+    const preferenciaCorreo = preferencias.find(p => p.canal === 'correo');
+    if (preferenciaCorreo) {
+      await prisma.colaNotificaciones.create({
+        data: {
+          id_docente: docente.id_docente,
+          tipo_notificacion: tipoNotificacion,
+          canal: 'correo',
+          fecha_programada: ahora,
+          datos_mensaje: {
+            asunto: configCorreo?.configuracion_adicional?.asunto || asuntoDefault,
+            html: replacePlaceholders(configCorreo?.plantilla_mensaje || htmlDefault)
+          }
+        }
+      });
+    }
+
+    // Enviar por Telegram
+    const preferenciaTelegram = preferencias.find(p => p.canal === 'telegram' && p.verificado);
+    if (preferenciaTelegram) {
+      await prisma.colaNotificaciones.create({
+        data: {
+          id_docente: docente.id_docente,
+          tipo_notificacion: tipoNotificacion,
+          canal: 'telegram',
+          fecha_programada: ahora,
+          datos_mensaje: {
+            texto: replacePlaceholders(configTelegram?.plantilla_mensaje || textoDefault)
+          }
+        }
+      });
+    }
+
+    console.log(`[Notificador] Programadas notificaciones de horario confirmado para docente ${docente.id_docente}`);
   }
 }
