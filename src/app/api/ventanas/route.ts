@@ -19,9 +19,23 @@ export async function GET(request: Request) {
       orderBy: { orden_prioridad: 'asc' }
     });
 
-    // Obtener docentes para asociar con las ventanas
+    // Obtener docentes para asociar con las ventanas (solo los que tienen grupos en el período)
     const docentes = await prisma.docente.findMany({
-      where: { activo: true },
+      where: { 
+        activo: true,
+        docente_cursos: {
+          some: {
+            activo: true,
+            curso: {
+              grupos: {
+                some: {
+                  id_periodo: parseInt(id_periodo)
+                }
+              }
+            }
+          }
+        }
+      },
       orderBy: [
         { modalidad: 'desc' }, // Nombrado primero
         { categoria: 'desc' }, // Principal primero

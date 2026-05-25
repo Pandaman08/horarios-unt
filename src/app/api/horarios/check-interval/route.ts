@@ -61,16 +61,27 @@ export async function GET() {
         }
       });
 
-      if (horariosConfirmados.length > 0 && horariosPendientes.length === 0) {
-        return NextResponse.json({ 
-          tieneAcceso: true, 
-          soloLectura: true,
-          mensaje: 'Viendo horario confirmado' 
-        });
-      }
+      let segundosRestantes = null;
+      let mensaje = '';
+      let soloLectura = false;
 
+      // Primero checar la ventana (siempre!)
       const docentesOrdenados = await prisma.docente.findMany({
-        where: { activo: true },
+        where: { 
+          activo: true,
+          docente_cursos: {
+            some: {
+              activo: true,
+              curso: {
+                grupos: {
+                  some: {
+                    id_periodo: periodoActivo.id_periodo
+                  }
+                }
+              }
+            }
+          }
+        },
         orderBy: [
           { modalidad: 'desc' },
           { categoria: 'desc' },
@@ -84,42 +95,54 @@ export async function GET() {
         orderBy: { orden_prioridad: 'asc' }
       });
 
-      if (indexDocente === -1 || ventanas.length <= indexDocente) {
+      if (indexDocente !== -1 && ventanas.length > indexDocente) {
+        const ventanaDocente = ventanas[indexDocente];
+        const ahora = new Date();
+        const fechaInicio = new Date(ventanaDocente.fecha);
+        const [horasInicio, minutosInicio] = ventanaDocente.hora_inicio.split(':').map(Number);
+        const [horasFin, minutosFin] = ventanaDocente.hora_fin.split(':').map(Number);
+        
+        fechaInicio.setHours(horasInicio, minutosInicio, 0, 0);
+        const fechaFin = new Date(fechaInicio);
+        fechaFin.setHours(horasFin, minutosFin, 0, 0);
+
+        if (ahora < fechaInicio) {
+          mensaje = `Tu ventana empieza a las ${ventanaDocente.hora_inicio}`;
+          soloLectura = true;
+          segundosRestantes = null;
+        } else if (ahora >= fechaInicio && ahora <= fechaFin) {
+          mensaje = 'Es tu turno! Edita tu horario';
+          soloLectura = false;
+          segundosRestantes = Math.floor((fechaFin.getTime() - ahora.getTime()) / 1000);
+        } else {
+          mensaje = 'Tu ventana ya terminó';
+          soloLectura = true;
+          segundosRestantes = 0;
+        }
+      } else {
+        mensaje = 'No tienes ventana asignada';
+        soloLectura = true;
+        segundosRestantes = null;
+      }
+
+      // Ahora checar horarios confirmados
+      if (horariosConfirmados.length > 0 && horariosPendientes.length === 0 && segundosRestantes === 0) {
         return NextResponse.json({ 
           tieneAcceso: true, 
           soloLectura: true,
-          mensaje: 'No tienes ventana asignada' 
+          mensaje: 'Viendo horario confirmado' 
         });
       }
 
-      const ventanaDocente = ventanas[indexDocente];
-      const ahora = new Date();
-      const fechaInicio = new Date(ventanaDocente.fecha);
-      const [horasInicio, minutosInicio] = ventanaDocente.hora_inicio.split(':').map(Number);
-      const [horasFin, minutosFin] = ventanaDocente.hora_fin.split(':').map(Number);
-      
-      fechaInicio.setHours(horasInicio, minutosInicio, 0, 0);
-      const fechaFin = new Date(fechaInicio);
-      fechaFin.setHours(horasFin, minutosFin, 0, 0);
-
-      let segundosRestantes = null;
-      let mensaje = '';
-      let soloLectura = false;
-
-      if (ahora < fechaInicio) {
-        mensaje = `Tu ventana empieza a las ${ventanaDocente.hora_inicio}`;
-        soloLectura = true;
-        // NO mostramos tiempo restante si aún no es la hora
-        segundosRestantes = null;
-      } else if (ahora >= fechaInicio && ahora <= fechaFin) {
-        mensaje = 'Es tu turno! Edita tu horario';
-        soloLectura = false;
-        // Sí mostramos el tiempo restante de SU ventana
-        segundosRestantes = Math.floor((fechaFin.getTime() - ahora.getTime()) / 1000);
-      } else {
-        mensaje = 'Tu ventana ya terminó';
-        soloLectura = true;
-        segundosRestantes = 0;
+      // Si no hay horarios generados aún, pero es su ventana, permitir editar
+      if (horariosGenerados === 0) {
+        return NextResponse.json({ 
+          tieneAcceso: true, 
+          soloLectura: soloLectura,
+          mensaje: mensaje || 'Selecciona tus horarios',
+          modo: 'edicion',
+          segundos_restantes: segundosRestantes
+        });
       }
 
       if (horariosPendientes.length > 0) {
@@ -134,8 +157,9 @@ export async function GET() {
 
       return NextResponse.json({ 
         tieneAcceso: true, 
-        soloLectura: true,
-        mensaje: 'Horario confirmado automáticamente' 
+        soloLectura: soloLectura,
+        mensaje: mensaje || 'Horario confirmado automáticamente',
+        segundos_restantes: segundosRestantes
       });
     }
 

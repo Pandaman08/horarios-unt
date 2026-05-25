@@ -46,9 +46,6 @@ export default async function DashboardPage() {
               </div>
             </div>
           </div>
-          <div className="w-full sm:w-auto">
-            <CountdownTimer variant="card" />
-          </div>
         </div>
 
         <div className="space-y-3">

@@ -424,12 +424,10 @@ export default function SeleccionHorariosPage() {
         <main className="flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
           <div className="max-w-[1600px] mx-auto p-6 space-y-6">
             
-            {hayHorariosGenerados && !modoEdicionManual ? (
-              <>
-                <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
                   <div className="flex items-center gap-6">
-                    <div className="h-16 w-16 bg-emerald-50 rounded-2xl flex items-center justify-center ring-4 ring-emerald-50/30 shadow-sm">
-                      <CheckCircle className="h-8 w-8 text-emerald-600" />
+                    <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center ring-4 ring-indigo-50/30 shadow-sm">
+                      <User className="h-8 w-8 text-[#1a237e]" />
                     </div>
                     <div>
                       <h2 className="text-2xl font-bold text-slate-800 tracking-tight leading-none mb-2">
@@ -444,88 +442,6 @@ export default function SeleccionHorariosPage() {
                             Horario Confirmado
                           </span>
                         )}
-                      </div>
-                    </div>
-                  </div>
-
-                  <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
-                    {!yaConfirmo && (
-                      <>
-                        <Button 
-                          variant="outline"
-                          onClick={handleActivarEdicion}
-                          className="h-10 px-6 border border-slate-200 text-[#1a237e] hover:bg-slate-50 rounded-xl font-bold transition-all text-xs whitespace-nowrap"
-                        >
-                          <Settings2 className="mr-2 h-4 w-4" /> Editar Horario
-                        </Button>
-                        <Dialog>
-                          <DialogTrigger asChild>
-                            <Button 
-                              disabled={loadingConfirm || soloLectura}
-                              className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
-                            >
-                              <CheckCircle className="mr-2 h-4 w-4" /> 
-                              {soloLectura ? "Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Horario")}
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent className="bg-white rounded-2xl border-none shadow-2xl sm:max-w-[450px] p-8">
-                            <DialogHeader className="space-y-4">
-                              <div className="h-12 w-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-2">
-                                <CheckCircle className="h-6 w-6 text-emerald-600" />
-                              </div>
-                              <DialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">¿Confirmar Horario?</DialogTitle>
-                              <DialogDescription className="text-slate-500 font-medium text-base leading-relaxed">
-                                El horario ha sido generado automáticamente. Al confirmar, se volverá <span className="font-bold text-emerald-600">definitivo</span>. 
-                                <br /><br />
-                                Si necesita hacer cambios, use el botón "Editar Horario".
-                              </DialogDescription>
-                            </DialogHeader>
-                            <DialogFooter className="gap-3 sm:justify-end mt-8">
-                              <DialogClose asChild>
-                                <Button type="button" variant="ghost" className="rounded-xl font-bold text-slate-400 hover:bg-slate-50">
-                                  Revisar de nuevo
-                                </Button>
-                              </DialogClose>
-                              <DialogClose asChild>
-                                <Button 
-                                  onClick={confirmarTodo}
-                                  className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-8"
-                                >
-                                  Sí, confirmar ahora
-                                </Button>
-                              </DialogClose>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
-                      </>
-                    )}
-                    {yaConfirmo && (
-                      <span className="inline-flex items-center bg-indigo-50 text-indigo-700 font-bold text-xs px-4 py-2 rounded-xl border border-indigo-100">
-                        <CheckCircle className="mr-2 h-4 w-4" /> Horario Confirmado
-                      </span>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                  <MiHorarioDocenteView />
-                </div>
-              </>
-            ) : (
-              <>
-                <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                  <div className="flex items-center gap-6">
-                    <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center ring-4 ring-indigo-50/30 shadow-sm">
-                      <User className="h-8 w-8 text-[#1a237e]" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-slate-800 tracking-tight leading-none mb-2">
-                        {session?.user?.name}
-                      </h2>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="inline-flex items-center bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-100">
-                          Docente UNT
-                        </span>
                         {modoEdicionManual && (
                           <span className="inline-flex items-center bg-amber-50 text-amber-700 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-amber-100">
                             Modo Edición
@@ -534,9 +450,61 @@ export default function SeleccionHorariosPage() {
                       </div>
                     </div>
                   </div>
+                  {!yaConfirmo && (
+                    <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
+                      <Dialog>
+                        <DialogTrigger asChild>
+                          <Button 
+                            disabled={loadingConfirm || soloLectura}
+                            className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
+                          >
+                            <CheckCircle className="mr-2 h-4 w-4" /> 
+                            {soloLectura ? "Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Horario")}
+                          </Button>
+                        </DialogTrigger>
+                        <DialogContent className="bg-white rounded-2xl border-none shadow-2xl sm:max-w-[450px] p-8">
+                          <DialogHeader className="space-y-4">
+                            <div className="h-12 w-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-2">
+                              <CheckCircle className="h-6 w-6 text-emerald-600" />
+                            </div>
+                            <DialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">¿Confirmar Horario?</DialogTitle>
+                            <DialogDescription className="text-slate-500 font-medium text-base leading-relaxed">
+                              Al confirmar, tu horario se volverá <span className="font-bold text-emerald-600">definitivo</span>.
+                            </DialogDescription>
+                          </DialogHeader>
+                          <DialogFooter className="gap-3 sm:justify-end mt-8">
+                            <DialogClose asChild>
+                              <Button type="button" variant="ghost" className="rounded-xl font-bold text-slate-400 hover:bg-slate-50">
+                                Revisar de nuevo
+                              </Button>
+                            </DialogClose>
+                            <DialogClose asChild>
+                              <Button 
+                                onClick={confirmarTodo}
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-8"
+                              >
+                                Sí, confirmar ahora
+                              </Button>
+                            </DialogClose>
+                          </DialogFooter>
+                        </DialogContent>
+                      </Dialog>
+                    </div>
+                  )}
+                  {yaConfirmo && (
+                    <span className="inline-flex items-center bg-indigo-50 text-indigo-700 font-bold text-xs px-4 py-2 rounded-xl border border-indigo-100">
+                      <CheckCircle className="mr-2 h-4 w-4" /> Horario Confirmado
+                    </span>
+                  )}
                 </div>
 
-                <div className="flex flex-col xl:flex-row gap-6 items-stretch">
+                {hayHorariosGenerados && !modoEdicionManual && yaConfirmo && (
+                  <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mt-6">
+                    <MiHorarioDocenteView />
+                  </div>
+                )}
+
+                <div className="flex flex-col xl:flex-row gap-6 items-stretch mt-6">
                   <div className="flex-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
                     <ProgresoCursos 
                       cursos={cursosProgreso}
@@ -617,7 +585,7 @@ export default function SeleccionHorariosPage() {
                   </div>
                 </div>
 
-                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm min-h-[600px] relative overflow-hidden">
+                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm min-h-[600px] relative overflow-hidden mt-6">
                   {(!idGrupo || !idAmbiente) ? (
                     <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center bg-white/80 backdrop-blur-sm rounded-2xl z-10">
                       <div className="h-20 w-20 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
@@ -649,8 +617,6 @@ export default function SeleccionHorariosPage() {
                     </div>
                   )}
                 </div>
-              </>
-            )}
           </div>
         </main>
       </div>

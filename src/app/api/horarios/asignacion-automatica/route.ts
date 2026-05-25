@@ -54,13 +54,36 @@ export async function POST(request: Request) {
     console.log("📋 Obteniendo docentes y ambientes...");
     const [docentes, ambientes] = await Promise.all([
       prisma.docente.findMany({
-        where: { activo: true },
+        where: { 
+          activo: true,
+          docente_cursos: {
+            some: {
+              activo: true,
+              curso: {
+                grupos: {
+                  some: {
+                    id_periodo: parseInt(id_periodo)
+                  }
+                }
+              }
+            }
+          }
+        },
         include: {
           disponibilidad: {
             where: { id_periodo: parseInt(id_periodo), disponible: true }
           },
           docente_cursos: {
-            where: { activo: true },
+            where: { 
+              activo: true,
+              curso: {
+                grupos: {
+                  some: {
+                    id_periodo: parseInt(id_periodo)
+                  }
+                }
+              }
+            },
             include: { curso: true }
           }
         }
