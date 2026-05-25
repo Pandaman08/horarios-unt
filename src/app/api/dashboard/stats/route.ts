@@ -32,21 +32,41 @@ export async function GET(request: Request) {
       orderBy: { orden_prioridad: 'asc' },
     });
 
-    const [totalDocentes, docentesAtendidos, totalAsignacionesHoy, totalConflictos] = await Promise.all([
-      prisma.docente.count({ where: { activo: true } }),
-      prisma.horarioAsignado.groupBy({
-        by: ['id_docente'],
-        where: { id_periodo },
-      }).then((r: any[]) => r.length),
-      prisma.horarioAsignado.count({ where: { id_periodo } }),
-      prisma.conflictoHorario.count({
-        where: { id_periodo, resuelto: false },
-      }),
-    ]);
+    // ================== NUEVA LOGICA ==================
+    
+    // 1. Obtener docentes que tienen grupos en el período actual
+    const gruposEnPeriodo = await prisma.grupo.findMany({
+      where: { id_periodo },
+      include: { curso: { include: { docente_cursos: true } } }
+    });
+
+    const docentesIdsConGrupos = new Set<number>();
+    gruposEnPeriodo.forEach(g => {
+      g.curso.docente_cursos.forEach(dc => {
+        docentesIdsConGrupos.add(dc.id_docente);
+      });
+    });
+
+    const totalDocentesEnPeriodo = docentesIdsConGrupos.size;
+
+    // 2. Obtener docentes que ya tienen horarios en el período
+    const docentesConHorarios = await prisma.horarioAsignado.groupBy({
+      by: ['id_docente'],
+      where: { id_periodo },
+    });
+
+    const docentesAtendidos = docentesConHorarios.length;
+
+    // ================== FIN NUEVA LOGICA ==================
+
+    const totalAsignacionesHoy = await prisma.horarioAsignado.count({ where: { id_periodo } });
+    const totalConflictos = await prisma.conflictoHorario.count({
+      where: { id_periodo, resuelto: false },
+    });
 
     const docentesPorGrupo = await prisma.docente.groupBy({
       by: ['modalidad', 'categoria'],
-      where: { activo: true },
+      where: { activo: true, id_docente: { in: Array.from(docentesIdsConGrupos) } },
       _count: { id_docente: true },
     });
 
@@ -133,7 +153,7 @@ export async function GET(request: Request) {
     });
 
     const porcentajeAvance =
-      totalDocentes > 0 ? Math.round((docentesAtendidos / totalDocentes) * 100) : 0;
+      totalDocentesEnPeriodo > 0 ? Math.round((docentesAtendidos / totalDocentesEnPeriodo) * 100) : 0;
 
     const ventanaLabel = ventanaActiva
       ? formatVentanaCategoria(ventanaActiva.modalidad, ventanaActiva.categoria)
@@ -153,7 +173,7 @@ export async function GET(request: Request) {
           }
         : { nombre: 'Sin ventana activa', hora_fin: null, activa: false, porcentajeAvance },
       kpis: {
-        totalDocentes,
+        totalDocentes: totalDocentesEnPeriodo, // NUEVO: solo docentes con grupos en el período
         docentesAtendidos,
         asignacionesRealizadas: totalAsignacionesHoy,
         conflictosPendientes: totalConflictos,

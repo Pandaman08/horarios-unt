@@ -23,6 +23,13 @@ export async function POST(request: Request) {
           id_periodo: parseInt(id_periodo)
         }
       });
+      
+      // 3. Eliminar las ventanas de tiempo para el periodo
+      await tx.ventanaAtencion.deleteMany({
+        where: {
+          id_periodo: parseInt(id_periodo)
+        }
+      });
     });
 
     return NextResponse.json({ 

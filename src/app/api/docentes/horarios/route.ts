@@ -1,9 +1,9 @@
-import { NextRequest, NextResponse } from "next/server";
+import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 
-export async function GET(req: NextRequest) {
+export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
     if (!session?.user?.id_usuario) {
@@ -13,12 +13,31 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    const periodoId = req.nextUrl.searchParams.get("periodoId");
+    const { searchParams } = new URL(request.url);
+    const periodoId = searchParams.get("periodoId");
+    
     if (!periodoId) {
       return NextResponse.json(
         { error: "periodoId requerido" },
         { status: 400 }
       );
+    }
+    
+    // VALIDAR QUE EL PERÍODO ESTÉ ACTIVO
+    const periodo = await prisma.periodoAcademico.findUnique({
+      where: { id_periodo: parseInt(periodoId) }
+    });
+    
+    if (!periodo) {
+      return NextResponse.json(
+        { error: "Período no encontrado" },
+        { status: 404 }
+      );
+    }
+    
+    if (!periodo.activo) {
+      // SI EL PERÍODO NO ESTÁ ACTIVO, DEVOLVER LISTA VACÍA
+      return NextResponse.json([]);
     }
 
     // Buscar el docente por el id_usuario de la sesión

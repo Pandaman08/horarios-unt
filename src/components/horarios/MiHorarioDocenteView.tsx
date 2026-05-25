@@ -88,9 +88,28 @@ export function MiHorarioDocenteView() {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
 
+  // LIMPIAR TODO LOCALSTORAGE Y ESTADO VIEJO AL INICIAR
+  useEffect(() => {
+    localStorage.clear();
+  }, []);
+
   useEffect(() => {
     fetchPeriodos();
   }, []);
+
+  // NUEVO: Actualizar si el período seleccionado ya no está en la lista de activos
+  useEffect(() => {
+    if (periodos.length > 0 && selectedPeriodo) {
+      const periodoSeleccionadoExiste = periodos.find(
+        (p: any) => p.id_periodo.toString() === selectedPeriodo
+      );
+      
+      if (!periodoSeleccionadoExiste) {
+        // Si el período no está activo, seleccionar el primero de la lista
+        setSelectedPeriodo(periodos[0].id_periodo.toString());
+      }
+    }
+  }, [periodos, selectedPeriodo]);
 
   useEffect(() => {
     if (selectedPeriodo) {
@@ -102,9 +121,15 @@ export function MiHorarioDocenteView() {
     try {
       const res = await fetch("/api/periodos");
       const data = await res.json();
-      setPeriodos(Array.isArray(data) ? data : []);
-      if (data.length > 0) {
-        setSelectedPeriodo(data[0].id_periodo.toString());
+      
+      // FILTRAR SOLO LOS PERÍODOS ACTIVOS
+      const periodosActivos = (Array.isArray(data) ? data : []).filter((p: any) => p.activo === true);
+      
+      setPeriodos(periodosActivos);
+      
+      // SIEMPRE SELECCIONAR EL PRIMER PERÍODO ACTIVO (nunca mantener un período inactivo)
+      if (periodosActivos.length > 0) {
+        setSelectedPeriodo(periodosActivos[0].id_periodo.toString());
       }
     } catch {
       toast.error("Error al cargar periodos");

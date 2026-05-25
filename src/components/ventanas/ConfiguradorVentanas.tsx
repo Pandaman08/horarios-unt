@@ -93,6 +93,9 @@ export function ConfiguradorVentanas() {
     modo: string;
   } | null>(null);
   const [tiempoRestante, setTiempoRestante] = useState<number | null>(null);
+  
+  // Estado para ventanas de docentes creadas
+  const [ventanasDocentes, setVentanasDocentes] = useState<any[]>([]);
 
   useEffect(() => {
     fetchData();
@@ -151,8 +154,16 @@ export function ConfiguradorVentanas() {
     try {
       const res = await fetch(`/api/ventanas?id_periodo=${selectedPeriodo}`);
       const data = await res.json();
+      
+      // Cargar ventanas normales (para la sección original)
       setVentanas(Array.isArray(data) ? data : []);
+      
+      // También cargar ventanas de docentes si hay
+      if (data.ventanas && Array.isArray(data.ventanas)) {
+        setVentanasDocentes(data.ventanas);
+      }
     } catch (error) {
+      console.error("Error al cargar ventanas:", error);
       toast.error("Error al cargar ventanas");
     }
   };
@@ -234,6 +245,7 @@ export function ConfiguradorVentanas() {
       toast.success(data.message || "Horarios reseteados exitosamente!");
       setIntervaloActivo(null);
       setTiempoRestante(null);
+      setVentanasDocentes([]);
       
     } catch (error: any) {
       console.error("Error al resetear horarios:", error);
@@ -294,12 +306,20 @@ export function ConfiguradorVentanas() {
       const data = await res.json();
       console.log("✅ Datos recibidos de la API:", data);
       
+      // Guardar ventanas de docentes si hay
+      if (data.ventanas_creadas && data.ventanas_creadas.length > 0) {
+        setVentanasDocentes(data.ventanas_creadas);
+      }
+      
       setLogsGeneracion(prev => [
         ...prev,
         `✅ ${data.message}`,
         `📋 Docentes procesados: ${data.docentes_count}`,
         `⏰ Horarios creados: ${data.horarios_creados || 0}`,
         `⏳ Modo: ${data.modo === "automatico" ? "Completamente automático" : "Con intervalo para cambios"}`,
+        data.ventanas_creadas && data.ventanas_creadas.length > 0 
+          ? `📋 Ventanas de tiempo creadas: ${data.ventanas_creadas.length}`
+          : '',
       ]);
 
       // Simulamos el procesamiento docente por docente para mostrar progreso
@@ -334,15 +354,20 @@ export function ConfiguradorVentanas() {
       
       setProgresoGeneracion(100);
       
-      // Si el modo es con intervalo, establecemos el timer
+      // Si el modo es con intervalo, establecemos el timer y guardamos en localStorage
       if (modoGeneracion === "intervalo" && data.fecha_fin_intervalo) {
-        setIntervaloActivo({
+        const intervaloData = {
           fecha_inicio: data.fecha_inicio,
           fecha_fin_intervalo: data.fecha_fin_intervalo,
           intervalo_minutos: data.intervalo_minutos,
-          modo: "intervalo"
-        });
+          modo: "intervalo",
+          id_periodo: selectedPeriodo
+        };
         
+        // Guardar en localStorage para que los docentes lo vean
+        localStorage.setItem('intervalo_horarios', JSON.stringify(intervaloData));
+        
+        setIntervaloActivo(intervaloData);
         setTiempoRestante(data.intervalo_minutos * 60);
         setLogsGeneracion(prev => [
           ...prev,
@@ -352,6 +377,11 @@ export function ConfiguradorVentanas() {
       }
       
       toast.success("Generación de horarios completada!");
+      
+      // Cargar las ventanas desde la BD para mostrarlas en la lista
+      setTimeout(() => {
+        fetchVentanas();
+      }, 500);
       
     } catch (error: any) {
       console.error("Error al generar horarios:", error);
@@ -543,6 +573,61 @@ export function ConfiguradorVentanas() {
               <div className="flex flex-col items-center gap-2.5">
                 <div className="h-9 w-9 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
                 <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Sincronizando...</p>
+              </div>
+            </div>
+          ) : ventanasDocentes.length > 0 ? (
+            <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-3 border-b border-border flex items-center gap-2.5 bg-emerald-50">
+                <CalendarIcon className="h-4 w-4 text-emerald-600" />
+                <h3 className="font-bold text-emerald-800 text-sm">Ventanas de Tiempo para Docentes</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <Table className="w-full">
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="border-none hover:bg-transparent">
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Prioridad</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Docente</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Modalidad</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Categoría</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Hora Inicio</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Hora Fin</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ventanasDocentes.map((ventana, idx) => (
+                      <TableRow key={ventana.id_ventana || idx} className="group border-b border-border hover:bg-muted/50 transition-all">
+                        <TableCell className="px-4 py-3">
+                          <span className="font-bold text-primary text-[11px]">#{ventana.orden_prioridad}</span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="font-bold text-foreground text-[11px]">
+                            {ventana.docente?.nombres} {ventana.docente?.apellidos}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                            {ventana.modalidad}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                            {ventana.categoria}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="font-mono text-[11px] font-bold text-emerald-600">
+                            {ventana.hora_inicio}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="font-mono text-[11px] font-bold text-red-600">
+                            {ventana.hora_fin}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           ) : ventanas.length === 0 ? (

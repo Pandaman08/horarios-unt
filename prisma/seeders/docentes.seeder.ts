@@ -495,18 +495,7 @@ export async function seedDocentes(prisma: PrismaClient) {
       categoria: 'auxiliar',
       grado: null,
       especialidad: 'Derecho',
-    },
-    {
-      nombres: 'Jorge Paul',
-      apellidos: 'Cotrina Castellanos',
-      dni: null,
-      telefono: null,
-      fecha_ingreso: new Date('2019-03-01'),
-      modalidad: 'contratado',
-      categoria: 'auxiliar',
-      grado: null,
-      especialidad: 'Ingeniería de Sistemas',
-    },
+    }
   ];
 
   let contadorDniDefault = 1;

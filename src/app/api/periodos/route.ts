@@ -3,9 +3,14 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
+    // OBTENER SOLO LOS PERÍODOS ACTIVOS Y EN ESTADO CORRECTO
     const periodos = await prisma.periodoAcademico.findMany({
-      where: { activo: true },
-      orderBy: { codigo: 'desc' }
+      where: { 
+        activo: true 
+      },
+      orderBy: { 
+        id_periodo: 'desc' 
+      }
     });
     return NextResponse.json(periodos);
   } catch (error) {
