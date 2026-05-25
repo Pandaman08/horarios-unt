@@ -16,6 +16,8 @@ export async function PUT(
       const usuario = await tx.usuario.update({
         where: { id_usuario: idNumber },
         data: {
+          codigo: data.dni || data.codigo,
+          dni: data.dni,
           nombres: data.nombres,
           apellidos: data.apellidos,
           correo_electronico: data.correo_electronico,
@@ -30,6 +32,7 @@ export async function PUT(
         await tx.docente.upsert({
           where: { id_usuario: idNumber },
           update: {
+            dni: data.dni,
             nombres: data.nombres,
             apellidos: data.apellidos,
             correo_electronico: data.correo_electronico,
@@ -37,12 +40,13 @@ export async function PUT(
             modalidad: data.modalidad,
             especialidad: data.especialidad,
             grado_academico: data.grado_academico,
-            antiguedad: parseInt(data.antiguedad) || 0,
+            fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
             activo: data.activo
           },
           create: {
             id_usuario: idNumber,
-            codigo_docente: usuario.codigo,
+            codigo_docente: `${data.nombres.charAt(0).toLowerCase()}${data.dni}`,
+            dni: data.dni,
             nombres: data.nombres,
             apellidos: data.apellidos,
             correo_electronico: data.correo_electronico,
@@ -50,7 +54,7 @@ export async function PUT(
             modalidad: data.modalidad || 'contratado',
             especialidad: data.especialidad || '',
             grado_academico: data.grado_academico || '',
-            antiguedad: parseInt(data.antiguedad) || 0,
+            fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
             activo: data.activo
           }
         });

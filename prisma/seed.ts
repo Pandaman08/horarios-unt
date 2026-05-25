@@ -10,6 +10,7 @@ import { seedDocenteCurso } from './seeders/docente_curso.seeder';
 import { seedCursoAmbiente } from './seeders/curso_ambiente.seeder';
 import { seedGrupos } from './seeders/grupos.seeder';
 import { seedHorarios } from './seeders/horarios.seeder';
+import { seedDisponibilidad } from './seeders/disponibilidad.seeder';
 
 const prisma = new PrismaClient();
 
@@ -58,6 +59,7 @@ async function main() {
     await seedDocenteCurso(prisma);
     await seedCursoAmbiente(prisma);
     await seedGrupos(prisma);
+    await seedDisponibilidad(prisma);  // Disponibilidad de docentes
     await seedHorarios(prisma);     // Usa los períodos creados en seedPeriodos
 
     console.log('--- Seed completado con éxito ---');

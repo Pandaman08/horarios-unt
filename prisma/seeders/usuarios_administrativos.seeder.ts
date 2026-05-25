@@ -19,8 +19,8 @@ export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
 
   // 1. Administrador general del sistema
   const adminData = {
-    nombres: 'Administrador',
-    apellidos: 'Sistema',
+    nombres: 'ADMINISTRADOR',
+    apellidos: 'SISTEMA',
     dni: '00000000',
     correo: 'admin@unitru.edu.pe',
     rol: 'administrador_sistema',
@@ -31,7 +31,7 @@ export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
     where: { correo_electronico: adminData.correo },
     update: {},
     create: {
-      codigo: 'ADMIN_SISTEMA',
+      codigo: adminData.dni,
       nombres: adminData.nombres,
       apellidos: adminData.apellidos,
       dni: adminData.dni,
@@ -45,22 +45,22 @@ export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
   // 2. Personal administrativo de la escuela de sistemas (según página web)
   const administrativos = [
     {
-      nombres: 'Deivis Alexander',
-      apellidos: 'Valeriano Rodriguez',
+      nombres: 'DEIVIS ALEXANDER',
+      apellidos: 'VALERIANO RODRIGUEZ',
       dni: null, // no se tiene
       cargo: 'Administrador de Centro de Cómputo',
       rol: 'operador_horarios',
     },
     {
-      nombres: 'Jeancarlos Josue',
-      apellidos: 'Ramirez Garcia',
+      nombres: 'JEANCARLOS JOSUE',
+      apellidos: 'RAMIREZ GARCIA',
       dni: null,
       cargo: 'Administrador de Centro de Cómputo',
       rol: 'operador_horarios',
     },
     {
-      nombres: 'Doris Elizabeth',
-      apellidos: 'Briones Heras',
+      nombres: 'DORIS ELIZABETH',
+      apellidos: 'BRIONES HERAS',
       dni: null,
       cargo: 'Secretaria de Escuela',
       rol: 'operador_horarios',
@@ -82,7 +82,7 @@ export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
         rol: admin.rol,
       },
       create: {
-        codigo: `ADM_${admin.apellidos.replace(/\s/g, '')}_${admin.nombres.split(' ')[0]}`,
+        codigo: dni,
         nombres: admin.nombres,
         apellidos: admin.apellidos,
         dni,

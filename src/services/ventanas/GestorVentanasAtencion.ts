@@ -230,6 +230,26 @@ export class GestorVentanasAtencion {
 
     if (!docente) return { tieneAcceso: false, mensaje: "Docente no encontrado" };
 
+    // PRIMERO: Verificar si el docente ya tiene horarios confirmados o asignados
+    // Si tiene horarios, permitir acceso en modo solo lectura para verlos
+    const horariosConfirmados = await prisma.horarioAsignado.findMany({
+      where: {
+        id_docente: id_docente,
+        estado: {
+          in: ["confirmado", "definitivo", "asignado", "publicado"]
+        }
+      },
+      take: 1
+    });
+
+    if (horariosConfirmados.length > 0) {
+      return { 
+        tieneAcceso: true, 
+        soloLectura: true,
+        mensaje: "Viendo horario confirmado" 
+      };
+    }
+
     const ahora = new Date();
     const horaActual = format(ahora, 'HH:mm');
     

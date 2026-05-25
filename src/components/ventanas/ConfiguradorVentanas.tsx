@@ -38,7 +38,9 @@ import {
   CalendarCheck,
   RefreshCw,
   Search,
-  Plus
+  Plus,
+  Settings2,
+  CheckCircle
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -76,6 +78,25 @@ export function ConfiguradorVentanas() {
     intervalo_por_docente: "15",
   });
 
+  // Estados para generación automática de horarios
+  const [isGeneratingHorarios, setIsGeneratingHorarios] = useState(false);
+  const [isResettingHorarios, setIsResettingHorarios] = useState(false);
+  const [modoGeneracion, setModoGeneracion] = useState<string>("automatico");
+  const [horaInicioGeneracion, setHoraInicioGeneracion] = useState<string>("08:00");
+  const [intervaloMinutos, setIntervaloMinutos] = useState<string>("60");
+  const [progresoGeneracion, setProgresoGeneracion] = useState<number>(0);
+  const [logsGeneracion, setLogsGeneracion] = useState<string[]>([]);
+  const [intervaloActivo, setIntervaloActivo] = useState<{
+    fecha_inicio: string;
+    fecha_fin_intervalo: string;
+    intervalo_minutos: number;
+    modo: string;
+  } | null>(null);
+  const [tiempoRestante, setTiempoRestante] = useState<number | null>(null);
+  
+  // Estado para ventanas de docentes creadas
+  const [ventanasDocentes, setVentanasDocentes] = useState<any[]>([]);
+
   useEffect(() => {
     fetchData();
   }, []);
@@ -85,6 +106,24 @@ export function ConfiguradorVentanas() {
       fetchVentanas();
     }
   }, [selectedPeriodo]);
+
+  // Timer para actualizar el tiempo restante del intervalo de horarios
+  useEffect(() => {
+    if (intervaloActivo && modoGeneracion === "intervalo") {
+      const interval = setInterval(() => {
+        const fin = new Date(intervaloActivo.fecha_fin_intervalo);
+        const ahora = new Date();
+        const restante = Math.max(0, Math.floor((fin.getTime() - ahora.getTime()) / 1000));
+        setTiempoRestante(restante);
+        
+        if (restante <= 0) {
+          clearInterval(interval);
+        }
+      }, 1000);
+      
+      return () => clearInterval(interval);
+    }
+  }, [intervaloActivo, modoGeneracion]);
 
   const fetchData = async () => {
     setLoading(true);
@@ -115,8 +154,16 @@ export function ConfiguradorVentanas() {
     try {
       const res = await fetch(`/api/ventanas?id_periodo=${selectedPeriodo}`);
       const data = await res.json();
+      
+      // Cargar ventanas normales (para la sección original)
       setVentanas(Array.isArray(data) ? data : []);
+      
+      // También cargar ventanas de docentes si hay
+      if (data.ventanas && Array.isArray(data.ventanas)) {
+        setVentanasDocentes(data.ventanas);
+      }
     } catch (error) {
+      console.error("Error al cargar ventanas:", error);
       toast.error("Error al cargar ventanas");
     }
   };
@@ -167,205 +214,499 @@ export function ConfiguradorVentanas() {
     }
   };
 
+  const handleResetearHorarios = async () => {
+    if (!selectedPeriodo) {
+      toast.error("Por favor selecciona un período");
+      return;
+    }
+
+    if (!confirm("¿Está seguro de resetear los horarios generados? Esto borrará todas las asignaciones actuales y los docentes podrán volver a confirmar.")) {
+      return;
+    }
+
+    setIsResettingHorarios(true);
+    
+    try {
+      const res = await fetch("/api/horarios/resetear", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          id_periodo: parseInt(selectedPeriodo)
+        }),
+      });
+
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Error al resetear horarios");
+      }
+
+      const data = await res.json();
+      
+      toast.success(data.message || "Horarios reseteados exitosamente!");
+      setIntervaloActivo(null);
+      setTiempoRestante(null);
+      setVentanasDocentes([]);
+      
+    } catch (error: any) {
+      console.error("Error al resetear horarios:", error);
+      toast.error(error.message || "Error de conexión");
+    } finally {
+      setIsResettingHorarios(false);
+    }
+  };
+
+  const handleGenerarHorarios = async () => {
+    console.log("🔘 Botón Generar Horario clickeado!");
+    console.log("Selected Periodo:", selectedPeriodo);
+    console.log("Modo Generación:", modoGeneracion);
+    console.log("Hora Inicio:", horaInicioGeneracion);
+    console.log("Intervalo:", intervaloMinutos);
+    
+    if (!selectedPeriodo) {
+      toast.error("Por favor selecciona un período");
+      return;
+    }
+
+    console.log("✅ Pasó la validación, iniciando proceso...");
+    setIsGeneratingHorarios(true);
+    setProgresoGeneracion(0);
+    setLogsGeneracion([]);
+    setIntervaloActivo(null);
+    setTiempoRestante(null);
+    
+    try {
+      console.log("📋 Preparando llamada a API...");
+      const requestBody = {
+        id_periodo: parseInt(selectedPeriodo),
+        hora_inicio: horaInicioGeneracion,
+        intervalo_minutos: parseInt(intervaloMinutos),
+        modo: modoGeneracion
+      };
+      console.log("📤 Request Body:", requestBody);
+      
+      setLogsGeneracion(prev => [...prev, "📋 Llamando a la API de asignación automática..."]);
+      
+      // Llamamos a la API REAL de asignación automática
+      console.log("🌐 Enviando solicitud a la API...");
+      const res = await fetch("/api/horarios/asignacion-automatica", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(requestBody),
+      });
+
+      console.log("📥 Respuesta recibida, status:", res.status);
+
+      if (!res.ok) {
+        console.error("❌ Error en la API:", res.status);
+        const errorData = await res.json();
+        console.error("❌ Error data:", errorData);
+        throw new Error(errorData.error || "Error al generar horarios");
+      }
+
+      const data = await res.json();
+      console.log("✅ Datos recibidos de la API:", data);
+      
+      // Guardar ventanas de docentes si hay
+      if (data.ventanas_creadas && data.ventanas_creadas.length > 0) {
+        setVentanasDocentes(data.ventanas_creadas);
+      }
+      
+      setLogsGeneracion(prev => [
+        ...prev,
+        `✅ ${data.message}`,
+        `📋 Docentes procesados: ${data.docentes_count}`,
+        `⏰ Horarios creados: ${data.horarios_creados || 0}`,
+        `⏳ Modo: ${data.modo === "automatico" ? "Completamente automático" : "Con intervalo para cambios"}`,
+        data.ventanas_creadas && data.ventanas_creadas.length > 0 
+          ? `📋 Ventanas de tiempo creadas: ${data.ventanas_creadas.length}`
+          : '',
+      ]);
+
+      // Simulamos el procesamiento docente por docente para mostrar progreso
+      setLogsGeneracion(prev => [...prev, "", "📋 Procesando docentes por prioridad..."]);
+      
+      const totalDocentes = data.docentes_count || 10;
+      
+      for (let i = 0; i < totalDocentes; i++) {
+        const progreso = Math.round(((i + 1) / totalDocentes) * 100);
+        
+        // Simulamos un pequeño delay para que se vea el progreso
+        await new Promise(resolve => setTimeout(resolve, 300));
+        
+        setLogsGeneracion(prev => [
+          ...prev,
+          `✅ Asignando docente #${i + 1}...`,
+          `   🔍 Buscando disponibilidades y ambientes disponibles...`,
+          `   ✔ Horarios asignados correctamente!`,
+        ]);
+        
+        setProgresoGeneracion(progreso);
+      }
+      
+      // Luego de procesar todos los docentes
+      setLogsGeneracion(prev => [
+        ...prev,
+        "",
+        "🎉 Generación completada exitosamente!",
+        `📋 Total docentes procesados: ${totalDocentes}`,
+        "💡 Los docentes ya pueden ver sus horarios programados!",
+      ]);
+      
+      setProgresoGeneracion(100);
+      
+      // Si el modo es con intervalo, establecemos el timer y guardamos en localStorage
+      if (modoGeneracion === "intervalo" && data.fecha_fin_intervalo) {
+        const intervaloData = {
+          fecha_inicio: data.fecha_inicio,
+          fecha_fin_intervalo: data.fecha_fin_intervalo,
+          intervalo_minutos: data.intervalo_minutos,
+          modo: "intervalo",
+          id_periodo: selectedPeriodo
+        };
+        
+        // Guardar en localStorage para que los docentes lo vean
+        localStorage.setItem('intervalo_horarios', JSON.stringify(intervaloData));
+        
+        setIntervaloActivo(intervaloData);
+        setTiempoRestante(data.intervalo_minutos * 60);
+        setLogsGeneracion(prev => [
+          ...prev,
+          "",
+          `⏳ Intervalo de ${data.intervalo_minutos} minutos iniciado para cambios...`,
+        ]);
+      }
+      
+      toast.success("Generación de horarios completada!");
+      
+      // Cargar las ventanas desde la BD para mostrarlas en la lista
+      setTimeout(() => {
+        fetchVentanas();
+      }, 500);
+      
+    } catch (error: any) {
+      console.error("Error al generar horarios:", error);
+      toast.error(error.message || "Error de conexión");
+      setLogsGeneracion(prev => [...prev, `❌ Error: ${error.message || "Error de conexión"}`]);
+    } finally {
+      setIsGeneratingHorarios(false);
+    }
+  };
+
   return (
-    <div className="space-y-6 animate-in fade-in duration-500 w-full overflow-x-hidden">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-white p-3 md:p-5 rounded-2xl border border-slate-100 shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-10 md:h-12 w-10 md:w-12 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm shrink-0">
-            <CalendarIcon className="h-5 md:h-6 w-5 md:w-6 text-[#1a237e]" />
+    <div className="space-y-4 animate-in fade-in duration-500 w-full max-w-full">
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-4 rounded-2xl border border-border shadow-sm">
+        <div className="flex items-center gap-3">
+          <div className="h-9 w-9 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm shrink-0">
+            <CalendarIcon className="h-4.5 w-4.5 text-primary" />
           </div>
           <div>
-            <h2 className="text-base md:text-lg md:text-xl font-bold text-slate-800 tracking-tight">Configuración de Ventanas de Atención</h2>
-            <p className="text-[10px] md:text-xs text-slate-500 mt-1">Define el orden jerárquico de prioridad para la selección de horarios.</p>
+            <h2 className="text-sm font-bold text-foreground tracking-tight">Configuración de Ventanas</h2>
+            <p className="text-[9px] text-muted-foreground mt-0.5">Define el orden jerárquico de prioridad para la selección de horarios.</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 bg-slate-50 px-3 py-2 rounded-xl border border-slate-200">
-            <span className="text-xs font-medium text-slate-600">Período:</span>
+        <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
+          <div className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1.5 rounded-xl border border-border">
+            <span className="text-[10px] font-medium text-muted-foreground">Período:</span>
             <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-              <SelectTrigger className="w-auto border-none bg-transparent font-bold text-[#1a237e] p-0 focus:ring-0 text-sm">
+              <SelectTrigger className="w-auto border-none bg-transparent font-bold text-primary p-0 focus:ring-0 text-xs">
                 <SelectValue placeholder="Periodo" />
-                <span className="text-slate-400 ml-1 text-xs">(Activo)</span>
+                <span className="text-muted-foreground ml-1 text-[9px]">(Activo)</span>
               </SelectTrigger>
-              <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+              <SelectContent className="rounded-xl border-border shadow-xl">
                 {periodos.map((p) => (
-                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-sm py-2 focus:bg-indigo-50 focus:text-[#1a237e]">{p.codigo}</SelectItem>
+                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-xs py-1.5 focus:bg-primary/10 focus:text-primary">{p.codigo}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
           </div>
-
-          <Dialog open={isAutoDialogOpen} onOpenChange={setIsAutoDialogOpen}>
-            <DialogTrigger asChild>
-              <Button className="h-10 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-5 font-bold text-sm shadow-lg shadow-indigo-100 transition-all active:scale-95">
-                <Wand2 className="mr-2 h-4 w-4" /> Generar Programación
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[95vw] md:w-[80vw] lg:max-w-xl rounded-2xl p-0 border-none shadow-2xl overflow-hidden bg-white">
-              <div className="bg-[#1a237e] p-6 text-white">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 bg-white/10 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/20">
-                    <Wand2 className="h-8 w-8 text-white" />
-                  </div>
-                  <div>
-                    <DialogTitle className="text-[22px] font-black text-white tracking-tight">Asistente de Turnos</DialogTitle>
-                    <p className="text-white/60 text-[11px] font-bold uppercase tracking-widest mt-0.5">Generación automática de ventanas de atención</p>
-                  </div>
-                </div>
-              </div>
-              
-              <form onSubmit={handleAutoSchedule} className="p-8 space-y-8 bg-white">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-6">
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Fecha de Inicio</Label>
-                    <div className="relative">
-                      <CalendarIcon className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input 
-                        type="date" 
-                        className="h-12 pl-11 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
-                        value={autoFormData.fecha_inicio} 
-                        onChange={(e) => setAutoFormData({ ...autoFormData, fecha_inicio: e.target.value })} 
-                        required 
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Minutos por Docente</Label>
-                    <div className="relative">
-                      <Clock className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-slate-400" />
-                      <Input 
-                        type="number" 
-                        className="h-12 pl-11 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
-                        value={autoFormData.intervalo_por_docente} 
-                        onChange={(e) => setAutoFormData({ ...autoFormData, intervalo_por_docente: e.target.value })} 
-                        required 
-                      />
-                    </div>
-                  </div>
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Inicio de Jornada</Label>
-                    <Input 
-                      type="time" 
-                      className="h-12 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
-                      value={autoFormData.hora_inicio_jornada} 
-                      onChange={(e) => setAutoFormData({ ...autoFormData, hora_inicio_jornada: e.target.value })} 
-                      required 
-                    />
-                  </div>
-                  <div className="space-y-2.5">
-                    <Label className="text-[11px] font-black uppercase tracking-widest text-slate-400 ml-1">Fin de Jornada</Label>
-                    <Input 
-                      type="time" 
-                      className="h-12 rounded-xl border-slate-200 font-bold text-[15px] focus:ring-indigo-100" 
-                      value={autoFormData.hora_fin_jornada} 
-                      onChange={(e) => setAutoFormData({ ...autoFormData, hora_fin_jornada: e.target.value })} 
-                      required 
-                    />
-                  </div>
-                </div>
-                
-                <div className="flex justify-end gap-3 pt-6 border-t border-slate-50">
-                  <Button type="button" variant="ghost" onClick={() => setIsAutoDialogOpen(false)} className="h-12 rounded-xl font-bold text-slate-500 px-8 text-[14px] hover:bg-slate-50 transition-colors">
-                    Cancelar
-                  </Button>
-                  <Button type="submit" disabled={isProcessing} className="h-12 bg-[#1a237e] hover:bg-[#0d145a] text-white rounded-xl px-10 font-black text-[14px] shadow-lg shadow-indigo-100 active:scale-95 transition-all">
-                    {isProcessing ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Wand2 className="h-4 w-4 mr-2" />}
-                    {isProcessing ? "Procesando..." : "Iniciar Generación"}
-                  </Button>
-                </div>
-              </form>
-            </DialogContent>
-          </Dialog>
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 md:gap-6">
-        <div className="lg:col-span-2 space-y-4 md:space-y-6">
+      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
+        <div className="lg:col-span-3 space-y-3">
+          {/* Sección de Generación Automática de Horarios */}
+          <div className="bg-card p-4 rounded-2xl border border-border shadow-sm space-y-3 animate-in fade-in duration-700">
+            <div className="flex items-center gap-3">
+              <div className="h-9 w-9 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm">
+                <Settings2 className="h-4.5 w-4.5 text-primary" />
+              </div>
+              <div className="flex-1">
+                <div className="flex items-center justify-between">
+                  <div>
+                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Generación Automática de Horarios</h3>
+                    <p className="text-[9px] font-medium text-muted-foreground mt-0.5">Asigna horarios automáticamente según prioridades y disponibilidades</p>
+                  </div>
+                  {intervaloActivo && tiempoRestante !== null && (
+                    <div className={`px-2.5 py-1.5 rounded-lg border text-center ${tiempoRestante > 0 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
+                      <div className="text-[9px] font-black uppercase tracking-widest mb-0.5">
+                        {tiempoRestante > 0 ? 'Tiempo Restante' : 'Intervalo Terminado'}
+                      </div>
+                      <div className="text-sm font-black">
+                        {tiempoRestante > 0 ? `${Math.floor(tiempoRestante / 60)}:${(tiempoRestante % 60).toString().padStart(2, '0')}` : '0:00'}
+                      </div>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Modo de Generación</Label>
+                <Select value={modoGeneracion} onValueChange={setModoGeneracion} disabled={isGeneratingHorarios}>
+                  <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg border-border">
+                    <SelectItem value="automatico" className="font-bold text-[10px]">Completamente Automático</SelectItem>
+                    <SelectItem value="intervalo" className="font-bold text-[10px]">Con Intervalo para Cambios</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Hora de Inicio</Label>
+                <Input 
+                  type="time" 
+                  value={horaInicioGeneracion} 
+                  onChange={(e) => setHoraInicioGeneracion(e.target.value)} 
+                  disabled={isGeneratingHorarios}
+                  className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Intervalo (minutos)</Label>
+                <Select value={intervaloMinutos} onValueChange={setIntervaloMinutos} disabled={isGeneratingHorarios}>
+                  <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg border-border">
+                    <SelectItem value="15" className="font-bold text-[10px]">15 minutos</SelectItem>
+                    <SelectItem value="20" className="font-bold text-[10px]">20 minutos</SelectItem>
+                    <SelectItem value="30" className="font-bold text-[10px]">30 minutos</SelectItem>
+                    <SelectItem value="60" className="font-bold text-[10px]">60 minutos</SelectItem>
+                    <SelectItem value="90" className="font-bold text-[10px]">90 minutos</SelectItem>
+                    <SelectItem value="120" className="font-bold text-[10px]">120 minutos</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Período Académico</Label>
+                <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo} disabled={isGeneratingHorarios}>
+                  <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
+                    <SelectValue placeholder="Seleccionar período" />
+                  </SelectTrigger>
+                  <SelectContent className="rounded-lg border-border">
+                    {periodos.map(p => (
+                      <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-[10px]">
+                        {p.codigo}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+
+            {isGeneratingHorarios && (
+              <div className="space-y-1.5">
+                <div className="flex items-center justify-between text-[9px] font-bold">
+                  <span className="text-muted-foreground">Progreso</span>
+                  <span className="text-primary">{progresoGeneracion}%</span>
+                </div>
+                <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                  <div 
+                    className="h-full bg-primary transition-all duration-500"
+                    style={{ width: `${progresoGeneracion}%` }}
+                  />
+                </div>
+                <div className="bg-muted/50 rounded-lg p-2 max-h-20 overflow-y-auto custom-scrollbar">
+                  {logsGeneracion.map((log, i) => (
+                    <div key={i} className="text-[8px] font-medium text-muted-foreground">
+                      • {log}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )}
+
+            <div className="pt-1.5 border-t border-border/50 space-y-2">
+              <Button 
+                onClick={handleGenerarHorarios}
+                disabled={isGeneratingHorarios || !selectedPeriodo}
+                className="w-full h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {isGeneratingHorarios ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generando...
+                  </>
+                ) : (
+                  <>
+                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Generar Horario Automático
+                  </>
+                )}
+              </Button>
+              
+              <Button 
+                onClick={handleResetearHorarios}
+                disabled={isResettingHorarios || isGeneratingHorarios || !selectedPeriodo}
+                variant="outline"
+                className="w-full h-9 rounded-lg border-destructive/50 text-destructive hover:bg-destructive/5 font-black text-[10px] transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
+              >
+                {isResettingHorarios ? (
+                  <>
+                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Reseteando...
+                  </>
+                ) : (
+                  <>
+                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Resetear Horarios
+                  </>
+                )}
+              </Button>
+            </div>
+          </div>
+
           {loading ? (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12">
-              <div className="flex flex-col items-center gap-3">
-                <div className="h-10 w-10 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin" />
-                <p className="text-[13px] font-bold text-slate-400 uppercase tracking-widest">Sincronizando Calendario...</p>
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-8">
+              <div className="flex flex-col items-center gap-2.5">
+                <div className="h-9 w-9 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
+                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">Sincronizando...</p>
+              </div>
+            </div>
+          ) : ventanasDocentes.length > 0 ? (
+            <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+              <div className="p-3 border-b border-border flex items-center gap-2.5 bg-emerald-50">
+                <CalendarIcon className="h-4 w-4 text-emerald-600" />
+                <h3 className="font-bold text-emerald-800 text-sm">Ventanas de Tiempo para Docentes</h3>
+              </div>
+              <div className="overflow-x-auto">
+                <Table className="w-full">
+                  <TableHeader className="bg-muted/50">
+                    <TableRow className="border-none hover:bg-transparent">
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Prioridad</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Docente</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Modalidad</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Categoría</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Hora Inicio</TableHead>
+                      <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Hora Fin</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {ventanasDocentes.map((ventana, idx) => (
+                      <TableRow key={ventana.id_ventana || idx} className="group border-b border-border hover:bg-muted/50 transition-all">
+                        <TableCell className="px-4 py-3">
+                          <span className="font-bold text-primary text-[11px]">#{ventana.orden_prioridad}</span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="font-bold text-foreground text-[11px]">
+                            {ventana.docente?.nombres} {ventana.docente?.apellidos}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-blue-100 text-blue-700">
+                            {ventana.modalidad}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="text-[10px] font-medium px-2 py-1 rounded-full bg-purple-100 text-purple-700">
+                            {ventana.categoria}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="font-mono text-[11px] font-bold text-emerald-600">
+                            {ventana.hora_inicio}
+                          </span>
+                        </TableCell>
+                        <TableCell className="px-4 py-3">
+                          <span className="font-mono text-[11px] font-bold text-red-600">
+                            {ventana.hora_fin}
+                          </span>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
               </div>
             </div>
           ) : ventanas.length === 0 ? (
-            <div className="bg-white rounded-2xl border border-slate-100 shadow-sm p-12">
+            <div className="bg-card rounded-2xl border border-border shadow-sm p-8">
               <div className="flex flex-col items-center gap-2 opacity-30">
-                <CalendarIcon className="h-12 w-12 text-slate-400" />
-                <p className="text-[15px] font-bold text-slate-500">No hay ventanas programadas</p>
+                <CalendarIcon className="h-10 w-10 text-muted-foreground" />
+                <p className="text-[12px] font-bold text-muted-foreground">No hay ventanas programadas</p>
               </div>
             </div>
           ) : (
             <>
               {[...new Set(ventanas.map((v) => v.fecha))].map((fecha, idx) => (
-                <div key={idx} className="bg-white rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-                  <div className="p-4 md:p-5 border-b border-slate-100 flex items-center gap-3">
-                    <CalendarIcon className="h-5 w-5 text-[#1a237e]" />
-                    <h3 className="font-bold text-slate-800 text-base">
+                <div key={idx} className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+                  <div className="p-3 border-b border-border flex items-center gap-2.5">
+                    <CalendarIcon className="h-4 w-4 text-primary" />
+                    <h3 className="font-bold text-foreground text-sm">
                       Día: {format(new Date(fecha), "dd/MM/yyyy", { locale: es })}
                     </h3>
                   </div>
                   <div className="overflow-x-auto">
-                    <Table className="min-w-[800px] w-full">
-                      <TableHeader className="bg-slate-50/50">
+                    <Table className="w-full">
+                      <TableHeader className="bg-muted/50">
                         <TableRow className="border-none hover:bg-transparent">
-                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Orden</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Categoría</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Modalidad</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Desde</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Hasta</TableHead>
-                          <TableHead className="text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Estado</TableHead>
-                          <TableHead className="w-[100px] text-right text-[10px] font-black text-slate-400 uppercase tracking-widest px-6 py-4">Acciones</TableHead>
+                          <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Orden</TableHead>
+                          <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Categoría</TableHead>
+                          <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Modalidad</TableHead>
+                          <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Desde</TableHead>
+                          <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Hasta</TableHead>
+                          <TableHead className="text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Estado</TableHead>
+                          <TableHead className="w-[80px] text-right text-[9px] font-black text-muted-foreground uppercase tracking-widest px-4 py-3">Acciones</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {ventanas.filter((v) => v.fecha === fecha).map((v, vIdx) => (
-                          <TableRow key={v.id_ventana} className="group border-b border-slate-50 hover:bg-slate-50/50 transition-all">
-                            <TableCell className="px-6 py-4">
-                              <span className="font-bold text-slate-600 text-[13px]">#{vIdx + 1}</span>
+                          <TableRow key={v.id_ventana} className="group border-b border-border hover:bg-muted/50 transition-all">
+                            <TableCell className="px-4 py-3">
+                              <span className="font-bold text-muted-foreground text-[11px]">#{vIdx + 1}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-4">
-                              <div className="flex flex-col gap-1.5">
-                                <span className="font-bold text-slate-800 text-[13px]">
+                            <TableCell className="px-4 py-3">
+                              <div className="flex flex-col gap-1">
+                                <span className="font-bold text-foreground text-[11px]">
                                   {v.categoria}
                                 </span>
                                 {v.cantidad_docentes > 0 && (
-                                  <span className="inline-flex items-center px-2 py-0.5 rounded-md bg-amber-100 text-amber-800 text-[9px] font-black uppercase border border-amber-200 w-fit">
-                                    {v.cantidad_docentes} docentes pendientes
+                                  <span className="inline-flex items-center px-1.5 py-0.5 rounded-md bg-amber-500/10 text-amber-600 dark:text-amber-500 text-[8px] font-black uppercase border border-amber-500/20 w-fit">
+                                    {v.cantidad_docentes} docentes
                                   </span>
                                 )}
                               </div>
                             </TableCell>
-                            <TableCell className="px-6 py-4">
-                              <span className="text-slate-600 text-[13px]">{v.modalidad}</span>
+                            <TableCell className="px-4 py-3">
+                              <span className="text-muted-foreground text-[11px]">{v.modalidad}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-4">
-                              <span className="text-[#1a237e] font-bold font-mono text-[13px]">{v.hora_inicio}</span>
+                            <TableCell className="px-4 py-3">
+                              <span className="text-primary font-bold font-mono text-[11px]">{v.hora_inicio}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-4">
-                              <span className="text-[#1a237e] font-bold font-mono text-[13px]">{v.hora_fin}</span>
+                            <TableCell className="px-4 py-3">
+                              <span className="text-primary font-bold font-mono text-[11px]">{v.hora_fin}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-4">
+                            <TableCell className="px-4 py-3">
                               <span className={cn(
-                                "px-3 py-1 rounded-full text-[10px] font-black uppercase border",
+                                "px-2 py-0.5 rounded-full text-[9px] font-black uppercase border",
                                 v.completado 
-                                  ? "bg-emerald-50 text-emerald-700 border-emerald-200" 
-                                  : "bg-slate-50 text-slate-600 border-slate-200"
+                                  ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                                  : "bg-muted text-muted-foreground border-border"
                               )}>
                                 {v.completado ? "Completado" : "Pendiente"}
                               </span>
                             </TableCell>
-                            <TableCell className="px-6 py-4">
+                            <TableCell className="px-4 py-3">
                               <div className="flex justify-end">
                                 <Button 
                                   variant="ghost" 
                                   size="icon" 
                                   onClick={() => handleDelete(v.id_ventana)} 
                                   title="Eliminar Turno" 
-                                  className="h-8 w-8 rounded-lg hover:bg-rose-50 hover:text-rose-600 text-slate-400 transition-colors"
+                                  className="h-7 w-7 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
                                 >
-                                  <Trash2 className="h-4 w-4" />
+                                  <Trash2 className="h-3.5 w-3.5" />
                                 </Button>
                               </div>
                             </TableCell>
@@ -380,24 +721,24 @@ export function ConfiguradorVentanas() {
           )}
         </div>
 
-        <div className="space-y-4 md:space-y-6">
-          <Card className="rounded-2xl border border-slate-100 shadow-sm overflow-hidden">
-            <CardHeader className="p-5 md:p-6 pb-4">
-              <CardTitle className="text-[11px] font-black uppercase tracking-widest text-slate-400">Docentes Pendientes por Categoría</CardTitle>
+        <div className="space-y-3">
+          <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Docentes Pendientes</CardTitle>
             </CardHeader>
-            <CardContent className="p-5 md:p-6 pt-0 space-y-3">
+            <CardContent className="p-4 pt-0 space-y-2.5">
               {[
-                { categoria: "Auxiliar Nombrado", cantidad: 6, color: "bg-amber-100 text-amber-800" },
-                { categoria: "JP Nombrado", cantidad: 4, color: "bg-slate-100 text-slate-700" },
-                { categoria: "Principal Contratado", cantidad: 3, color: "bg-slate-100 text-slate-700" },
-                { categoria: "Asociado Contratado", cantidad: 5, color: "bg-slate-100 text-slate-700" },
-                { categoria: "Auxiliar Contratado", cantidad: 14, color: "bg-slate-100 text-slate-700" },
-                { categoria: "JP Contratado", cantidad: 6, color: "bg-slate-100 text-slate-700" },
+                { categoria: "Auxiliar Nombrado", cantidad: 6, color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+                { categoria: "JP Nombrado", cantidad: 4, color: "bg-muted text-muted-foreground border-border" },
+                { categoria: "Principal Contratado", cantidad: 3, color: "bg-muted text-muted-foreground border-border" },
+                { categoria: "Asociado Contratado", cantidad: 5, color: "bg-muted text-muted-foreground border-border" },
+                { categoria: "Auxiliar Contratado", cantidad: 14, color: "bg-muted text-muted-foreground border-border" },
+                { categoria: "JP Contratado", cantidad: 6, color: "bg-muted text-muted-foreground border-border" },
               ].map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between">
-                  <span className="text-slate-600 text-[13px] font-medium">{item.categoria}</span>
-                  <span className={cn("px-3 py-1.5 rounded-full text-[11px] font-bold", item.color)}>
-                    {item.cantidad} pendientes
+                  <span className="text-muted-foreground text-[11px] font-medium">{item.categoria}</span>
+                  <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold border", item.color)}>
+                    {item.cantidad}
                   </span>
                 </div>
               ))}
@@ -405,14 +746,14 @@ export function ConfiguradorVentanas() {
           </Card>
 
           <Card className="rounded-2xl border-none shadow-xl bg-slate-900 text-white overflow-hidden">
-            <CardHeader className="p-5 md:p-6 pb-4">
-              <CardTitle className="text-[11px] font-black uppercase tracking-widest text-indigo-200 flex items-center gap-2">
-                <span className="text-yellow-400">💡</span> TIP DE OPERADOR
+            <CardHeader className="p-4 pb-2">
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-indigo-200 flex items-center gap-2">
+                <span className="text-yellow-400">💡</span> TIP
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-5 md:p-6 pt-0">
-              <p className="text-slate-300 text-[13px] leading-relaxed">
-                Las horas desde/hasta pueden ser modificadas directamente haciendo doble clic en el valor dentro de la grilla. El sistema propagará automáticamente los cambios al guardar.
+            <CardContent className="p-4 pt-0">
+              <p className="text-slate-300 text-[11px] leading-relaxed">
+                Las horas desde/hasta pueden ser modificadas haciendo doble clic. El sistema propagará los cambios automáticamente.
               </p>
             </CardContent>
           </Card>

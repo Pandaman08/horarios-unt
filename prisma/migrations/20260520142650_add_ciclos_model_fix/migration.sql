@@ -1,16 +1,26 @@
 /*
   Warnings:
 
-  - You are about to drop the column `ciclo` on the `Curso` table. All the data in the column will be lost.
+  - You are about to drop the column `ciclo` on the `Curso` table (if it exists). All the data in the column will be lost.
 
 */
 -- AlterTable
-ALTER TABLE "Curso" DROP COLUMN "ciclo",
-ADD COLUMN     "id_ciclo" INTEGER,
-ADD COLUMN     "tipo_curso" TEXT NOT NULL DEFAULT 'linea_carrera';
+DO $$ BEGIN
+  ALTER TABLE "Curso" DROP COLUMN "ciclo";
+EXCEPTION
+  WHEN undefined_column THEN null;
+END $$;
+
+ALTER TABLE "Curso" 
+ADD COLUMN IF NOT EXISTS "id_ciclo" INTEGER,
+ADD COLUMN IF NOT EXISTS "tipo_curso" TEXT NOT NULL DEFAULT 'linea_carrera';
 
 -- AlterTable
-ALTER TABLE "Grupo" ADD COLUMN     "id_ciclo" INTEGER;
+DO $$ BEGIN
+  ALTER TABLE "Grupo" ADD COLUMN "id_ciclo" INTEGER;
+EXCEPTION
+  WHEN duplicate_column THEN null;
+END $$;
 
 -- CreateTable
 CREATE TABLE "Ciclo" (

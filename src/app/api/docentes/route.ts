@@ -12,6 +12,11 @@ export async function GET() {
             correo_electronico: true,
             rol: true
           }
+        },
+        docente_cursos: {
+          include: {
+            curso: true
+          }
         }
       }
     });

@@ -26,16 +26,36 @@ export async function GET(request: Request) {
       docenteId = docente.id_docente;
     }
 
+    // FILTRAR SOLO LOS CURSOS QUE TIENEN GRUPOS EN EL PERÍODO ACTUAL
     const cursosAsignados = await prisma.docenteCurso.findMany({
-      where: { id_docente: docenteId, activo: true },
-      include: { curso: true }
+      where: { 
+        id_docente: docenteId, 
+        activo: true 
+      },
+      include: { 
+        curso: {
+          include: {
+            grupos: {
+              where: {
+                id_periodo: parseInt(id_periodo),
+                activo: true
+              }
+            }
+          }
+        }
+      }
     });
 
-    // Eliminar posibles duplicados lógicos en la respuesta (por inconsistencias previas)
-    const uniqueCursos = Array.from(new Set(cursosAsignados.map(c => `${c.id_curso}-${c.tipo_clase.toLowerCase()}`)))
+    // FILTRAR SOLO LOS CURSOS QUE TIENEN AL MENOS UN GRUPO EN ESTE PERÍODO
+    const cursosConGrupos = cursosAsignados.filter(dc => 
+      dc.curso.grupos && dc.curso.grupos.length > 0
+    );
+
+    // Eliminar posibles duplicados lógicos
+    const uniqueCursos = Array.from(new Set(cursosConGrupos.map(c => `${c.id_curso}-${c.tipo_clase.toLowerCase()}`)))
       .map(key => {
         const [id, tipo] = key.split('-');
-        return cursosAsignados.find(c => c.id_curso === parseInt(id) && c.tipo_clase.toLowerCase() === tipo);
+        return cursosConGrupos.find(c => c.id_curso === parseInt(id) && c.tipo_clase.toLowerCase() === tipo);
       }).filter(Boolean);
 
     const progreso = await Promise.all(uniqueCursos.map(async (dc: any) => {
@@ -87,7 +107,7 @@ export async function GET(request: Request) {
         tipo_clase: dc.tipo_clase,
         horas_requeridas: horasRequeridas,
         horas_asignadas: minutosTotales / 60,
-        confirmado: asignaciones.length > 0 // Añadimos flag para saber si ya hay algo definitivo
+        confirmado: asignaciones.length > 0
       };
     }));
 

@@ -19,7 +19,7 @@ export async function GET() {
   // Si es docente, verificar su ventana
   if (session.user.rol === 'docente') {
     const docente = await prisma.docente.findFirst({
-      where: { id_usuario: parseInt(session.user.id_usuario) }
+      where: { id_usuario: session.user.id_usuario }
     });
 
     if (!docente) {
