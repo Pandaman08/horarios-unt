@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
+import { format, parse, addMinutes } from "date-fns";
 
 export async function GET(req: NextRequest) {
   try {
@@ -62,48 +63,51 @@ export async function POST(req: NextRequest) {
     }
 
     const body = await req.json();
-    const { periodoId, disponibilidades } = body;
+    let { id_docente, id_periodo, disponibilidad, disponibilidades, periodoId } = body;
 
-    if (!periodoId || !Array.isArray(disponibilidades)) {
+    // Handle both cases: admin (id_docente + id_periodo + disponibilidad) and docente (periodoId + disponibilidades)
+    const docenteFromSession = await prisma.docente.findUnique({
+      where: { id_usuario: session.user.id_usuario }
+    });
+    
+    if (!id_docente) {
+      if (!docenteFromSession) {
+        return NextResponse.json({ error: "No es docente" }, { status: 403 });
+      }
+      id_docente = docenteFromSession.id_docente;
+    }
+
+    if (!id_periodo && periodoId) {
+      id_periodo = periodoId;
+    }
+
+    const dataToSave = disponibilidad || disponibilidades;
+    if (!id_docente || !id_periodo || !Array.isArray(dataToSave)) {
       return NextResponse.json(
         { error: "Datos incompletos" },
         { status: 400 }
       );
     }
 
-    // Buscar el docente por el id_usuario de la sesión
-    const docente = await prisma.docente.findUnique({
-      where: { id_usuario: session.user.id_usuario }
-    });
-
-    if (!docente) {
-      return NextResponse.json(
-        { error: "Usuario no es docente" },
-        { status: 403 }
-      );
-    }
-
-    const idDocente = docente.id_docente;
-
     // Usar una transacción para asegurar atomicidad
     await prisma.$transaction(async (tx) => {
       // 1. Eliminar disponibilidad anterior para este docente y periodo
       await tx.disponibilidadDocente.deleteMany({
         where: {
-          id_docente: idDocente,
-          id_periodo: parseInt(periodoId)
+          id_docente: id_docente,
+          id_periodo: id_periodo
         }
       });
 
       // 2. Crear nuevos registros
-      if (disponibilidades.length > 0) {
+      if (dataToSave.length > 0) {
         await tx.disponibilidadDocente.createMany({
-          data: disponibilidades.map((d: any) => ({
-            id_docente: idDocente,
-            id_periodo: parseInt(periodoId),
+          data: dataToSave.map((d: any) => ({
+            id_docente: id_docente,
+            id_periodo: id_periodo,
             dia_semana: d.dia_semana,
             hora_inicio: d.hora_inicio,
-            hora_fin: d.hora_fin,
+            hora_fin: d.hora_fin || format(addMinutes(parse(d.hora_inicio, "HH:mm", new Date()), 60), "HH:mm"),
             disponible: d.disponible
           }))
         });

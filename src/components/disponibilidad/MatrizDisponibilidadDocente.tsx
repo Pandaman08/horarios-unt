@@ -122,12 +122,6 @@ export function MatrizDisponibilidadDocente({
             Docente: <span className="text-primary">{docenteNombre}</span>
           </p>
         </div>
-        <button
-          onClick={onCancel}
-          className="p-1 hover:bg-muted rounded transition-colors"
-        >
-          <X className="h-3.5 w-3.5 text-muted-foreground" />
-        </button>
       </div>
 
       <div className="p-2 overflow-auto max-h-[65vh]">
