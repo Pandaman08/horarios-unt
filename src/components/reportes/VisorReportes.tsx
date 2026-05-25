@@ -11,13 +11,13 @@ import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { usePeriodo } from "@/contexts/PeriodoContext";
 
-export function VisorReportes({ id_periodo: id_periodo_inicial }: { id_periodo: number }) {
+export function VisorReportes() {
   const { data: session } = useSession();
   const { periodoSeleccionado, periodos } = usePeriodo();
   const isAdmin = session?.user?.rol === 'administrador_sistema';
   const isOperador = session?.user?.rol === 'operador_horarios';
 
-  const [id_periodo, setIdPeriodo] = useState<number>(id_periodo_inicial);
+  const [id_periodo, setIdPeriodo] = useState<number | null>(null);
   const [docentes, setDocentes] = useState<any[]>([]);
   const [ambientes, setAmbientes] = useState<any[]>([]);
   const [selectedDocente, setSelectedDocente] = useState<string>("");
@@ -40,21 +40,8 @@ export function VisorReportes({ id_periodo: id_periodo_inicial }: { id_periodo: 
     }
   }, [periodoSeleccionado]);
 
-  const ciclos = [
-    { value: "todos", label: "Todos los Ciclos" },
-    { value: "1", label: "Ciclo I" },
-    { value: "2", label: "Ciclo II" },
-    { value: "3", label: "Ciclo III" },
-    { value: "4", label: "Ciclo IV" },
-    { value: "5", label: "Ciclo V" },
-    { value: "6", label: "Ciclo VI" },
-    { value: "7", label: "Ciclo VII" },
-    { value: "8", label: "Ciclo VIII" },
-    { value: "9", label: "Ciclo IX" },
-    { value: "10", label: "Ciclo X" },
-  ];
-
   const handleDownloadExcel = async () => {
+    if (!id_periodo) return;
     setGeneratingExcel(true);
     try {
       const url = `/api/reportes/excel?id_periodo=${id_periodo}&ciclo=${selectedCiclo}`;
@@ -96,6 +83,7 @@ export function VisorReportes({ id_periodo: id_periodo_inicial }: { id_periodo: 
   };
 
   const handleDownload = async (tipo: string, id?: string) => {
+    if (!id_periodo) return;
     if ((tipo === 'docente' || tipo === 'aula') && !id) {
       toast.warning("Seleccione un elemento de la lista");
       return;
@@ -165,29 +153,17 @@ export function VisorReportes({ id_periodo: id_periodo_inicial }: { id_periodo: 
               Configure parámetros de aulas, laboratorios y docentes para exportar consolidados oficiales en formato PDF.
             </p>
           </div>
-          <div className="flex flex-col gap-1.5 min-w-[200px]">
-            <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Periodo para Reportes</Label>
-            <Select 
-              value={id_periodo.toString()} 
-              onValueChange={(val) => setIdPeriodo(parseInt(val))}
-            >
-              <SelectTrigger className="h-10 rounded-xl border border-border bg-muted/50 font-bold text-xs">
-                <SelectValue placeholder="Periodo" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-border shadow-xl">
-                {periodos.map((p) => (
-                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold py-2 text-xs">
-                    {p.codigo} {p.activo ? "(Global)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-            {currentPeriodoObj && (
-              <p className="text-[9px] text-muted-foreground text-right italic font-medium">
+          {currentPeriodoObj && (
+            <div className="flex flex-col gap-1.5 px-4 py-2 bg-primary/5 rounded-xl border border-primary/20">
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 ml-1">Periodo Global</span>
+              <p className="text-sm font-bold text-primary">
+                {currentPeriodoObj.codigo}
+              </p>
+              <p className="text-[9px] text-muted-foreground italic font-medium">
                 Reportes para {currentPeriodoObj.nombre}
               </p>
-            )}
-          </div>
+            </div>
+          )}
         </div>
       </div>
 
