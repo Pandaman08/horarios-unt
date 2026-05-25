@@ -1,6 +1,8 @@
 "use client";
 
 import { useState, useEffect } from "react";
+import { useSession } from "next-auth/react";
+import { useRouter } from "next/navigation";
 import { ColaEspera } from "@/components/horarios/ColaEspera";
 import { MatrizDisponibilidad } from "@/components/horarios/MatrizDisponibilidad";
 import { ProgresoCursos } from "@/components/horarios/ProgresoCursos";
@@ -91,6 +93,8 @@ function ProgresoGeneral({ id_periodo }: { id_periodo: string }) {
 }
 
 export default function AsignacionOperadorPage() {
+  const { data: session, status } = useSession();
+  const router = useRouter();
   const [periodos, setPeriodos] = useState<any[]>([]);
   const [idPeriodo, setIdPeriodo] = useState<string>("");
   const [docenteActual, setDocenteActual] = useState<any>(null);
@@ -104,6 +108,16 @@ export default function AsignacionOperadorPage() {
   const [searchTerm, setSearchTerm] = useState("");
   const [searchResults, setSearchResults] = useState<any[]>([]);
   const [isSearching, setIsSearching] = useState(false);
+
+  useEffect(() => {
+    if (status === "authenticated") {
+      const userRol = session?.user?.rol;
+      // Si es admin o operador, redirigir
+      if (userRol === "administrador_sistema" || userRol === "operador_horarios") {
+        router.push("/dashboard");
+      }
+    }
+  }, [status, session, router]);
 
   useEffect(() => {
     fetchPeriodos();
@@ -244,6 +258,14 @@ export default function AsignacionOperadorPage() {
       setIsConfirming(false);
     }
   };
+
+  if (status === "loading") {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="h-8 w-8 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700 w-full overflow-x-hidden">

@@ -29,7 +29,8 @@ import {
   UserCircle2,
   Filter,
   GraduationCap,
-  CalendarDays
+  CalendarDays,
+  Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AsignarCursosDialog } from "./AsignarCursosDialog";
@@ -48,6 +49,11 @@ interface Docente {
   telefono: string;
   grado_academico?: string;
   fecha_ingreso?: string;
+  docente_cursos?: Array<{
+    curso: {
+      id_ciclo?: number;
+    }
+  }>;
 }
 
 export function DocenteList() {
@@ -62,6 +68,9 @@ export function DocenteList() {
   const [filtroModalidad, setFiltroModalidad] = useState<string>("todos");
   const [filtroGrado, setFiltroGrado] = useState<string>("todos");
   const [filtroAntiguedad, setFiltroAntiguedad] = useState<string>("todos");
+  const [ciclos, setCiclos] = useState<any[]>([]);
+  const [semestre, setSemestre] = useState<number>(0);
+  const [filtroCiclo, setFiltroCiclo] = useState<string>("todos");
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -91,7 +100,42 @@ export function DocenteList() {
     else if (filtroAntiguedad === "6-15") matchesAntiguedad = years > 5 && years <= 15;
     else if (filtroAntiguedad === "16+") matchesAntiguedad = years > 15;
 
-    return matchesSearch && matchesCategoria && matchesModalidad && matchesGrado && matchesAntiguedad;
+    // Filtrar por ciclo y semestre
+    let matchesCiclo = true;
+    let matchesSemestre = true;
+
+    if (filtroCiclo !== "todos" || semestre !== 0) {
+      // Obtener todos los ciclos asociados al docente
+      const docenteCiclos = new Set<number>();
+      d.docente_cursos?.forEach(dc => {
+        if (dc.curso?.id_ciclo) {
+          docenteCiclos.add(dc.curso.id_ciclo);
+        }
+      });
+
+      // Filtrar por ciclo
+      if (filtroCiclo !== "todos") {
+        matchesCiclo = docenteCiclos.has(parseInt(filtroCiclo));
+      }
+
+      // Filtrar por semestre
+      if (semestre !== 0) {
+        matchesSemestre = Array.from(docenteCiclos).some(cicloId => {
+          const ciclo = ciclos.find(c => c.id_ciclo === cicloId);
+          if (ciclo) {
+            const isPar = ciclo.numero % 2 === 0;
+            return (semestre === 1 && !isPar) || (semestre === 2 && isPar);
+          }
+          return false;
+        });
+        // Si el docente no tiene cursos, no se muestra solo si se está filtrando por semestre
+        if (docenteCiclos.size === 0) {
+          matchesSemestre = false;
+        }
+      }
+    }
+
+    return matchesSearch && matchesCategoria && matchesModalidad && matchesGrado && matchesAntiguedad && matchesCiclo && matchesSemestre;
   });
 
   // Cálculo de paginación
@@ -101,14 +145,41 @@ export function DocenteList() {
     currentPage * itemsPerPage
   );
 
+  const fetchCiclos = async () => {
+    try {
+      const res = await fetch("/api/ciclos");
+      const contentType = res.headers.get("content-type");
+      
+      if (!res.ok) {
+        const errorData = contentType?.includes("application/json") 
+          ? await res.json() 
+          : { error: `Error ${res.status}: ${res.statusText}` };
+        throw new Error(errorData.error || "Error al cargar ciclos");
+      }
+
+      if (!contentType?.includes("application/json")) {
+        const text = await res.text();
+        console.error("Respuesta no es JSON de /api/ciclos:", text.substring(0, 200));
+        throw new Error("La respuesta de ciclos no es un JSON válido (posible 404 o redirección)");
+      }
+
+      const data = await res.json();
+      setCiclos(Array.isArray(data) ? data : []);
+    } catch (error: any) {
+      console.error("Error al cargar ciclos:", error);
+      setCiclos([]);
+    }
+  };
+
   useEffect(() => {
     fetchDocentes();
+    fetchCiclos();
   }, []);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filtroCategoria, filtroModalidad, filtroGrado, filtroAntiguedad]);
+  }, [searchTerm, filtroCategoria, filtroModalidad, filtroGrado, filtroAntiguedad, filtroCiclo, semestre]);
 
   const fetchDocentes = async () => {
     try {
@@ -150,19 +221,34 @@ export function DocenteList() {
             </div>
           </div>
 
-          <div className="relative flex-1 sm:min-w-[280px] max-w-md w-full">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar docente..." 
-              className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="flex items-center gap-2 bg-muted/50 p-1.5 rounded-lg border border-border">
+              <Calendar className="h-4 w-4 text-muted-foreground" />
+              <Select value={semestre.toString()} onValueChange={(v) => setSemestre(parseInt(v))}>
+                <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-bold text-[11px] focus:ring-0 w-[120px]">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent className="rounded-lg border-border">
+                  <SelectItem value="0" className="font-bold text-[11px]">Todos los semestres</SelectItem>
+                  <SelectItem value="1" className="font-bold text-[11px]">I Semestre</SelectItem>
+                  <SelectItem value="2" className="font-bold text-[11px]">II Semestre</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="relative flex-1 sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input 
+                placeholder="Buscar docente..." 
+                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
         </div>
 
         {/* Barra de Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-border/50">
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2 border-t border-border/50">
           <div className="space-y-1.5">
             <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
             <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
@@ -189,6 +275,29 @@ export function DocenteList() {
                 <SelectItem value="todos" className="text-[10px] font-bold">Todas las modalidades</SelectItem>
                 <SelectItem value="NOMBRADO" className="text-[10px] font-bold">Nombrado</SelectItem>
                 <SelectItem value="CONTRATADO" className="text-[10px] font-bold">Contratado</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+            <Select value={filtroCiclo} onValueChange={setFiltroCiclo}>
+              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+                <SelectValue placeholder="Todos" />
+              </SelectTrigger>
+              <SelectContent className="rounded-xl border-border">
+                <SelectItem value="todos" className="text-[10px] font-bold">Todos los ciclos</SelectItem>
+                {ciclos
+                  .filter(c => {
+                    if (semestre === 0) return true;
+                    const isPar = c.numero % 2 === 0;
+                    return (semestre === 1 && !isPar) || (semestre === 2 && isPar);
+                  })
+                  .map(c => (
+                    <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="text-[10px] font-bold">
+                      {c.nombre}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           </div>

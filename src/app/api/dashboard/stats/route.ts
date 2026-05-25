@@ -41,8 +41,8 @@ export async function GET(request: Request) {
     });
 
     const docentesIdsConGrupos = new Set<number>();
-    gruposEnPeriodo.forEach(g => {
-      g.curso.docente_cursos.forEach(dc => {
+    gruposEnPeriodo.forEach((g: { curso: { docente_cursos: { id_docente: number; }[]; }; }) => {
+      g.curso.docente_cursos.forEach((dc: { id_docente: number; }) => {
         docentesIdsConGrupos.add(dc.id_docente);
       });
     });
@@ -137,7 +137,7 @@ export async function GET(request: Request) {
     const mapaCalorRaw = await prisma.horarioAsignado.groupBy({
       by: ['dia_semana', 'hora_inicio'],
       _count: { id_asignacion: true },
-      where: { id_periodo, dia_semana: { gte: 0, lte: 4 } },
+      where: { id_periodo, dia_semana: { gte: 0, lte: 5 } },
     });
 
     const mapaCalor = mapaCalorRaw.map((m: any) => ({

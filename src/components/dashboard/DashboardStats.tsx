@@ -371,13 +371,13 @@ export function DashboardStats({
           </div>
 
           <div className="overflow-x-auto rounded-lg border border-border">
-            <table className="w-full min-w-[520px] text-xs">
+            <table className="w-full min-w-[700px] text-xs">
               <thead>
                 <tr className="bg-muted/40 border-b border-border">
                   <th className="text-left py-2.5 px-3 font-semibold text-muted-foreground w-20">
                     Hora
                   </th>
-                  {[0, 1, 2, 3, 4].map((d) => (
+                  {[0, 1, 2, 3, 4, 5].map((d) => (
                     <th key={d} className="text-center py-2.5 px-1 font-semibold text-muted-foreground">
                       {DIAS_SEMANA[d]?.slice(0, 3).toUpperCase()}
                     </th>
@@ -390,7 +390,7 @@ export function DashboardStats({
                     <td className="py-2 px-3 text-muted-foreground font-medium whitespace-nowrap">
                       {formatRangoHora(hora)}
                     </td>
-                    {[0, 1, 2, 3, 4].map((dia) => {
+                    {[0, 1, 2, 3, 4, 5].map((dia) => {
                       const valor = getCalorValor(dia, hora);
                       const nivel = heatmapLevel(valor);
                       return (

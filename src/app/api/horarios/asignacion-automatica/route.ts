@@ -50,28 +50,23 @@ export async function POST(request: Request) {
       });
     });
 
-    // Paso 1: Obtener docentes con disponibilidad y cursos
-    console.log("📋 Obteniendo docentes...");
-    const docentes = await prisma.docente.findMany({
-      where: { activo: true },
-      include: {
-        disponibilidad: {
-          where: { id_periodo: parseInt(id_periodo), disponible: true }
-        },
-        docente_cursos: {
-          where: { activo: true },
-          include: { 
-            curso: {
-              include: {
-                curso_ambientes: {
-                  include: { ambiente: true }
-                }
-              }
-            }
+    // Paso 1: Obtener docentes con disponibilidad y cursos, y TODOS los ambientes
+    console.log("📋 Obteniendo docentes y ambientes...");
+    const [docentes, ambientes] = await Promise.all([
+      prisma.docente.findMany({
+        where: { activo: true },
+        include: {
+          disponibilidad: {
+            where: { id_periodo: parseInt(id_periodo), disponible: true }
+          },
+          docente_cursos: {
+            where: { activo: true },
+            include: { curso: true }
           }
         }
-      }
-    });
+      }),
+      prisma.ambiente.findMany({ where: { activo: true } })
+    ]);
 
     console.log(`✅ Docentes encontrados: ${docentes.length}`);
 
@@ -177,9 +172,16 @@ export async function POST(request: Request) {
           const curso = docenteCurso.curso;
           console.log(`  📚 Curso: ${curso.nombre} (${docenteCurso.tipo_clase})`);
           
-          const ambientesValidos = curso.curso_ambientes
-            .filter(ca => ca.tipo_clase.toLowerCase() === docenteCurso.tipo_clase.toLowerCase())
-            .map(ca => ca.ambiente);
+          // Obtener todos los ambientes del tipo apropiado (aula para teoría, laboratorio para laboratorio)
+          const ambientesValidos = ambientes.filter(a => {
+            if (docenteCurso.tipo_clase.toLowerCase() === 'teoria') {
+              return a.tipo === 'aula' || a.tipo === 'auditorio';
+            } else if (docenteCurso.tipo_clase.toLowerCase() === 'laboratorio') {
+              return a.tipo === 'laboratorio';
+            } else { // practica
+              return a.tipo === 'aula' || a.tipo === 'laboratorio' || a.tipo === 'auditorio';
+            }
+          });
             
           const ambientesMezclados = [...ambientesValidos].sort(() => Math.random() - 0.5);
             
