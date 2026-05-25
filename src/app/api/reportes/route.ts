@@ -6,8 +6,8 @@ import { ServicioEstadisticas } from '@/services/reportes/ServicioEstadisticas';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const tipo = searchParams.get('tipo'); // docente, aula, gestion, dia
-    const id = searchParams.get('id'); // id_docente o id_ambiente o dia_index
+    const tipo = searchParams.get('tipo');
+    const id = searchParams.get('id');
     const id_periodo = searchParams.get('id_periodo');
 
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
@@ -15,437 +15,275 @@ export async function GET(request: Request) {
     let htmlContent = '';
     let reportTitle = '';
 
+    const periodo = await prisma.periodoAcademico.findUnique({
+      where: { id_periodo: parseInt(id_periodo) }
+    });
+
+    const generarCabeceraResumen = (titulo: string, valor: string, label: string, infoDerecha?: { label: string, valor: string }) => `
+      <div class="highlight-card" style="padding: 15px; margin-bottom: 20px;">
+        <div style="display: flex; justify-content: space-between; align-items: center;">
+          <div style="display: flex; align-items: center; gap: 15px;">
+            <div style="background: #e0e7ff; color: #4338ca; padding: 8px 16px; border-radius: 8px; font-weight: 800; text-transform: uppercase;">
+              ${titulo}
+            </div>
+            <div>
+              <p style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0;">${label}</p>
+              <p style="font-size: 14px; font-weight: 700; color: #1e293b; margin: 0;">${valor}</p>
+            </div>
+          </div>
+          ${infoDerecha ? `
+            <div style="text-align: right;">
+              <p style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0;">${infoDerecha.label}</p>
+              <p style="font-size: 14px; font-weight: 700; color: #1e293b; margin: 0;">${infoDerecha.valor}</p>
+            </div>
+          ` : ''}
+        </div>
+      </div>
+    `;
+
     if (tipo === 'dia') {
       const diaIndex = parseInt(id!);
-      const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const nombreDia = nombresDias[diaIndex] || 'Desconocido';
-
+      
       const horarios = await prisma.horarioAsignado.findMany({
-        where: {
-          id_periodo: parseInt(id_periodo),
-          dia_semana: diaIndex
-        },
-        include: {
-          docente: true,
-          curso: {
-            include: {
-              ciclo_rel: true
-            }
-          },
-          ambiente: true,
-          grupo: true
-        },
-        orderBy: [
-          { hora_inicio: 'asc' },
-          { curso: { id_ciclo: 'asc' } }
-        ]
-      });
-
-      const periodo = await prisma.periodoAcademico.findUnique({
-        where: { id_periodo: parseInt(id_periodo) }
+        where: { id_periodo: parseInt(id_periodo), dia_semana: diaIndex },
+        include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
+        orderBy: [{ hora_inicio: 'asc' }]
       });
 
       reportTitle = `Reporte de Horarios: ${nombreDia} (${periodo?.codigo || ''})`;
-
-      htmlContent = `
-        <div class="highlight-card mb-8">
-          <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-            <div class="flex items-center gap-4">
-              <div class="bg-indigo-100 text-indigo-700 px-6 py-2 rounded-lg font-bold tracking-wider text-lg border border-indigo-200 uppercase">
-                ${nombreDia}
-              </div>
-              <div>
-                <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Resumen del Día</p>
-                <p class="text-lg font-semibold text-slate-800">${horarios.length} Clases Programadas</p>
-              </div>
-            </div>
-            <div class="text-right">
-              <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Periodo Académico</p>
-              <p class="text-md font-bold text-slate-700">${periodo?.nombre || '—'}</p>
-            </div>
-          </div>
-          
-          <table class="print-table w-full">
+      htmlContent = generarCabeceraResumen(nombreDia, `${horarios.length} Clases Programadas`, "Resumen del Día", { label: "Periodo Académico", valor: periodo?.nombre || '' });
+      
+      htmlContent += `
+        <div class="highlight-card">
+          <table class="print-table">
             <thead>
-              <tr class="bg-slate-50">
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Horario</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Ciclo</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Curso / Grupo</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Docente</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Ambiente</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Tipo</th>
+              <tr>
+                <th style="width: 15%;">HORARIO</th>
+                <th style="width: 8%; text-align: center;">CICLO</th>
+                <th style="width: 25%;">CURSO / GRUPO</th>
+                <th style="width: 20%;">DOCENTE</th>
+                <th style="width: 17%;">AMBIENTE</th>
+                <th style="width: 15%; text-align: center;">TIPO</th>
               </tr>
             </thead>
             <tbody>
-              ${horarios.length === 0 ? `
+              ${horarios.map(h => `
                 <tr>
-                  <td colspan="6" class="p-8 text-center text-slate-400 font-medium italic">No hay clases programadas para este día.</td>
-                </tr>
-              ` : horarios.map((h: any, index: number) => `
-                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}">
-                  <td class="p-3 font-mono text-indigo-600 font-bold whitespace-nowrap border-b border-slate-100">${h.hora_inicio} - ${h.hora_fin}</td>
-                  <td class="p-3 border-b border-slate-100 text-center">
-                    <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-black border border-slate-200">
-                      ${h.curso.ciclo_rel?.numero || '—'}
-                    </span>
-                  </td>
-                  <td class="p-3 border-b border-slate-100">
-                    <p class="font-bold text-slate-800 leading-tight">${h.curso.nombre}</p>
-                    <p class="text-[10px] text-slate-500 font-mono mt-1 uppercase tracking-tighter">Grupo: ${h.grupo.codigo_grupo}</p>
-                  </td>
-                  <td class="p-3 border-b border-slate-100 text-slate-700 font-medium">
-                    ${h.docente.nombres} ${h.docente.apellidos}
-                  </td>
-                  <td class="p-3 border-b border-slate-100">
-                    <p class="font-semibold text-slate-700">${h.ambiente.nombre}</p>
-                    <p class="text-[9px] text-slate-500 uppercase">${h.ambiente.tipo}</p>
-                  </td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100">
-                    <span class="inline-block px-2 py-1 rounded-full text-[10px] font-black uppercase ${h.tipo_clase === 'teoria' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-          h.tipo_clase === 'practica' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-            'bg-purple-100 text-purple-700 border border-purple-200'
-        }">
-                      ${h.tipo_clase}
-                    </span>
-                  </td>
+                  <td style="font-weight: 700; color: #003366; font-size: 12px;">${h.hora_inicio} - ${h.hora_fin}</td>
+                  <td style="text-align: center;"><span style="background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso.ciclo_rel?.numero || '—'}</span></td>
+                  <td><div style="font-weight: 700; color: #1e293b;">${h.curso.nombre}</div><div style="font-size: 9px; color: #64748b; font-weight: 600;">GRUPO: ${h.grupo.codigo_grupo}</div></td>
+                  <td style="font-weight: 500; color: #334155; text-transform: uppercase; font-size: 11px;">${h.docente.nombres} ${h.docente.apellidos}</td>
+                  <td><div style="font-weight: 600; color: #1e293b;">${h.ambiente.nombre}</div><div style="font-size: 9px; color: #64748b; text-transform: uppercase;">${h.ambiente.tipo.replace('_', ' ')}</div></td>
+                  <td style="text-align: center;"><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${h.tipo_clase.toUpperCase()}</span></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        </div>
-      `;
+        </div>`;
+
     } else if (tipo === 'docente') {
       const docente = await prisma.docente.findUnique({
         where: { id_docente: parseInt(id!) },
-        include: {
-          horarios_asignados: {
-            where: { id_periodo: parseInt(id_periodo) },
-            include: { curso: true, ambiente: true, grupo: true }
-          }
-        }
+        include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true } } }
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
-
-      reportTitle = `Horario del Docente: ${docente.nombres} ${docente.apellidos}`;
+      
       const totalHoras = docente.horarios_asignados.reduce((acc: number, h: any) => {
         const [h1, m1] = h.hora_inicio.split(':').map(Number);
         const [h2, m2] = h.hora_fin.split(':').map(Number);
         return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
       }, 0);
-      const totalAlumnos = docente.horarios_asignados.reduce((acc: number, h: any) => {
-        return acc + (h.grupo?.cantidad_matriculados || 0);
-      }, 0);
 
-      htmlContent = `
-        <div class="highlight-card mb-8">
-          <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
-            <div class="flex items-center gap-4">
-              <div class="bg-indigo-100 text-indigo-700 px-4 py-2 rounded-lg font-mono font-bold tracking-wider text-sm border border-indigo-200">
-                ${docente.codigo_docente}
-              </div>
-              <div>
-                <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Modalidad y Categoría</p>
-                <p class="text-lg font-semibold text-slate-800">${docente.modalidad.toUpperCase()} - ${docente.categoria.replace('_', ' ').toUpperCase()}</p>
-              </div>
-            </div>
-            <div class="flex gap-4 text-right">
-              <div class="bg-emerald-50 border border-emerald-100 px-4 py-2 rounded-lg">
-                <p class="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Horas Dictadas</p>
-                <p class="text-xl font-black text-slate-800">${totalHoras}</p>
-              </div>
-              <div class="bg-blue-50 border border-blue-100 px-4 py-2 rounded-lg">
-                <p class="text-xs font-bold text-blue-600 uppercase tracking-widest mb-1">Total Alumnos</p>
-                <p class="text-xl font-black text-slate-800">${totalAlumnos}</p>
-              </div>
-            </div>
-          </div>
-          <table class="print-table w-full">
+      reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
+      htmlContent = generarCabeceraResumen(docente.codigo_docente || 'DOC', `${docente.nombres} ${docente.apellidos}`, "Docente", { label: "Total Horas", valor: `${totalHoras} hrs` });
+      
+      htmlContent += `
+        <div class="highlight-card">
+          <table class="print-table">
             <thead>
-              <tr class="bg-slate-50">
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Día</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Horario</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Curso</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Grupo</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Ambiente</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Tipo</th>
+              <tr>
+                <th style="width: 15%;">DÍA</th>
+                <th style="width: 15%;">HORARIO</th>
+                <th style="width: 8%; text-align: center;">CICLO</th>
+                <th style="width: 30%;">CURSO / GRUPO</th>
+                <th style="width: 17%;">AMBIENTE</th>
+                <th style="width: 15%; text-align: center;">TIPO</th>
               </tr>
             </thead>
             <tbody>
-              ${docente.horarios_asignados.sort((a: any, b: any) => a.dia_semana - b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio)).map((h: any, index: number) => `
-                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}">
-                  <td class="p-3 font-semibold text-slate-800 whitespace-nowrap border-b border-slate-100">${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.dia_semana] ?? '—'}</td>
-                  <td class="p-3 font-mono text-indigo-600 font-medium whitespace-nowrap border-b border-slate-100">${h.hora_inicio} - ${h.hora_fin}</td>
-                  <td class="p-3 font-medium border-b border-slate-100 text-slate-700">${h.curso.nombre}</td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100"><span class="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-bold">${h.grupo.codigo_grupo}</span></td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100 text-slate-700">${h.ambiente.nombre}</td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100">
-                    <span class="inline-block px-2 py-1 rounded-full text-xs font-bold capitalize ${h.tipo_clase === 'teoria' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
-          h.tipo_clase === 'practica' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
-            'bg-purple-100 text-purple-700 border border-purple-200'
-        }">
-                      ${h.tipo_clase}
-                    </span>
-                  </td>
+              ${docente.horarios_asignados.sort((a,b)=>a.dia_semana-b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio)).map(h => `
+                <tr>
+                  <td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana]}</td>
+                  <td style="color: #003366; font-weight: 700;">${h.hora_inicio} - ${h.hora_fin}</td>
+                  <td style="text-align: center;"><span style="background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso.ciclo_rel?.numero || '—'}</span></td>
+                  <td><div style="font-weight: 700;">${h.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo.codigo_grupo}</div></td>
+                  <td><div style="font-weight: 600;">${h.ambiente.nombre}</div></td>
+                  <td style="text-align: center;"><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${h.tipo_clase.toUpperCase()}</span></td>
                 </tr>
               `).join('')}
             </tbody>
           </table>
-        </div>
-      `;
-    } else if (tipo === 'aula') {
-      const ambiente = await prisma.ambiente.findUnique({
-        where: { id_ambiente: parseInt(id!) },
-        include: {
-          horarios_asignados: {
-            where: { id_periodo: parseInt(id_periodo) },
-            include: { curso: true, docente: true, grupo: true }
-          }
-        }
-      });
-      if (!ambiente) return NextResponse.json({ error: 'Ambiente no encontrado' }, { status: 404 });
+        </div>`;
 
-      reportTitle = `Horario del Ambiente: ${ambiente.nombre}`;
-      const totalHorasAmbiente = ambiente.horarios_asignados.reduce((acc: number, h: any) => {
-        const [h1, m1] = h.hora_inicio.split(':').map(Number);
-        const [h2, m2] = h.hora_fin.split(':').map(Number);
-        return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
-      }, 0);
-
-      htmlContent = `
-        <div class="highlight-card mb-8">
-          <div class="grid grid-cols-3 gap-4 mb-6 pb-4 border-b border-slate-200">
-            <div>
-              <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Tipo de Ambiente</p>
-              <p class="text-lg font-semibold text-slate-800 capitalize flex items-center">
-                <span class="w-3 h-3 rounded-full mr-2 ${ambiente.tipo === 'laboratorio' ? 'bg-purple-500' : 'bg-blue-500'}"></span>
-                ${ambiente.tipo.replace('_', ' ')}
-              </p>
-            </div>
-            <div>
-              <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Capacidad Máxima</p>
-              <p class="text-lg font-semibold text-slate-800">${ambiente.capacidad} <span class="text-sm font-normal text-slate-500">estudiantes</span></p>
-            </div>
-            <div>
-              <p class="text-xs font-bold text-slate-500 uppercase tracking-widest mb-1">Horas Ocupadas</p>
-              <p class="text-lg font-black text-emerald-600">${totalHorasAmbiente} <span class="text-sm font-normal text-slate-500">hrs</span></p>
-            </div>
-          </div>
-          <table class="print-table w-full">
-            <thead>
-              <tr class="bg-slate-50">
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Día</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Horario</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Curso</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Docente</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Grupo</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Tipo</th>
-                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Ocupación</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${ambiente.horarios_asignados.sort((a: any, b: any) => a.dia_semana - b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio)).map((h: any, index: number) => {
-                const matriculados = h.grupo?.cantidad_matriculados || 0;
-                const porcentaje = Math.round((matriculados / ambiente.capacidad) * 100);
-                const ocupacionColor = porcentaje > 90 ? 'text-red-600' : porcentaje > 70 ? 'text-amber-600' : 'text-emerald-600';
-                return `
-                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}">
-                  <td class="p-3 font-semibold text-slate-800 whitespace-nowrap border-b border-slate-100">${['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'][h.dia_semana] ?? '—'}</td>
-                  <td class="p-3 font-mono text-indigo-600 font-medium whitespace-nowrap border-b border-slate-100">${h.hora_inicio} - ${h.hora_fin}</td>
-                  <td class="p-3 font-medium border-b border-slate-100 text-slate-700">${h.curso.nombre}</td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100 text-slate-700">${h.docente.nombres} ${h.docente.apellidos}</td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100"><span class="bg-slate-200 text-slate-700 px-2 py-1 rounded text-xs font-bold">${h.grupo.codigo_grupo}</span></td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100">
-                    <span class="inline-block px-2 py-1 rounded-full text-xs font-bold capitalize ${h.tipo_clase === 'teoria' ? 'bg-blue-100 text-blue-700 border border-blue-200' : h.tipo_clase === 'practica' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-purple-100 text-purple-700 border border-purple-200'}">
-                      ${h.tipo_clase}
-                    </span>
-                  </td>
-                  <td class="p-3 whitespace-nowrap border-b border-slate-100">
-                    <span class="font-bold ${ocupacionColor}">${matriculados} / ${ambiente.capacidad}</span>
-                  </td>
-                </tr>
-              `}).join('')}
-            </tbody>
-          </table>
-        </div>
-      `;
-    } else if (tipo === 'consolidado') {
-      const docentes = await prisma.docente.findMany({
-        where: {
-          horarios_asignados: {
-            some: { id_periodo: parseInt(id_periodo) }
-          }
-        },
-        include: {
-          horarios_asignados: {
-            where: { id_periodo: parseInt(id_periodo) },
-            include: { curso: true }
-          }
-        }
-      });
-
-      reportTitle = `Consolidado de carga horaria`;
-      htmlContent = `
-        <div class="highlight-card mb-8">
-          <p class="text-slate-500 mb-6 font-medium">Este reporte muestra el total de horas académicas asignadas a cada docente en el periodo actual, agrupadas para facilitar la revisión de carga.</p>
-          <table class="print-table">
-            <thead>
-              <tr>
-                <th>Docente</th>
-                <th>Modalidad</th>
-                <th>Cursos Diferentes</th>
-                <th class="text-right">Total Horas Asignadas</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${docentes.map((d: any) => {
-        const totalHoras = d.horarios_asignados.reduce((acc: number, h: any) => {
+    } else if (tipo === 'aula' || tipo === 'aulas_todas') {
+      const ambientes = tipo === 'aula' 
+        ? [await prisma.ambiente.findUnique({ where: { id_ambiente: parseInt(id!) }, include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } } })]
+        : await prisma.ambiente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } }, orderBy: { nombre: 'asc' } });
+      
+      reportTitle = tipo === 'aula' ? `Horario Ambiente` : `Consolidado de Ambientes`;
+      htmlContent = ambientes.map(a => {
+        if (!a) return '';
+        const totalHoras = a.horarios_asignados.reduce((acc: number, h: any) => {
           const [h1, m1] = h.hora_inicio.split(':').map(Number);
           const [h2, m2] = h.hora_fin.split(':').map(Number);
           return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
         }, 0);
-        const cursosDistintos = new Set(d.horarios_asignados.map((h: any) => h.id_curso)).size;
+
         return `
+          <div style="page-break-after: always;">
+            ${generarCabeceraResumen(a.nombre, `${a.tipo.replace('_', ' ')}`, "Ambiente", { label: "Capacidad / Horas", valor: `${a.capacidad} est. / ${totalHoras} hrs` })}
+            <div class="highlight-card">
+              <table class="print-table">
+                <thead>
                   <tr>
-                    <td class="font-bold text-slate-800 whitespace-nowrap">${d.nombres} ${d.apellidos}</td>
-                    <td class="capitalize font-medium text-slate-600 whitespace-nowrap">${d.modalidad}</td>
-                    <td class="whitespace-nowrap"><span class="bg-indigo-50 text-indigo-700 px-3 py-1 rounded-full text-xs font-bold border border-indigo-100">${cursosDistintos} cursos</span></td>
-                    <td class="text-right font-black text-slate-900 whitespace-nowrap">${totalHoras} hrs</td>
+                    <th style="width: 15%;">DÍA</th>
+                    <th style="width: 15%;">HORARIO</th>
+                    <th style="width: 8%; text-align: center;">CICLO</th>
+                    <th style="width: 30%;">CURSO / GRUPO</th>
+                    <th style="width: 17%;">DOCENTE</th>
+                    <th style="width: 15%; text-align: center;">TIPO</th>
                   </tr>
-                `;
-      }).join('')}
-            </tbody>
-          </table>
+                </thead>
+                <tbody>
+                  ${a.horarios_asignados.sort((a,b)=>a.dia_semana-b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio)).map(h => `
+                    <tr>
+                      <td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana]}</td>
+                      <td style="color: #003366; font-weight: 700;">${h.hora_inicio} - ${h.hora_fin}</td>
+                      <td style="text-align: center;"><span style="background: #f1f5f9; color: #475569; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso.ciclo_rel?.numero || '—'}</span></td>
+                      <td><div style="font-weight: 700;">${h.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo.codigo_grupo}</div></td>
+                      <td style="font-size: 11px; text-transform: uppercase;">${h.docente.nombres}</td>
+                      <td style="text-align: center;"><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${h.tipo_clase.toUpperCase()}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+      }).join('');
+
+    } else if (tipo === 'ciclo' || tipo === 'ciclos_todos') {
+      const ciclos = tipo === 'ciclo' ? [await prisma.ciclo.findUnique({ where: { id_ciclo: parseInt(id!) } })] : await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
+      reportTitle = tipo === 'ciclo' ? `Horario por Ciclo` : `Consolidado por Ciclos`;
+      htmlContent = (await Promise.all(ciclos.map(async c => {
+        if (!c) return '';
+        const h = await prisma.horarioAsignado.findMany({ where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: c.id_ciclo } }, include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true }, orderBy:[{dia_semana:'asc'},{hora_inicio:'asc'}] });
+        if(h.length === 0) return '';
+        return `
+          <div style="page-break-after: always;">
+            ${generarCabeceraResumen(c.nombre, `${h.length} Clases Programadas`, "Ciclo Académico", { label: "Periodo", valor: periodo?.codigo || '' })}
+            <div class="highlight-card">
+              <table class="print-table">
+                <thead>
+                  <tr>
+                    <th style="width: 15%;">DÍA / HORA</th>
+                    <th style="width: 30%;">CURSO / GRUPO</th>
+                    <th style="width: 20%;">DOCENTE</th>
+                    <th style="width: 17%;">AMBIENTE</th>
+                    <th style="width: 18%; text-align: center;">TIPO</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  ${h.map(clase => `
+                    <tr>
+                      <td><div style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][clase.dia_semana]}</div><div style="color: #003366; font-size: 11px; font-weight: 700;">${clase.hora_inicio} - ${clase.hora_fin}</div></td>
+                      <td><div style="font-weight: 700;">${clase.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${clase.grupo.codigo_grupo}</div></td>
+                      <td style="font-size: 11px; text-transform: uppercase;">${clase.docente.nombres} ${clase.docente.apellidos}</td>
+                      <td style="font-weight: 600;">${clase.ambiente.nombre}</td>
+                      <td style="text-align: center;"><span class="badge" style="background: ${clase.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${clase.tipo_clase.toUpperCase()}</span></td>
+                    </tr>
+                  `).join('')}
+                </tbody>
+              </table>
+            </div>
+          </div>`;
+      }))).join('');
+
+    } else if (tipo === 'reporte_general') {
+      // Placeholder para la plantilla oficial que entregará el usuario
+      reportTitle = 'Reporte General Consolidado';
+      htmlContent = `
+        <div class="highlight-card">
+          <h2 style="text-align: center; color: #003366;">PLANTILLA OFICIAL EN DESARROLLO</h2>
+          <p style="text-align: center; color: #64748b;">Esperando diseño final de la plantilla institucional...</p>
         </div>
       `;
-    } else if (tipo === 'conflictos') {
-      const conflictos = await prisma.conflictoHorario.findMany({
-        where: { id_periodo: parseInt(id_periodo) },
-        orderBy: { fecha_deteccion: 'desc' }
+    } else if (tipo === 'estadisticas' || tipo === 'consolidado') {
+      const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
+      if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
+
+      const docentesConCarga = await prisma.docente.findMany({
+        include: {
+          horarios_asignados: {
+            where: { id_periodo: parseInt(id_periodo) }
+          }
+        }
       });
 
-      reportTitle = `Conflictos de horario`;
+      const cargaDocentes = docentesConCarga.map(d => {
+        const horas = d.horarios_asignados.reduce((acc, h) => {
+          const [h1, m1] = h.hora_inicio.split(':').map(Number);
+          const [h2, m2] = h.hora_fin.split(':').map(Number);
+          return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+        }, 0);
+        return { nombre: `${d.nombres} ${d.apellidos}`, horas };
+      }).sort((a, b) => b.horas - a.horas);
 
-      if (conflictos.length === 0) {
-        htmlContent = `
-          <div class="bg-emerald-50 p-8 rounded-2xl border border-emerald-200 text-center shadow-sm">
-            <svg style="width: 64px; height: 64px;" class="text-emerald-500 mx-auto mb-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-            <p class="text-emerald-800 font-bold text-xl mb-2">¡Todo en orden!</p>
-            <p class="text-emerald-600 font-medium">No se han registrado cruces ni conflictos de horario en este periodo. La asignación académica se está desarrollando sin problemas.</p>
-          </div>
-        `;
-      } else {
-        htmlContent = `
-          <div class="highlight-card mb-8">
-            <p class="text-slate-500 mb-6 font-medium">Registro de todos los incidentes, cruces de aulas y docentes detectados durante la asignación de horarios.</p>
-            <table class="print-table">
-              <thead>
-                <tr>
-                  <th>Fecha y Hora</th>
-                  <th>Tipo de Conflicto</th>
-                  <th>Descripción Detallada</th>
-                  <th class="text-center">Estado</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${conflictos.map((c: any) => `
-                  <tr>
-                    <td class="whitespace-nowrap font-mono text-xs font-medium text-slate-500">${new Date(c.fecha_deteccion).toLocaleString('es-PE')}</td>
-                    <td class="capitalize font-bold text-slate-700 whitespace-nowrap">${c.tipo_conflicto.replace(/_/g, ' ')}</td>
-                    <td class="text-sm font-medium text-slate-600">${c.descripcion}</td>
-                    <td class="text-center whitespace-nowrap">
-                      <span class="inline-block px-3 py-1 rounded-full text-xs font-black uppercase tracking-wider ${c.resuelto ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' : 'bg-red-100 text-red-700 border border-red-200'
-          }">
-                        ${c.resuelto ? 'Resuelto' : 'No Resuelto'}
-                      </span>
-                    </td>
-                  </tr>
-                `).join('')}
-              </tbody>
-            </table>
-          </div>
-        `;
-      }
-    } else if (tipo === 'estadisticas') {
-      const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
-      if (!estadisticas) return NextResponse.json({ error: 'No hay datos' }, { status: 404 });
-
-      reportTitle = `Estadísticas finales`;
+      reportTitle = 'Reporte de Gestión Académica';
       htmlContent = `
-        <div class="highlight-card mb-8">
-          <h2 class="text-xl font-bold mb-6 text-slate-800 border-b border-slate-200 pb-3 flex items-center">
-            <svg style="width: 24px; height: 24px;" class="mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            Métricas de Carga Horaria
-          </h2>
-          
-          <div class="grid grid-cols-2 gap-6 mb-8">
-            <div class="bg-indigo-50/50 p-5 rounded-xl border border-indigo-100">
-              <p class="text-xs font-bold text-indigo-600 uppercase tracking-widest mb-1">Total Asignaciones</p>
-              <p class="text-4xl font-black text-slate-900">${estadisticas.total_asignaciones}</p>
+        ${generarCabeceraResumen("GESTIÓN", "Métricas de Periodo", "Reporte", { label: "Estado", valor: "Consolidado" })}
+        <div class="highlight-card">
+          <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;">
+            <div style="background: #f0f9ff; padding: 20px; border-radius: 12px; border: 1px solid #bae6fd;">
+              <p style="font-size: 11px; font-weight: 700; color: #0369a1; text-transform: uppercase; margin: 0;">Total Asignaciones</p>
+              <p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.total_asignaciones}</p>
             </div>
-            <div class="bg-emerald-50/50 p-5 rounded-xl border border-emerald-100">
-              <p class="text-xs font-bold text-emerald-600 uppercase tracking-widest mb-1">Promedio General</p>
-              <p class="text-4xl font-black text-slate-900">${estadisticas.media_horas} <span class="text-lg text-slate-500 font-medium tracking-normal">hrs</span></p>
+            <div style="background: #f0fdf4; padding: 20px; border-radius: 12px; border: 1px solid #bbf7d0;">
+              <p style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin: 0;">Promedio Horas</p>
+              <p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.media_horas} hrs</p>
             </div>
           </div>
-
-          <table class="print-table mb-8">
+          
+          <h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Consolidado de Carga Horaria por Docente</h4>
+          <table class="print-table">
             <thead>
               <tr>
-                <th>Métrica Estadística</th>
-                <th class="text-right">Valor Registrado</th>
+                <th>Docente</th>
+                <th style="text-align: right;">Total Horas</th>
               </tr>
             </thead>
             <tbody>
-              <tr>
-                <td><span class="font-semibold text-slate-800">Mediana</span> <span class="text-slate-500 text-xs ml-1">(Punto medio)</span></td>
-                <td class="text-right font-bold text-slate-800">${estadisticas.mediana_horas} hrs</td>
-              </tr>
-              <tr>
-                <td><span class="font-semibold text-slate-800">Desviación Estándar</span> <span class="text-slate-500 text-xs ml-1">(Dispersión)</span></td>
-                <td class="text-right font-bold text-slate-800">${estadisticas.desviacion_estandar} hrs</td>
-              </tr>
-              <tr>
-                <td><span class="font-semibold text-slate-800">Mínimo Registrado</span></td>
-                <td class="text-right font-bold text-slate-800">${estadisticas.min_horas} hrs</td>
-              </tr>
-              <tr>
-                <td><span class="font-semibold text-slate-800">Máximo Registrado</span></td>
-                <td class="text-right font-bold text-slate-800">${estadisticas.max_horas} hrs</td>
-              </tr>
+              ${cargaDocentes.map(d => `
+                <tr>
+                  <td style="font-weight: 600;">${d.nombre}</td>
+                  <td style="text-align: right; font-weight: 800; color: #0369a1;">${d.horas} hrs</td>
+                </tr>
+              `).join('')}
             </tbody>
           </table>
-          
-          <div class="bg-slate-50 border border-slate-200 rounded-xl p-6">
-            <h3 class="font-bold text-slate-800 mb-4 flex items-center text-sm uppercase tracking-wider">
-              <svg style="width: 20px; height: 20px;" class="mr-2 text-indigo-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z"></path></svg>
-              Observaciones Automáticas
-            </h3>
-            <ul class="list-disc pl-5 text-slate-700 space-y-2">
-              ${estadisticas.observaciones.map((o: string) => `<li>${o}</li>`).join('')}
+
+          <div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 25px;">
+            <h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Observaciones Automáticas</h4>
+            <ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 13px;">
+              ${estadisticas.observaciones.map((o: string) => `<li style="margin-bottom: 8px;">${o}</li>`).join('')}
             </ul>
           </div>
-        </div>
-      `;
-    } else {
-      return NextResponse.json({ error: 'Tipo de reporte no válido' }, { status: 400 });
+        </div>`;
     }
 
     const fullHTML = GeneradorPDF.wrapLayout(htmlContent, reportTitle);
-    
-    // Si el usuario añade ?format=html a la URL, devolvemos el HTML directamente
-    const format = searchParams.get('format');
-    if (format === 'html') {
-      return new Response(fullHTML, {
-        headers: { 'Content-Type': 'text/html; charset=utf-8' }
-      });
-    }
-
     const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML);
-
-    if (!pdfBuffer || pdfBuffer.length === 0) {
-      throw new Error("El buffer del PDF está vacío");
-    }
-
     return new Response(new Uint8Array(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
@@ -455,9 +293,6 @@ export async function GET(request: Request) {
     });
   } catch (error: any) {
     console.error("ERROR_GENERACION_REPORTES:", error);
-    return NextResponse.json({ 
-      error: 'Error al generar PDF', 
-      details: error.message 
-    }, { status: 500 });
+    return NextResponse.json({ error: 'Error al generar PDF', details: error.message }, { status: 500 });
   }
 }

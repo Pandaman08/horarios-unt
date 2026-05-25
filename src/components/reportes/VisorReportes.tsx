@@ -5,11 +5,12 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2 } from "lucide-react";
+import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export function VisorReportes() {
   const { data: session } = useSession();
@@ -20,18 +21,24 @@ export function VisorReportes() {
   const [id_periodo, setIdPeriodo] = useState<number | null>(null);
   const [docentes, setDocentes] = useState<any[]>([]);
   const [ambientes, setAmbientes] = useState<any[]>([]);
+  const [ciclos, setCiclos] = useState<any[]>([]);
   const [selectedDocente, setSelectedDocente] = useState<string>("");
   const [selectedAmbiente, setSelectedAmbiente] = useState<string>("");
   const [selectedCiclo, setSelectedCiclo] = useState<string>("todos");
+  const [selectedCicloReporte, setSelectedCicloReporte] = useState<string>("");
   const [selectedDia, setSelectedDia] = useState<string>("");
   const [selectedReporte, setSelectedReporte] = useState<string | null>(null);
   const [generatingDocente, setGeneratingDocente] = useState(false);
   const [generatingAula, setGeneratingAula] = useState(false);
+  const [generatingTodasAulas, setGeneratingTodasAulas] = useState(false);
   const [generatingDia, setGeneratingDia] = useState(false);
+  const [generatingCiclo, setGeneratingCiclo] = useState(false);
+  const [generatingTodosCiclos, setGeneratingTodosCiclos] = useState(false);
   const [generatingExcel, setGeneratingExcel] = useState(false);
   const [generatingConsolidado, setGeneratingConsolidado] = useState(false);
   const [generatingConflictos, setGeneratingConflictos] = useState(false);
   const [generatingEstadisticas, setGeneratingEstadisticas] = useState(false);
+  const [generatingReporteGeneral, setGeneratingReporteGeneral] = useState(false);
 
   // Sincronizar con el periodo global al inicio o cuando cambie
   useEffect(() => {
@@ -71,12 +78,14 @@ export function VisorReportes() {
 
   const fetchData = async () => {
     try {
-      const [dRes, aRes] = await Promise.all([
+      const [dRes, aRes, cRes] = await Promise.all([
         fetch("/api/docentes"),
-        fetch("/api/ambientes")
+        fetch("/api/ambientes"),
+        fetch("/api/ciclos")
       ]);
       setDocentes(await dRes.json());
       setAmbientes(await aRes.json());
+      setCiclos(await cRes.json());
     } catch (error) {
       toast.error("Error al cargar datos de reportes");
     }
@@ -84,7 +93,7 @@ export function VisorReportes() {
 
   const handleDownload = async (tipo: string, id?: string) => {
     if (!id_periodo) return;
-    if ((tipo === 'docente' || tipo === 'aula') && !id) {
+    if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
       toast.warning("Seleccione un elemento de la lista");
       return;
     }
@@ -95,10 +104,14 @@ export function VisorReportes() {
     const setLoading = {
       docente: setGeneratingDocente,
       aula: setGeneratingAula,
+      aulas_todas: setGeneratingTodasAulas,
       dia: setGeneratingDia,
+      ciclo: setGeneratingCiclo,
+      ciclos_todos: setGeneratingTodosCiclos,
       consolidado: setGeneratingConsolidado,
       conflictos: setGeneratingConflictos,
       estadisticas: setGeneratingEstadisticas,
+      reporte_general: setGeneratingReporteGeneral,
     }[tipo as any];
 
     if (setLoading) setLoading(true);
@@ -123,6 +136,7 @@ export function VisorReportes() {
 
       if (tipo === 'docente') setSelectedDocente("");
       else if (tipo === 'aula') setSelectedAmbiente("");
+      else if (tipo === 'ciclo') setSelectedCicloReporte("");
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar PDF");
@@ -137,6 +151,8 @@ export function VisorReportes() {
     { id: 'aula', icon: School, title: 'Horario por Aula', description: 'Consolidado de clases de teoría por ambiente', color: 'indigo' },
     { id: 'dia', icon: Calendar, title: 'Reporte por Día', description: 'Verificar clases, docentes y aulas por cada día de la semana', color: 'emerald' },
     { id: 'docente', icon: User, title: 'Horario por Docente', description: 'Planes de dictado por investigador', color: 'amber' },
+    { id: 'ciclo', icon: Layers, title: 'Reporte por Ciclo', description: 'Docentes que enseñan por cada ciclo académico', color: 'purple' },
+    { id: 'reporte_general', icon: FileText, title: 'Reporte General', description: 'Consolidado oficial con plantilla institucional', color: 'indigo' },
     { id: 'gestion', icon: TrendingUp, title: 'Reporte de Gestión', description: 'KPIs globales y horas pendientes por asignar', color: 'slate' },
   ];
 
@@ -177,6 +193,7 @@ export function VisorReportes() {
             indigo: 'border-primary/20 bg-primary/5',
             emerald: 'border-emerald-500/20 bg-emerald-500/5',
             amber: 'border-amber-500/20 bg-amber-500/5',
+            purple: 'border-purple-500/20 bg-purple-500/5',
             slate: 'border-muted-foreground/20 bg-muted-foreground/5',
           };
 
@@ -184,6 +201,7 @@ export function VisorReportes() {
             indigo: 'border-primary',
             emerald: 'border-emerald-600',
             amber: 'border-amber-600',
+            purple: 'border-purple-600',
             slate: 'border-foreground',
           };
 
@@ -226,35 +244,49 @@ export function VisorReportes() {
           </div>
           
           {(selectedReporte === 'aula' || selectedReporte === 'laboratorio') ? (
-            <div className="flex flex-col sm:flex-row gap-4 items-end">
-              <div className="flex-1">
-                <Label className="text-sm font-semibold text-foreground mb-2 block">
-                  {selectedReporte === 'aula' ? 'Seleccionar Aula de Teoría' : 'Seleccionar Laboratorio'}
-                </Label>
-                <Select 
-                  value={selectedAmbiente} 
-                  onValueChange={setSelectedAmbiente}
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-1">
+                  <Label className="text-sm font-semibold text-foreground mb-2 block">
+                    {selectedReporte === 'aula' ? 'Seleccionar Aula de Teoría' : 'Seleccionar Laboratorio'}
+                  </Label>
+                  <SearchableSelect
+                    options={ambientes.map(a => ({
+                      value: a.id_ambiente.toString(),
+                      label: `${a.nombre} (${a.tipo.replace('_', ' ')})`
+                    }))}
+                    value={selectedAmbiente}
+                    onValueChange={setSelectedAmbiente}
+                    placeholder="Buscar aula..."
+                  />
+                </div>
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('aula', selectedAmbiente)}
+                  disabled={generatingAula}
                 >
-                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Aula A-101" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {ambientes.map(a => (
-                      <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()}>
-                        {a.nombre} ({a.tipo.replace('_', ' ')})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Generar PDF Oficial
+                </Button>
               </div>
-              <Button
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('aula', selectedAmbiente)}
-                disabled={generatingAula}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
-              </Button>
+              
+              <div className="pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
+                  <div>
+                    <h4 className="text-sm font-bold text-primary mb-1">Reporte Masivo de Ambientes</h4>
+                    <p className="text-xs text-muted-foreground">Genera un solo PDF con los horarios de todos los ambientes registrados.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-10 border-primary/20 hover:bg-primary/10 text-primary font-bold text-xs"
+                    onClick={() => handleDownload('aulas_todas')}
+                    disabled={generatingTodasAulas}
+                  >
+                    {generatingTodasAulas ? <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Layers className="h-3.5 w-3.5 mr-2" />}
+                    Generar todos los ambientes
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : selectedReporte === 'dia' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -267,7 +299,7 @@ export function VisorReportes() {
                   <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
                     <SelectValue placeholder="Seleccione un día" />
                   </SelectTrigger>
-                  <SelectContent>
+                  <SelectContent position="popper">
                     <SelectItem value="0">Lunes</SelectItem>
                     <SelectItem value="1">Martes</SelectItem>
                     <SelectItem value="2">Miércoles</SelectItem>
@@ -290,21 +322,15 @@ export function VisorReportes() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Docente</Label>
-                <Select 
-                  value={selectedDocente} 
+                <SearchableSelect
+                  options={docentes.map(d => ({
+                    value: d.id_docente.toString(),
+                    label: `${d.nombres} ${d.apellidos}`
+                  }))}
+                  value={selectedDocente}
                   onValueChange={setSelectedDocente}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Juan Pérez" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {docentes.map(d => (
-                      <SelectItem key={d.id_docente} value={d.id_docente.toString()}>
-                        {d.nombres} {d.apellidos}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Buscar docente..."
+                />
               </div>
               <Button
                 className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
@@ -314,6 +340,58 @@ export function VisorReportes() {
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Generar PDF Oficial
               </Button>
+            </div>
+          ) : selectedReporte === 'ciclo' ? (
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Ciclo Académico</Label>
+                <Select 
+                  value={selectedCicloReporte} 
+                  onValueChange={setSelectedCicloReporte}
+                >
+                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
+                    <SelectValue placeholder="Seleccione un ciclo" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {ciclos.map(c => (
+                      <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
+                        {c.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                onClick={() => handleDownload('ciclo', selectedCicloReporte)}
+                disabled={generatingCiclo}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Generar PDF Oficial
+              </Button>
+            </div>
+          ) : selectedReporte === 'reporte_general' ? (
+            <div className="flex flex-col gap-4">
+              <div className="p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-center">
+                <FileText className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Generar Reporte General con Plantilla</h3>
+                <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
+                  Este reporte utiliza el formato oficial institucional para generar un consolidado de todos los ciclos y ambientes.
+                </p>
+                <div className="flex justify-center gap-4">
+                  <Button
+                    className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-8 font-bold shadow-lg shadow-indigo-900/20"
+                    onClick={() => handleDownload('reporte_general')}
+                    disabled={generatingReporteGeneral}
+                  >
+                    {generatingReporteGeneral ? (
+                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando PDF...</>
+                    ) : (
+                      <><Download className="h-5 w-5 mr-2" /> Descargar PDF Oficial</>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
