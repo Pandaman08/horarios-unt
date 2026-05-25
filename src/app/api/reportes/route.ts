@@ -6,8 +6,8 @@ import { ServicioEstadisticas } from '@/services/reportes/ServicioEstadisticas';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const tipo = searchParams.get('tipo'); // docente, aula, gestion
-    const id = searchParams.get('id'); // id_docente o id_ambiente
+    const tipo = searchParams.get('tipo'); // docente, aula, gestion, dia
+    const id = searchParams.get('id'); // id_docente o id_ambiente o dia_index
     const id_periodo = searchParams.get('id_periodo');
 
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
@@ -15,7 +15,106 @@ export async function GET(request: Request) {
     let htmlContent = '';
     let reportTitle = '';
 
-    if (tipo === 'docente') {
+    if (tipo === 'dia') {
+      const diaIndex = parseInt(id!);
+      const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+      const nombreDia = nombresDias[diaIndex] || 'Desconocido';
+
+      const horarios = await prisma.horarioAsignado.findMany({
+        where: {
+          id_periodo: parseInt(id_periodo),
+          dia_semana: diaIndex
+        },
+        include: {
+          docente: true,
+          curso: {
+            include: {
+              ciclo_rel: true
+            }
+          },
+          ambiente: true,
+          grupo: true
+        },
+        orderBy: [
+          { hora_inicio: 'asc' },
+          { curso: { id_ciclo: 'asc' } }
+        ]
+      });
+
+      const periodo = await prisma.periodoAcademico.findUnique({
+        where: { id_periodo: parseInt(id_periodo) }
+      });
+
+      reportTitle = `Reporte de Horarios: ${nombreDia} (${periodo?.codigo || ''})`;
+
+      htmlContent = `
+        <div class="highlight-card mb-8">
+          <div class="flex items-center justify-between mb-6 pb-4 border-b border-slate-200">
+            <div class="flex items-center gap-4">
+              <div class="bg-indigo-100 text-indigo-700 px-6 py-2 rounded-lg font-bold tracking-wider text-lg border border-indigo-200 uppercase">
+                ${nombreDia}
+              </div>
+              <div>
+                <p class="text-sm font-bold text-slate-500 uppercase tracking-widest">Resumen del Día</p>
+                <p class="text-lg font-semibold text-slate-800">${horarios.length} Clases Programadas</p>
+              </div>
+            </div>
+            <div class="text-right">
+              <p class="text-xs font-bold text-slate-400 uppercase tracking-widest">Periodo Académico</p>
+              <p class="text-md font-bold text-slate-700">${periodo?.nombre || '—'}</p>
+            </div>
+          </div>
+          
+          <table class="print-table w-full">
+            <thead>
+              <tr class="bg-slate-50">
+                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Horario</th>
+                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Ciclo</th>
+                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Curso / Grupo</th>
+                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Docente</th>
+                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Ambiente</th>
+                <th class="p-3 text-left font-bold text-slate-600 text-sm uppercase border-b-2 border-slate-200">Tipo</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${horarios.length === 0 ? `
+                <tr>
+                  <td colspan="6" class="p-8 text-center text-slate-400 font-medium italic">No hay clases programadas para este día.</td>
+                </tr>
+              ` : horarios.map((h: any, index: number) => `
+                <tr class="${index % 2 === 0 ? 'bg-white' : 'bg-slate-50/50'}">
+                  <td class="p-3 font-mono text-indigo-600 font-bold whitespace-nowrap border-b border-slate-100">${h.hora_inicio} - ${h.hora_fin}</td>
+                  <td class="p-3 border-b border-slate-100 text-center">
+                    <span class="bg-slate-100 text-slate-700 px-2 py-1 rounded text-xs font-black border border-slate-200">
+                      ${h.curso.ciclo_rel?.numero || '—'}
+                    </span>
+                  </td>
+                  <td class="p-3 border-b border-slate-100">
+                    <p class="font-bold text-slate-800 leading-tight">${h.curso.nombre}</p>
+                    <p class="text-[10px] text-slate-500 font-mono mt-1 uppercase tracking-tighter">Grupo: ${h.grupo.codigo_grupo}</p>
+                  </td>
+                  <td class="p-3 border-b border-slate-100 text-slate-700 font-medium">
+                    ${h.docente.nombres} ${h.docente.apellidos}
+                  </td>
+                  <td class="p-3 border-b border-slate-100">
+                    <p class="font-semibold text-slate-700">${h.ambiente.nombre}</p>
+                    <p class="text-[9px] text-slate-500 uppercase">${h.ambiente.tipo}</p>
+                  </td>
+                  <td class="p-3 whitespace-nowrap border-b border-slate-100">
+                    <span class="inline-block px-2 py-1 rounded-full text-[10px] font-black uppercase ${h.tipo_clase === 'teoria' ? 'bg-blue-100 text-blue-700 border border-blue-200' :
+          h.tipo_clase === 'practica' ? 'bg-emerald-100 text-emerald-700 border border-emerald-200' :
+            'bg-purple-100 text-purple-700 border border-purple-200'
+        }">
+                      ${h.tipo_clase}
+                    </span>
+                  </td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>
+      `;
+    } else if (tipo === 'docente') {
       const docente = await prisma.docente.findUnique({
         where: { id_docente: parseInt(id!) },
         include: {

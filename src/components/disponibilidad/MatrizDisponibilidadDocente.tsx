@@ -11,6 +11,7 @@ import {
   X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Badge } from "@/components/ui/badge";
 import { 
   AlertDialog,
   AlertDialogAction,
@@ -29,6 +30,7 @@ interface Props {
   onSave: (data: any[]) => Promise<void>;
   onCancel: () => void;
   docenteNombre: string;
+  isReadOnly?: boolean;
 }
 
 const DIAS = [
@@ -44,7 +46,8 @@ export function MatrizDisponibilidadDocente({
   initialData = [],
   onSave,
   onCancel,
-  docenteNombre
+  docenteNombre,
+  isReadOnly = false
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -72,6 +75,7 @@ export function MatrizDisponibilidadDocente({
   }, []);
 
   const handleToggle = (dia: number, hora: string) => {
+    if (isReadOnly) return;
     const key = `${dia}-${hora}`;
     setMatriz(prev => {
       const newState = { ...prev };
@@ -117,11 +121,18 @@ export function MatrizDisponibilidadDocente({
     <div className="flex flex-col bg-card rounded-lg">
       <div className="p-2 border-b border-border flex items-center justify-between bg-muted/30">
         <div>
-          <h2 className="text-sm font-black text-foreground leading-tight">Configurar Disponibilidad</h2>
+          <h2 className="text-sm font-black text-foreground leading-tight">
+            {isReadOnly ? "Ver Disponibilidad Histórica" : "Configurar Disponibilidad"}
+          </h2>
           <p className="text-[8px] text-muted-foreground mt-0.5 font-bold">
             Docente: <span className="text-primary">{docenteNombre}</span>
           </p>
         </div>
+        {isReadOnly && (
+          <Badge variant="outline" className="text-[7px] bg-amber-500/10 text-amber-600 border-amber-500/20 uppercase font-black px-1.5 py-0">
+            Solo Lectura
+          </Badge>
+        )}
       </div>
 
       <div className="p-2 overflow-auto max-h-[65vh]">
@@ -185,36 +196,38 @@ export function MatrizDisponibilidadDocente({
             onClick={onCancel}
             className="h-6 rounded-md font-bold text-[8px] px-2.5"
           >
-            Cancelar
+            {isReadOnly ? "Cerrar" : "Cancelar"}
           </Button>
-          <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-            <Button
-              onClick={() => setShowConfirm(true)}
-              disabled={loading}
-              className="h-6 bg-primary hover:bg-primary/90 rounded-md font-bold text-[8px] px-3"
-            >
-              {loading ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : <Save className="mr-1 h-2.5 w-2.5" />}
-              Guardar
-            </Button>
+          {!isReadOnly && (
+            <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
+              <Button
+                onClick={() => setShowConfirm(true)}
+                disabled={loading}
+                className="h-6 bg-primary hover:bg-primary/90 rounded-md font-bold text-[8px] px-3"
+              >
+                {loading ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : <Save className="mr-1 h-2.5 w-2.5" />}
+                Guardar
+              </Button>
 
-            <AlertDialogContent className="rounded-lg border-none shadow-xl p-3.5 bg-card max-w-[300px]">
-              <AlertDialogHeader>
-                <div className="h-6 w-6 bg-primary/10 rounded-md flex items-center justify-center mb-1.5">
-                  <AlertCircle className="h-3 w-3 text-primary" />
-                </div>
-                <AlertDialogTitle className="text-xs font-bold text-foreground">¿Guardar?</AlertDialogTitle>
-                <AlertDialogDescription className="text-muted-foreground font-medium text-[8px]">
-                  Modificar disponibilidad de <span className="font-bold text-primary">{docenteNombre}</span>?
-                </AlertDialogDescription>
-              </AlertDialogHeader>
-              <AlertDialogFooter className="gap-1 mt-2">
-                <AlertDialogCancel className="h-6 rounded-md font-bold border-border hover:bg-muted text-[8px] px-2.5">No</AlertDialogCancel>
-                <AlertDialogAction onClick={handleConfirmSave} className="h-6 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-3 text-[8px]">
-                  Sí, Guardar
-                </AlertDialogAction>
-              </AlertDialogFooter>
-            </AlertDialogContent>
-          </AlertDialog>
+              <AlertDialogContent className="rounded-lg border-none shadow-xl p-3.5 bg-card max-w-[300px]">
+                <AlertDialogHeader>
+                  <div className="h-6 w-6 bg-primary/10 rounded-md flex items-center justify-center mb-1.5">
+                    <AlertCircle className="h-3 w-3 text-primary" />
+                  </div>
+                  <AlertDialogTitle className="text-xs font-bold text-foreground">¿Guardar?</AlertDialogTitle>
+                  <AlertDialogDescription className="text-muted-foreground font-medium text-[8px]">
+                    Modificar disponibilidad de <span className="font-bold text-primary">{docenteNombre}</span>?
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-1 mt-2">
+                  <AlertDialogCancel className="h-6 rounded-md font-bold border-border hover:bg-muted text-[8px] px-2.5">No</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmSave} className="h-6 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-3 text-[8px]">
+                    Sí, Guardar
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
+          )}
         </div>
       </div>
     </div>

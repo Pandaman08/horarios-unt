@@ -51,6 +51,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Pagination } from "@/components/ui/pagination";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 
 interface Curso {
   id_curso: number;
@@ -69,6 +70,7 @@ interface Curso {
 }
 
 export function CursoList() {
+  const { periodoSeleccionado } = usePeriodo();
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -79,7 +81,14 @@ export function CursoList() {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [ciclos, setCiclos] = useState<any[]>([]);
-  const [semestre, setSemestre] = useState<number>(new Date().getMonth() < 6 ? 1 : 2);
+  const [semestre, setSemestre] = useState<number>(1);
+
+  // Sincronizar semestre con el periodo seleccionado
+  useEffect(() => {
+    if (periodoSeleccionado) {
+      setSemestre(periodoSeleccionado.semestre);
+    }
+  }, [periodoSeleccionado]);
   
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -291,18 +300,6 @@ export function CursoList() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 bg-muted/50 p-1.5 rounded-lg border border-border">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <Select value={semestre.toString()} onValueChange={(v) => setSemestre(parseInt(v))}>
-              <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-bold text-[11px] focus:ring-0 w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-lg border-border">
-                <SelectItem value="1" className="font-bold text-[11px]">I Semestre</SelectItem>
-                <SelectItem value="2" className="font-bold text-[11px]">II Semestre</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="relative flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 

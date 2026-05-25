@@ -45,6 +45,7 @@ import {
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 
 interface Ventana {
   id_ventana: number;
@@ -57,19 +58,21 @@ interface Ventana {
   completado: boolean;
 }
 
-interface Periodo {
-  id_periodo: number;
-  codigo: string;
-}
-
 export function ConfiguradorVentanas() {
+  const { periodoSeleccionado, periodos } = usePeriodo();
   const [ventanas, setVentanas] = useState<Ventana[]>([]);
-  const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [isAutoDialogOpen, setIsAutoDialogOpen] = useState(false);
   const [stats, setStats] = useState<any>(null);
   const [isProcessing, setIsProcessing] = useState(false);
+
+  // Sincronizar con el periodo global
+  useEffect(() => {
+    if (periodoSeleccionado) {
+      setSelectedPeriodo(periodoSeleccionado.id_periodo.toString());
+    }
+  }, [periodoSeleccionado]);
 
   const [autoFormData, setAutoFormData] = useState({
     fecha_inicio: format(new Date(), "yyyy-MM-dd"),
@@ -98,7 +101,7 @@ export function ConfiguradorVentanas() {
   const [ventanasDocentes, setVentanasDocentes] = useState<any[]>([]);
 
   useEffect(() => {
-    fetchData();
+    fetchStats();
   }, []);
 
   useEffect(() => {
@@ -125,28 +128,13 @@ export function ConfiguradorVentanas() {
     }
   }, [intervaloActivo, modoGeneracion]);
 
-  const fetchData = async () => {
-    setLoading(true);
+  const fetchStats = async () => {
     try {
-      const [periodosRes, statsRes] = await Promise.all([
-        fetch("/api/periodos"),
-        fetch("/api/ventanas?stats=true"),
-      ]);
-      const periodosData = await periodosRes.json();
+      const statsRes = await fetch("/api/ventanas?stats=true");
       const statsData = await statsRes.json();
-      
-      if (Array.isArray(periodosData)) {
-        setPeriodos(periodosData);
-        if (periodosData.length > 0 && !selectedPeriodo) {
-          setSelectedPeriodo(periodosData[0].id_periodo.toString());
-        }
-      }
       setStats(statsData);
     } catch (error) {
-      console.error("Error al cargar datos iniciales:", error);
-      toast.error("Error al cargar datos iniciales");
-    } finally {
-      setLoading(false);
+      console.error("Error al cargar stats:", error);
     }
   };
 
@@ -162,9 +150,11 @@ export function ConfiguradorVentanas() {
       if (data.ventanas && Array.isArray(data.ventanas)) {
         setVentanasDocentes(data.ventanas);
       }
+      setLoading(false);
     } catch (error) {
       console.error("Error al cargar ventanas:", error);
       toast.error("Error al cargar ventanas");
+      setLoading(false);
     }
   };
 
@@ -256,18 +246,11 @@ export function ConfiguradorVentanas() {
   };
 
   const handleGenerarHorarios = async () => {
-    console.log("🔘 Botón Generar Horario clickeado!");
-    console.log("Selected Periodo:", selectedPeriodo);
-    console.log("Modo Generación:", modoGeneracion);
-    console.log("Hora Inicio:", horaInicioGeneracion);
-    console.log("Intervalo:", intervaloMinutos);
-    
     if (!selectedPeriodo) {
       toast.error("Por favor selecciona un período");
       return;
     }
 
-    console.log("✅ Pasó la validación, iniciando proceso...");
     setIsGeneratingHorarios(true);
     setProgresoGeneracion(0);
     setLogsGeneracion([]);
@@ -275,38 +258,28 @@ export function ConfiguradorVentanas() {
     setTiempoRestante(null);
     
     try {
-      console.log("📋 Preparando llamada a API...");
       const requestBody = {
         id_periodo: parseInt(selectedPeriodo),
         hora_inicio: horaInicioGeneracion,
         intervalo_minutos: parseInt(intervaloMinutos),
         modo: modoGeneracion
       };
-      console.log("📤 Request Body:", requestBody);
       
       setLogsGeneracion(prev => [...prev, "📋 Llamando a la API de asignación automática..."]);
       
-      // Llamamos a la API REAL de asignación automática
-      console.log("🌐 Enviando solicitud a la API...");
       const res = await fetch("/api/horarios/asignacion-automatica", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify(requestBody),
       });
 
-      console.log("📥 Respuesta recibida, status:", res.status);
-
       if (!res.ok) {
-        console.error("❌ Error en la API:", res.status);
         const errorData = await res.json();
-        console.error("❌ Error data:", errorData);
         throw new Error(errorData.error || "Error al generar horarios");
       }
 
       const data = await res.json();
-      console.log("✅ Datos recibidos de la API:", data);
       
-      // Guardar ventanas de docentes si hay
       if (data.ventanas_creadas && data.ventanas_creadas.length > 0) {
         setVentanasDocentes(data.ventanas_creadas);
       }
@@ -322,15 +295,12 @@ export function ConfiguradorVentanas() {
           : '',
       ]);
 
-      // Simulamos el procesamiento docente por docente para mostrar progreso
       setLogsGeneracion(prev => [...prev, "", "📋 Procesando docentes por prioridad..."]);
       
       const totalDocentes = data.docentes_count || 10;
       
       for (let i = 0; i < totalDocentes; i++) {
         const progreso = Math.round(((i + 1) / totalDocentes) * 100);
-        
-        // Simulamos un pequeño delay para que se vea el progreso
         await new Promise(resolve => setTimeout(resolve, 300));
         
         setLogsGeneracion(prev => [
@@ -343,7 +313,6 @@ export function ConfiguradorVentanas() {
         setProgresoGeneracion(progreso);
       }
       
-      // Luego de procesar todos los docentes
       setLogsGeneracion(prev => [
         ...prev,
         "",
@@ -354,7 +323,6 @@ export function ConfiguradorVentanas() {
       
       setProgresoGeneracion(100);
       
-      // Si el modo es con intervalo, establecemos el timer y guardamos en localStorage
       if (modoGeneracion === "intervalo" && data.fecha_fin_intervalo) {
         const intervaloData = {
           fecha_inicio: data.fecha_inicio,
@@ -364,33 +332,24 @@ export function ConfiguradorVentanas() {
           id_periodo: selectedPeriodo
         };
         
-        // Guardar en localStorage para que los docentes lo vean
         localStorage.setItem('intervalo_horarios', JSON.stringify(intervaloData));
-        
         setIntervaloActivo(intervaloData);
         setTiempoRestante(data.intervalo_minutos * 60);
-        setLogsGeneracion(prev => [
-          ...prev,
-          "",
-          `⏳ Intervalo de ${data.intervalo_minutos} minutos iniciado para cambios...`,
-        ]);
       }
       
       toast.success("Generación de horarios completada!");
-      
-      // Cargar las ventanas desde la BD para mostrarlas en la lista
-      setTimeout(() => {
-        fetchVentanas();
-      }, 500);
+      setTimeout(() => { fetchVentanas(); }, 500);
       
     } catch (error: any) {
-      console.error("Error al generar horarios:", error);
       toast.error(error.message || "Error de conexión");
       setLogsGeneracion(prev => [...prev, `❌ Error: ${error.message || "Error de conexión"}`]);
     } finally {
       setIsGeneratingHorarios(false);
     }
   };
+
+  const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
+  const esLectura = !periodoActualObj?.activo || periodoActualObj?.estado === 'finalizado';
 
   return (
     <div className="space-y-4 animate-in fade-in duration-500 w-full max-w-full">
@@ -401,21 +360,35 @@ export function ConfiguradorVentanas() {
           </div>
           <div>
             <h2 className="text-sm font-bold text-foreground tracking-tight">Configuración de Ventanas</h2>
-            <p className="text-[9px] text-muted-foreground mt-0.5">Define el orden jerárquico de prioridad para la selección de horarios.</p>
+            <p className="text-[9px] text-muted-foreground mt-0.5">
+              {esLectura 
+                ? "Consulta de ventanas históricas. Modo lectura activado."
+                : "Define el orden jerárquico de prioridad para la selección de horarios."
+              }
+            </p>
           </div>
         </div>
 
         <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto">
-          <div className="flex items-center gap-1.5 bg-muted/50 px-2.5 py-1.5 rounded-xl border border-border">
-            <span className="text-[10px] font-medium text-muted-foreground">Período:</span>
+          <div className={cn(
+            "flex items-center gap-1.5 px-2.5 py-1.5 rounded-xl border border-border transition-colors",
+            esLectura ? "bg-amber-500/10 border-amber-500/20" : "bg-muted/50"
+          )}>
+            <span className={cn(
+              "text-[10px] font-medium",
+              esLectura ? "text-amber-700" : "text-muted-foreground"
+            )}>Período:</span>
             <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
               <SelectTrigger className="w-auto border-none bg-transparent font-bold text-primary p-0 focus:ring-0 text-xs">
                 <SelectValue placeholder="Periodo" />
-                <span className="text-muted-foreground ml-1 text-[9px]">(Activo)</span>
+                {periodoActualObj?.activo && <span className="text-muted-foreground ml-1 text-[9px]">(Activo)</span>}
+                {periodoActualObj?.estado === 'finalizado' && <span className="text-muted-foreground ml-1 text-[9px]">(Finalizado)</span>}
               </SelectTrigger>
               <SelectContent className="rounded-xl border-border shadow-xl">
                 {periodos.map((p) => (
-                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-xs py-1.5 focus:bg-primary/10 focus:text-primary">{p.codigo}</SelectItem>
+                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-xs py-1.5 focus:bg-primary/10 focus:text-primary">
+                    {p.codigo} {p.activo ? "(Activo)" : ""}
+                  </SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -454,7 +427,7 @@ export function ConfiguradorVentanas() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Modo de Generación</Label>
-                <Select value={modoGeneracion} onValueChange={setModoGeneracion} disabled={isGeneratingHorarios}>
+                <Select value={modoGeneracion} onValueChange={setModoGeneracion} disabled={isGeneratingHorarios || esLectura}>
                   <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -471,14 +444,14 @@ export function ConfiguradorVentanas() {
                   type="time" 
                   value={horaInicioGeneracion} 
                   onChange={(e) => setHoraInicioGeneracion(e.target.value)} 
-                  disabled={isGeneratingHorarios}
+                  disabled={isGeneratingHorarios || esLectura}
                   className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]"
                 />
               </div>
 
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Intervalo (minutos)</Label>
-                <Select value={intervaloMinutos} onValueChange={setIntervaloMinutos} disabled={isGeneratingHorarios}>
+                <Select value={intervaloMinutos} onValueChange={setIntervaloMinutos} disabled={isGeneratingHorarios || esLectura}>
                   <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
                     <SelectValue />
                   </SelectTrigger>
@@ -495,7 +468,7 @@ export function ConfiguradorVentanas() {
 
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Período Académico</Label>
-                <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo} disabled={isGeneratingHorarios}>
+                <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo} disabled={isGeneratingHorarios || esLectura}>
                   <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
                     <SelectValue placeholder="Seleccionar período" />
                   </SelectTrigger>
@@ -532,40 +505,50 @@ export function ConfiguradorVentanas() {
               </div>
             )}
 
-            <div className="pt-1.5 border-t border-border/50 space-y-2">
-              <Button 
-                onClick={handleGenerarHorarios}
-                disabled={isGeneratingHorarios || !selectedPeriodo}
-                className="w-full h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
-              >
-                {isGeneratingHorarios ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generando...
-                  </>
-                ) : (
-                  <>
-                    <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Generar Horario Automático
-                  </>
-                )}
-              </Button>
-              
-              <Button 
-                onClick={handleResetearHorarios}
-                disabled={isResettingHorarios || isGeneratingHorarios || !selectedPeriodo}
-                variant="outline"
-                className="w-full h-9 rounded-lg border-destructive/50 text-destructive hover:bg-destructive/5 font-black text-[10px] transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
-              >
-                {isResettingHorarios ? (
-                  <>
-                    <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Reseteando...
-                  </>
-                ) : (
-                  <>
-                    <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Resetear Horarios
-                  </>
-                )}
-              </Button>
-            </div>
+            {!esLectura && (
+              <div className="pt-1.5 border-t border-border/50 space-y-2">
+                <Button 
+                  onClick={handleGenerarHorarios}
+                  disabled={isGeneratingHorarios || !selectedPeriodo}
+                  className="w-full h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {isGeneratingHorarios ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generando...
+                    </>
+                  ) : (
+                    <>
+                      <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Generar Horario Automático
+                    </>
+                  )}
+                </Button>
+                
+                <Button 
+                  onClick={handleResetearHorarios}
+                  disabled={isResettingHorarios || isGeneratingHorarios || !selectedPeriodo}
+                  variant="outline"
+                  className="w-full h-9 rounded-lg border-destructive/50 text-destructive hover:bg-destructive/5 font-black text-[10px] transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
+                >
+                  {isResettingHorarios ? (
+                    <>
+                      <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Reseteando...
+                    </>
+                  ) : (
+                    <>
+                      <RefreshCw className="mr-1.5 h-3.5 w-3.5" /> Resetear Horarios
+                    </>
+                  )}
+                </Button>
+              </div>
+            )}
+            
+            {esLectura && (
+              <div className="pt-3 border-t border-border/50 text-center">
+                <p className="text-[10px] font-bold text-amber-600 bg-amber-500/10 py-2 rounded-lg border border-amber-500/20">
+                  Las funciones de generación y reseteo están deshabilitadas para periodos finalizados o inactivos.
+                </p>
+              </div>
+            )}
           </div>
 
           {loading ? (

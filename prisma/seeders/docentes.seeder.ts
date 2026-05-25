@@ -420,6 +420,17 @@ export async function seedDocentes(prisma: PrismaClient) {
       especialidad: 'Ciencias de la Educación',
     },
     {
+      nombres: 'Alberto',
+      apellidos: 'Asmat Alva',
+      dni: null,
+      telefono: null,
+      fecha_ingreso: new Date('2020-03-01'),
+      modalidad: 'contratado',
+      categoria: 'auxiliar',
+      grado: null,
+      especialidad: 'Economía',
+    },
+    {
       nombres: 'Alex',
       apellidos: 'Herradas',
       dni: null,

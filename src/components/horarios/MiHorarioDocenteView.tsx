@@ -22,6 +22,8 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
+import { usePeriodo } from "@/contexts/PeriodoContext";
+
 const DIAS = [
   "Lunes",
   "Martes",
@@ -82,59 +84,24 @@ interface HorarioAsignado {
 
 export function MiHorarioDocenteView() {
   const { data: session } = useSession();
-  const [periodos, setPeriodos] = useState<any[]>([]);
+  const { periodoSeleccionado, periodos } = usePeriodo();
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
 
-  // LIMPIAR TODO LOCALSTORAGE Y ESTADO VIEJO AL INICIAR
+  // Sincronizar con el periodo global
   useEffect(() => {
-    localStorage.clear();
-  }, []);
-
-  useEffect(() => {
-    fetchPeriodos();
-  }, []);
-
-  // NUEVO: Actualizar si el período seleccionado ya no está en la lista de activos
-  useEffect(() => {
-    if (periodos.length > 0 && selectedPeriodo) {
-      const periodoSeleccionadoExiste = periodos.find(
-        (p: any) => p.id_periodo.toString() === selectedPeriodo
-      );
-      
-      if (!periodoSeleccionadoExiste) {
-        // Si el período no está activo, seleccionar el primero de la lista
-        setSelectedPeriodo(periodos[0].id_periodo.toString());
-      }
+    if (periodoSeleccionado) {
+      setSelectedPeriodo(periodoSeleccionado.id_periodo.toString());
     }
-  }, [periodos, selectedPeriodo]);
+  }, [periodoSeleccionado]);
 
   useEffect(() => {
     if (selectedPeriodo) {
       fetchHorarios();
     }
   }, [selectedPeriodo]);
-
-  const fetchPeriodos = async () => {
-    try {
-      const res = await fetch("/api/periodos");
-      const data = await res.json();
-      
-      // FILTRAR SOLO LOS PERÍODOS ACTIVOS
-      const periodosActivos = (Array.isArray(data) ? data : []).filter((p: any) => p.activo === true);
-      
-      setPeriodos(periodosActivos);
-      
-      // SIEMPRE SELECCIONAR EL PRIMER PERÍODO ACTIVO (nunca mantener un período inactivo)
-      if (periodosActivos.length > 0) {
-        setSelectedPeriodo(periodosActivos[0].id_periodo.toString());
-      }
-    } catch {
-      toast.error("Error al cargar periodos");
-    }
-  };
 
   const fetchHorarios = async () => {
     try {
@@ -182,6 +149,8 @@ export function MiHorarioDocenteView() {
     );
   }
 
+  const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
+
   if (horarios.length === 0) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -204,7 +173,7 @@ export function MiHorarioDocenteView() {
             <SelectContent>
               {periodos.map((p) => (
                 <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
-                  {p.nombre}
+                  {p.nombre} {p.activo && "(Activo)"} {p.estado === 'finalizado' && "(Finalizado)"}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -218,9 +187,10 @@ export function MiHorarioDocenteView() {
               <div className="text-sm text-blue-700 dark:text-blue-300">
                 <p className="font-medium mb-1">No hay horarios asignados</p>
                 <p className="text-xs opacity-80">
-                  Los horarios se generan automáticamente una vez que el administrador
-                  o operador ejecuta la generación de horarios. Una vez generados,
-                  aparecerán aquí.
+                  {periodoActualObj?.estado === 'finalizado' 
+                    ? "No se encontraron horarios registrados para este periodo finalizado."
+                    : "Los horarios se generan automáticamente una vez que el administrador o operador ejecuta la generación de horarios."
+                  }
                 </p>
               </div>
             </div>
@@ -258,24 +228,6 @@ export function MiHorarioDocenteView() {
         <p className="text-sm text-muted-foreground">
           Horarios asignados en el período seleccionado. Total: <strong>{totalHoras} horas</strong>
         </p>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-foreground">
-          Periodo Académico
-        </label>
-        <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-          <SelectTrigger className="w-full sm:w-80">
-            <SelectValue placeholder="Selecciona un periodo" />
-          </SelectTrigger>
-          <SelectContent>
-            {periodos.map((p) => (
-              <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
-                {p.nombre}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {view === "matriz" ? (

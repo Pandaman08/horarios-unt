@@ -30,11 +30,22 @@ import {
   Filter,
   GraduationCap,
   CalendarDays,
-  Calendar
+  Calendar,
+  Plus,
+  Trash2,
+  Edit
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AsignarCursosDialog } from "./AsignarCursosDialog";
 import { Pagination } from "@/components/ui/pagination";
+import { usePeriodo } from "@/contexts/PeriodoContext";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
 
 interface Docente {
   id_docente: number;
@@ -57,11 +68,27 @@ interface Docente {
 }
 
 export function DocenteList() {
+  const { periodoSeleccionado } = usePeriodo();
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDocente, setSelectedDocente] = useState<Docente | null>(null);
   const [isAsignarOpen, setIsAsignarOpen] = useState(false);
+  const [isDocenteDialogOpen, setIsDocenteDialogOpen] = useState(false);
+  const [editingDocente, setEditingDocente] = useState<Docente | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
+  
+  const [formData, setFormData] = useState({
+    nombres: "",
+    apellidos: "",
+    codigo_docente: "",
+    correo_electronico: "",
+    telefono: "",
+    modalidad: "NOMBRADO",
+    categoria: "PRINCIPAL",
+    grado_academico: "INGENIERO",
+    especialidad: "",
+    fecha_ingreso: new Date().toISOString().split("T")[0],
+  });
   
   // Estados de Filtros
   const [filtroCategoria, setFiltroCategoria] = useState<string>("todos");
@@ -71,6 +98,13 @@ export function DocenteList() {
   const [ciclos, setCiclos] = useState<any[]>([]);
   const [semestre, setSemestre] = useState<number>(0);
   const [filtroCiclo, setFiltroCiclo] = useState<string>("todos");
+
+  // Sincronizar semestre con el periodo seleccionado
+  useEffect(() => {
+    if (periodoSeleccionado) {
+      setSemestre(periodoSeleccionado.semestre);
+    }
+  }, [periodoSeleccionado]);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -207,6 +241,50 @@ export function DocenteList() {
     }
   };
 
+  const handleDocenteSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const method = editingDocente ? "PUT" : "POST";
+    const url = editingDocente 
+      ? `/api/docentes/${editingDocente.id_docente}` 
+      : "/api/docentes";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(formData),
+      });
+
+      if (res.ok) {
+        toast.success(editingDocente ? "Docente actualizado" : "Docente registrado");
+        setIsDocenteDialogOpen(false);
+        setEditingDocente(null);
+        resetDocenteForm();
+        fetchDocentes();
+      } else {
+        const data = await res.json();
+        toast.error(data.error || "Error al guardar docente");
+      }
+    } catch (error) {
+      toast.error("Error de conexión");
+    }
+  };
+
+  const resetDocenteForm = () => {
+    setFormData({
+      nombres: "",
+      apellidos: "",
+      codigo_docente: "",
+      correo_electronico: "",
+      telefono: "",
+      modalidad: "NOMBRADO",
+      categoria: "PRINCIPAL",
+      grado_academico: "INGENIERO",
+      especialidad: "",
+      fecha_ingreso: new Date().toISOString().split("T")[0],
+    });
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
@@ -222,19 +300,6 @@ export function DocenteList() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="flex items-center gap-2 bg-muted/50 p-1.5 rounded-lg border border-border">
-              <Calendar className="h-4 w-4 text-muted-foreground" />
-              <Select value={semestre.toString()} onValueChange={(v) => setSemestre(parseInt(v))}>
-                <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-bold text-[11px] focus:ring-0 w-[120px]">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent className="rounded-lg border-border">
-                  <SelectItem value="0" className="font-bold text-[11px]">Todos los semestres</SelectItem>
-                  <SelectItem value="1" className="font-bold text-[11px]">I Semestre</SelectItem>
-                  <SelectItem value="2" className="font-bold text-[11px]">II Semestre</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
             <div className="relative flex-1 sm:min-w-[200px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
               <Input 
@@ -244,6 +309,122 @@ export function DocenteList() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <Dialog open={isDocenteDialogOpen} onOpenChange={(open) => {
+              setIsDocenteDialogOpen(open);
+              if (!open) {
+                setEditingDocente(null);
+                resetDocenteForm();
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                  <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Docente 
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
+                <DialogHeader className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
+                      <UserCircle2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                        {editingDocente ? "Actualizar Docente" : "Registrar Docente"}
+                      </DialogTitle>
+                      <p className="text-muted-foreground text-xs mt-1 font-medium">Complete la información del catedrático</p>
+                    </div>
+                  </div>
+                </DialogHeader>
+                <form onSubmit={handleDocenteSubmit} className="space-y-6">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombres</Label>
+                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.nombres} onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Apellidos</Label>
+                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.apellidos} onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} required />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Código (Opcional)</Label>
+                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.codigo_docente} onChange={(e) => setFormData({ ...formData, codigo_docente: e.target.value })} placeholder="Auto-generado" />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Correo Electrónico</Label>
+                      <Input type="email" className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.correo_electronico} onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} required />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Teléfono</Label>
+                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
+                      <Select value={formData.modalidad} onValueChange={(val) => setFormData({ ...formData, modalidad: val })}>
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="NOMBRADO">Nombrado</SelectItem>
+                          <SelectItem value="CONTRATADO">Contratado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
+                      <Select value={formData.categoria} onValueChange={(val) => setFormData({ ...formData, categoria: val })}>
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="PRINCIPAL">Principal</SelectItem>
+                          <SelectItem value="ASOCIADO">Asociado</SelectItem>
+                          <SelectItem value="AUXILIAR">Auxiliar</SelectItem>
+                          <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Grado Académico</Label>
+                      <Select value={formData.grado_academico} onValueChange={(val) => setFormData({ ...formData, grado_academico: val })}>
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="DOCTOR">Doctor</SelectItem>
+                          <SelectItem value="MAESTRO">Maestro</SelectItem>
+                          <SelectItem value="INGENIERO">Ingeniero</SelectItem>
+                          <SelectItem value="LICENCIADO">Licenciado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Especialidad</Label>
+                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Fecha de Ingreso</Label>
+                      <Input type="date" className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.fecha_ingreso} onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} required />
+                    </div>
+                  </div>
+
+                  <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                    <Button type="button" variant="ghost" onClick={() => setIsDocenteDialogOpen(false)} className="h-9 rounded-lg font-bold text-muted-foreground hover:bg-muted px-6 text-[11px]">Cancelar</Button>
+                    <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                      {editingDocente ? "Actualizar" : "Registrar"}
+                    </Button>
+                  </div>
+                </form>
+              </DialogContent>
+            </Dialog>
           </div>
         </div>
 

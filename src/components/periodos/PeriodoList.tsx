@@ -262,7 +262,7 @@ export function PeriodoList() {
           }}>
             <DialogTrigger asChild>
               <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
-                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo
+                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Periodo Académico
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">

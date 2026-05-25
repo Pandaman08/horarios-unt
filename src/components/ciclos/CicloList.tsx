@@ -49,6 +49,7 @@ import {
 } from "@/components/ui/alert-dialog";
 
 import { Pagination } from "@/components/ui/pagination";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 
 interface Ciclo {
   id_ciclo: number;
@@ -58,6 +59,7 @@ interface Ciclo {
 }
 
 export function CicloList() {
+  const { periodoSeleccionado } = usePeriodo();
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -65,7 +67,14 @@ export function CicloList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
-  const [semestre, setSemestre] = useState<number>(new Date().getMonth() < 6 ? 1 : 2);
+  const [semestre, setSemestre] = useState<number>(1);
+
+  // Sincronizar semestre con el periodo seleccionado
+  useEffect(() => {
+    if (periodoSeleccionado) {
+      setSemestre(periodoSeleccionado.semestre);
+    }
+  }, [periodoSeleccionado]);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -74,6 +83,7 @@ export function CicloList() {
   const filteredCiclos = ciclos.filter(c => {
     const matchesSearch = `${c.nombre} ${c.numero}`.toLowerCase().includes(searchTerm.toLowerCase());
     const isPar = c.numero % 2 === 0;
+    // Si el periodo es 1 (I), ciclos impares. Si es 2 (II), ciclos pares.
     const matchesSemestre = (semestre === 1 && !isPar) || (semestre === 2 && isPar);
     return matchesSearch && matchesSemestre;
   });
@@ -195,18 +205,6 @@ export function CicloList() {
         </div>
 
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 bg-muted/50 p-1.5 rounded-lg border border-border">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <Select value={semestre.toString()} onValueChange={(v) => setSemestre(parseInt(v))}>
-              <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-bold text-[11px] focus:ring-0 w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-lg border-border">
-                <SelectItem value="1" className="font-bold text-[11px]">I Semestre</SelectItem>
-                <SelectItem value="2" className="font-bold text-[11px]">II Semestre</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="relative flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
@@ -227,7 +225,7 @@ export function CicloList() {
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
               <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
-                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo
+                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Ciclo
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-md rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
