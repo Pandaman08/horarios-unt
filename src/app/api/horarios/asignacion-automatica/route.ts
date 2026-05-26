@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     // Primero, borramos cualquier horario existente para empezar de nuevo
     console.log("🧹 Eliminando horarios antiguos...");
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.horarioAsignado.deleteMany({
         where: { id_periodo: parseInt(id_periodo) }
       });
