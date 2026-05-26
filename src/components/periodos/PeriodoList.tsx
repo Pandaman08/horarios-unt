@@ -38,7 +38,8 @@ import {
   AlertCircle,
   Timer,
   Download,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { format } from "date-fns";
@@ -207,7 +208,7 @@ export function PeriodoList() {
     setIsDialogOpen(true);
   };
 
-  const handleGenerateSelectedPeriodReport = async () => {
+  const handleGenerateSelectedPeriodReport = async (formato: 'pdf' | 'excel' = 'pdf') => {
     if (!periodoSeleccionado) {
       toast.error("Seleccione un periodo académico primero");
       return;
@@ -215,7 +216,7 @@ export function PeriodoList() {
 
     setGeneratingReport(999);
     try {
-      const url = `/api/reportes?tipo=reporte_periodos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const url = `/api/reportes?tipo=reporte_periodos&id_periodo=${periodoSeleccionado.id_periodo}&formato=${formato}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -227,12 +228,13 @@ export function PeriodoList() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Reporte_Periodos_Academicos.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      a.download = `Reporte_Periodos_Academicos.${extension}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Reporte de periodos descargado");
+      toast.success(`Reporte de periodos (${formato.toUpperCase()}) descargado`);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar reporte");
@@ -293,19 +295,34 @@ export function PeriodoList() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button 
-            onClick={handleGenerateSelectedPeriodReport} 
-            disabled={generatingReport !== null}
-            variant="outline"
-            className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
-          >
-            {generatingReport !== null ? (
-              <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-            ) : (
-              <FileText className="mr-2 h-3.5 w-3.5" />
-            )}
-            Reporte de Periodos
-          </Button>
+          <div className="flex gap-2">
+              <Button 
+                onClick={() => handleGenerateSelectedPeriodReport('pdf')} 
+                disabled={generatingReport === 999}
+                variant="outline"
+                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+              >
+                {generatingReport === 999 ? (
+                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                ) : (
+                  <FileText className="mr-2 h-3.5 w-3.5" />
+                )}
+                PDF
+              </Button>
+              <Button 
+                onClick={() => handleGenerateSelectedPeriodReport('excel')} 
+                disabled={generatingReport === 999}
+                variant="outline"
+                className="h-9 rounded-lg border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5 font-bold text-xs transition-all"
+              >
+                {generatingReport === 999 ? (
+                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                ) : (
+                  <FileSpreadsheet className="mr-2 h-3.5 w-3.5" />
+                )}
+                Excel
+              </Button>
+            </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {

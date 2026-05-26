@@ -70,14 +70,14 @@ export function VisorReportes() {
     }
   };
 
-  const handleDownload = async (tipo: string, id?: string) => {
+  const handleDownload = async (tipo: string, id?: string, formato: 'pdf' | 'excel' = 'pdf') => {
     if (!id_periodo) return;
     if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
       toast.warning("Seleccione un elemento de la lista");
       return;
     }
 
-    let url = `/api/reportes?tipo=${tipo}&id_periodo=${id_periodo}`;
+    let url = `/api/reportes?tipo=${tipo}&id_periodo=${id_periodo}&formato=${formato}`;
     if (id) url += `&id=${id}`;
 
     const setLoading = {
@@ -106,22 +106,21 @@ export function VisorReportes() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      const fileName = tipo === 'reporte_general' ? 'Horario_Institucional_Sistemas.pdf' : `reporte-${tipo}${id ? `-${id}` : ''}.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      const fileName = tipo === 'reporte_general' ? `Horario_Institucional_Sistemas.${extension}` : `reporte-${tipo}${id ? `-${id}` : ''}.${extension}`;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("PDF generado correctamente");
+      toast.success(`${formato.toUpperCase()} generado correctamente`);
 
       if (tipo === 'docente') setSelectedDocente("");
       else if (tipo === 'aula') setSelectedAmbiente("");
       else if (tipo === 'ciclo') setSelectedCicloReporte("");
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Error al generar PDF");
-      toast.info("Abriendo vista de impresión manual...");
-      window.open(`${url}&format=html`, '_blank');
+      toast.error(error.message || `Error al generar ${formato.toUpperCase()}`);
     } finally {
       if (setLoading) setLoading(false);
     }
@@ -240,14 +239,24 @@ export function VisorReportes() {
                     placeholder="Buscar aula..."
                   />
                 </div>
+              <div className="flex gap-2">
                 <Button
                   className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                  onClick={() => handleDownload('aula', selectedAmbiente)}
+                  onClick={() => handleDownload('aula', selectedAmbiente, 'pdf')}
                   disabled={generatingAula}
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Generar PDF Oficial
+                  <FileText className="h-4 w-4 mr-2" />
+                  PDF
                 </Button>
+                <Button
+                  className="h-11 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-200 rounded-xl px-6 font-bold text-sm shadow-sm"
+                  onClick={() => handleDownload('aula', selectedAmbiente, 'excel')}
+                  disabled={generatingAula}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
+                </Button>
+              </div>
               </div>
               
               <div className="pt-4 border-t border-border/50">
@@ -289,14 +298,24 @@ export function VisorReportes() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('dia', selectedDia)}
-                disabled={generatingDia}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('dia', selectedDia, 'pdf')}
+                  disabled={generatingDia}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
+                <Button
+                  className="h-11 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-200 rounded-xl px-6 font-bold text-sm shadow-sm"
+                  onClick={() => handleDownload('dia', selectedDia, 'excel')}
+                  disabled={generatingDia}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
+                </Button>
+              </div>
             </div>
           ) : selectedReporte === 'docente' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -312,14 +331,24 @@ export function VisorReportes() {
                   placeholder="Buscar docente..."
                 />
               </div>
-              <Button
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('docente', selectedDocente)}
-                disabled={generatingDocente}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('docente', selectedDocente, 'pdf')}
+                  disabled={generatingDocente}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
+                <Button
+                  className="h-11 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-200 rounded-xl px-6 font-bold text-sm shadow-sm"
+                  onClick={() => handleDownload('docente', selectedDocente, 'excel')}
+                  disabled={generatingDocente}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
+                </Button>
+              </div>
             </div>
           ) : selectedReporte === 'ciclo' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -341,14 +370,24 @@ export function VisorReportes() {
                   </SelectContent>
                 </Select>
               </div>
-              <Button
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('ciclo', selectedCicloReporte)}
-                disabled={generatingCiclo}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('ciclo', selectedCicloReporte, 'pdf')}
+                  disabled={generatingCiclo}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  PDF
+                </Button>
+                <Button
+                  className="h-11 bg-emerald-100 hover:bg-emerald-200 text-emerald-700 border border-emerald-200 rounded-xl px-6 font-bold text-sm shadow-sm"
+                  onClick={() => handleDownload('ciclo', selectedCicloReporte, 'excel')}
+                  disabled={generatingCiclo}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
+                </Button>
+              </div>
             </div>
           ) : selectedReporte === 'reporte_general' ? (
             <div className="flex flex-col gap-4">
@@ -361,25 +400,25 @@ export function VisorReportes() {
                 <div className="flex justify-center gap-4">
                   <Button
                     className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-indigo-900/20"
-                    onClick={() => handleDownload('reporte_general')}
+                    onClick={() => handleDownload('reporte_general', undefined, 'pdf')}
                     disabled={generatingReporteGeneral}
                   >
                     {generatingReporteGeneral ? (
                       <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando PDF...</>
                     ) : (
-                      <><Download className="h-5 w-5 mr-2" /> Descargar PDF</>
+                      <><FileText className="h-5 w-5 mr-2" /> Descargar PDF</>
                     )}
                   </Button>
                   <Button
                     variant="outline"
-                    className="h-12 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl px-6 font-bold shadow-sm"
-                    onClick={() => handleDownloadExcel()}
-                    disabled={generatingExcel}
+                    className="h-12 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold shadow-sm"
+                    onClick={() => handleDownload('reporte_general', undefined, 'excel')}
+                    disabled={generatingReporteGeneral}
                   >
-                    {generatingExcel ? (
+                    {generatingReporteGeneral ? (
                       <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando Excel...</>
                     ) : (
-                      <><FileText className="h-5 w-5 mr-2" /> Descargar Excel</>
+                      <><FileSpreadsheet className="h-5 w-5 mr-2" /> Descargar Excel</>
                     )}
                   </Button>
                 </div>

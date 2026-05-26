@@ -35,7 +35,8 @@ import {
   Trash2,
   Edit,
   Download,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { AsignarCursosDialog } from "./AsignarCursosDialog";
@@ -81,7 +82,7 @@ export function DocenteList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [generatingReport, setGeneratingReport] = useState<number | boolean | null>(false);
 
-  const handleGenerateInstitutionalReport = async () => {
+  const handleGenerateInstitutionalReport = async (formato: 'pdf' | 'excel' = 'pdf') => {
     if (!periodoSeleccionado) {
       toast.error("Seleccione un periodo académico primero");
       return;
@@ -89,7 +90,7 @@ export function DocenteList() {
 
     setGeneratingReport(true);
     try {
-      const url = `/api/reportes?tipo=reporte_docentes_lista&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const url = `/api/reportes?tipo=reporte_docentes_lista&id_periodo=${periodoSeleccionado.id_periodo}&formato=${formato}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -101,12 +102,13 @@ export function DocenteList() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Reporte_General_Docentes.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      a.download = `Reporte_General_Docentes.${extension}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Reporte de docentes descargado");
+      toast.success(`Reporte de docentes (${formato.toUpperCase()}) descargado`);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar reporte");
@@ -279,7 +281,7 @@ export function DocenteList() {
     }
   };
 
-  const handleGenerateReport = async (docente: Docente) => {
+  const handleGenerateReport = async (docente: Docente, formato: 'pdf' | 'excel' = 'pdf') => {
     if (!periodoSeleccionado) {
       toast.warning("Seleccione un periodo académico");
       return;
@@ -287,7 +289,7 @@ export function DocenteList() {
 
     setGeneratingReport(docente.id_docente);
     try {
-      const url = `/api/reportes?tipo=docente&id_periodo=${periodoSeleccionado.id_periodo}&id=${docente.id_docente}`;
+      const url = `/api/reportes?tipo=docente&id_periodo=${periodoSeleccionado.id_periodo}&id=${docente.id_docente}&formato=${formato}`;
       const response = await fetch(url);
       
       if (!response.ok) {
@@ -299,12 +301,13 @@ export function DocenteList() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Horario_${docente.apellidos}_${docente.nombres}.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      a.download = `Horario_${docente.apellidos}_${docente.nombres}.${extension}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Horario generado correctamente");
+      toast.success(`Horario ${formato.toUpperCase()} generado correctamente`);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar horario");
@@ -398,19 +401,34 @@ export function DocenteList() {
                   onChange={(e) => setSearchTerm(e.target.value)}
                 />
               </div>
-              <Button 
-                onClick={handleGenerateInstitutionalReport} 
-                disabled={generatingReport === true}
-                variant="outline"
-                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
-              >
-                {generatingReport === true ? (
-                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-                ) : (
-                  <FileText className="mr-2 h-3.5 w-3.5" />
-                )}
-                Reporte de Docentes
-              </Button>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => handleGenerateInstitutionalReport('pdf')} 
+                  disabled={generatingReport === true}
+                  variant="outline"
+                  className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                >
+                  {generatingReport === true ? (
+                    <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                  ) : (
+                    <FileText className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  PDF
+                </Button>
+                <Button 
+                  onClick={() => handleGenerateInstitutionalReport('excel')} 
+                  disabled={generatingReport === true}
+                  variant="outline"
+                  className="h-9 rounded-lg border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5 font-bold text-xs transition-all"
+                >
+                  {generatingReport === true ? (
+                    <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                  ) : (
+                    <FileSpreadsheet className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  Excel
+                </Button>
+              </div>
               <Dialog open={isDocenteDialogOpen} onOpenChange={(open) => {
               setIsDocenteDialogOpen(open);
               if (!open) {
@@ -699,8 +717,8 @@ export function DocenteList() {
                         <Button 
                           variant="ghost" 
                           size="icon" 
-                          onClick={() => handleGenerateReport(docente)} 
-                          title="Descargar Horario" 
+                          onClick={() => handleGenerateReport(docente, 'pdf')} 
+                          title="Descargar Horario PDF" 
                           disabled={generatingReport === docente.id_docente}
                           className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-all"
                         >
@@ -708,6 +726,21 @@ export function DocenteList() {
                             <Download className="h-3.5 w-3.5 animate-bounce" />
                           ) : (
                             <FileText className="h-3.5 w-3.5" />
+                          )}
+                        </Button>
+
+                        <Button 
+                          variant="ghost" 
+                          size="icon" 
+                          onClick={() => handleGenerateReport(docente, 'excel')} 
+                          title="Descargar Horario Excel" 
+                          disabled={generatingReport === docente.id_docente}
+                          className="h-7 w-7 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-600 transition-all"
+                        >
+                          {generatingReport === docente.id_docente ? (
+                            <Download className="h-3.5 w-3.5 animate-bounce" />
+                          ) : (
+                            <FileSpreadsheet className="h-3.5 w-3.5" />
                           )}
                         </Button>
 
