@@ -367,22 +367,22 @@ export default function SeleccionHorariosPage() {
   return (
     <ProteccionVentana>
       <div className="flex flex-col h-[calc(100vh-80px)] overflow-hidden animate-in fade-in duration-700">
-        <div className="bg-white p-5 rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mx-4 md:mx-6 mt-4 md:mt-6 mb-6">
+        <div className="bg-card p-5 rounded-2xl border border-border shadow-sm flex flex-col md:flex-row justify-between items-start md:items-center gap-4 mx-4 md:mx-6 mt-4 md:mt-6 mb-6">
           <div className="flex items-center gap-6">
-            <div className="h-14 w-14 bg-indigo-50 rounded-xl flex items-center justify-center border border-indigo-100 shadow-sm">
-              <Calendar className="h-7 w-7 text-[#1a237e]" />
+            <div className="h-14 w-14 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm">
+              <Calendar className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <span className="text-[10px] bg-indigo-50 text-[#1a237e] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Autogestión de Horarios</span>
-              <h1 className="text-xl md:text-2xl font-bold text-slate-800 tracking-tight mt-2">
+              <span className="text-[10px] bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Autogestión de Horarios</span>
+              <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight mt-2">
                 {hayHorariosGenerados && !modoEdicionManual ? "Confirmar Horario Generado" : "Selección de Horarios"}
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 {mensajeIntervalo ? (
                   <div className={`flex items-center gap-2 px-3 py-1 rounded-lg border shadow-sm ${
                     soloLectura 
-                      ? 'bg-amber-50 text-amber-700 border-amber-100' 
-                      : 'bg-emerald-50 text-emerald-700 border-emerald-100'
+                      ? 'bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 border-amber-200 dark:border-amber-800' 
+                      : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                   }`}>
                     <Clock className="h-3.5 w-3.5" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">{mensajeIntervalo}</span>
@@ -391,27 +391,27 @@ export default function SeleccionHorariosPage() {
                     )}
                   </div>
                 ) : tiempoRestante ? (
-                  <div className="flex items-center gap-2 bg-rose-50 text-rose-700 px-3 py-1 rounded-lg border border-rose-100 shadow-sm">
+                  <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 px-3 py-1 rounded-lg border border-rose-200 dark:border-rose-800 shadow-sm">
                     <Clock className="h-3.5 w-3.5 animate-pulse" />
                     <span className="text-[10px] font-bold uppercase tracking-widest">Tiempo restante:</span>
                     <span className="text-xs font-mono font-black">{tiempoRestante}</span>
                   </div>
                 ) : (
-                  <p className="text-slate-500 text-xs">Gestione su carga académica para el período lectivo actual</p>
+                  <p className="text-muted-foreground text-xs">Gestione su carga académica para el período lectivo actual</p>
                 )}
               </div>
             </div>
           </div>
 
-          <div className="flex items-center gap-4 bg-slate-50 p-3 rounded-2xl border border-slate-200 w-full md:w-auto">
+          <div className="flex items-center gap-4 bg-muted/30 p-3 rounded-2xl border border-border w-full md:w-auto">
             <div className="flex items-center gap-2 px-3">
-              <Clock className="h-4 w-4 text-slate-400" />
-              <span className="text-xs font-bold text-slate-600">Período:</span>
+              <Clock className="h-4 w-4 text-muted-foreground" />
+              <span className="text-xs font-bold text-muted-foreground">Período:</span>
               <Select value={idPeriodo} onValueChange={setIdPeriodo}>
-                <SelectTrigger className="w-[140px] h-9 border border-slate-200 bg-white rounded-xl shadow-sm font-bold text-xs focus:ring-2 focus:ring-[#1a237e]">
+                <SelectTrigger className="w-[140px] h-9 border-border bg-background rounded-xl shadow-sm font-bold text-xs focus:ring-2 focus:ring-primary">
                   <SelectValue placeholder="Ciclo" />
                 </SelectTrigger>
-                <SelectContent className="rounded-xl border-slate-100 shadow-xl">
+                <SelectContent className="rounded-xl border-border shadow-xl bg-popover">
                   {periodos.map(p => (
                     <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold">{p.nombre}</SelectItem>
                   ))}
@@ -421,29 +421,29 @@ export default function SeleccionHorariosPage() {
           </div>
         </div>
 
-        <main className="flex-1 overflow-y-auto bg-slate-50/50 custom-scrollbar">
+        <main className="flex-1 overflow-y-auto bg-background/50 custom-scrollbar">
           <div className="max-w-[1600px] mx-auto p-6 space-y-6">
             
-            <div className="p-6 bg-white rounded-2xl border border-slate-100 shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
+            <div className="p-6 bg-card rounded-2xl border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
                   <div className="flex items-center gap-6">
-                    <div className="h-16 w-16 bg-indigo-50 rounded-2xl flex items-center justify-center ring-4 ring-indigo-50/30 shadow-sm">
-                      <User className="h-8 w-8 text-[#1a237e]" />
+                    <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center ring-4 ring-primary/30 shadow-sm">
+                      <User className="h-8 w-8 text-primary" />
                     </div>
                     <div>
-                      <h2 className="text-2xl font-bold text-slate-800 tracking-tight leading-none mb-2">
+                      <h2 className="text-2xl font-bold text-foreground tracking-tight leading-none mb-2">
                         {session?.user?.name}
                       </h2>
                       <div className="flex items-center gap-2 mt-2">
-                        <span className="inline-flex items-center bg-emerald-50 text-emerald-700 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-100">
+                        <span className="inline-flex items-center bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
                           Docente UNT
                         </span>
                         {yaConfirmo && (
-                          <span className="inline-flex items-center bg-indigo-50 text-indigo-700 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-indigo-100">
+                          <span className="inline-flex items-center bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800">
                             Horario Confirmado
                           </span>
                         )}
                         {modoEdicionManual && (
-                          <span className="inline-flex items-center bg-amber-50 text-amber-700 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-amber-100">
+                          <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
                             Modo Edición
                           </span>
                         )}
@@ -462,19 +462,19 @@ export default function SeleccionHorariosPage() {
                             {soloLectura ? "Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Horario")}
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="bg-white rounded-2xl border-none shadow-2xl sm:max-w-[450px] p-8">
+                        <DialogContent className="bg-card rounded-2xl border-border shadow-2xl sm:max-w-[450px] p-8">
                           <DialogHeader className="space-y-4">
-                            <div className="h-12 w-12 bg-emerald-50 rounded-2xl flex items-center justify-center mb-2">
-                              <CheckCircle className="h-6 w-6 text-emerald-600" />
+                            <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-950/50 rounded-2xl flex items-center justify-center mb-2">
+                              <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                             </div>
-                            <DialogTitle className="text-2xl font-bold text-slate-800 tracking-tight">¿Confirmar Horario?</DialogTitle>
-                            <DialogDescription className="text-slate-500 font-medium text-base leading-relaxed">
-                              Al confirmar, tu horario se volverá <span className="font-bold text-emerald-600">definitivo</span>.
+                            <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">¿Confirmar Horario?</DialogTitle>
+                            <DialogDescription className="text-muted-foreground font-medium text-base leading-relaxed">
+                              Al confirmar, tu horario se volverá <span className="font-bold text-emerald-600 dark:text-emerald-400">definitivo</span>.
                             </DialogDescription>
                           </DialogHeader>
                           <DialogFooter className="gap-3 sm:justify-end mt-8">
                             <DialogClose asChild>
-                              <Button type="button" variant="ghost" className="rounded-xl font-bold text-slate-400 hover:bg-slate-50">
+                              <Button type="button" variant="ghost" className="rounded-xl font-bold text-muted-foreground hover:bg-muted">
                                 Revisar de nuevo
                               </Button>
                             </DialogClose>
@@ -492,131 +492,17 @@ export default function SeleccionHorariosPage() {
                     </div>
                   )}
                   {yaConfirmo && (
-                    <span className="inline-flex items-center bg-indigo-50 text-indigo-700 font-bold text-xs px-4 py-2 rounded-xl border border-indigo-100">
+                    <span className="inline-flex items-center bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 font-bold text-xs px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800">
                       <CheckCircle className="mr-2 h-4 w-4" /> Horario Confirmado
                     </span>
                   )}
                 </div>
 
                 {hayHorariosGenerados && !modoEdicionManual && yaConfirmo && (
-                  <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm mt-6">
+                  <div className="bg-card p-6 rounded-2xl border border-border shadow-sm mt-6">
                     <MiHorarioDocenteView />
                   </div>
                 )}
-
-                <div className="flex flex-col xl:flex-row gap-6 items-stretch mt-6">
-                  <div className="flex-1 bg-white p-6 rounded-2xl border border-slate-100 shadow-sm">
-                    <ProgresoCursos 
-                      cursos={cursosProgreso}
-                      cursoSeleccionadoId={cursoSeleccionado?.id}
-                      tipoSeleccionado={cursoSeleccionado?.tipo}
-                      onSelectCurso={(id, tipo) => setCursoSeleccionado({id, tipo})}
-                    />
-                  </div>
-
-                  <div className="flex-1">
-                    {cursoSeleccionado ? (
-                      <div className="bg-white p-6 rounded-2xl border border-slate-100 shadow-sm space-y-6 h-full animate-in zoom-in-95 duration-500">
-                        <div className="flex items-center justify-between gap-4">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className="h-8 w-8 bg-indigo-50 rounded-lg flex items-center justify-center shrink-0">
-                              <Settings2 className="h-4 w-4 text-[#1a237e]" />
-                            </div>
-                            <h4 className="text-sm font-bold text-slate-800 uppercase tracking-wider truncate">Configuración de Bloque</h4>
-                          </div>
-                          <span className="flex items-center gap-1.5 px-2 py-0.5 bg-indigo-50 text-[#1a237e] rounded-md font-bold text-[9px] uppercase tracking-tighter shrink-0">
-                            Paso 2
-                          </span>
-                        </div>
-                        
-                        <div className="space-y-6">
-                          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <div className="space-y-2">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Grupo</Label>
-                              <Select value={idGrupo} onValueChange={setIdGrupo}>
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold focus:ring-2 focus:ring-indigo-100 transition-all w-full text-xs">
-                                  <SelectValue placeholder="Grupo" />
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-slate-100 shadow-xl">
-                                  {grupos.map(g => (
-                                    <SelectItem key={g.id_grupo} value={g.id_grupo.toString()} className="font-bold">G-{g.codigo_grupo}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-
-                            <div className="space-y-2">
-                              <Label className="text-[10px] font-bold uppercase tracking-widest text-slate-400 ml-1">Ambiente</Label>
-                              <Select value={idAmbiente} onValueChange={setIdAmbiente}>
-                                <SelectTrigger className="h-11 rounded-xl border-slate-200 bg-slate-50/50 font-bold focus:ring-2 focus:ring-indigo-100 transition-all w-full overflow-hidden text-xs">
-                                  <div className="truncate pr-2 text-left">
-                                    <SelectValue placeholder="Ambiente" />
-                                  </div>
-                                </SelectTrigger>
-                                <SelectContent className="rounded-xl border-slate-100 shadow-xl max-w-[300px]">
-                                  {ambientesFiltrados.map(a => (
-                                    <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()} className="font-bold">{a.nombre}</SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-                            </div>
-                          </div>
-
-                          {idGrupo && idAmbiente && (
-                            <div className="p-4 bg-emerald-50 border border-emerald-100 rounded-2xl flex items-center gap-3 animate-in zoom-in duration-300">
-                              <CheckCircle className="h-5 w-5 text-emerald-600 shrink-0" />
-                              <p className="text-[11px] font-bold text-emerald-800 uppercase tracking-tight">
-                                Configuración lista. Seleccione los bloques en la matriz inferior.
-                              </p>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    ) : (
-                      <div className="h-full min-h-[200px] bg-white p-8 rounded-2xl border-2 border-dashed border-slate-100 flex flex-col items-center justify-center text-center space-y-4 shadow-sm">
-                        <div className="h-12 w-12 bg-slate-50 rounded-2xl flex items-center justify-center text-slate-300">
-                          <ChevronRight className="h-6 w-6" />
-                        </div>
-                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-wider">
-                          Paso 1: Seleccione un curso de la izquierda
-                        </p>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <div className="bg-white p-8 rounded-2xl border border-slate-100 shadow-sm min-h-[600px] relative overflow-hidden mt-6">
-                  {(!idGrupo || !idAmbiente) ? (
-                    <div className="absolute inset-0 flex flex-col items-center justify-center p-10 text-center bg-white/80 backdrop-blur-sm rounded-2xl z-10">
-                      <div className="h-20 w-20 bg-indigo-50 rounded-2xl flex items-center justify-center mb-6 shadow-inner">
-                        <Monitor className="h-10 w-10 text-[#1a237e] opacity-20" />
-                      </div>
-                      <h4 className="text-lg font-bold text-slate-800 tracking-tight mb-2 uppercase tracking-widest">Paso 3: Matriz de Horarios</h4>
-                      <p className="text-slate-400 font-medium max-w-sm mx-auto text-sm">
-                        Complete la configuración del bloque (Paso 2) para habilitar la asignación en la matriz de horarios.
-                      </p>
-                    </div>
-                  ) : (
-                    <div className="animate-in fade-in zoom-in-95 duration-700">
-                      <div className="flex items-center gap-3 mb-8">
-                        <div className="h-10 w-10 bg-[#003366] rounded-xl flex items-center justify-center shadow-lg">
-                          <Calendar className="h-5 w-5 text-white" />
-                        </div>
-                        <h3 className="text-lg font-black text-gray-900 uppercase tracking-widest">Matriz Académica Semanal</h3>
-                      </div>
-                      <MatrizDisponibilidad 
-                        id_periodo={parseInt(idPeriodo)}
-                        id_ambiente={parseInt(idAmbiente)}
-                        id_docente_actual={session?.user?.id_docente ? parseInt(session.user.id_docente) : undefined}
-                        id_curso_actual={cursoSeleccionado?.id}
-                        id_grupo_actual={parseInt(idGrupo)}
-                        tipo_clase_actual={cursoSeleccionado?.tipo}
-                        onSelectionChange={fetchDocenteCursos}
-                        soloLectura={soloLectura}
-                      />
-                    </div>
-                  )}
-                </div>
           </div>
         </main>
       </div>
