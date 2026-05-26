@@ -5,62 +5,71 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2 } from "lucide-react";
+import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
+import { usePeriodo } from "@/contexts/PeriodoContext";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
-export function VisorReportes({ id_periodo }: { id_periodo: number }) {
+export function VisorReportes() {
   const { data: session } = useSession();
+  const { periodoSeleccionado, periodos } = usePeriodo();
   const isAdmin = session?.user?.rol === 'administrador_sistema';
   const isOperador = session?.user?.rol === 'operador_horarios';
 
+  const [id_periodo, setIdPeriodo] = useState<number | null>(null);
   const [docentes, setDocentes] = useState<any[]>([]);
   const [ambientes, setAmbientes] = useState<any[]>([]);
+  const [ciclos, setCiclos] = useState<any[]>([]);
   const [selectedDocente, setSelectedDocente] = useState<string>("");
   const [selectedAmbiente, setSelectedAmbiente] = useState<string>("");
   const [selectedCiclo, setSelectedCiclo] = useState<string>("todos");
+  const [selectedCicloReporte, setSelectedCicloReporte] = useState<string>("");
+  const [selectedDia, setSelectedDia] = useState<string>("");
   const [selectedReporte, setSelectedReporte] = useState<string | null>(null);
   const [generatingDocente, setGeneratingDocente] = useState(false);
   const [generatingAula, setGeneratingAula] = useState(false);
+  const [generatingTodasAulas, setGeneratingTodasAulas] = useState(false);
+  const [generatingDia, setGeneratingDia] = useState(false);
+  const [generatingCiclo, setGeneratingCiclo] = useState(false);
+  const [generatingTodosCiclos, setGeneratingTodosCiclos] = useState(false);
   const [generatingExcel, setGeneratingExcel] = useState(false);
   const [generatingConsolidado, setGeneratingConsolidado] = useState(false);
   const [generatingConflictos, setGeneratingConflictos] = useState(false);
   const [generatingEstadisticas, setGeneratingEstadisticas] = useState(false);
+  const [generatingReporteGeneral, setGeneratingReporteGeneral] = useState(false);
 
-  const ciclos = [
-    { value: "todos", label: "Todos los Ciclos" },
-    { value: "1", label: "Ciclo I" },
-    { value: "2", label: "Ciclo II" },
-    { value: "3", label: "Ciclo III" },
-    { value: "4", label: "Ciclo IV" },
-    { value: "5", label: "Ciclo V" },
-    { value: "6", label: "Ciclo VI" },
-    { value: "7", label: "Ciclo VII" },
-    { value: "8", label: "Ciclo VIII" },
-    { value: "9", label: "Ciclo IX" },
-    { value: "10", label: "Ciclo X" },
-  ];
+  // Sincronizar con el periodo global al inicio o cuando cambie
+  useEffect(() => {
+    if (periodoSeleccionado) {
+      setIdPeriodo(periodoSeleccionado.id_periodo);
+    }
+  }, [periodoSeleccionado]);
 
   const handleDownloadExcel = async () => {
+    if (!id_periodo) {
+      toast.warning("Seleccione un período académico");
+      return;
+    }
+
     setGeneratingExcel(true);
     try {
-      const url = `/api/reportes/excel?id_periodo=${id_periodo}&ciclo=${selectedCiclo}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Error al generar Excel");
-      
+      const response = await fetch(`/api/reportes/excel?id_periodo=${id_periodo}`);
+      if (!response.ok) throw new Error(`Error ${response.status}`);
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const url = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `Horarios_${selectedCiclo === 'todos' ? 'Todos' : `Ciclo_${selectedCiclo}`}.xlsx`;
+      a.href = url;
+      a.download = `horario_institucional_${periodoSeleccionado?.codigo || 'general'}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      window.URL.revokeObjectURL(url);
       toast.success("Excel generado correctamente");
-    } catch (error) {
-      toast.error("Error al descargar el Excel");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar Excel");
     } finally {
       setGeneratingExcel(false);
     }
@@ -72,32 +81,40 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
 
   const fetchData = async () => {
     try {
-      const [dRes, aRes] = await Promise.all([
+      const [dRes, aRes, cRes] = await Promise.all([
         fetch("/api/docentes"),
-        fetch("/api/ambientes")
+        fetch("/api/ambientes"),
+        fetch("/api/ciclos")
       ]);
       setDocentes(await dRes.json());
       setAmbientes(await aRes.json());
+      setCiclos(await cRes.json());
     } catch (error) {
       toast.error("Error al cargar datos de reportes");
     }
   };
 
   const handleDownload = async (tipo: string, id?: string) => {
-    if ((tipo === 'docente' || tipo === 'aula') && !id) {
+    if (!id_periodo) return;
+    if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
       toast.warning("Seleccione un elemento de la lista");
       return;
     }
 
-    let url = `/api/reportes?tipo=${tipo}&id_periodo=${id_periodo}`;
+    let url = `/api/reportes/pdf?tipo=${tipo}&id_periodo=${id_periodo}`;
     if (id) url += `&id=${id}`;
 
     const setLoading = {
       docente: setGeneratingDocente,
       aula: setGeneratingAula,
+      aulas_todas: setGeneratingTodasAulas,
+      dia: setGeneratingDia,
+      ciclo: setGeneratingCiclo,
+      ciclos_todos: setGeneratingTodosCiclos,
       consolidado: setGeneratingConsolidado,
       conflictos: setGeneratingConflictos,
       estadisticas: setGeneratingEstadisticas,
+      reporte_general: setGeneratingReporteGeneral,
     }[tipo as any];
 
     if (setLoading) setLoading(true);
@@ -113,7 +130,8 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `reporte-${tipo}${id ? `-${id}` : ''}.pdf`;
+      const fileName = tipo === 'reporte_general' ? 'Horario_Institucional_Sistemas.pdf' : `reporte-${tipo}${id ? `-${id}` : ''}.pdf`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -122,6 +140,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
 
       if (tipo === 'docente') setSelectedDocente("");
       else if (tipo === 'aula') setSelectedAmbiente("");
+      else if (tipo === 'ciclo') setSelectedCicloReporte("");
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar PDF");
@@ -134,26 +153,38 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
 
   const reportes = [
     { id: 'aula', icon: School, title: 'Horario por Aula', description: 'Consolidado de clases de teoría por ambiente', color: 'indigo' },
-    { id: 'laboratorio', icon: BookOpen, title: 'Horario por Laboratorio', description: 'Distribución física de clases prácticas', color: 'emerald' },
+    { id: 'dia', icon: Calendar, title: 'Reporte por Día', description: 'Verificar clases, docentes y aulas por cada día de la semana', color: 'emerald' },
     { id: 'docente', icon: User, title: 'Horario por Docente', description: 'Planes de dictado por investigador', color: 'amber' },
+    { id: 'ciclo', icon: Layers, title: 'Reporte por Ciclo', description: 'Docentes que enseñan por cada ciclo académico', color: 'purple' },
+    { id: 'reporte_general', icon: FileText, title: 'Horario Institucional', description: 'Consolidado oficial en formato horizontal por ciclo', color: 'indigo' },
     { id: 'gestion', icon: TrendingUp, title: 'Reporte de Gestión', description: 'KPIs globales y horas pendientes por asignar', color: 'slate' },
   ];
 
-  const historial = [
-    { fecha: '15/05/2026', tipo: 'Horario por Aula', parametro: 'A-101', estado: 'Generado', accion: 'Descargar' },
-    { fecha: '14/05/2026', tipo: 'Reporte de Gestión', parametro: '-', estado: 'Generado', accion: 'Descargar' },
-    { fecha: '13/05/2026', tipo: 'Horario por Docente', parametro: 'Juan Pérez', estado: 'Generado', accion: 'Descargar' },
-    { fecha: '10/05/2026', tipo: 'Horario por Laboratorio', parametro: 'LAB-2', estado: 'Generado', accion: 'Descargar' },
-  ];
+  const currentPeriodoObj = periodos.find(p => p.id_periodo === id_periodo);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-700 w-full overflow-x-hidden">
       {/* Encabezado como la imagen */}
       <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
-        <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">Centro de Reportes Académicos</h2>
-        <p className="text-muted-foreground text-sm">
-          Configure parámetros de aulas, laboratorios y docentes para exportar consolidados oficiales en formato PDF.
-        </p>
+        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+          <div className="flex-1">
+            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">Centro de Reportes Académicos</h2>
+            <p className="text-muted-foreground text-sm">
+              Configure parámetros de aulas, laboratorios y docentes para exportar consolidados oficiales en formato PDF.
+            </p>
+          </div>
+          {currentPeriodoObj && (
+            <div className="flex flex-col gap-1.5 px-4 py-2 bg-primary/5 rounded-xl border border-primary/20">
+              <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 ml-1">Periodo Global</span>
+              <p className="text-sm font-bold text-primary">
+                {currentPeriodoObj.codigo}
+              </p>
+              <p className="text-[9px] text-muted-foreground italic font-medium">
+                Reportes para {currentPeriodoObj.nombre}
+              </p>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Tarjetas de Reportes */}
@@ -166,6 +197,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
             indigo: 'border-primary/20 bg-primary/5',
             emerald: 'border-emerald-500/20 bg-emerald-500/5',
             amber: 'border-amber-500/20 bg-amber-500/5',
+            purple: 'border-purple-500/20 bg-purple-500/5',
             slate: 'border-muted-foreground/20 bg-muted-foreground/5',
           };
 
@@ -173,6 +205,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
             indigo: 'border-primary',
             emerald: 'border-emerald-600',
             amber: 'border-amber-600',
+            purple: 'border-purple-600',
             slate: 'border-foreground',
           };
 
@@ -207,7 +240,7 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-              PARÁMETROS DEL REPORTE ({selectedReporte === 'aula' ? 'AULA' : selectedReporte.toUpperCase()})
+              PARÁMETROS DEL REPORTE
             </h3>
             <button onClick={() => setSelectedReporte(null)}>
               <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
@@ -215,31 +248,75 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           </div>
           
           {(selectedReporte === 'aula' || selectedReporte === 'laboratorio') ? (
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-1">
+                  <Label className="text-sm font-semibold text-foreground mb-2 block">
+                    {selectedReporte === 'aula' ? 'Seleccionar Aula de Teoría' : 'Seleccionar Laboratorio'}
+                  </Label>
+                  <SearchableSelect
+                    options={ambientes.map(a => ({
+                      value: a.id_ambiente.toString(),
+                      label: `${a.nombre} (${a.tipo.replace('_', ' ')})`
+                    }))}
+                    value={selectedAmbiente}
+                    onValueChange={setSelectedAmbiente}
+                    placeholder="Buscar aula..."
+                  />
+                </div>
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('aula', selectedAmbiente)}
+                  disabled={generatingAula}
+                >
+                  <CheckCircle2 className="h-4 w-4 mr-2" />
+                  Generar PDF Oficial
+                </Button>
+              </div>
+              
+              <div className="pt-4 border-t border-border/50">
+                <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
+                  <div>
+                    <h4 className="text-sm font-bold text-primary mb-1">Reporte Masivo de Ambientes</h4>
+                    <p className="text-xs text-muted-foreground">Genera un solo PDF con los horarios de todos los ambientes registrados.</p>
+                  </div>
+                  <Button
+                    variant="outline"
+                    className="h-10 border-primary/20 hover:bg-primary/10 text-primary font-bold text-xs"
+                    onClick={() => handleDownload('aulas_todas')}
+                    disabled={generatingTodasAulas}
+                  >
+                    {generatingTodasAulas ? <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Layers className="h-3.5 w-3.5 mr-2" />}
+                    Generar todos los ambientes
+                  </Button>
+                </div>
+              </div>
+            </div>
+          ) : selectedReporte === 'dia' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
-                <Label className="text-sm font-semibold text-foreground mb-2 block">
-                  {selectedReporte === 'aula' ? 'Seleccionar Aula de Teoría' : 'Seleccionar Laboratorio'}
-                </Label>
+                <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Día de la Semana</Label>
                 <Select 
-                  value={selectedAmbiente} 
-                  onValueChange={setSelectedAmbiente}
+                  value={selectedDia} 
+                  onValueChange={setSelectedDia}
                 >
                   <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Aula A-101" />
+                    <SelectValue placeholder="Seleccione un día" />
                   </SelectTrigger>
-                  <SelectContent>
-                    {ambientes.map(a => (
-                      <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()}>
-                        {a.nombre} ({a.tipo.replace('_', ' ')})
-                      </SelectItem>
-                    ))}
+                  <SelectContent position="popper">
+                    <SelectItem value="0">Lunes</SelectItem>
+                    <SelectItem value="1">Martes</SelectItem>
+                    <SelectItem value="2">Miércoles</SelectItem>
+                    <SelectItem value="3">Jueves</SelectItem>
+                    <SelectItem value="4">Viernes</SelectItem>
+                    <SelectItem value="5">Sábado</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               <Button
                 className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('aula', selectedAmbiente)}
-                disabled={generatingAula}
+                onClick={() => handleDownload('dia', selectedDia)}
+                disabled={generatingDia}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Generar PDF Oficial
@@ -249,21 +326,15 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Docente</Label>
-                <Select 
-                  value={selectedDocente} 
+                <SearchableSelect
+                  options={docentes.map(d => ({
+                    value: d.id_docente.toString(),
+                    label: `${d.nombres} ${d.apellidos}`
+                  }))}
+                  value={selectedDocente}
                   onValueChange={setSelectedDocente}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Juan Pérez" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {docentes.map(d => (
-                      <SelectItem key={d.id_docente} value={d.id_docente.toString()}>
-                        {d.nombres} {d.apellidos}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Buscar docente..."
+                />
               </div>
               <Button
                 className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
@@ -273,6 +344,70 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
                 <CheckCircle2 className="h-4 w-4 mr-2" />
                 Generar PDF Oficial
               </Button>
+            </div>
+          ) : selectedReporte === 'ciclo' ? (
+            <div className="flex flex-col sm:flex-row gap-4 items-end">
+              <div className="flex-1">
+                <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Ciclo Académico</Label>
+                <Select 
+                  value={selectedCicloReporte} 
+                  onValueChange={setSelectedCicloReporte}
+                >
+                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
+                    <SelectValue placeholder="Seleccione un ciclo" />
+                  </SelectTrigger>
+                  <SelectContent position="popper">
+                    {ciclos.map(c => (
+                      <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
+                        {c.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <Button
+                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                onClick={() => handleDownload('ciclo', selectedCicloReporte)}
+                disabled={generatingCiclo}
+              >
+                <CheckCircle2 className="h-4 w-4 mr-2" />
+                Generar PDF Oficial
+              </Button>
+            </div>
+          ) : selectedReporte === 'reporte_general' ? (
+            <div className="flex flex-col gap-4">
+              <div className="p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-center">
+                <FileText className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
+                <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">Generar Horario Institucional</h3>
+                <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
+                  Este reporte utiliza el formato oficial para generar un consolidado de todos los ciclos y ambientes del semestre.
+                </p>
+                <div className="flex justify-center gap-4">
+                  <Button
+                    className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-indigo-900/20"
+                    onClick={() => handleDownload('reporte_general')}
+                    disabled={generatingReporteGeneral}
+                  >
+                    {generatingReporteGeneral ? (
+                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando PDF...</>
+                    ) : (
+                      <><Download className="h-5 w-5 mr-2" /> Descargar PDF</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-12 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl px-6 font-bold shadow-sm"
+                    onClick={handleDownloadExcel}
+                    disabled={generatingExcel}
+                  >
+                    {generatingExcel ? (
+                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando Excel...</>
+                    ) : (
+                      <><FileText className="h-5 w-5 mr-2" /> Descargar Excel</>
+                    )}
+                  </Button>
+                </div>
+              </div>
             </div>
           ) : (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -288,335 +423,6 @@ export function VisorReportes({ id_periodo }: { id_periodo: number }) {
           )}
         </div>
       )}
-
-      {/* Vista Previa Ejemplo */}
-      <div className="bg-card p-5 md:p-6 rounded-2xl border-2 border-dashed border-border shadow-sm">
-        <div className="flex items-center justify-between mb-4">
-          <h3 className="text-sm font-bold text-foreground uppercase tracking-widest">
-            🔍 VISTA PREVIA DE EJEMPLO - HORARIO DE AULA A-101
-          </h3>
-          <span className="text-[10px] text-muted-foreground uppercase tracking-widest">
-            EJEMPLO ILUSTRATIVO DE IMPRESIÓN
-          </span>
-        </div>
-        
-        <div className="bg-muted/50 rounded-xl p-4 border border-border">
-          <table className="w-full text-xs">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-2 px-3 text-muted-foreground font-semibold">Hora</th>
-                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Lunes</th>
-                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Martes</th>
-                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Miércoles</th>
-                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Jueves</th>
-                <th className="text-center py-2 px-3 text-muted-foreground font-semibold">Viernes</th>
-              </tr>
-            </thead>
-            <tbody className="text-center">
-              <tr className="border-b border-border">
-                <td className="py-2 px-3 text-muted-foreground text-left">08:00 - 10:00</td>
-                <td className="py-2 px-3 bg-primary/10 text-primary rounded">Programación I - A-101</td>
-                <td className="py-2 px-3">-</td>
-                <td className="py-2 px-3 bg-primary/10 text-primary rounded">Estructura de Datos - A-101</td>
-                <td className="py-2 px-3">-</td>
-                <td className="py-2 px-3">-</td>
-              </tr>
-              <tr className="border-b border-border">
-                <td className="py-2 px-3 text-muted-foreground text-left">10:00 - 12:00</td>
-                <td className="py-2 px-3">-</td>
-                <td className="py-2 px-3 bg-emerald-500/10 text-emerald-600 rounded">Taller Sistemas - LAB-2</td>
-                <td className="py-2 px-3">-</td>
-                <td className="py-2 px-3 bg-emerald-500/10 text-emerald-600 rounded">Programación I (L) - LAB-1</td>
-                <td className="py-2 px-3">-</td>
-              </tr>
-              <tr>
-                <td className="py-2 px-3 text-muted-foreground text-left">12:00 - 14:00</td>
-                <td className="py-2 px-3" colSpan={5}>
-                  <span className="text-muted-foreground/30">Receso o Almuerzo Institucional</span>
-                </td>
-              </tr>
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Historial de Reportes */}
-      <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
-        <h3 className="text-base font-bold text-foreground mb-4 uppercase tracking-wide">
-          HISTORIAL DE REPORTES GENERADOS RECIENTEMENTE
-        </h3>
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr className="border-b border-border">
-                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Fecha</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Tipo de Reporte</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Parámetro</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Estado</th>
-                <th className="text-left py-3 px-4 text-sm font-semibold text-muted-foreground">Descargar</th>
-              </tr>
-            </thead>
-            <tbody>
-              {historial.map((item, index) => (
-                <tr key={index} className="border-b border-border hover:bg-muted/50">
-                  <td className="py-3 px-4 text-sm text-foreground">{item.fecha}</td>
-                  <td className="py-3 px-4 text-sm font-medium text-primary">{item.tipo}</td>
-                  <td className="py-3 px-4 text-sm text-foreground">{item.parametro}</td>
-                  <td className="py-3 px-4">
-                    <span className="flex items-center gap-1.5 text-sm font-medium text-emerald-600">
-                      <CheckCircle2 className="h-4 w-4" />
-                      {item.estado}
-                    </span>
-                  </td>
-                  <td className="py-3 px-4">
-                    <button className="px-4 py-1.5 rounded-full border border-primary text-primary text-sm font-bold hover:bg-primary hover:text-primary-foreground transition-colors">
-                      {item.accion}
-                    </button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
-        </div>
-      </div>
-
-      {/* Mantenemos la sección de Excel y los demás botones de reportes para preservar funcionalidad */}
-      <div className="hidden">
-        <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group">
-          <div className="h-1.5 bg-primary w-full" />
-          <CardHeader className="p-6">
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-              <div className="flex items-center gap-5">
-                <div className="p-3.5 rounded-xl bg-primary/10 text-primary border border-primary/20 shadow-sm transition-transform duration-500 group-hover:scale-105">
-                  <FileText className="h-7 w-7" />
-                </div>
-                <div>
-                  <CardTitle className="text-xl font-bold text-foreground tracking-tight">Horarios Académicos</CardTitle>
-                  <CardDescription className="text-[10px] font-extrabold text-muted-foreground uppercase tracking-widest mt-1">Generación de Reportes en Excel</CardDescription>
-                </div>
-              </div>
-              
-              <div className="flex flex-wrap items-center gap-4 bg-muted/50 p-3 rounded-2xl border border-border">
-                <div className="space-y-1.5 px-2">
-                  <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Seleccionar Ciclo</Label>
-                  <Select value={selectedCiclo} onValueChange={setSelectedCiclo}>
-                    <SelectTrigger className="w-[180px] h-10 rounded-xl border border-border bg-card px-4 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all">
-                      <SelectValue placeholder="Todos los ciclos" />
-                    </SelectTrigger>
-                    <SelectContent className="rounded-xl border-border shadow-xl">
-                      {ciclos.map(c => (
-                        <SelectItem key={c.value} value={c.value} className="font-bold py-2 text-xs">{c.label}</SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-              <Button
-                className="h-16 rounded-xl bg-card border border-border hover:border-primary text-primary hover:bg-primary/10 font-bold text-xs uppercase tracking-widest transition-all shadow-sm hover:shadow-md active:scale-95"
-                onClick={() => handleDownloadExcel()}
-                disabled={generatingExcel}
-              >
-                <div className="flex items-center gap-3">
-                  <Download className="h-4 w-4" />
-                  <span>Descargar Excel</span>
-                </div>
-              </Button>
-
-              <Button
-                className={cn(
-                  "h-16 rounded-xl font-bold text-xs uppercase tracking-widest transition-all shadow-sm active:scale-95",
-                  isAdmin 
-                    ? "bg-primary hover:bg-primary/90 text-primary-foreground shadow-primary/10 hover:shadow-primary/20" 
-                    : "bg-muted text-muted-foreground cursor-not-allowed shadow-none"
-                )}
-                onClick={() => isAdmin && handleDownloadExcel()}
-                disabled={generatingExcel || !isAdmin}
-                title={!isAdmin ? "Solo el administrador puede regenerar horarios" : ""}
-              >
-                <div className="flex items-center gap-3">
-                  <RefreshCw className={cn("h-4 w-4", generatingExcel && "animate-spin")} />
-                  <span>{generatingExcel ? "Generando..." : "Regenerar Excel"}</span>
-                </div>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-16 rounded-xl border border-border hover:border-muted-foreground text-muted-foreground hover:text-foreground hover:bg-muted/50 font-bold text-xs uppercase tracking-widest transition-all active:scale-95"
-                onClick={() => toast.info("Vista previa no disponible")}
-              >
-                <div className="flex items-center gap-3">
-                  <Printer className="h-4 w-4" />
-                  <span>Vista Previa</span>
-                </div>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-
-        <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-          <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group">
-            <div className="h-1 bg-primary w-full" />
-            <CardHeader className="p-6 pb-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-primary/10 text-primary transition-transform duration-300 group-hover:scale-105">
-                  <User className="h-6 w-6" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg font-bold text-foreground tracking-tight">Reporte por Docente</CardTitle>
-                  <CardDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Horario individual oficial</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 pt-2 space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Seleccionar Docente</Label>
-                <Select value={selectedDocente} onValueChange={setSelectedDocente}>
-                  <SelectTrigger className="w-full h-11 rounded-xl border border-border bg-muted/50 px-4 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all">
-                    <SelectValue placeholder="Busca un docente..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-xl">
-                    {docentes.map(d => (
-                      <SelectItem key={d.id_docente} value={d.id_docente.toString()} className="py-2 text-xs font-medium">
-                        {d.nombres} {d.apellidos}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full h-12 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs uppercase tracking-widest shadow-lg shadow-primary/10 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
-                disabled={generatingDocente}
-                onClick={() => handleDownload('docente', selectedDocente)}
-              >
-                {generatingDocente ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-primary-foreground/30 border-t-primary-foreground rounded-full animate-spin" />
-                    <span>Generando...</span>
-                  </div>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Descargar PDF
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden group">
-            <div className="h-1 bg-emerald-500 w-full" />
-            <CardHeader className="p-6 pb-4">
-              <div className="flex items-center gap-4">
-                <div className="p-3 rounded-xl bg-emerald-500/10 text-emerald-600 transition-transform duration-300 group-hover:scale-105">
-                  <Home className="h-6 w-6" />
-                </div>
-                <div>
-                  <CardTitle className="text-lg font-bold text-foreground tracking-tight">Reporte por Ambiente</CardTitle>
-                  <CardDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Uso de aulas y laboratorios</CardDescription>
-                </div>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6 pt-2 space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Seleccionar Ambiente</Label>
-                <Select value={selectedAmbiente} onValueChange={setSelectedAmbiente}>
-                  <SelectTrigger className="w-full h-11 rounded-xl border border-border bg-muted/50 px-4 font-bold text-xs focus:ring-2 focus:ring-emerald-500/10 transition-all">
-                    <SelectValue placeholder="Busca un ambiente..." />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-xl border-border shadow-xl">
-                    {ambientes.map(a => (
-                      <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()} className="py-2 text-xs font-medium">
-                        {a.nombre} ({a.tipo.replace('_', ' ')})
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
-              <Button
-                className="w-full h-12 rounded-xl bg-emerald-600 hover:bg-emerald-700 text-white font-bold text-xs uppercase tracking-widest shadow-lg shadow-emerald-900/10 transition-all active:scale-95 disabled:opacity-70 flex items-center justify-center gap-2"
-                disabled={generatingAula}
-                onClick={() => handleDownload('aula', selectedAmbiente)}
-              >
-                {generatingAula ? (
-                  <div className="flex items-center gap-2">
-                    <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" />
-                    <span>Generando...</span>
-                  </div>
-                ) : (
-                  <>
-                    <Download className="h-4 w-4" />
-                    Descargar PDF
-                  </>
-                )}
-              </Button>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card className="rounded-2xl border border-border shadow-sm bg-card overflow-hidden">
-          <div className="h-1.5 bg-primary w-full" />
-          <CardHeader className="p-6">
-            <div className="flex items-center gap-4">
-              <div className="p-3 rounded-xl bg-primary/10 text-primary">
-                <FileText className="h-6 w-6" />
-              </div>
-              <div>
-                <CardTitle className="text-xl font-bold text-foreground tracking-tight">Reportes de Gestión</CardTitle>
-                <CardDescription className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">Resúmenes ejecutivos del periodo</CardDescription>
-              </div>
-            </div>
-          </CardHeader>
-          <CardContent className="p-6 pt-0">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <Button
-                variant="outline"
-                className="h-20 rounded-xl border border-border hover:border-primary hover:bg-primary/5 flex flex-col gap-2 group transition-all"
-                onClick={() => handleDownload('consolidado')}
-                disabled={generatingConsolidado}
-              >
-                {generatingConsolidado ? (
-                  <div className="h-5 w-5 border-2 border-primary/20 border-t-primary rounded-full animate-spin" />
-                ) : (
-                  <Download className="h-5 w-5 text-muted-foreground group-hover:text-primary transition-colors" />
-                )}
-                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-primary">Consolidado Carga</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-20 rounded-xl border border-border hover:border-amber-600 hover:bg-amber-500/5 flex flex-col gap-2 group transition-all"
-                onClick={() => handleDownload('conflictos')}
-                disabled={generatingConflictos}
-              >
-                {generatingConflictos ? (
-                  <div className="h-5 w-5 border-2 border-amber-500/20 border-t-amber-600 rounded-full animate-spin" />
-                ) : (
-                  <Download className="h-5 w-5 text-muted-foreground group-hover:text-amber-600 transition-colors" />
-                )}
-                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-amber-600">Registro Conflictos</span>
-              </Button>
-
-              <Button
-                variant="outline"
-                className="h-20 rounded-xl border border-border hover:border-emerald-600 hover:bg-emerald-500/5 flex flex-col gap-2 group transition-all"
-                onClick={() => handleDownload('estadisticas')}
-                disabled={generatingEstadisticas}
-              >
-                {generatingEstadisticas ? (
-                  <div className="h-5 w-5 border-2 border-emerald-500/20 border-t-emerald-600 rounded-full animate-spin" />
-                ) : (
-                  <Download className="h-5 w-5 text-muted-foreground group-hover:text-emerald-600 transition-colors" />
-                )}
-                <span className="font-bold text-[10px] uppercase tracking-wider text-muted-foreground group-hover:text-emerald-600">Estadísticas Finales</span>
-              </Button>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }

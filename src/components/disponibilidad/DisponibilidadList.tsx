@@ -10,7 +10,8 @@ import {
   CheckCircle2, 
   XCircle,
   Filter,
-  Loader2
+  Loader2,
+  AlertCircle
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -34,6 +35,8 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { MatrizDisponibilidadDocente } from "./MatrizDisponibilidadDocente";
 import { Pagination } from "@/components/ui/pagination";
+import { usePeriodo } from "@/contexts/PeriodoContext";
+import { cn } from "@/lib/utils";
 
 interface DocenteDisp {
   id_docente: number;
@@ -47,16 +50,9 @@ interface DocenteDisp {
   tiene_disponibilidad: boolean;
 }
 
-interface Periodo {
-  id_periodo: number;
-  codigo: string;
-  nombre: string;
-  activo: boolean;
-}
-
 export function DisponibilidadList() {
+  const { periodoSeleccionado, periodos } = usePeriodo();
   const [docentes, setDocentes] = useState<DocenteDisp[]>([]);
-  const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [searchTerm, setSearchTerm] = useState("");
@@ -85,35 +81,18 @@ export function DisponibilidadList() {
   const [disponibilidadActual, setDisponibilidadActual] = useState<any[]>([]);
   const [loadingDisp, setLoadingDisp] = useState(false);
 
+  // Sincronizar con el periodo global
   useEffect(() => {
-    fetchInitialData();
-  }, []);
+    if (periodoSeleccionado) {
+      setSelectedPeriodo(periodoSeleccionado.id_periodo.toString());
+    }
+  }, [periodoSeleccionado]);
 
   useEffect(() => {
     if (selectedPeriodo) {
       fetchDocentes();
     }
   }, [selectedPeriodo, searchTerm, categoria, modalidad, orden]);
-
-  const fetchInitialData = async () => {
-    try {
-      // 1. Obtener periodos
-      const resPeriodos = await fetch("/api/periodos");
-      const dataPeriodos = await resPeriodos.json();
-      setPeriodos(dataPeriodos);
-
-      // 2. Obtener periodo activo
-      const resActivo = await fetch("/api/periodos/activo");
-      if (resActivo.ok) {
-        const dataActivo = await resActivo.json();
-        setSelectedPeriodo(dataActivo.id_periodo.toString());
-      } else if (dataPeriodos.length > 0) {
-        setSelectedPeriodo(dataPeriodos[0].id_periodo.toString());
-      }
-    } catch (error) {
-      toast.error("Error al cargar datos iniciales");
-    }
-  };
 
   const fetchDocentes = async () => {
     setLoading(true);
@@ -145,6 +124,13 @@ export function DisponibilidadList() {
 
   const handleSaveDisponibilidad = async (data: any[]) => {
     if (!editingDocente) return;
+    
+    const periodoActual = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
+    if (!periodoActual?.activo || periodoActual?.estado === 'finalizado') {
+      toast.error("No se puede guardar cambios en un periodo finalizado o inactivo");
+      return;
+    }
+
     try {
       const res = await fetch("/api/docentes/disponibilidad", {
         method: "POST",
@@ -168,8 +154,28 @@ export function DisponibilidadList() {
     }
   };
 
+  const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
+  const esLectura = !periodoActualObj?.activo || periodoActualObj?.estado === 'finalizado';
+
+  const docentesSinDisponibilidad = docentes.filter(d => !d.tiene_disponibilidad).length;
+  const esPeriodo2025II = periodoActualObj?.codigo === '2025-II';
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
+      {/* Alerta de faltante de datos para 2025-II */}
+      {esPeriodo2025II && docentesSinDisponibilidad > 0 && !loading && (
+        <div className="bg-amber-500/10 border border-amber-500/20 rounded-xl p-4 flex items-start gap-3 animate-in slide-in-from-top-2 duration-500">
+          <AlertCircle className="h-5 w-5 text-amber-600 mt-0.5" />
+          <div className="space-y-1">
+            <h3 className="text-sm font-bold text-amber-700">Información faltante en el periodo 2025-II</h3>
+            <p className="text-xs text-amber-600 leading-relaxed">
+              Se detectaron <strong>{docentesSinDisponibilidad} docentes</strong> sin disponibilidad registrada para este periodo. 
+              Dado que es un periodo finalizado, estos datos son históricos y no pueden ser modificados.
+            </p>
+          </div>
+        </div>
+      )}
+
       {/* Header y Filtros */}
       <div className="bg-card p-4 rounded-xl border border-border shadow-sm space-y-4">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
@@ -183,21 +189,7 @@ export function DisponibilidadList() {
             </div>
           </div>
 
-          <div className="flex items-center gap-2 bg-muted/30 p-1.5 rounded-lg border border-border w-full md:w-auto">
-            <span className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-2">Periodo:</span>
-            <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-              <SelectTrigger className="w-[140px] h-7 rounded-md border-none bg-card font-bold text-primary focus:ring-0 text-[10px]">
-                <SelectValue placeholder="Seleccionar periodo" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-border shadow-xl">
-                {periodos.map(p => (
-                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-[10px]">
-                    {p.codigo} {p.activo && "(Activo)"}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          <div className="flex-1"></div>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-5 gap-3 pt-3 border-t border-border/50">
@@ -335,10 +327,15 @@ export function DisponibilidadList() {
                       <Button 
                         size="sm"
                         onClick={() => handleEditDisponibilidad(docente)}
-                        className="h-7 px-3 rounded-lg bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-[10px] shadow-sm transition-all active:scale-95 flex items-center gap-1.5"
+                        className={cn(
+                          "h-7 px-3 rounded-lg font-bold text-[10px] shadow-sm transition-all active:scale-95 flex items-center gap-1.5",
+                          esLectura 
+                            ? "bg-muted text-muted-foreground hover:bg-muted/80" 
+                            : "bg-primary hover:bg-primary/90 text-primary-foreground"
+                        )}
                       >
-                        <Edit3 className="h-3 w-3" />
-                        Editar Disp.
+                        {esLectura ? <Search className="h-3 w-3" /> : <Edit3 className="h-3 w-3" />}
+                        {esLectura ? "Ver Disp." : "Editar Disp."}
                       </Button>
                     </div>
                   </TableCell>
@@ -379,6 +376,7 @@ export function DisponibilidadList() {
                 docenteNombre={`${editingDocente.nombres} ${editingDocente.apellidos}`}
                 onSave={handleSaveDisponibilidad}
                 onCancel={() => setEditingDocente(null)}
+                isReadOnly={esLectura}
               />
             )
           )}

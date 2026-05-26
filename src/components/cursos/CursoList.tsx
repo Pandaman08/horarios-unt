@@ -37,7 +37,9 @@ import {
   AlertCircle,
   Clock,
   Filter,
-  Calendar
+  Calendar,
+  Download,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -51,6 +53,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Pagination } from "@/components/ui/pagination";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 
 interface Curso {
   id_curso: number;
@@ -69,6 +72,8 @@ interface Curso {
 }
 
 export function CursoList() {
+  const context = usePeriodo();
+  const periodoSeleccionado = context?.periodoSeleccionado;
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -78,8 +83,16 @@ export function CursoList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [generatingReport, setGeneratingReport] = useState<number | null>(null);
   const [ciclos, setCiclos] = useState<any[]>([]);
-  const [semestre, setSemestre] = useState<number>(new Date().getMonth() < 6 ? 1 : 2);
+  const [semestre, setSemestre] = useState<number>(1);
+
+  // Sincronizar semestre con el periodo seleccionado
+  useEffect(() => {
+    if (periodoSeleccionado) {
+      setSemestre(periodoSeleccionado.semestre);
+    }
+  }, [periodoSeleccionado]);
   
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -274,6 +287,41 @@ export function CursoList() {
       plan_estudios: "",
       prerequisitos: "",
     });
+    setEditingCurso(null);
+  };
+
+  const handleGenerateReport = async () => {
+    if (!periodoSeleccionado) {
+      toast.error("Seleccione un periodo académico primero");
+      return;
+    }
+
+    setGeneratingReport(999);
+    try {
+      const url = `/api/reportes?tipo=reporte_cursos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Reporte_Cursos_Sistemas.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Reporte de cursos descargado");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar reporte");
+    } finally {
+      setGeneratingReport(null);
+    }
   };
 
   return (
@@ -291,18 +339,6 @@ export function CursoList() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="flex items-center gap-2 bg-muted/50 p-1.5 rounded-lg border border-border">
-            <Calendar className="h-4 w-4 text-muted-foreground" />
-            <Select value={semestre.toString()} onValueChange={(v) => setSemestre(parseInt(v))}>
-              <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-bold text-[11px] focus:ring-0 w-[120px]">
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent className="rounded-lg border-border">
-                <SelectItem value="1" className="font-bold text-[11px]">I Semestre</SelectItem>
-                <SelectItem value="2" className="font-bold text-[11px]">II Semestre</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
           <div className="relative flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
@@ -314,11 +350,26 @@ export function CursoList() {
           </div>
             
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if(!open) { setEditingCurso(null); resetForm(); } }}>
-              <DialogTrigger asChild>
-                <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all">
-                  <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={handleGenerateReport} 
+                  disabled={generatingReport !== null}
+                  variant="outline"
+                  className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                >
+                  {generatingReport !== null ? (
+                    <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                  ) : (
+                    <FileText className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  Reporte de Cursos
                 </Button>
-              </DialogTrigger>
+                <DialogTrigger asChild>
+                  <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all">
+                    <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
+                  </Button>
+                </DialogTrigger>
+              </div>
               <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
                 <DialogHeader className="bg-primary p-6 text-primary-foreground">
                   <DialogTitle className="text-xl font-bold flex items-center gap-2">

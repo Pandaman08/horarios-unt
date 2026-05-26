@@ -19,8 +19,12 @@ import {
   MapPin,
   Users,
   AlertCircle,
+  Download,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+
+import { usePeriodo } from "@/contexts/PeriodoContext";
 
 const DIAS = [
   "Lunes",
@@ -82,34 +86,19 @@ interface HorarioAsignado {
 
 export function MiHorarioDocenteView() {
   const { data: session } = useSession();
-  const [periodos, setPeriodos] = useState<any[]>([]);
+  const { periodoSeleccionado, periodos } = usePeriodo();
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
+  const [generatingReport, setGeneratingReport] = useState(false);
 
-  // LIMPIAR TODO LOCALSTORAGE Y ESTADO VIEJO AL INICIAR
+  // Sincronizar con el periodo global
   useEffect(() => {
-    localStorage.clear();
-  }, []);
-
-  useEffect(() => {
-    fetchPeriodos();
-  }, []);
-
-  // NUEVO: Actualizar si el período seleccionado ya no está en la lista de activos
-  useEffect(() => {
-    if (periodos.length > 0 && selectedPeriodo) {
-      const periodoSeleccionadoExiste = periodos.find(
-        (p: any) => p.id_periodo.toString() === selectedPeriodo
-      );
-      
-      if (!periodoSeleccionadoExiste) {
-        // Si el período no está activo, seleccionar el primero de la lista
-        setSelectedPeriodo(periodos[0].id_periodo.toString());
-      }
+    if (periodoSeleccionado) {
+      setSelectedPeriodo(periodoSeleccionado.id_periodo.toString());
     }
-  }, [periodos, selectedPeriodo]);
+  }, [periodoSeleccionado]);
 
   useEffect(() => {
     if (selectedPeriodo) {
@@ -117,22 +106,50 @@ export function MiHorarioDocenteView() {
     }
   }, [selectedPeriodo]);
 
-  const fetchPeriodos = async () => {
+  const handleDownloadReport = async () => {
+    if (!selectedPeriodo) {
+      toast.warning("Seleccione un periodo académico");
+      return;
+    }
+
     try {
-      const res = await fetch("/api/periodos");
-      const data = await res.json();
+      setGeneratingReport(true);
+      // Primero obtener el id_docente (ya lo tenemos en el primer horario si existe)
+      let idDocente: number | null = null;
       
-      // FILTRAR SOLO LOS PERÍODOS ACTIVOS
-      const periodosActivos = (Array.isArray(data) ? data : []).filter((p: any) => p.activo === true);
-      
-      setPeriodos(periodosActivos);
-      
-      // SIEMPRE SELECCIONAR EL PRIMER PERÍODO ACTIVO (nunca mantener un período inactivo)
-      if (periodosActivos.length > 0) {
-        setSelectedPeriodo(periodosActivos[0].id_periodo.toString());
+      // Intentar obtenerlo de los horarios cargados
+      if (horarios.length > 0) {
+        // Necesitamos el id_docente real, pero el objeto HorarioAsignado de esta vista 
+        // no parece tenerlo. Vamos a buscarlo en la API de perfil o similar.
+        // O mejor, podemos usar una nueva ruta o modificar la existente.
+        
+        // Pero espera, ya sabemos que el usuario es un docente por la sesión.
+        // Podemos llamar a una ruta que use la sesión para generar el PDF.
       }
-    } catch {
-      toast.error("Error al cargar periodos");
+
+      const url = `/api/reportes/pdf?tipo=docente_propio&id_periodo=${selectedPeriodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Mi_Horario_${periodoActualObj?.nombre || 'Docente'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Horario generado correctamente");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar horario");
+    } finally {
+      setGeneratingReport(false);
     }
   };
 
@@ -182,6 +199,8 @@ export function MiHorarioDocenteView() {
     );
   }
 
+  const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
+
   if (horarios.length === 0) {
     return (
       <div className="space-y-6 max-w-4xl mx-auto">
@@ -204,7 +223,7 @@ export function MiHorarioDocenteView() {
             <SelectContent>
               {periodos.map((p) => (
                 <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
-                  {p.nombre}
+                  {p.nombre} {p.activo && "(Activo)"} {p.estado === 'finalizado' && "(Finalizado)"}
                 </SelectItem>
               ))}
             </SelectContent>
@@ -218,9 +237,10 @@ export function MiHorarioDocenteView() {
               <div className="text-sm text-blue-700 dark:text-blue-300">
                 <p className="font-medium mb-1">No hay horarios asignados</p>
                 <p className="text-xs opacity-80">
-                  Los horarios se generan automáticamente una vez que el administrador
-                  o operador ejecuta la generación de horarios. Una vez generados,
-                  aparecerán aquí.
+                  {periodoActualObj?.estado === 'finalizado' 
+                    ? "No se encontraron horarios registrados para este periodo finalizado."
+                    : "Los horarios se generan automáticamente una vez que el administrador o operador ejecuta la generación de horarios."
+                  }
                 </p>
               </div>
             </div>
@@ -240,6 +260,20 @@ export function MiHorarioDocenteView() {
           </div>
           <div className="flex gap-2">
             <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={generatingReport}
+              className="hidden sm:flex items-center gap-2"
+            >
+              {generatingReport ? (
+                <Download className="h-4 w-4 animate-bounce" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {generatingReport ? "Generando..." : "Descargar PDF"}
+            </Button>
+            <Button
               variant={view === "matriz" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("matriz")}
@@ -258,24 +292,6 @@ export function MiHorarioDocenteView() {
         <p className="text-sm text-muted-foreground">
           Horarios asignados en el período seleccionado. Total: <strong>{totalHoras} horas</strong>
         </p>
-      </div>
-
-      <div className="space-y-2">
-        <label className="text-sm font-semibold text-foreground">
-          Periodo Académico
-        </label>
-        <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-          <SelectTrigger className="w-full sm:w-80">
-            <SelectValue placeholder="Selecciona un periodo" />
-          </SelectTrigger>
-          <SelectContent>
-            {periodos.map((p) => (
-              <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
-                {p.nombre}
-              </SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
       </div>
 
       {view === "matriz" ? (

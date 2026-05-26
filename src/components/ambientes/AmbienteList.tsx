@@ -40,7 +40,9 @@ import {
   AlertTriangle,
   Info,
   Filter,
-  AlertCircle
+  AlertCircle,
+  Download,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -54,6 +56,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { Pagination } from "@/components/ui/pagination";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 
 interface Ambiente {
   id_ambiente: number;
@@ -66,6 +69,8 @@ interface Ambiente {
 }
 
 export function AmbienteList() {
+  const context = usePeriodo();
+  const periodoSeleccionado = context?.periodoSeleccionado;
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -75,6 +80,7 @@ export function AmbienteList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [generatingReport, setGeneratingReport] = useState<number | null>(null);
 
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -212,6 +218,40 @@ export function AmbienteList() {
     setIsDialogOpen(true);
   };
 
+  const handleGenerateConsolidatedReport = async () => {
+    if (!periodoSeleccionado) {
+      toast.error("Seleccione un periodo académico primero");
+      return;
+    }
+
+    setGeneratingReport(999);
+    try {
+      const url = `/api/reportes?tipo=reporte_ambientes&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Reporte_Ambientes_Academicos.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Reporte de ambientes descargado");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar reporte");
+    } finally {
+      setGeneratingReport(null);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       codigo: "",
@@ -248,6 +288,19 @@ export function AmbienteList() {
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
+            <Button 
+              onClick={handleGenerateConsolidatedReport} 
+              disabled={generatingReport !== null}
+              variant="outline"
+              className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+            >
+              {generatingReport !== null ? (
+                <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+              ) : (
+                <FileText className="mr-2 h-3.5 w-3.5" />
+              )}
+              Reporte de Ambientes
+            </Button>
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) {

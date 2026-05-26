@@ -9,6 +9,7 @@ import { useLocale } from "@/contexts/LocaleContext";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageSelector } from "@/components/layout/LanguageSelector";
 import { FontSizeAdjuster } from "@/components/layout/FontSizeAdjuster";
+import { PeriodoSelector } from "@/components/layout/PeriodoSelector";
 import {
   LayoutDashboard,
   Users,
@@ -380,6 +381,10 @@ function DashboardLayoutInner({
                 </button>
               )}
             </div>
+          </div>
+
+          <div className="hidden md:block">
+            <PeriodoSelector />
           </div>
 
           <div className="flex items-center gap-1.5 shrink-0 ml-auto">

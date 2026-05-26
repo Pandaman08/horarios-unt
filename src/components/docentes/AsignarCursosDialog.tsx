@@ -29,6 +29,7 @@ import { toast } from "sonner";
 import { Loader2, Calendar, Search, AlertCircle } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { Input } from "@/components/ui/input";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 
 interface AsignarCursosDialogProps {
   docenteId: number;
@@ -72,6 +73,7 @@ export function AsignarCursosDialog({
   isOpen,
   onClose,
 }: AsignarCursosDialogProps) {
+  const { periodoSeleccionado } = usePeriodo();
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [ciclos, setCiclos] = useState<any[]>([]);
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
@@ -83,6 +85,13 @@ export function AsignarCursosDialog({
   const [searchTerm, setSearchTerm] = useState<string>("");
   const [semestre, setSemestre] = useState<number>(1);
   const [periodoActivo, setPeriodoActivo] = useState<Periodo | null>(null);
+
+  // Sincronizar semestre con el periodo seleccionado
+  useEffect(() => {
+    if (periodoSeleccionado) {
+      setSemestre(periodoSeleccionado.semestre);
+    }
+  }, [periodoSeleccionado]);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -255,31 +264,6 @@ export function AsignarCursosDialog({
 
             <div className="space-y-3 bg-muted/30 p-3 rounded-lg border border-border">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                <div className="space-y-1">
-                  <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Semestre</Label>
-                  <div className="flex items-center gap-2 bg-muted p-1 rounded-md border border-border">
-                    <Calendar className="h-3.5 w-3.5 text-muted-foreground" />
-                    <Select 
-                      value={semestre.toString()} 
-                      onValueChange={(v) => {
-                        const newSem = parseInt(v);
-                        if (periodoActivo && newSem !== periodoActivo.semestre) {
-                          toast.warning(`Este semestre aún no está disponible. Actualmente está activo el Semestre ${periodoActivo.semestre}`);
-                          return;
-                        }
-                        setSemestre(newSem);
-                      }}
-                    >
-                      <SelectTrigger className="h-7 rounded-md border-none bg-transparent font-semibold text-[11px] focus:ring-0 w-full">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-md border-border">
-                        <SelectItem value="1" className="font-semibold text-[11px]">I Semestre</SelectItem>
-                        <SelectItem value="2" className="font-semibold text-[11px]">II Semestre</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
-                </div>
                 <div className="space-y-1">
                   <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Ciclo</Label>
                   <Select value={cicloFiltro} onValueChange={setCicloFiltro}>

@@ -36,12 +36,15 @@ import {
   Clock, 
   CheckCircle2, 
   AlertCircle,
-  Timer
+  Timer,
+  Download,
+  FileText
 } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -65,6 +68,8 @@ interface Periodo {
 }
 
 export function PeriodoList() {
+  const context = usePeriodo();
+  const periodoSeleccionado = context?.periodoSeleccionado;
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -74,6 +79,7 @@ export function PeriodoList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [generatingReport, setGeneratingReport] = useState<number | null>(null);
 
   // Paginación
   const [currentPage, setCurrentPage] = useState(1);
@@ -201,6 +207,40 @@ export function PeriodoList() {
     setIsDialogOpen(true);
   };
 
+  const handleGenerateSelectedPeriodReport = async () => {
+    if (!periodoSeleccionado) {
+      toast.error("Seleccione un periodo académico primero");
+      return;
+    }
+
+    setGeneratingReport(999);
+    try {
+      const url = `/api/reportes?tipo=reporte_periodos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Reporte_Periodos_Academicos.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Reporte de periodos descargado");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar reporte");
+    } finally {
+      setGeneratingReport(null);
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       codigo: "",
@@ -253,6 +293,19 @@ export function PeriodoList() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
+          <Button 
+            onClick={handleGenerateSelectedPeriodReport} 
+            disabled={generatingReport !== null}
+            variant="outline"
+            className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+          >
+            {generatingReport !== null ? (
+              <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+            ) : (
+              <FileText className="mr-2 h-3.5 w-3.5" />
+            )}
+            Reporte de Periodos
+          </Button>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
@@ -262,7 +315,7 @@ export function PeriodoList() {
           }}>
             <DialogTrigger asChild>
               <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
-                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo
+                <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Periodo Académico
               </Button>
             </DialogTrigger>
             <DialogContent className="sm:max-w-xl rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
