@@ -19,14 +19,37 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const fillLogin = (role: 'admin' | 'operador' | 'docente') => {
+  const fillLogin = async (role: 'admin' | 'operador' | 'docente') => {
     const creds = {
       admin: { email: 'admin@unitru.edu.pe', pass: '00000000' },
       operador: { email: 'dvalerianor@unitru.edu.pe', pass: '80000001' },
       docente: { email: 'eagredagamboa@unitru.edu.pe', pass: '18161457' },
     };
+    
     setEmail(creds[role].email);
     setPassword(creds[role].pass);
+    
+    // Iniciar sesión automáticamente
+    setLoading(true);
+    setError("");
+    try {
+      const res = await signIn("credentials", {
+        email: creds[role].email,
+        password: creds[role].pass,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setError("Credenciales incorrectas o usuario inactivo");
+      } else {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (err) {
+      setError("Error de conexión, intente nuevamente");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
