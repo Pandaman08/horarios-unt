@@ -1,0 +1,1 @@
+// Archivo de middleware obsoleto - usar el de la raíz src/middleware.ts
