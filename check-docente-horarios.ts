@@ -26,7 +26,7 @@ async function main() {
     // Mostrar algunos usuarios
     const usuarios = await prisma.usuario.findMany({ take: 10, include: { docente: true } });
     console.log('📋 Usuarios disponibles (primeros 10):');
-    usuarios.forEach(u =&gt; {
+    usuarios.forEach((u: any) => {
       console.log(`  - ${u.codigo}: ${u.nombres} ${u.apellidos} (Rol: ${u.rol}, Docente: ${u.docente ? 'Sí' : 'No'})`);
     });
     return;
@@ -44,7 +44,7 @@ async function main() {
 
   // Obtener todos los períodos
   const periodos = await prisma.periodoAcademico.findMany();
-  console.log(`\n📊 Períodos disponibles: ${periodos.map(p =&gt; p.codigo).join(', ')}`);
+  console.log(`\n📊 Períodos disponibles: ${periodos.map((p: any) => p.codigo).join(', ')}`);
 
   // Buscar horarios para este docente
   for (const periodo of periodos) {
@@ -63,8 +63,8 @@ async function main() {
     console.log(`\n📅 ${periodo.codigo} - ${periodo.nombre}:`);
     console.log(`   Horarios encontrados: ${horarios.length}`);
 
-    if (horarios.length &gt; 0) {
-      horarios.forEach((h, i) =&gt; {
+    if (horarios.length > 0) {
+      horarios.forEach((h: any, i: number) => {
         console.log(`   ${i+1}. ${h.curso.codigo} - ${h.curso.nombre}`);
         console.log(`      Tipo: ${h.tipo_clase} | Grupo: ${h.grupo.codigo_grupo} | Ambiente: ${h.ambiente.codigo}`);
         console.log(`      Día: ${h.dia_semana} | Hora: ${h.hora_inicio}-${h.hora_fin} | Estado: ${h.estado}`);
@@ -79,16 +79,16 @@ async function main() {
   });
 
   console.log(`\n📊 TOTAL de horarios para este docente en la BD: ${todosHorarios.length}`);
-  todosHorarios.forEach(h =&gt; {
+  todosHorarios.forEach((h: any) => {
     console.log(`   - ${h.periodo.codigo}: ${h.tipo_clase} (${h.estado})`);
   });
 }
 
 main()
-  .catch(e =&gt; {
+  .catch((e: any) => {
     console.error('❌ Error:', e);
     process.exit(1);
   })
-  .finally(async () =&gt; {
+  .finally(async () => {
     await prisma.$disconnect();
   });

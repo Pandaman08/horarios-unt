@@ -12,6 +12,7 @@ const rolePermissions: Record<string, string[]> = {
   "/dashboard/ventanas": ["administrador_sistema", "coordinador_academico", "operador_horarios"],
   "/dashboard/reportes": ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"],
   "/dashboard/configuracion": ["administrador_sistema"],
+  "/dashboard/notificaciones": ["administrador_sistema", "operador_horarios", "director_escuela", "coordinador_academico", "docente"],
   "/dashboard": ["administrador_sistema", "operador_horarios", "docente", "director_escuela", "coordinador_academico"],
 };
 

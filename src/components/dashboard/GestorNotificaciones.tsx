@@ -15,6 +15,7 @@ export function GestorNotificaciones() {
   const [data, setData] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [processing, setProcessing] = useState(false);
+  const [filtroVentana, setFiltroVentana] = useState("");
 
   useEffect(() => {
     fetchData();
@@ -23,7 +24,10 @@ export function GestorNotificaciones() {
   const fetchData = async () => {
     try {
       setLoading(true);
-      const res = await fetch("/api/notificaciones/admin?type=stats");
+      const url = filtroVentana 
+        ? `/api/notificaciones/admin?type=stats&id_ventana=${filtroVentana}`
+        : "/api/notificaciones/admin?type=stats";
+      const res = await fetch(url);
       const result = await res.json();
       setData(result);
     } catch (error) {
@@ -258,13 +262,44 @@ export function GestorNotificaciones() {
       {/* Historial Reciente de Envíos */}
       <Card className="rounded-2xl border border-slate-100 shadow-sm bg-white overflow-hidden">
         <CardHeader className="border-b border-slate-50 p-6">
-          <div className="flex items-center gap-4">
-            <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
-              <RefreshCw className="h-5 w-5 text-slate-400" />
+          <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+              <div className="h-10 w-10 bg-slate-50 rounded-xl flex items-center justify-center border border-slate-100">
+                <RefreshCw className="h-5 w-5 text-slate-400" />
+              </div>
+              <div>
+                <CardTitle className="text-[15px] font-black text-slate-800 tracking-tight">Historial Reciente de Envíos</CardTitle>
+                <CardDescription className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Registro de transacciones del notificador</CardDescription>
+              </div>
             </div>
-            <div>
-              <CardTitle className="text-[15px] font-black text-slate-800 tracking-tight">Historial Reciente de Envíos</CardTitle>
-              <CardDescription className="text-[11px] font-bold text-slate-400 uppercase tracking-widest mt-0.5">Registro de transacciones del notificador</CardDescription>
+            <div className="flex items-center gap-2">
+              <Input
+                type="number"
+                placeholder="Filtrar por ID ventana..."
+                value={filtroVentana}
+                onChange={(e) => setFiltroVentana(e.target.value)}
+                className="h-9 w-48 text-sm rounded-lg border-slate-200"
+              />
+              <Button
+                variant="outline"
+                onClick={fetchData}
+                disabled={loading}
+                className="h-9 rounded-lg border-slate-200 font-bold text-xs hover:bg-slate-50"
+              >
+                Filtrar
+              </Button>
+              {filtroVentana && (
+                <Button
+                  variant="ghost"
+                  onClick={() => {
+                    setFiltroVentana("");
+                    fetchData();
+                  }}
+                  className="h-9 rounded-lg text-xs text-slate-500 hover:text-slate-700"
+                >
+                  Limpiar
+                </Button>
+              )}
             </div>
           </div>
         </CardHeader>
@@ -298,7 +333,12 @@ export function GestorNotificaciones() {
                       </span>
                     </TableCell>
                     <TableCell className="text-center">
-                      <span className="text-[10px] font-black text-slate-500 uppercase tracking-tighter bg-slate-50 px-2 py-0.5 rounded-md border border-slate-100">
+                      <span className={cn(
+                        "text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border",
+                        notif.tipo_notificacion === 'horario_asignado_automatico' 
+                          ? "bg-amber-50 text-amber-700 border-amber-200" 
+                          : "bg-slate-50 text-slate-500 border-slate-100"
+                      )}>
                         {notif.tipo_notificacion}
                       </span>
                     </TableCell>
