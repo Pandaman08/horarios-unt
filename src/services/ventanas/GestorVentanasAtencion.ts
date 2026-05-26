@@ -56,7 +56,7 @@ export class GestorVentanasAtencion {
       orderBy: [
         { modalidad: 'asc' }, 
         { categoria: 'asc' }, 
-        { antiguedad: 'desc' }
+        { fecha_ingreso: 'asc' }
       ]
     });
 
