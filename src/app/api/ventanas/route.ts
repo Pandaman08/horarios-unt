@@ -44,7 +44,7 @@ export async function GET(request: Request) {
     });
 
     // Asociar cada ventana con un docente
-    const ventanasConDocentes = ventanas.map((ventana, index) => ({
+    const ventanasConDocentes = ventanas.map((ventana:any, index:any) => ({
       ...ventana,
       docente: docentes[index] || null
     }));
