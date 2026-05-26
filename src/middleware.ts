@@ -43,9 +43,13 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Permitir acceso a rutas de NextAuth sin token
+        // Permitir acceso a rutas de NextAuth y login sin token
         const pathname = req.nextUrl.pathname;
-        if (pathname.startsWith("/api/auth") || pathname.startsWith("/auth/login")) {
+        if (
+          pathname.startsWith("/api/auth") || 
+          pathname.startsWith("/auth/login") ||
+          pathname === "/api/periodos" // Permitir acceso público a periodos para la inicialización
+        ) {
           return true;
         }
         // Para el resto, requerir token
