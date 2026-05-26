@@ -73,7 +73,7 @@ export class GestorVentanasAtencion {
     const idsDocentesConVentana = new Set(notificacionesExistentes.map((n: any) => n.id_docente || 0));
 
     // Filtrar la lista para quedarnos solo con los que NO tienen ventana
-    const docentesSinVentana = docentes.filter(d => !idsDocentesConVentana.has(d.id_docente));
+    const docentesSinVentana = docentes.filter((d:any) => !idsDocentesConVentana.has(d.id_docente));
     console.log(`Docentes sin ventana previa: ${docentesSinVentana.length}`);
 
     if (docentesSinVentana.length === 0) {
