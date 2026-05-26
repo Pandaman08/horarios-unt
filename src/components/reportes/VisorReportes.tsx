@@ -127,7 +127,8 @@ export function VisorReportes() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `reporte-${tipo}${id ? `-${id}` : ''}.pdf`;
+      const fileName = tipo === 'reporte_general' ? 'Horario_Institucional_Sistemas.pdf' : `reporte-${tipo}${id ? `-${id}` : ''}.pdf`;
+      a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
@@ -152,7 +153,7 @@ export function VisorReportes() {
     { id: 'dia', icon: Calendar, title: 'Reporte por Día', description: 'Verificar clases, docentes y aulas por cada día de la semana', color: 'emerald' },
     { id: 'docente', icon: User, title: 'Horario por Docente', description: 'Planes de dictado por investigador', color: 'amber' },
     { id: 'ciclo', icon: Layers, title: 'Reporte por Ciclo', description: 'Docentes que enseñan por cada ciclo académico', color: 'purple' },
-    { id: 'reporte_general', icon: FileText, title: 'Reporte General', description: 'Consolidado oficial con plantilla institucional', color: 'indigo' },
+    { id: 'reporte_general', icon: FileText, title: 'Horario Institucional', description: 'Consolidado oficial en formato horizontal por ciclo', color: 'indigo' },
     { id: 'gestion', icon: TrendingUp, title: 'Reporte de Gestión', description: 'KPIs globales y horas pendientes por asignar', color: 'slate' },
   ];
 
@@ -236,7 +237,7 @@ export function VisorReportes() {
           <div className="flex items-center justify-between mb-4">
             <h3 className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
               <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-              PARÁMETROS DEL REPORTE ({selectedReporte === 'aula' ? 'AULA' : selectedReporte.toUpperCase()})
+              PARÁMETROS DEL REPORTE
             </h3>
             <button onClick={() => setSelectedReporte(null)}>
               <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
@@ -374,9 +375,9 @@ export function VisorReportes() {
             <div className="flex flex-col gap-4">
               <div className="p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-center">
                 <FileText className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-800 mb-2">Generar Reporte General con Plantilla</h3>
+                <h3 className="text-lg font-bold text-slate-800 mb-2">Generar Horario Institucional</h3>
                 <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
-                  Este reporte utiliza el formato oficial institucional para generar un consolidado de todos los ciclos y ambientes.
+                  Este reporte utiliza el formato oficial para generar un consolidado de todos los ciclos y ambientes del semestre.
                 </p>
                 <div className="flex justify-center gap-4">
                   <Button

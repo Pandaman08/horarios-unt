@@ -1,7 +1,7 @@
 import puppeteer from 'puppeteer';
 
 export class GeneradorPDF {
-  static async generarDesdeHTML(html: string): Promise<Buffer> {
+  static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {
     let browser;
 
     try {
@@ -24,13 +24,13 @@ export class GeneradorPDF {
       
       const pdf = await page.pdf({
         format: 'A4',
-        landscape: false,
+        landscape: landscape,
         printBackground: true,
         margin: {
-          top: '15mm',
-          right: '15mm',
-          bottom: '15mm',
-          left: '15mm'
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm'
         }
       });
 
@@ -42,7 +42,35 @@ export class GeneradorPDF {
     }
   }
 
-  static wrapLayout(content: string, title: string): string {
+  static wrapLayout(content: string, title: string, minimal: boolean = false): string {
+    if (minimal) {
+      return `
+        <!DOCTYPE html>
+        <html>
+          <head>
+            <meta charset="utf-8">
+            <title>${title}</title>
+            <style>
+              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+              body { 
+                font-family: 'Inter', -apple-system, sans-serif;
+                margin: 0;
+                padding: 0;
+                color: #000;
+                background: white;
+              }
+              @media print {
+                .page-break { page-break-after: always; }
+              }
+            </style>
+          </head>
+          <body>
+            ${content}
+          </body>
+        </html>
+      `;
+    }
+
     return `
       <!DOCTYPE html>
       <html>
