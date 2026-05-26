@@ -195,7 +195,7 @@ export class ValidadorHorario {
     });
 
     let minutosTotales = 0;
-    asignados.forEach(a => {
+    asignados.forEach((a:any) => {
       minutosTotales += (this.timeToMinutes(a.hora_fin) - this.timeToMinutes(a.hora_inicio));
     });
 
@@ -323,10 +323,10 @@ export class ValidadorHorario {
     });
 
     let minutosTotales = 0;
-    asignados.forEach(a => {
+    (asignados as any[]).forEach((a: any) => {
       minutosTotales += (this.timeToMinutes(a.hora_fin) - this.timeToMinutes(a.hora_inicio));
     });
-    temporales.forEach(t => {
+    (temporales as any[]).forEach((t: any) => {
       minutosTotales += (this.timeToMinutes(t.hora_fin) - this.timeToMinutes(t.hora_inicio));
     });
 
