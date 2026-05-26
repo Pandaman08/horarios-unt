@@ -257,7 +257,7 @@ export class ServicioNotificador {
         });
 
         // Enviar por Correo
-        const preferenciaCorreo = preferencias.find(p => p.canal === 'correo');
+        const preferenciaCorreo = preferencias.find((p: any) => p.canal === 'correo');
         if (preferenciaCorreo) {
           await prisma.colaNotificaciones.create({
             data: {
@@ -274,7 +274,7 @@ export class ServicioNotificador {
         }
 
         // Enviar por Telegram
-        const preferenciaTelegram = preferencias.find(p => p.canal === 'telegram' && p.verificado);
+        const preferenciaTelegram = preferencias.find((p: any) => p.canal === 'telegram' && p.verificado);
         if (preferenciaTelegram) {
           await prisma.colaNotificaciones.create({
             data: {
@@ -473,7 +473,7 @@ export class ServicioNotificador {
     });
 
     // Enviar por Correo
-    const preferenciaCorreo = preferencias.find(p => p.canal === 'correo');
+    const preferenciaCorreo = preferencias.find((p: any) => p.canal === 'correo');
     if (preferenciaCorreo) {
       await prisma.colaNotificaciones.create({
         data: {
@@ -490,7 +490,7 @@ export class ServicioNotificador {
     }
 
     // Enviar por Telegram
-    const preferenciaTelegram = preferencias.find(p => p.canal === 'telegram' && p.verificado);
+    const preferenciaTelegram = preferencias.find((p: any) => p.canal === 'telegram' && p.verificado);
     if (preferenciaTelegram) {
       await prisma.colaNotificaciones.create({
         data: {
