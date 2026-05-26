@@ -95,6 +95,135 @@ export async function GET(request: Request) {
         return `<div style="page-break-after: always;">${generarCabeceraResumen(c.nombre, `${h.length} Clases Programadas`, "Ciclo Académico", { label: "Periodo", valor: periodo?.codigo || '' })}<div class="highlight-card"><table class="print-table"><thead><tr><th>Día / Hora</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${h.map(clase => `<tr><td><div style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][clase.dia_semana]}</div><div style="color: #003366; font-size: 11px; font-weight: 700;">${clase.hora_inicio}-${clase.hora_fin}</div></td><td><div style="font-weight: 700;">${clase.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${clase.grupo.codigo_grupo}</div></td><td>${clase.docente.nombres} ${clase.docente.apellidos}</td><td>${clase.ambiente.nombre}</td><td style="text-align: center;"><span class="badge" style="background: ${clase.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${clase.tipo_clase.toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div></div>`;
       }))).join('');
 
+    } else if (tipo === 'reporte_docentes_lista') {
+      const docentes = await prisma.docente.findMany({
+        orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }]
+      });
+      reportTitle = 'Reporte General de Docentes';
+      htmlContent = `${generarCabeceraResumen("DOCENTES", `${docentes.length} Catedráticos`, "Plana Docente", { label: "Facultad", valor: "Ingeniería" })}
+        <div class="highlight-card">
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>Apellidos y Nombres</th>
+                <th>Código</th>
+                <th>Grado</th>
+                <th>Categoría</th>
+                <th>Modalidad</th>
+                <th>Correo</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${docentes.map(d => `
+                <tr>
+                  <td><div style="font-weight: 700;">${d.apellidos}, ${d.nombres}</div></td>
+                  <td style="font-family: monospace;">${d.codigo_docente || '—'}</td>
+                  <td style="font-size: 10px;">${d.grado_academico || '—'}</td>
+                  <td><span class="badge" style="background: #f1f5f9;">${d.categoria}</span></td>
+                  <td><span class="badge" style="background: #e0f2fe; color: #0369a1;">${d.modalidad}</span></td>
+                  <td style="font-size: 10px; color: #64748b;">${d.correo_electronico || '—'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+    } else if (tipo === 'reporte_cursos') {
+      const cursos = await prisma.curso.findMany({
+        include: { ciclo_rel: true },
+        orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }]
+      });
+      reportTitle = 'Reporte de Cursos y Asignaturas';
+      htmlContent = `${generarCabeceraResumen("CURSOS", `${cursos.length} Asignaturas`, "Catálogo de Cursos", { label: "Periodo", valor: periodo?.codigo || '' })}
+        <div class="highlight-card">
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>Ciclo</th>
+                <th>Código</th>
+                <th>Asignatura</th>
+                <th style="text-align: center;">T</th>
+                <th style="text-align: center;">P</th>
+                <th style="text-align: center;">L</th>
+                <th style="text-align: center;">Total</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${cursos.map(c => `
+                <tr>
+                  <td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${c.ciclo_rel?.numero || '—'}</span></td>
+                  <td style="font-family: monospace; font-weight: 600;">${c.codigo_curso || '—'}</td>
+                  <td><div style="font-weight: 700;">${c.nombre}</div></td>
+                  <td style="text-align: center;">${c.horas_teoria || 0}</td>
+                  <td style="text-align: center;">${c.horas_practica || 0}</td>
+                  <td style="text-align: center;">${c.horas_laboratorio || 0}</td>
+                  <td style="text-align: center; font-weight: 800; color: #003366;">${(c.horas_teoria || 0) + (c.horas_practica || 0) + (c.horas_laboratorio || 0)}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+    } else if (tipo === 'reporte_ambientes') {
+      const ambientes = await prisma.ambiente.findMany({
+        orderBy: { nombre: 'asc' }
+      });
+      reportTitle = 'Reporte de Ambientes Académicos';
+      htmlContent = `${generarCabeceraResumen("AMBIENTES", `${ambientes.length} Espacios`, "Infraestructura", { label: "Facultad", valor: "Ingeniería" })}
+        <div class="highlight-card">
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>Nombre / Código</th>
+                <th>Tipo</th>
+                <th style="text-align: center;">Capacidad</th>
+                <th>Pabellón / Piso</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${ambientes.map(a => `
+                <tr>
+                  <td><div style="font-weight: 700;">${a.nombre}</div><div style="font-size: 9px; color: #64748b;">CÓD: ${a.codigo}</div></td>
+                  <td><span class="badge" style="background: #f1f5f9; color: #475569;">${a.tipo.toUpperCase().replace('_', ' ')}</span></td>
+                  <td style="text-align: center; font-weight: 700;">${a.capacidad} est.</td>
+                  <td>${a.pabellon || '-'} / ${a.piso || '-'}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
+    } else if (tipo === 'reporte_periodos') {
+      const periodos = await prisma.periodoAcademico.findMany({
+        orderBy: { anio: 'desc' }
+      });
+      reportTitle = 'Reporte de Periodos Académicos';
+      htmlContent = `${generarCabeceraResumen("PERIODOS", `${periodos.length} Registrados`, "Historial Académico")}
+        <div class="highlight-card">
+          <table class="print-table">
+            <thead>
+              <tr>
+                <th>Código</th>
+                <th>Nombre del Periodo</th>
+                <th>Año / Sem.</th>
+                <th>Estado</th>
+                <th>Inicio / Fin</th>
+              </tr>
+            </thead>
+            <tbody>
+              ${periodos.map(p => `
+                <tr>
+                  <td style="font-weight: 700; color: #003366;">${p.codigo}</td>
+                  <td>${p.nombre}</td>
+                  <td style="text-align: center;">${p.anio} - ${p.semestre === 1 ? 'I' : 'II'}</td>
+                  <td><span class="badge" style="background: #f1f5f9;">${p.estado.toUpperCase()}</span></td>
+                  <td style="font-size: 11px;">${p.fecha_inicio.toLocaleDateString()} al ${p.fecha_fin.toLocaleDateString()}</td>
+                </tr>
+              `).join('')}
+            </tbody>
+          </table>
+        </div>`;
+
     } else if (tipo === 'reporte_general') {
       isLandscape = true;
       const ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });

@@ -34,7 +34,7 @@ import {
   Plus,
   Trash2,
   Edit,
-  Printer,
+  Download,
   FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -70,7 +70,8 @@ interface Docente {
 }
 
 export function DocenteList() {
-  const { periodoSeleccionado } = usePeriodo();
+  const context = usePeriodo();
+  const periodoSeleccionado = context?.periodoSeleccionado;
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedDocente, setSelectedDocente] = useState<Docente | null>(null);
@@ -78,7 +79,41 @@ export function DocenteList() {
   const [isDocenteDialogOpen, setIsDocenteDialogOpen] = useState(false);
   const [editingDocente, setEditingDocente] = useState<Docente | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [generatingReport, setGeneratingReport] = useState<number | null>(null);
+  const [generatingReport, setGeneratingReport] = useState<number | boolean | null>(false);
+
+  const handleGenerateInstitutionalReport = async () => {
+    if (!periodoSeleccionado) {
+      toast.error("Seleccione un periodo académico primero");
+      return;
+    }
+
+    setGeneratingReport(true);
+    try {
+      const url = `/api/reportes?tipo=reporte_docentes_lista&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Reporte_General_Docentes.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Reporte de docentes descargado");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar reporte");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
   
   const [formData, setFormData] = useState({
     nombres: "",
@@ -353,17 +388,30 @@ export function DocenteList() {
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar docente..." 
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            <Dialog open={isDocenteDialogOpen} onOpenChange={(open) => {
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+              <div className="relative flex-1 sm:min-w-[200px]">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input 
+                  placeholder="Buscar docente..." 
+                  className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                />
+              </div>
+              <Button 
+                onClick={handleGenerateInstitutionalReport} 
+                disabled={generatingReport === true}
+                variant="outline"
+                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+              >
+                {generatingReport === true ? (
+                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                ) : (
+                  <FileText className="mr-2 h-3.5 w-3.5" />
+                )}
+                Reporte de Docentes
+              </Button>
+              <Dialog open={isDocenteDialogOpen} onOpenChange={(open) => {
               setIsDocenteDialogOpen(open);
               if (!open) {
                 setEditingDocente(null);
@@ -652,12 +700,12 @@ export function DocenteList() {
                           variant="ghost" 
                           size="icon" 
                           onClick={() => handleGenerateReport(docente)} 
-                          title="Generar Horario" 
+                          title="Descargar Horario" 
                           disabled={generatingReport === docente.id_docente}
                           className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-all"
                         >
                           {generatingReport === docente.id_docente ? (
-                            <Printer className="h-3.5 w-3.5 animate-pulse" />
+                            <Download className="h-3.5 w-3.5 animate-bounce" />
                           ) : (
                             <FileText className="h-3.5 w-3.5" />
                           )}

@@ -37,7 +37,9 @@ import {
   AlertCircle,
   Clock,
   Filter,
-  Calendar
+  Calendar,
+  Download,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -70,7 +72,8 @@ interface Curso {
 }
 
 export function CursoList() {
-  const { periodoSeleccionado } = usePeriodo();
+  const context = usePeriodo();
+  const periodoSeleccionado = context?.periodoSeleccionado;
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -80,6 +83,7 @@ export function CursoList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
+  const [generatingReport, setGeneratingReport] = useState<number | null>(null);
   const [ciclos, setCiclos] = useState<any[]>([]);
   const [semestre, setSemestre] = useState<number>(1);
 
@@ -283,6 +287,41 @@ export function CursoList() {
       plan_estudios: "",
       prerequisitos: "",
     });
+    setEditingCurso(null);
+  };
+
+  const handleGenerateReport = async () => {
+    if (!periodoSeleccionado) {
+      toast.error("Seleccione un periodo académico primero");
+      return;
+    }
+
+    setGeneratingReport(999);
+    try {
+      const url = `/api/reportes?tipo=reporte_cursos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Reporte_Cursos_Sistemas.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Reporte de cursos descargado");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar reporte");
+    } finally {
+      setGeneratingReport(null);
+    }
   };
 
   return (
@@ -311,11 +350,26 @@ export function CursoList() {
           </div>
             
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if(!open) { setEditingCurso(null); resetForm(); } }}>
-              <DialogTrigger asChild>
-                <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all">
-                  <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
+              <div className="flex items-center gap-2">
+                <Button 
+                  onClick={handleGenerateReport} 
+                  disabled={generatingReport !== null}
+                  variant="outline"
+                  className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                >
+                  {generatingReport !== null ? (
+                    <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                  ) : (
+                    <FileText className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  Reporte de Cursos
                 </Button>
-              </DialogTrigger>
+                <DialogTrigger asChild>
+                  <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all">
+                    <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
+                  </Button>
+                </DialogTrigger>
+              </div>
               <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
                 <DialogHeader className="bg-primary p-6 text-primary-foreground">
                   <DialogTitle className="text-xl font-bold flex items-center gap-2">

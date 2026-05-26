@@ -34,7 +34,9 @@ import {
   Search, 
   Layers,
   RefreshCw,
-  Calendar
+  Calendar,
+  Download,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -59,7 +61,8 @@ interface Ciclo {
 }
 
 export function CicloList() {
-  const { periodoSeleccionado } = usePeriodo();
+  const context = usePeriodo();
+  const periodoSeleccionado = context?.periodoSeleccionado;
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -67,6 +70,7 @@ export function CicloList() {
   const [searchTerm, setSearchTerm] = useState("");
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [generatingReport, setGeneratingReport] = useState<number | null>(null);
   const [semestre, setSemestre] = useState<number>(1);
 
   // Sincronizar semestre con el periodo seleccionado
@@ -191,6 +195,40 @@ export function CicloList() {
     setIsDialogOpen(true);
   };
 
+  const handleGenerateConsolidatedReport = async () => {
+    if (!periodoSeleccionado) {
+      toast.error("Seleccione un periodo académico primero");
+      return;
+    }
+
+    setGeneratingReport(999);
+    try {
+      const url = `/api/reportes?tipo=ciclos_todos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Consolidado_Horarios_Ciclos.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Consolidado de ciclos descargado");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar reporte");
+    } finally {
+      setGeneratingReport(null);
+    }
+  };
+
   return (
     <div className="space-y-4 animate-in fade-in duration-500">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3 bg-card p-3 rounded-xl border border-border shadow-sm">
@@ -215,12 +253,17 @@ export function CicloList() {
             />
           </div>
           <Button 
-            variant="outline" 
-            onClick={fetchCiclos} 
-            className="h-9 rounded-lg border-border hover:bg-muted transition-all px-3 text-foreground"
-            title="Refrescar"
+            onClick={handleGenerateConsolidatedReport} 
+            disabled={generatingReport !== null}
+            variant="outline"
+            className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
           >
-            <RefreshCw className={cn("h-3.5 w-3.5", loading && "animate-spin")} />
+            {generatingReport !== null ? (
+              <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+            ) : (
+              <FileText className="mr-2 h-3.5 w-3.5" />
+            )}
+            Reporte de Ciclos
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
