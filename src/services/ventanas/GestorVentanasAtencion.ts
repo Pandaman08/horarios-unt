@@ -160,10 +160,11 @@ export class GestorVentanasAtencion {
 
         ventanasCreadas.push(ventana);
         
-        // Programar notificaciones SOLO para los docentes de esta ventana
+        // Programar notificaciones SOLO para los docentes de esta ventana (modo automático)
         await ServicioNotificador.programarNotificacionesVentana(
           ventana.id_ventana, 
-          docentesParaEstaVentana.map(d => d.id_docente)
+          docentesParaEstaVentana.map(d => d.id_docente),
+          true // esAutomatico = true
         );
         
         minutosRestantes -= minutosAsignados;

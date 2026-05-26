@@ -124,8 +124,9 @@ export class ServicioNotificador {
    * Programa notificaciones para una ventana de atención
    * @param id_ventana ID de la ventana
    * @param ids_docentes_especificos Lista opcional de IDs de docentes para notificar. Si no se provee, notifica a todos los de la categoría.
+   * @param esAutomatico Si es true, envía notificación inmediata (solo para ventanas automáticas)
    */
-  static async programarNotificacionesVentana(id_ventana: number, ids_docentes_especificos?: number[]) {
+  static async programarNotificacionesVentana(id_ventana: number, ids_docentes_especificos?: number[], esAutomatico: boolean = false) {
     const ventana = await prisma.ventanaAtencion.findUnique({
       where: { id_ventana },
       include: { periodo: true }
@@ -144,25 +145,123 @@ export class ServicioNotificador {
     });
 
     for (const docente of docentes) {
-      // 1. Programar recordatorio 24 horas antes
-      const fecha24h = new Date(ventana.fecha);
-      fecha24h.setDate(fecha24h.getDate() - 1);
-      // Ajustar a una hora razonable, ej: 08:00 AM
-      fecha24h.setHours(8, 0, 0, 0);
+      if (esAutomatico) {
+        // MODO AUTOMÁTICO: Enviar notificación inmediata
+        await this.programarNotificacionesVentanaCreada(ventana, [docente.id_docente]);
+      } else {
+        // MODO MANUAL: Enviar recordatorios 24h y 15min
+        // 1. Programar recordatorio 24 horas antes
+        const fecha24h = new Date(ventana.fecha);
+        fecha24h.setDate(fecha24h.getDate() - 1);
+        // Ajustar a una hora razonable, ej: 08:00 AM
+        fecha24h.setHours(8, 0, 0, 0);
 
-      // Si la fecha ya pasó (ventana es mañana o hoy), enviarlo lo antes posible (ahora + 1 min)
-      const programada24h = fecha24h > new Date() ? fecha24h : new Date(Date.now() + 60000);
-      await this.crearEntradaCola(docente.id_docente, 'recordatorio_24h', programada24h, ventana, docente);
+        // Si la fecha ya pasó (ventana es mañana o hoy), enviarlo lo antes posible (ahora + 1 min)
+        const programada24h = fecha24h > new Date() ? fecha24h : new Date(Date.now() + 60000);
+        await this.crearEntradaCola(docente.id_docente, 'recordatorio_24h', programada24h, ventana, docente);
 
-      // 2. Programar alerta 15 minutos antes
-      const [hora, minuto] = ventana.hora_inicio.split(':').map(Number);
-      const fecha15min = new Date(ventana.fecha);
-      fecha15min.setHours(hora, minuto - 15, 0, 0);
+        // 2. Programar alerta 15 minutos antes
+        const [hora, minuto] = ventana.hora_inicio.split(':').map(Number);
+        const fecha15min = new Date(ventana.fecha);
+        fecha15min.setHours(hora, minuto - 15, 0, 0);
 
-      if (fecha15min > new Date()) {
-        await this.crearEntradaCola(docente.id_docente, 'alerta_15min', fecha15min, ventana, docente);
+        if (fecha15min > new Date()) {
+          await this.crearEntradaCola(docente.id_docente, 'alerta_15min', fecha15min, ventana, docente);
+        }
       }
     }
+  }
+
+  /**
+   * Programa notificación inmediata al crear una ventana de atención (modo automático)
+   */
+  private static async programarNotificacionesVentanaCreada(ventana: any, idsDocentes: number[]) {
+    const ahora = new Date();
+
+    for (const idDocente of idsDocentes) {
+      try {
+        const docente = await prisma.docente.findUnique({ where: { id_docente: idDocente } });
+        if (!docente) continue;
+
+        const replacePlaceholders = (text: string) => {
+          if (!text) return "";
+          return text
+            .split('{{nombre_docente}}').join(`${docente.nombres} ${docente.apellidos}`)
+            .split('{{fecha_inicio}}').join(new Date(ventana.fecha).toLocaleDateString('es-PE'))
+            .split('{{hora_inicio}}').join(ventana.hora_inicio)
+            .split('{{hora_fin}}').join(ventana.hora_fin);
+        };
+
+        // Obtener plantillas de la BD
+        const tipoNotificacion = 'ventana_creada_inmediata';
+        const configs = await prisma.configuracionNotificaciones.findMany({
+          where: { tipo_notificacion: tipoNotificacion, activo: true }
+        });
+        const configCorreo = configs.find((conf: any) => conf.canal === 'correo');
+        const configTelegram = configs.find((conf: any) => conf.canal === 'telegram');
+
+        // Plantillas por defecto
+        const asuntoDefault = `Ventana de Atención Creada - ${new Date(ventana.fecha).toLocaleDateString('es-PE')}`;
+        const htmlDefault = `
+          <p>Hola {{nombre_docente}},</p>
+          <p>Tu ventana de atención se ha creado exitosamente:</p>
+          <ul>
+            <li><strong>Fecha:</strong> {{fecha_inicio}}</li>
+            <li><strong>Hora:</strong> {{hora_inicio}} - {{hora_fin}}</li>
+          </ul>
+          <p>Podrás seleccionar/modificar tu horario durante esta ventana.</p>
+          <p>Saludos,<br>Sistema de Horarios UNT</p>
+        `;
+        const textoDefault = `📅 <b>VENTANA DE ATENCIÓN CREADA</b>\n\nHola {{nombre_docente}},\nTu ventana de atención está lista:\n\n📆 Fecha: {{fecha_inicio}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n\nPodrás seleccionar tu horario durante esta ventana.\n\n<i>Sistema de Horarios UNT</i>`;
+
+        const asunto = configCorreo?.configuracion_adicional?.asunto || asuntoDefault;
+        const html = replacePlaceholders(configCorreo?.plantilla_mensaje || htmlDefault);
+        const texto = replacePlaceholders(configTelegram?.plantilla_mensaje || textoDefault);
+
+        // Preferencias del docente
+        const preferencias = await prisma.preferenciasNotificacionDocente.findMany({
+          where: { id_docente: docente.id_docente, activo: true }
+        });
+
+        // Enviar por Correo
+        const preferenciaCorreo = preferencias.find(p => p.canal === 'correo');
+        if (preferenciaCorreo) {
+          await prisma.colaNotificaciones.create({
+            data: {
+              id_docente: docente.id_docente,
+              tipo_notificacion: tipoNotificacion,
+              canal: 'correo',
+              fecha_programada: ahora,
+              datos_mensaje: {
+                asunto: asunto,
+                html: html
+              }
+            }
+          });
+        }
+
+        // Enviar por Telegram
+        const preferenciaTelegram = preferencias.find(p => p.canal === 'telegram' && p.verificado);
+        if (preferenciaTelegram) {
+          await prisma.colaNotificaciones.create({
+            data: {
+              id_docente: docente.id_docente,
+              tipo_notificacion: tipoNotificacion,
+              canal: 'telegram',
+              fecha_programada: ahora,
+              datos_mensaje: {
+                texto: texto
+              }
+            }
+          });
+        }
+
+      } catch (error) {
+        console.error(`[Notificador] Error al programar notificación de ventana creada para docente ${idDocente}:`, error);
+      }
+    }
+
+    console.log(`[Notificador] Programadas notificaciones inmediatas para ventana ${ventana.id_ventana}`);
   }
 
   private static async crearEntradaCola(id_docente: number, tipo: string, fecha: Date, ventana: any, docente: any) {
@@ -306,10 +405,11 @@ export class ServicioNotificador {
         <li><strong>Horario:</strong> {{hora_inicio}} - {{hora_fin}}</li>
         <li><strong>Periodo:</strong> {{periodo}}</li>
       </ul>
+      <p><strong>Descarga tu PDF de horario:</strong> Ve al dashboard, sección "Reportes" y selecciona "Horario por Docente".</p>
       <p>Saludos,<br>Sistema de Horarios UNT</p>
     `;
 
-    const textoDefaultManual = `✅ <b>HORARIO CONFIRMADO</b>\n\nHola {{nombre_docente}},\nTu horario ha sido confirmado:\n\n📚 Curso: {{nombre_curso}} ({{codigo_curso}})\n👥 Grupo: {{grupo}}\n🏢 Ambiente: {{ambiente}}\n📅 Día: {{dia_semana}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n📆 Periodo: {{periodo}}\n\n<i>Sistema de Horarios UNT</i>`;
+    const textoDefaultManual = `✅ <b>HORARIO CONFIRMADO</b>\n\nHola {{nombre_docente}},\nTu horario ha sido confirmado:\n\n📚 Curso: {{nombre_curso}} ({{codigo_curso}})\n👥 Grupo: {{grupo}}\n🏢 Ambiente: {{ambiente}}\n📅 Día: {{dia_semana}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n📆 Periodo: {{periodo}}\n\n📄 Descarga tu PDF: Ve a Reportes → Horario por Docente.\n\n<i>Sistema de Horarios UNT</i>`;
 
     const asuntoDefaultAutomatico = 'Horario Asignado Automáticamente - ' + horario.curso.nombre;
     const htmlDefaultAutomatico = `
@@ -323,11 +423,12 @@ export class ServicioNotificador {
         <li><strong>Horario:</strong> {{hora_inicio}} - {{hora_fin}}</li>
         <li><strong>Periodo:</strong> {{periodo}}</li>
       </ul>
+      <p><strong>Descarga tu PDF de horario:</strong> Ve al dashboard, sección "Reportes" y selecciona "Horario por Docente".</p>
       <p>Si necesitas realizar cambios, por favor contacta al personal administrativo.</p>
       <p>Saludos,<br>Sistema de Horarios UNT</p>
     `;
 
-    const textoDefaultAutomatico = `🔔 <b>HORARIO ASIGNADO AUTOMÁTICAMENTE</b>\n\nHola {{nombre_docente}},\nSe te ha asignado un horario:\n\n📚 Curso: {{nombre_curso}} ({{codigo_curso}})\n👥 Grupo: {{grupo}}\n🏢 Ambiente: {{ambiente}}\n📅 Día: {{dia_semana}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n📆 Periodo: {{periodo}}\n\nSi necesitas cambios, contacta al personal administrativo.\n\n<i>Sistema de Horarios UNT</i>`;
+    const textoDefaultAutomatico = `🔔 <b>HORARIO ASIGNADO AUTOMÁTICAMENTE</b>\n\nHola {{nombre_docente}},\nSe te ha asignado un horario:\n\n📚 Curso: {{nombre_curso}} ({{codigo_curso}})\n👥 Grupo: {{grupo}}\n🏢 Ambiente: {{ambiente}}\n📅 Día: {{dia_semana}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n📆 Periodo: {{periodo}}\n\n📄 Descarga tu PDF: Ve a Reportes → Horario por Docente.\n\nSi necesitas cambios, contacta al personal administrativo.\n\n<i>Sistema de Horarios UNT</i>`;
 
     const asuntoDefault = esAutomatico ? asuntoDefaultAutomatico : asuntoDefaultManual;
     const htmlDefault = esAutomatico ? htmlDefaultAutomatico : htmlDefaultManual;

@@ -7,17 +7,21 @@ import { Switch } from "@/components/ui/switch";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Mail, Send, CheckCircle2, XCircle, MessageSquare, Plane, Clock } from "lucide-react";
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Mail, Send, CheckCircle2, XCircle, MessageSquare, Plane, Clock, Bell } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 export function PreferenciasNotificacion() {
   const { data: session } = useSession();
   const [preferencias, setPreferencias] = useState<any[]>([]);
+  const [notificaciones, setNotificaciones] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [loadingNotificaciones, setLoadingNotificaciones] = useState(false);
 
   useEffect(() => {
     fetchPreferencias();
+    fetchNotificaciones();
   }, []);
 
   const fetchPreferencias = async () => {
@@ -29,6 +33,28 @@ export function PreferenciasNotificacion() {
       toast.error("Error al cargar preferencias");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchNotificaciones = async () => {
+    try {
+      setLoadingNotificaciones(true);
+      const res = await fetch("/api/notificaciones/docente");
+      const data = await res.json();
+      // Combinar cola y historial en una sola lista
+      const todas = [
+        ...(data.cola || []).map((n: any) => ({ ...n, tipo: 'cola', estado: 'Pendiente' })),
+        ...(data.historial || []).map((n: any) => ({ ...n, tipo: 'historial', estado: n.estado_envio === 'enviado' ? 'Enviado' : 'Fallido' }))
+      ].sort((a: any, b: any) => {
+        const fechaA = a.fecha_programada || a.fecha_envio;
+        const fechaB = b.fecha_programada || b.fecha_envio;
+        return new Date(fechaB).getTime() - new Date(fechaA).getTime();
+      }).slice(0, 20);
+      setNotificaciones(todas);
+    } catch (error) {
+      toast.error("Error al cargar notificaciones");
+    } finally {
+      setLoadingNotificaciones(false);
     }
   };
 
@@ -194,6 +220,122 @@ export function PreferenciasNotificacion() {
               </p>
             </div>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* Notificaciones Recibidas */}
+      <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+        <CardHeader className="p-5 md:p-6 pb-4 border-b border-border/50 flex flex-row items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="h-10 w-10 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shrink-0 shadow-sm">
+              <Bell className="h-5 w-5 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-lg font-bold text-foreground">Historial de Notificaciones</CardTitle>
+              <CardDescription className="text-xs text-muted-foreground mt-0.5">
+                Últimas 20 notificaciones recibidas
+              </CardDescription>
+            </div>
+          </div>
+          <Button
+            variant="ghost"
+            size="sm"
+            onClick={fetchNotificaciones}
+            disabled={loadingNotificaciones}
+            className="h-9 rounded-xl"
+          >
+            {loadingNotificaciones ? (
+              <div className="h-4 w-4 border-2 border-primary border-t-transparent rounded-full animate-spin" />
+            ) : (
+              "Actualizar"
+            )}
+          </Button>
+        </CardHeader>
+        <CardContent className="p-5 md:p-6">
+          {loadingNotificaciones ? (
+            <div className="flex flex-col items-center justify-center p-12 gap-3">
+              <div className="h-8 w-8 border-4 border-indigo-50 border-t-indigo-600 rounded-full animate-spin" />
+              <p className="text-[11px] font-black text-slate-400 uppercase tracking-widest">
+                Cargando notificaciones...
+              </p>
+            </div>
+          ) : notificaciones.length === 0 ? (
+            <div className="flex flex-col items-center justify-center p-12 gap-3 text-center">
+              <Bell className="h-12 w-12 text-slate-300" />
+              <p className="text-sm font-bold text-muted-foreground">
+                No hay notificaciones todavía
+              </p>
+            </div>
+          ) : (
+            <div className="rounded-xl border border-border overflow-hidden">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">
+                      Tipo
+                    </TableHead>
+                    <TableHead className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">
+                      Canal
+                    </TableHead>
+                    <TableHead className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">
+                      Estado
+                    </TableHead>
+                    <TableHead className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">
+                      Fecha
+                    </TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {notificaciones.map((notif: any, idx: number) => (
+                    <TableRow key={notif.id_cola || notif.id_historial || idx}>
+                      <TableCell className="text-sm font-medium text-foreground">
+                        {notif.tipo_notificacion}
+                      </TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold",
+                          notif.canal === "telegram"
+                            ? "bg-sky-500/10 text-sky-600"
+                            : "bg-indigo-500/10 text-indigo-600"
+                        )}>
+                          {notif.canal === "telegram" ? (
+                            <Plane className="h-3.5 w-3.5" />
+                          ) : (
+                            <Mail className="h-3.5 w-3.5" />
+                          )}
+                          {notif.canal}
+                        </span>
+                      </TableCell>
+                      <TableCell>
+                        <span className={cn(
+                          "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[11px] font-bold",
+                          notif.estado === "Enviado"
+                            ? "bg-emerald-500/10 text-emerald-600"
+                            : notif.estado === "Pendiente"
+                            ? "bg-amber-500/10 text-amber-600"
+                            : "bg-rose-500/10 text-rose-600"
+                        )}>
+                          {notif.estado === "Enviado" ? (
+                            <CheckCircle2 className="h-3.5 w-3.5" />
+                          ) : notif.estado === "Pendiente" ? (
+                            <Clock className="h-3.5 w-3.5" />
+                          ) : (
+                            <XCircle className="h-3.5 w-3.5" />
+                          )}
+                          {notif.estado}
+                        </span>
+                      </TableCell>
+                      <TableCell className="text-sm text-muted-foreground">
+                        {new Date(
+                          notif.fecha_programada || notif.fecha_envio
+                        ).toLocaleString("es-PE")}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
         </CardContent>
       </Card>
 
