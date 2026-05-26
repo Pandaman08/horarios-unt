@@ -20,7 +20,7 @@ export async function GET(request: Request) {
       docenteId = parseInt(id_docente_manual);
     } else {
       const docente = await prisma.docente.findFirst({
-        where: { id_usuario: parseInt(session.user.id_usuario) }
+        where: { id_usuario: session.user.id_usuario }
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
       docenteId = docente.id_docente;
