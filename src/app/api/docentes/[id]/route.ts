@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { Prisma } from '@prisma/client';
 
 export async function GET(
   request: Request,
@@ -36,7 +37,7 @@ export async function PUT(
     const data = await request.json();
 
     // Iniciar transacción para actualizar Docente y Usuario
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: Prisma.TransactionClient) => {
       // 1. Obtener docente actual para encontrar su usuario
       const docenteActual = await tx.docente.findUnique({
         where: { id_docente: id },
