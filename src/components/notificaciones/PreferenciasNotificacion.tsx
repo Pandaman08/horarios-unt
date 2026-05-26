@@ -341,10 +341,16 @@ export function PreferenciasNotificacion() {
 
       {/* Botones de acción */}
       <div className="flex flex-col sm:flex-row justify-end items-center gap-3 pt-4">
-        <Button className="h-11 bg-muted hover:bg-muted/80 text-foreground rounded-xl px-8 font-bold text-sm border border-border transition-all active:scale-95">
+        <Button 
+          disabled
+          className="h-11 bg-muted hover:bg-muted/80 text-foreground rounded-xl px-8 font-bold text-sm border border-border transition-all active:scale-95 opacity-50 cursor-not-allowed"
+        >
           Probar Notificación
         </Button>
-        <Button className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-black text-sm shadow-lg shadow-primary/10 transition-all active:scale-95">
+        <Button 
+          disabled
+          className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-black text-sm shadow-lg shadow-primary/10 transition-all active:scale-95 opacity-50 cursor-not-allowed"
+        >
           Guardar Preferencias
         </Button>
       </div>

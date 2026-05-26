@@ -44,7 +44,7 @@ export class ServicioNotificador {
     try {
       // 1. Validar REGLA: Correo NO se envía para alertas de 15 minutos
       if (notif.canal === 'correo' && notif.tipo_notificacion === 'alerta_15min') {
-        console.log(`Omitiendo correo para alerta_15min según reglas del sistema.`);
+        console.log(`Omitiendo envío de correo para alerta_15min según reglas del sistema.`);
         skip = true;
       }
 
@@ -57,6 +57,11 @@ export class ServicioNotificador {
         skip = true;
       }
 
+      // Preparar contenido que irá al historial (siempre intentamos conservar el cuerpo del mensaje)
+      if (datos) {
+        mensajeHistorial = datos.html || datos.texto || JSON.stringify(datos);
+      }
+
       if (!skip) {
         if (notif.canal === 'correo') {
           const res = await ServicioCorreo.enviarCorreo(
@@ -65,7 +70,7 @@ export class ServicioNotificador {
             datos.html
           );
           success = res.success;
-          mensajeHistorial = success ? 'Enviado con éxito' : `Error SMTP: ${res.error || 'Desconocido'}`;
+          // mantener mensajeHistorial como el contenido real (datos.html)
         } else if (notif.canal === 'telegram') {
           if (pref && pref.verificado) {
             const res = await ServicioTelegram.enviarMensaje(
@@ -73,50 +78,78 @@ export class ServicioNotificador {
               datos.texto
             );
             success = res.success;
-            mensajeHistorial = success ? 'Enviado con éxito' : `Error Telegram: ${res.error || 'Desconocido'}`;
+            // mensajeHistorial ya contiene datos.texto
           } else {
             success = false;
-            mensajeHistorial = 'Telegram no vinculado (use /start)';
             console.warn(`Telegram no verificado para docente ${notif.id_docente}`);
           }
         }
+      } else {
+        // Si se omitió, mensajeHistorial ya preparado con contenido; success queda false
       }
 
-      // Actualizar estado en la cola
+      // Construir payload de actualización de la cola (incrementar intentos SOLO en fallo)
+      const updateData: any = {
+        estado: skip ? 'omitido' : (success ? 'completado' : 'fallido'),
+        fecha_procesamiento: new Date()
+      };
+
+      if (!success && !skip) {
+        updateData.intentos = { increment: 1 };
+      }
+
       await prisma.colaNotificaciones.update({
         where: { id_cola: notif.id_cola },
-        data: {
-          estado: skip ? 'omitido' : (success ? 'completado' : 'fallido'),
-          intentos: { increment: 1 },
-          fecha_procesamiento: new Date()
-        }
+        data: updateData
       });
 
-      // Registrar en historial si no fue omitido
-      if (!skip) {
+      // Registrar en historial SIEMPRE (incluso omitido) y usando el contenido real del mensaje
+      try {
         await prisma.historialNotificaciones.create({
           data: {
             id_docente: notif.id_docente,
             tipo_notificacion: notif.tipo_notificacion,
             canal: notif.canal,
             mensaje: mensajeHistorial,
-            estado_envio: success ? 'enviado' : 'fallido',
+            estado_envio: skip ? 'omitido' : (success ? 'enviado' : 'fallido'),
             fecha_envio: new Date()
           }
         });
+      } catch (histErr) {
+        console.error(`Error al crear historial para notificación ${notif.id_cola}:`, histErr);
       }
 
     } catch (error: any) {
       console.error(`Error procesando notificación ${notif.id_cola}:`, error);
       // Asegurar que no quede trabada en la cola
-      await prisma.colaNotificaciones.update({
-        where: { id_cola: notif.id_cola },
-        data: { 
-          estado: 'fallido', 
-          intentos: { increment: 1 },
-          fecha_procesamiento: new Date()
-        }
-      });
+      try {
+        await prisma.colaNotificaciones.update({
+          where: { id_cola: notif.id_cola },
+          data: { 
+            estado: 'fallido', 
+            intentos: { increment: 1 },
+            fecha_procesamiento: new Date()
+          }
+        });
+      } catch (uErr) {
+        console.error(`Error actualizando cola tras excepción para ${notif.id_cola}:`, uErr);
+      }
+
+      // Intentar registrar en historial el error
+      try {
+        await prisma.historialNotificaciones.create({
+          data: {
+            id_docente: notif.id_docente,
+            tipo_notificacion: notif.tipo_notificacion,
+            canal: notif.canal,
+            mensaje: `Error interno: ${error?.message || String(error)}`,
+            estado_envio: 'fallido',
+            fecha_envio: new Date()
+          }
+        });
+      } catch (histErr) {
+        console.error(`Error al crear historial tras excepción para ${notif.id_cola}:`, histErr);
+      }
     }
   }
 
