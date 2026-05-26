@@ -48,28 +48,7 @@ export function VisorReportes() {
   }, [periodoSeleccionado]);
 
   const handleDownloadExcel = async () => {
-    if (!id_periodo) return;
-    setGeneratingExcel(true);
-    try {
-      const url = `/api/reportes/excel?id_periodo=${id_periodo}&ciclo=${selectedCiclo}`;
-      const response = await fetch(url);
-      if (!response.ok) throw new Error("Error al generar Excel");
-      
-      const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `Horarios_${selectedCiclo === 'todos' ? 'Todos' : `Ciclo_${selectedCiclo}`}.xlsx`;
-      document.body.appendChild(a);
-      a.click();
-      a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Excel generado correctamente");
-    } catch (error) {
-      toast.error("Error al descargar el Excel");
-    } finally {
-      setGeneratingExcel(false);
-    }
+    toast.info("La exportación a Excel estará disponible próximamente.");
   };
 
   useEffect(() => {
@@ -381,14 +360,26 @@ export function VisorReportes() {
                 </p>
                 <div className="flex justify-center gap-4">
                   <Button
-                    className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-8 font-bold shadow-lg shadow-indigo-900/20"
+                    className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-indigo-900/20"
                     onClick={() => handleDownload('reporte_general')}
                     disabled={generatingReporteGeneral}
                   >
                     {generatingReporteGeneral ? (
                       <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando PDF...</>
                     ) : (
-                      <><Download className="h-5 w-5 mr-2" /> Descargar PDF Oficial</>
+                      <><Download className="h-5 w-5 mr-2" /> Descargar PDF</>
+                    )}
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-12 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl px-6 font-bold shadow-sm"
+                    onClick={() => handleDownloadExcel()}
+                    disabled={generatingExcel}
+                  >
+                    {generatingExcel ? (
+                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando Excel...</>
+                    ) : (
+                      <><FileText className="h-5 w-5 mr-2" /> Descargar Excel</>
                     )}
                   </Button>
                 </div>
