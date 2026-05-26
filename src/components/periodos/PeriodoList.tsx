@@ -307,20 +307,7 @@ export function PeriodoList() {
                 ) : (
                   <FileText className="mr-2 h-3.5 w-3.5" />
                 )}
-                PDF
-              </Button>
-              <Button 
-                onClick={() => handleGenerateSelectedPeriodReport('excel')} 
-                disabled={generatingReport === 999}
-                variant="outline"
-                className="h-9 rounded-lg border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5 font-bold text-xs transition-all"
-              >
-                {generatingReport === 999 ? (
-                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-                ) : (
-                  <FileSpreadsheet className="mr-2 h-3.5 w-3.5" />
-                )}
-                Excel
+                Reporte Periodos
               </Button>
             </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {

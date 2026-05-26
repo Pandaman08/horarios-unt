@@ -353,34 +353,21 @@ export function CursoList() {
             
             <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if(!open) { setEditingCurso(null); resetForm(); } }}>
               <div className="flex items-center gap-2">
-                <div className="flex gap-2">
-              <Button 
-                onClick={() => handleGenerateReport('pdf')} 
-                disabled={generatingReport === 999}
-                variant="outline"
-                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
-              >
-                {generatingReport === 999 ? (
-                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-                ) : (
-                  <FileText className="mr-2 h-3.5 w-3.5" />
-                )}
-                PDF
-              </Button>
-              <Button 
-                onClick={() => handleGenerateReport('excel')} 
-                disabled={generatingReport === 999}
-                variant="outline"
-                className="h-9 rounded-lg border-emerald-500/20 text-emerald-600 hover:bg-emerald-500/5 font-bold text-xs transition-all"
-              >
-                {generatingReport === 999 ? (
-                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-                ) : (
-                  <FileSpreadsheet className="mr-2 h-3.5 w-3.5" />
-                )}
-                Excel
-              </Button>
-            </div>
+              <div className="flex gap-2">
+                <Button 
+                  onClick={() => handleGenerateReport('pdf')} 
+                  disabled={generatingReport === 999}
+                  variant="outline"
+                  className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                >
+                  {generatingReport === 999 ? (
+                    <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                  ) : (
+                    <FileText className="mr-2 h-3.5 w-3.5" />
+                  )}
+                  Reporte Cursos
+                </Button>
+              </div>
                 <DialogTrigger asChild>
                   <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all">
                     <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
