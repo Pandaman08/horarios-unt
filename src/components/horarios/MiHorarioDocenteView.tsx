@@ -19,6 +19,8 @@ import {
   MapPin,
   Users,
   AlertCircle,
+  Download,
+  FileText
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -89,6 +91,7 @@ export function MiHorarioDocenteView() {
   const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
+  const [generatingReport, setGeneratingReport] = useState(false);
 
   // Sincronizar con el periodo global
   useEffect(() => {
@@ -102,6 +105,53 @@ export function MiHorarioDocenteView() {
       fetchHorarios();
     }
   }, [selectedPeriodo]);
+
+  const handleDownloadReport = async () => {
+    if (!selectedPeriodo) {
+      toast.warning("Seleccione un periodo académico");
+      return;
+    }
+
+    try {
+      setGeneratingReport(true);
+      // Primero obtener el id_docente (ya lo tenemos en el primer horario si existe)
+      let idDocente: number | null = null;
+      
+      // Intentar obtenerlo de los horarios cargados
+      if (horarios.length > 0) {
+        // Necesitamos el id_docente real, pero el objeto HorarioAsignado de esta vista 
+        // no parece tenerlo. Vamos a buscarlo en la API de perfil o similar.
+        // O mejor, podemos usar una nueva ruta o modificar la existente.
+        
+        // Pero espera, ya sabemos que el usuario es un docente por la sesión.
+        // Podemos llamar a una ruta que use la sesión para generar el PDF.
+      }
+
+      const url = `/api/reportes/pdf?tipo=docente_propio&id_periodo=${selectedPeriodo}`;
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
+        throw new Error(errorData.error || 'Error en la generación');
+      }
+      
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `Mi_Horario_${periodoActualObj?.nombre || 'Docente'}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(downloadUrl);
+      toast.success("Horario generado correctamente");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar horario");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
 
   const fetchHorarios = async () => {
     try {
@@ -209,6 +259,20 @@ export function MiHorarioDocenteView() {
             <h1 className="text-2xl font-bold text-foreground">Mi Horario</h1>
           </div>
           <div className="flex gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadReport}
+              disabled={generatingReport}
+              className="hidden sm:flex items-center gap-2"
+            >
+              {generatingReport ? (
+                <Download className="h-4 w-4 animate-bounce" />
+              ) : (
+                <FileText className="h-4 w-4" />
+              )}
+              {generatingReport ? "Generando..." : "Descargar PDF"}
+            </Button>
             <Button
               variant={view === "matriz" ? "default" : "outline"}
               size="sm"

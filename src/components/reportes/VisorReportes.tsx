@@ -48,7 +48,31 @@ export function VisorReportes() {
   }, [periodoSeleccionado]);
 
   const handleDownloadExcel = async () => {
-    toast.info("La exportación a Excel estará disponible próximamente.");
+    if (!id_periodo) {
+      toast.warning("Seleccione un período académico");
+      return;
+    }
+
+    setGeneratingExcel(true);
+    try {
+      const response = await fetch(`/api/reportes/excel?id_periodo=${id_periodo}`);
+      if (!response.ok) throw new Error(`Error ${response.status}`);
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url;
+      a.download = `horario_institucional_${periodoSeleccionado?.codigo || 'general'}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      window.URL.revokeObjectURL(url);
+      toast.success("Excel generado correctamente");
+    } catch (error: any) {
+      console.error(error);
+      toast.error(error.message || "Error al generar Excel");
+    } finally {
+      setGeneratingExcel(false);
+    }
   };
 
   useEffect(() => {
@@ -77,7 +101,7 @@ export function VisorReportes() {
       return;
     }
 
-    let url = `/api/reportes?tipo=${tipo}&id_periodo=${id_periodo}`;
+    let url = `/api/reportes/pdf?tipo=${tipo}&id_periodo=${id_periodo}`;
     if (id) url += `&id=${id}`;
 
     const setLoading = {
@@ -354,7 +378,7 @@ export function VisorReportes() {
             <div className="flex flex-col gap-4">
               <div className="p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-center">
                 <FileText className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-800 mb-2">Generar Horario Institucional</h3>
+                <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">Generar Horario Institucional</h3>
                 <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
                   Este reporte utiliza el formato oficial para generar un consolidado de todos los ciclos y ambientes del semestre.
                 </p>
@@ -373,7 +397,7 @@ export function VisorReportes() {
                   <Button
                     variant="outline"
                     className="h-12 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl px-6 font-bold shadow-sm"
-                    onClick={() => handleDownloadExcel()}
+                    onClick={handleDownloadExcel}
                     disabled={generatingExcel}
                   >
                     {generatingExcel ? (

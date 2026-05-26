@@ -1,4 +1,6 @@
 import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { GeneradorPDF } from '@/services/reportes/GeneradorPDF';
 import { ServicioEstadisticas } from '@/services/reportes/ServicioEstadisticas';
@@ -10,7 +12,9 @@ export async function GET(request: Request) {
     const id = searchParams.get('id');
     const id_periodo = searchParams.get('id_periodo');
 
-    if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
+    if (!id_periodo || isNaN(parseInt(id_periodo))) {
+      return NextResponse.json({ error: 'Falta id_periodo o es inválido' }, { status: 400 });
+    }
 
     let htmlContent = '';
     let reportTitle = '';
@@ -43,7 +47,10 @@ export async function GET(request: Request) {
     `;
 
     if (tipo === 'dia') {
-      const diaIndex = parseInt(id!);
+      if (!id || isNaN(parseInt(id))) {
+        return NextResponse.json({ error: 'Falta id de día' }, { status: 400 });
+      }
+      const diaIndex = parseInt(id);
       const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
       const nombreDia = nombresDias[diaIndex] || 'Desconocido';
       const horarios = await prisma.horarioAsignado.findMany({
@@ -53,46 +60,159 @@ export async function GET(request: Request) {
       });
       reportTitle = `Reporte de Horarios: ${nombreDia}`;
       htmlContent = generarCabeceraResumen(nombreDia, `${horarios.length} Clases Programadas`, "Resumen del Día", { label: "Periodo Académico", valor: periodo?.nombre || '' });
-      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${horarios.map(h => `<tr><td style="font-weight: 700; color: #003366;">${h.hora_inicio}-${h.hora_fin}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo.codigo_grupo}</div></td><td>${h.docente.nombres} ${h.docente.apellidos}</td><td><div style="font-weight: 600;">${h.ambiente.nombre}</div></td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${h.tipo_clase.toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
+      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${horarios.map(h => `<tr><td style="font-weight: 700; color: #003366;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso?.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div></td><td>${h.docente?.nombres || ''} ${h.docente?.apellidos || ''}</td><td><div style="font-weight: 600;">${h.ambiente?.nombre || '—'}</div></td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(h.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
 
-    } else if (tipo === 'docente') {
+    } else if (tipo === 'docente' || tipo === 'docente_propio') {
+      let docenteId = id;
+      
+      if (tipo === 'docente_propio') {
+        const session = await getServerSession(authOptions);
+        if (!session?.user?.id_usuario) {
+          return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+        }
+        const docenteData = await prisma.docente.findUnique({
+          where: { id_usuario: session.user.id_usuario }
+        });
+        if (!docenteData) {
+          return NextResponse.json({ error: 'Usuario no es docente' }, { status: 403 });
+        }
+        docenteId = docenteData.id_docente.toString();
+      }
+
+      if (!docenteId || isNaN(parseInt(docenteId))) {
+        return NextResponse.json({ error: 'Falta id de docente' }, { status: 400 });
+      }
       const docente = await prisma.docente.findUnique({
-        where: { id_docente: parseInt(id!) },
+        where: { id_docente: parseInt(docenteId) },
         include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true } } }
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
-      const totalHoras = docente.horarios_asignados.reduce((acc: number, h: any) => {
-        const [h1, m1] = h.hora_inicio.split(':').map(Number);
-        const [h2, m2] = h.hora_fin.split(':').map(Number);
-        return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+      const totalHoras = (docente.horarios_asignados || []).reduce((acc: number, h: any) => {
+        if (!h.hora_inicio || !h.hora_fin) return acc;
+        try {
+          const [h1, m1] = h.hora_inicio.split(':').map(Number);
+          const [h2, m2] = h.hora_fin.split(':').map(Number);
+          if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return acc;
+          return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+        } catch (e) { return acc; }
       }, 0);
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
       htmlContent = generarCabeceraResumen(docente.codigo_docente || 'DOC', `${docente.nombres} ${docente.apellidos}`, "Docente", { label: "Total Horas", valor: `${totalHoras} hrs` });
-      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Día</th><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${docente.horarios_asignados.sort((a,b)=>a.dia_semana-b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio)).map(h => `<tr><td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana]}</td><td style="color: #003366; font-weight: 700;">${h.hora_inicio}-${h.hora_fin}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo.codigo_grupo}</div></td><td>${h.ambiente.nombre}</td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${h.tipo_clase.toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
+      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Día</th><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${(docente.horarios_asignados || []).sort((a,b)=>a.dia_semana-b.dia_semana || (a.hora_inicio || '').localeCompare(b.hora_inicio || '')).map(h => `<tr><td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana] || '—'}</td><td style="color: #003366; font-weight: 700;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso?.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div></td><td>${h.ambiente?.nombre || '—'}</td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(h.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
 
     } else if (tipo === 'aula' || tipo === 'aulas_todas') {
-      const ambientes = tipo === 'aula' 
-        ? [await prisma.ambiente.findUnique({ where: { id_ambiente: parseInt(id!) }, include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } } })]
-        : await prisma.ambiente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } }, orderBy: { nombre: 'asc' } });
-      reportTitle = tipo === 'aula' ? `Horario Ambiente` : `Consolidado de Ambientes`;
-      htmlContent = ambientes.map(a => {
-        if (!a) return '';
-        const totalHoras = a.horarios_asignados.reduce((acc: number, h: any) => {
-          const [h1, m1] = h.hora_inicio.split(':').map(Number);
-          const [h2, m2] = h.hora_fin.split(':').map(Number);
-          return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
-        }, 0);
-        return `<div style="page-break-after: always;">${generarCabeceraResumen(a.nombre, `${a.tipo.replace('_', ' ')}`, "Ambiente", { label: "Capacidad / Horas", valor: `${a.capacidad} est. / ${totalHoras} hrs` })}<div class="highlight-card"><table class="print-table"><thead><tr><th>Día</th><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Docente</th><th>Tipo</th></tr></thead><tbody>${a.horarios_asignados.sort((a,b)=>a.dia_semana-b.dia_semana || a.hora_inicio.localeCompare(b.hora_inicio)).map(h => `<tr><td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana]}</td><td style="color: #003366; font-weight: 700;">${h.hora_inicio}-${h.hora_fin}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo.codigo_grupo}</div></td><td>${h.docente.nombres}</td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${h.tipo_clase.toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div></div>`;
-      }).join('');
+      if ((tipo === 'aula') && (!id || isNaN(parseInt(id)))) {
+        return NextResponse.json({ error: 'Falta id de ambiente' }, { status: 400 });
+      }
+      let ambientesRaw: any[] = [];
+      if (tipo === 'aula') {
+        const ambiente = await prisma.ambiente.findUnique({
+          where: { id_ambiente: parseInt(id!) },
+          include: {
+            horarios_asignados: {
+              where: { id_periodo: parseInt(id_periodo) },
+              include: {
+                curso: { include: { ciclo_rel: true } },
+                docente: true,
+                grupo: true
+              }
+            }
+          }
+        });
+        ambientesRaw = ambiente ? [ambiente] : [];
+      } else {
+        ambientesRaw = await prisma.ambiente.findMany({
+          include: {
+            horarios_asignados: {
+              where: { id_periodo: parseInt(id_periodo) },
+              include: {
+                curso: { include: { ciclo_rel: true } },
+                docente: true,
+                grupo: true
+              }
+            }
+          },
+          orderBy: { nombre: 'asc' }
+        });
+      }
 
+      const ambientesConHorarios = (ambientesRaw || []).filter(a => a && a.horarios_asignados && a.horarios_asignados.length > 0);
+      reportTitle = tipo === 'aula' ? `Horario Ambiente` : `Consolidado de Ambientes`;
+
+      if (ambientesConHorarios.length === 0) {
+        htmlContent = `<div class="highlight-card">No hay horarios asignados a ningún ambiente en este período.</div>`;
+      } else {
+        htmlContent = ambientesConHorarios.map((a, index) => {
+          const totalHoras = (a.horarios_asignados || []).reduce((acc: number, h: any) => {
+            if (!h.hora_inicio || !h.hora_fin) return acc;
+            try {
+              const [h1, m1] = h.hora_inicio.split(':').map(Number);
+              const [h2, m2] = h.hora_fin.split(':').map(Number);
+              if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return acc;
+              return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+            } catch (e) { return acc; }
+          }, 0);
+
+          return `
+            <div style="${index !== ambientesConHorarios.length - 1 ? 'page-break-after: always;' : ''}">
+              ${generarCabeceraResumen(a.nombre || 'AULA', `${(a.tipo || '').replace('_', ' ')}`, "Ambiente", {
+                label: "Capacidad / Horas",
+                valor: `${a.capacidad || 0} est. / ${totalHoras} hrs`
+              })}
+              <div class="highlight-card">
+                <table class="print-table">
+                  <thead>
+                    <tr>
+                      <th>Día</th><th>Horario</th><th>Ciclo</th>
+                      <th>Curso / Grupo</th><th>Docente</th><th>Tipo</th>
+                    </tr>
+                  </thead>
+                  <tbody>
+                    ${(a.horarios_asignados || [])
+                      .sort((a: any, b: any) => a.dia_semana - b.dia_semana || (a.hora_inicio || '').localeCompare(b.hora_inicio || ''))
+                      .map((h: any) => `
+                        <tr>
+                          <td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana] || '—'}</td>
+                          <td style="color: #003366; font-weight: 700;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td>
+                          <td style="text-align: center;">
+                            <span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">
+                              ${h.curso?.ciclo_rel?.numero || '—'}
+                            </span>
+                          </td>
+                          <td>
+                            <div style="font-weight: 700;">${h.curso?.nombre || '—'}</div>
+                            <div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div>
+                          </td>
+                          <td>${h.docente?.nombres || ''} ${h.docente?.apellidos || ''}</td>
+                          <td>
+                            <span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">
+                              ${(h.tipo_clase || '').toUpperCase()}
+                            </span>
+                          </td>
+                        </tr>
+                      `).join('')}
+                  </tbody>
+                </table>
+              </div>
+            </div>
+          `;
+        }).join('');
+      }
     } else if (tipo === 'ciclo' || tipo === 'ciclos_todos') {
-      const ciclos = tipo === 'ciclo' ? [await prisma.ciclo.findUnique({ where: { id_ciclo: parseInt(id!) } })] : await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
+      if (tipo === 'ciclo' && (!id || isNaN(parseInt(id)))) {
+        return NextResponse.json({ error: 'Falta id de ciclo' }, { status: 400 });
+      }
+      const ciclosRaw = tipo === 'ciclo' ? [await prisma.ciclo.findUnique({ where: { id_ciclo: parseInt(id!) } })] : await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
       reportTitle = tipo === 'ciclo' ? `Horario por Ciclo` : `Consolidado por Ciclos`;
-      htmlContent = (await Promise.all(ciclos.map(async c => {
+      htmlContent = (await Promise.all((ciclosRaw || []).map(async c => {
         if (!c) return '';
-        const h = await prisma.horarioAsignado.findMany({ where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: c.id_ciclo } }, include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true }, orderBy:[{dia_semana:'asc'},{hora_inicio:'asc'}] });
-        if(h.length === 0) return '';
-        return `<div style="page-break-after: always;">${generarCabeceraResumen(c.nombre, `${h.length} Clases Programadas`, "Ciclo Académico", { label: "Periodo", valor: periodo?.codigo || '' })}<div class="highlight-card"><table class="print-table"><thead><tr><th>Día / Hora</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${h.map(clase => `<tr><td><div style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][clase.dia_semana]}</div><div style="color: #003366; font-size: 11px; font-weight: 700;">${clase.hora_inicio}-${clase.hora_fin}</div></td><td><div style="font-weight: 700;">${clase.curso.nombre}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${clase.grupo.codigo_grupo}</div></td><td>${clase.docente.nombres} ${clase.docente.apellidos}</td><td>${clase.ambiente.nombre}</td><td style="text-align: center;"><span class="badge" style="background: ${clase.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${clase.tipo_clase.toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div></div>`;
+        const h = await prisma.horarioAsignado.findMany({ 
+          where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: c.id_ciclo } }, 
+          include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true }, 
+          orderBy:[{dia_semana:'asc'},{hora_inicio:'asc'}] 
+        });
+        if(!h || h.length === 0) return '';
+        return `<div style="page-break-after: always;">${generarCabeceraResumen(c.nombre || 'CICLO', `${h.length} Clases Programadas`, "Ciclo Académico", { label: "Periodo", valor: periodo?.codigo || '' })}<div class="highlight-card"><table class="print-table"><thead><tr><th>Día / Hora</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${h.map(clase => `<tr><td><div style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][clase.dia_semana] || '—'}</div><div style="color: #003366; font-size: 11px; font-weight: 700;">${clase.hora_inicio || ''}-${clase.hora_fin || ''}</div></td><td><div style="font-weight: 700;">${clase.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${clase.grupo?.codigo_grupo || '—'}</div></td><td>${clase.docente?.nombres || ''} ${clase.docente?.apellidos || ''}</td><td>${clase.ambiente?.nombre || '—'}</td><td style="text-align: center;"><span class="badge" style="background: ${clase.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(clase.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div></div>`;
       }))).join('');
 
     } else if (tipo === 'reporte_docentes_lista') {
@@ -116,11 +236,11 @@ export async function GET(request: Request) {
             <tbody>
               ${docentes.map(d => `
                 <tr>
-                  <td><div style="font-weight: 700;">${d.apellidos}, ${d.nombres}</div></td>
+                  <td><div style="font-weight: 700;">${d.apellidos || ''}, ${d.nombres || ''}</div></td>
                   <td style="font-family: monospace;">${d.codigo_docente || '—'}</td>
                   <td style="font-size: 10px;">${d.grado_academico || '—'}</td>
-                  <td><span class="badge" style="background: #f1f5f9;">${d.categoria}</span></td>
-                  <td><span class="badge" style="background: #e0f2fe; color: #0369a1;">${d.modalidad}</span></td>
+                  <td><span class="badge" style="background: #f1f5f9;">${d.categoria || '—'}</span></td>
+                  <td><span class="badge" style="background: #e0f2fe; color: #0369a1;">${d.modalidad || '—'}</span></td>
                   <td style="font-size: 10px; color: #64748b;">${d.correo_electronico || '—'}</td>
                 </tr>
               `).join('')}
@@ -152,8 +272,8 @@ export async function GET(request: Request) {
               ${cursos.map(c => `
                 <tr>
                   <td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${c.ciclo_rel?.numero || '—'}</span></td>
-                  <td style="font-family: monospace; font-weight: 600;">${c.codigo_curso || '—'}</td>
-                  <td><div style="font-weight: 700;">${c.nombre}</div></td>
+                  <td style="font-family: monospace; font-weight: 600;">${c.codigo || '—'}</td>
+                  <td><div style="font-weight: 700;">${c.nombre || '—'}</div></td>
                   <td style="text-align: center;">${c.horas_teoria || 0}</td>
                   <td style="text-align: center;">${c.horas_practica || 0}</td>
                   <td style="text-align: center;">${c.horas_laboratorio || 0}</td>
@@ -183,9 +303,9 @@ export async function GET(request: Request) {
             <tbody>
               ${ambientes.map(a => `
                 <tr>
-                  <td><div style="font-weight: 700;">${a.nombre}</div><div style="font-size: 9px; color: #64748b;">CÓD: ${a.codigo}</div></td>
-                  <td><span class="badge" style="background: #f1f5f9; color: #475569;">${a.tipo.toUpperCase().replace('_', ' ')}</span></td>
-                  <td style="text-align: center; font-weight: 700;">${a.capacidad} est.</td>
+                  <td><div style="font-weight: 700;">${a.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">CÓD: ${a.codigo || '—'}</div></td>
+                  <td><span class="badge" style="background: #f1f5f9; color: #475569;">${(a.tipo || '').toUpperCase().replace('_', ' ')}</span></td>
+                  <td style="text-align: center; font-weight: 700;">${a.capacidad || 0} est.</td>
                   <td>${a.pabellon || '-'} / ${a.piso || '-'}</td>
                 </tr>
               `).join('')}
@@ -213,11 +333,11 @@ export async function GET(request: Request) {
             <tbody>
               ${periodos.map(p => `
                 <tr>
-                  <td style="font-weight: 700; color: #003366;">${p.codigo}</td>
-                  <td>${p.nombre}</td>
-                  <td style="text-align: center;">${p.anio} - ${p.semestre === 1 ? 'I' : 'II'}</td>
-                  <td><span class="badge" style="background: #f1f5f9;">${p.estado.toUpperCase()}</span></td>
-                  <td style="font-size: 11px;">${p.fecha_inicio.toLocaleDateString()} al ${p.fecha_fin.toLocaleDateString()}</td>
+                  <td style="font-weight: 700; color: #003366;">${p.codigo || '—'}</td>
+                  <td>${p.nombre || '—'}</td>
+                  <td style="text-align: center;">${p.anio || ''} - ${p.semestre === 1 ? 'I' : 'II'}</td>
+                  <td><span class="badge" style="background: #f1f5f9;">${(p.estado || '').toUpperCase()}</span></td>
+                  <td style="font-size: 11px;">${p.fecha_inicio?.toLocaleDateString() || '—'} al ${p.fecha_fin?.toLocaleDateString() || '—'}</td>
                 </tr>
               `).join('')}
             </tbody>
@@ -236,31 +356,30 @@ export async function GET(request: Request) {
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }]
         });
 
-        if (horarios.length === 0) continue;
+        if (!horarios || horarios.length === 0) continue;
 
-        // Agrupar cursos para la tabla superior
         const cursosMap = new Map();
         horarios.forEach(h => {
           const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
           if (!cursosMap.has(key)) {
             cursosMap.set(key, {
-              docente: `${h.docente.nombres} ${h.docente.apellidos}`,
-              asignatura: h.curso.nombre,
-              T: h.curso.horas_teoria || 0,
-              P: h.curso.horas_practica || 0,
-              L: h.curso.horas_laboratorio || 0,
-              G: h.grupo.codigo_grupo,
-              THoras: (h.curso.horas_teoria || 0) + (h.curso.horas_practica || 0) + (h.curso.horas_laboratorio || 0),
-              departamento: h.docente.departamento || "Ing. de Sistemas"
+              docente: `${h.docente?.nombres || ''} ${h.docente?.apellidos || ''}`,
+              asignatura: h.curso?.nombre || '—',
+              T: h.curso?.horas_teoria || 0,
+              P: h.curso?.horas_practica || 0,
+              L: h.curso?.horas_laboratorio || 0,
+              G: h.grupo?.codigo_grupo || '—',
+              THoras: (h.curso?.horas_teoria || 0) + (h.curso?.horas_practica || 0) + (h.curso?.horas_laboratorio || 0),
+              departamento: h.docente?.especialidad || "Ing. de Sistemas"
             });
           }
         });
 
         const listaCursos = Array.from(cursosMap.values());
-        const colores = ['#bfdbfe', '#fecaca', '#bbf7d0', '#fef08a', '#fed7aa', '#ddd6fe', '#bae6fd', '#fbcfe8', '#e2e8f0'];
+        const colores = ['#bfdbfe ', '#fecaca', '#bbf7d0', '#fef08a', '#fed7aa', '#ddd6fe ', '#bae6fd', '#fbcfe8 ', '#e2e8f0'];
         
         const filasCursosHtml = listaCursos.map((c, i) => `
-          <tr style="background: ${colores[i % colores.length]}44;">
+          <tr style="background: ${colores[i % colores.length]};">
             <td style="border: 1px solid black; text-align: center; font-size: 8.5px; padding: 2px;">${i + 1}</td>
             <td style="border: 1px solid black; text-align: left; font-size: 8.5px; padding: 2px 5px;">${c.docente}</td>
             <td style="border: 1px solid black; text-align: left; font-size: 8.5px; padding: 2px 5px;">${c.asignatura}</td>
@@ -277,13 +396,12 @@ export async function GET(request: Request) {
           <tr><td style="border: 1px solid black; height: 16px;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td></tr>
         `).join('');
 
-        // Matriz de horario
         const horas = ["07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
         const labelsHoras = ["7-8", "8-9", "9-10", "10-11", "11-12", "12-1", "1-2", "2-3", "3-4", "4-5", "5-6", "6-7", "7-8"];
         const dias = [0, 1, 2, 3, 4, 5];
 
         const filasMatriz = horas.map((hora, idx) => {
-          if (hora === "13:00") { // Almuerzo
+          if (hora === "13:00") {
             return `
               <tr style="background: #f1f5f9; height: 15px;">
                 <td style="border: 1px solid black; text-align: center; font-size: 9px; font-weight: 800; border-top: 1.5px solid black; border-bottom: 1.5px solid black;">1-2</td>
@@ -293,20 +411,22 @@ export async function GET(request: Request) {
           }
 
           const celdas = dias.map(dia => {
-            // Buscar si hay una clase que empiece en esta hora o que la incluya
             const clase = horarios.find(h => {
-              const [h_inicio] = h.hora_inicio.split(':').map(Number);
-              const [h_fin] = h.hora_fin.split(':').map(Number);
-              const h_actual = parseInt(hora.split(':')[0]);
-              return h.dia_semana === dia && h_actual >= h_inicio && h_actual < h_fin;
+              if (!h.hora_inicio || !h.hora_fin) return false;
+              try {
+                const [h_inicio] = h.hora_inicio.split(':').map(Number);
+                const [h_fin] = h.hora_fin.split(':').map(Number);
+                const h_actual = parseInt(hora.split(':')[0]);
+                return h.dia_semana === dia && h_actual >= h_inicio && h_actual < h_fin;
+              } catch (e) { return false; }
             });
 
             if (clase) {
-              const cursoIdx = listaCursos.findIndex(c => c.asignatura === clase.curso.nombre && c.G === clase.grupo.codigo_grupo);
-              const color = colores[cursoIdx % colores.length];
+              const cursoIdx = listaCursos.findIndex(c => c.asignatura === (clase.curso?.nombre || '—') && c.G === (clase.grupo?.codigo_grupo || '—'));
+              const color = colores[cursoIdx % colores.length] || '#ffffff';
               return `<td style="border: 1px solid black; background: ${color}; text-align: center; padding: 2px; vertical-align: middle;">
                 <div style="font-weight: 800; font-size: 11px; line-height: 1;">${cursoIdx + 1}</div>
-                <div style="font-size: 7.5px; font-weight: 600;">(${clase.ambiente.nombre})</div>
+                <div style="font-size: 7.5px; font-weight: 600;">(${clase.ambiente?.nombre || '—'})</div>
               </td>`;
             }
             return `<td style="border: 1px solid black;"></td>`;
@@ -322,13 +442,11 @@ export async function GET(request: Request) {
         paginas.push(`
           <div style="padding: 10px 20px; font-family: 'Inter', sans-serif; position: relative; ${ciclo !== ciclos[ciclos.length - 1] ? 'page-break-after: always;' : ''}">
             <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch;">
-              <!-- Box Informativo Izquierda -->
               <div style="width: 320px; border: 2px solid black; padding: 12px; display: flex; flex-direction: column; justify-content: space-between;">
                 <div style="text-align: center; margin-bottom: 10px;">
                   <div style="font-weight: 900; font-size: 12px; line-height: 1.2;">UNIVERSIDAD NACIONAL DE TRUJILLO</div>
                   <div style="font-weight: 800; font-size: 11px; line-height: 1.2;">FACULTAD DE INGENIERÍA TRUJILLO</div>
                 </div>
-                
                 <div style="space-y: 6px;">
                   <div style="font-size: 10.5px; border-bottom: 1px solid #ddd; padding-bottom: 2px;">
                     <span style="font-weight: 900;">ESCUELA:</span> 
@@ -343,14 +461,11 @@ export async function GET(request: Request) {
                     <div style="margin-right: 20px;"><span style="font-weight: 900;">SEMESTRE:</span> <span style="font-weight: 700; margin-left: 5px;">${periodo?.semestre === 1 ? 'I' : 'II'}</span></div>
                   </div>
                 </div>
-                
                 <div style="text-align: right; font-size: 9.5px; font-weight: 800; margin-top: 10px; background: #f8fafc; padding: 5px; border: 1px solid black;">
                   <div style="margin-bottom: 3px;">Inicio del Ciclo : <span style="text-decoration: underline;">${periodo?.fecha_inicio_clases?.toLocaleDateString('es-PE') || '13-04-2026'}</span></div>
                   <div>Término del Ciclo : <span style="text-decoration: underline;">${periodo?.fecha_fin_clases?.toLocaleDateString('es-PE') || '08-08-2026'}</span></div>
                 </div>
               </div>
-              
-              <!-- Tabla de Docentes Derecha -->
               <div style="flex: 1;">
                 <table style="width: 100%; border-collapse: collapse; border: 2px solid black;">
                   <thead>
@@ -373,8 +488,6 @@ export async function GET(request: Request) {
                 </table>
               </div>
             </div>
-
-            <!-- Matriz de Horario -->
             <table style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
               <thead>
                 <tr style="background: #f1f5f9; height: 28px;">
@@ -392,7 +505,6 @@ export async function GET(request: Request) {
                 ${filasMatriz}
               </tbody>
             </table>
-            
             <div style="margin-top: 10px; font-size: 8px; color: #666; text-align: right; font-style: italic;">
               Generado el ${new Date().toLocaleString('es-PE')} - Sistema de Gestión de Horarios UNT
             </div>
@@ -407,10 +519,14 @@ export async function GET(request: Request) {
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
       const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) } } } });
       const cargaDocentes = docentesConCarga.map(d => {
-        const horas = d.horarios_asignados.reduce((acc, h) => {
-          const [h1, m1] = h.hora_inicio.split(':').map(Number);
-          const [h2, m2] = h.hora_fin.split(':').map(Number);
-          return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+        const horas = (d.horarios_asignados || []).reduce((acc, h) => {
+          if (!h.hora_inicio || !h.hora_fin) return acc;
+          try {
+            const [h1, m1] = h.hora_inicio.split(':').map(Number);
+            const [h2, m2] = h.hora_fin.split(':').map(Number);
+            if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return acc;
+            return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
+          } catch (e) { return acc; }
         }, 0);
         return { nombre: `${d.nombres} ${d.apellidos}`, horas };
       }).sort((a, b) => b.horas - a.horas);
