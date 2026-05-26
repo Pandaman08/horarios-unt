@@ -316,7 +316,10 @@ export default function SeleccionHorariosPage() {
     
     const resCheck = await fetch(`/api/horarios/disponibilidad-matriz?id_periodo=${idPeriodo}&id_docente=${session.user.id_docente}`);
     const dataCheck = await resCheck.json();
-    const misTemporales = dataCheck.temporales.filter((t: any) => t.id_docente === parseInt(session.user.id_docente));
+    const misTemporales = dataCheck.temporales.filter(
+      (t: any) =>
+        t.id_docente === Number(session.user.id_docente ?? 0)
+    );
     
     if (misTemporales.length === 0 && !hayHorariosGenerados) {
       toast.warning("No tiene bloques reservados (en amarillo) para confirmar.");
