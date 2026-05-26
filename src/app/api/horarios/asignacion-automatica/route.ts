@@ -196,7 +196,7 @@ export async function POST(request: Request) {
           console.log(`  📚 Curso: ${curso.nombre} (${docenteCurso.tipo_clase})`);
           
           // Obtener todos los ambientes del tipo apropiado (aula para teoría, laboratorio para laboratorio)
-          const ambientesValidos = ambientes.filter(a => {
+          const ambientesValidos = ambientes.filter((a: any) => {
             if (docenteCurso.tipo_clase.toLowerCase() === 'teoria') {
               return a.tipo === 'aula' || a.tipo === 'auditorio';
             } else if (docenteCurso.tipo_clase.toLowerCase() === 'laboratorio') {

@@ -98,7 +98,7 @@ export async function GET(request: Request) {
       }, 0);
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
       htmlContent = generarCabeceraResumen(docente.codigo_docente || 'DOC', `${docente.nombres} ${docente.apellidos}`, "Docente", { label: "Total Horas", valor: `${totalHoras} hrs` });
-      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Día</th><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${(docente.horarios_asignados || []).sort((a,b)=>a.dia_semana-b.dia_semana || (a.hora_inicio || '').localeCompare(b.hora_inicio || '')).map(h => `<tr><td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana] || '—'}</td><td style="color: #003366; font-weight: 700;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso?.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div></td><td>${h.ambiente?.nombre || '—'}</td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(h.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
+      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Día</th><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${(docente.horarios_asignados || []).sort((a: any,b: any)=>a.dia_semana-b.dia_semana || (a.hora_inicio || '').localeCompare(b.hora_inicio || '')).map((h:any) => `<tr><td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana] || '—'}</td><td style="color: #003366; font-weight: 700;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso?.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div></td><td>${h.ambiente?.nombre || '—'}</td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(h.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
 
     } else if (tipo === 'aula' || tipo === 'aulas_todas') {
       if ((tipo === 'aula') && (!id || isNaN(parseInt(id)))) {
@@ -204,7 +204,7 @@ export async function GET(request: Request) {
       }
       const ciclosRaw = tipo === 'ciclo' ? [await prisma.ciclo.findUnique({ where: { id_ciclo: parseInt(id!) } })] : await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
       reportTitle = tipo === 'ciclo' ? `Horario por Ciclo` : `Consolidado por Ciclos`;
-      htmlContent = (await Promise.all((ciclosRaw || []).map(async c => {
+      htmlContent = (await Promise.all((ciclosRaw || []).map(async (c: any) => {
         if (!c) return '';
         const h = await prisma.horarioAsignado.findMany({ 
           where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: c.id_ciclo } }, 
@@ -212,7 +212,7 @@ export async function GET(request: Request) {
           orderBy:[{dia_semana:'asc'},{hora_inicio:'asc'}] 
         });
         if(!h || h.length === 0) return '';
-        return `<div style="page-break-after: always;">${generarCabeceraResumen(c.nombre || 'CICLO', `${h.length} Clases Programadas`, "Ciclo Académico", { label: "Periodo", valor: periodo?.codigo || '' })}<div class="highlight-card"><table class="print-table"><thead><tr><th>Día / Hora</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${h.map(clase => `<tr><td><div style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][clase.dia_semana] || '—'}</div><div style="color: #003366; font-size: 11px; font-weight: 700;">${clase.hora_inicio || ''}-${clase.hora_fin || ''}</div></td><td><div style="font-weight: 700;">${clase.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${clase.grupo?.codigo_grupo || '—'}</div></td><td>${clase.docente?.nombres || ''} ${clase.docente?.apellidos || ''}</td><td>${clase.ambiente?.nombre || '—'}</td><td style="text-align: center;"><span class="badge" style="background: ${clase.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(clase.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div></div>`;
+        return `<div style="page-break-after: always;">${generarCabeceraResumen(c.nombre || 'CICLO', `${h.length} Clases Programadas`, "Ciclo Académico", { label: "Periodo", valor: periodo?.codigo || '' })}<div class="highlight-card"><table class="print-table"><thead><tr><th>Día / Hora</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${h.map((clase: any) => `<tr><td><div style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][clase.dia_semana] || '—'}</div><div style="color: #003366; font-size: 11px; font-weight: 700;">${clase.hora_inicio || ''}-${clase.hora_fin || ''}</div></td><td><div style="font-weight: 700;">${clase.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${clase.grupo?.codigo_grupo || '—'}</div></td><td>${clase.docente?.nombres || ''} ${clase.docente?.apellidos || ''}</td><td>${clase.ambiente?.nombre || '—'}</td><td style="text-align: center;"><span class="badge" style="background: ${clase.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(clase.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div></div>`;
       }))).join('');
 
     } else if (tipo === 'reporte_docentes_lista') {
@@ -234,7 +234,7 @@ export async function GET(request: Request) {
               </tr>
             </thead>
             <tbody>
-              ${docentes.map(d => `
+              ${docentes.map((d: any) => `
                 <tr>
                   <td><div style="font-weight: 700;">${d.apellidos || ''}, ${d.nombres || ''}</div></td>
                   <td style="font-family: monospace;">${d.codigo_docente || '—'}</td>
@@ -269,7 +269,7 @@ export async function GET(request: Request) {
               </tr>
             </thead>
             <tbody>
-              ${cursos.map(c => `
+              ${cursos.map((c: any) => `
                 <tr>
                   <td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${c.ciclo_rel?.numero || '—'}</span></td>
                   <td style="font-family: monospace; font-weight: 600;">${c.codigo || '—'}</td>
@@ -301,7 +301,7 @@ export async function GET(request: Request) {
               </tr>
             </thead>
             <tbody>
-              ${ambientes.map(a => `
+              ${ambientes.map((a: any) => `
                 <tr>
                   <td><div style="font-weight: 700;">${a.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">CÓD: ${a.codigo || '—'}</div></td>
                   <td><span class="badge" style="background: #f1f5f9; color: #475569;">${(a.tipo || '').toUpperCase().replace('_', ' ')}</span></td>
@@ -331,7 +331,7 @@ export async function GET(request: Request) {
               </tr>
             </thead>
             <tbody>
-              ${periodos.map(p => `
+              ${periodos.map((p: any) => `
                 <tr>
                   <td style="font-weight: 700; color: #003366;">${p.codigo || '—'}</td>
                   <td>${p.nombre || '—'}</td>
@@ -359,7 +359,7 @@ export async function GET(request: Request) {
         if (!horarios || horarios.length === 0) continue;
 
         const cursosMap = new Map();
-        horarios.forEach(h => {
+        horarios.forEach((h: any) => {
           const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
           if (!cursosMap.has(key)) {
             cursosMap.set(key, {
@@ -411,7 +411,7 @@ export async function GET(request: Request) {
           }
 
           const celdas = dias.map(dia => {
-            const clase = horarios.find(h => {
+            const clase = horarios.find((h:any) => {
               if (!h.hora_inicio || !h.hora_fin) return false;
               try {
                 const [h_inicio] = h.hora_inicio.split(':').map(Number);
@@ -518,8 +518,8 @@ export async function GET(request: Request) {
       const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
       const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) } } } });
-      const cargaDocentes = docentesConCarga.map(d => {
-        const horas = (d.horarios_asignados || []).reduce((acc, h) => {
+      const cargaDocentes = docentesConCarga.map((d: any) => {
+        const horas = (d.horarios_asignados || []).reduce((acc:any, h: any) => {
           if (!h.hora_inicio || !h.hora_fin) return acc;
           try {
             const [h1, m1] = h.hora_inicio.split(':').map(Number);
@@ -529,9 +529,9 @@ export async function GET(request: Request) {
           } catch (e) { return acc; }
         }, 0);
         return { nombre: `${d.nombres} ${d.apellidos}`, horas };
-      }).sort((a, b) => b.horas - a.horas);
+      }).sort((a: any, b: any) => b.horas - a.horas);
       reportTitle = 'Reporte de Gestión Académica';
-      htmlContent = `${generarCabeceraResumen("GESTIÓN", "Métricas de Periodo", "Reporte", { label: "Estado", valor: "Consolidado" })}<div class="highlight-card"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;"><div style="background: #f0f9ff; padding: 20px; border-radius: 12px; border: 1px solid #bae6fd;"><p style="font-size: 11px; font-weight: 700; color: #0369a1; text-transform: uppercase; margin: 0;">Total Asignaciones</p><p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.total_asignaciones}</p></div><div style="background: #f0fdf4; padding: 20px; border-radius: 12px; border: 1px solid #bbf7d0;"><p style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin: 0;">Promedio Horas</p><p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.media_horas} hrs</p></div></div><h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Consolidado de Carga Horaria por Docente</h4><table class="print-table"><thead><tr><th>Docente</th><th style="text-align: right;">Total Horas</th></tr></thead><tbody>${cargaDocentes.map(d => `<tr><td style="font-weight: 600;">${d.nombre}</td><td style="text-align: right; font-weight: 800; color: #0369a1;">${d.horas} hrs</td></tr>`).join('')}</tbody></table><div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 25px;"><h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Observaciones Automáticas</h4><ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 13px;">${estadisticas.observaciones.map((o: string) => `<li style="margin-bottom: 8px;">${o}</li>`).join('')}</ul></div></div>`;
+      htmlContent = `${generarCabeceraResumen("GESTIÓN", "Métricas de Periodo", "Reporte", { label: "Estado", valor: "Consolidado" })}<div class="highlight-card"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;"><div style="background: #f0f9ff; padding: 20px; border-radius: 12px; border: 1px solid #bae6fd;"><p style="font-size: 11px; font-weight: 700; color: #0369a1; text-transform: uppercase; margin: 0;">Total Asignaciones</p><p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.total_asignaciones}</p></div><div style="background: #f0fdf4; padding: 20px; border-radius: 12px; border: 1px solid #bbf7d0;"><p style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin: 0;">Promedio Horas</p><p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.media_horas} hrs</p></div></div><h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Consolidado de Carga Horaria por Docente</h4><table class="print-table"><thead><tr><th>Docente</th><th style="text-align: right;">Total Horas</th></tr></thead><tbody>${cargaDocentes.map((d: any) => `<tr><td style="font-weight: 600;">${d.nombre}</td><td style="text-align: right; font-weight: 800; color: #0369a1;">${d.horas} hrs</td></tr>`).join('')}</tbody></table><div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 25px;"><h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Observaciones Automáticas</h4><ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 13px;">${estadisticas.observaciones.map((o: string) => `<li style="margin-bottom: 8px;">${o}</li>`).join('')}</ul></div></div>`;
     }
 
     const fullHTML = GeneradorPDF.wrapLayout(htmlContent, reportTitle, tipo === 'reporte_general');

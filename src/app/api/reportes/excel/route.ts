@@ -615,7 +615,7 @@ export async function GET(request: Request) {
         } else {
           for (let d = 0; d < 6; d++) {
             const [c1, c2] = G_DAYS[d];
-            const clase = horarios.find(h => {
+            const clase = horarios.find((h:any) => {
               const hIni = parseInt(h.hora_inicio.split(':')[0]);
               const hFin = parseInt(h.hora_fin.split(':')[0]);
               const hAct = parseInt(hora.split(':')[0]);
