@@ -3,6 +3,7 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { GestorSeleccionTemporal } from '@/services/horarios/GestorSeleccionTemporal';
+import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 
 export async function POST(request: Request) {
   try {
@@ -18,11 +19,11 @@ export async function POST(request: Request) {
 
     if (id_docente && isOperador) {
       // El operador confirma para un docente específico
-      targetDocenteId = parseInt(id_docente);
+      targetDocenteId = Number(id_docente);
     } else {
       // El docente confirma para sí mismo
       const docente = await prisma.docente.findFirst({
-        where: { id_usuario: parseInt(session.user.id_usuario) }
+        where: { id_usuario: Number(session.user.id_usuario) }
       });
 
       if (!docente) return NextResponse.json({ error: 'Perfil de docente no encontrado' }, { status: 404 });
@@ -31,9 +32,34 @@ export async function POST(request: Request) {
 
     const asignaciones = await GestorSeleccionTemporal.confirmarTodo(
       targetDocenteId,
-      parseInt(id_periodo),
-      parseInt(session.user.id_usuario)
+      Number(id_periodo),
+      Number(session.user.id_usuario)
     );
+
+    // Programar notificaciones para cada asignación confirmada (no bloquear la respuesta)
+    (async () => {
+      try {
+        for (const asg of asignaciones) {
+          const idHorario = (asg as any).id_horario || (asg as any).id || (asg as any).id_horario_asignado;
+          if (!idHorario) continue;
+
+          const horarioCompleto = await prisma.horarioAsignado.findUnique({
+            where: { id_horario: idHorario },
+            include: { docente: true, curso: true, grupo: true, ambiente: true, periodo: true }
+          });
+
+          if (horarioCompleto) {
+            try {
+              await ServicioNotificador.programarNotificacionesHorarioConfirmado(horarioCompleto, false);
+            } catch (innerErr) {
+              console.error('Error al programar notificacion para horario', idHorario, innerErr);
+            }
+          }
+        }
+      } catch (err) {
+        console.error('Error programando notificaciones tras confirmar asignaciones:', err);
+      }
+    })();
 
     return NextResponse.json({ success: true, count: asignaciones.length });
   } catch (error: any) {

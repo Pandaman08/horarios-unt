@@ -21,11 +21,12 @@ export async function POST(request: Request) {
     const data = await request.json();
     const contrasena_hash = await bcrypt.hash(data.contrasena, 10);
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Crear Usuario
       const usuario = await tx.usuario.create({
         data: {
-          codigo: data.codigo,
+          codigo: data.dni || data.codigo,
+          dni: data.dni,
           nombres: data.nombres,
           apellidos: data.apellidos,
           correo_electronico: data.correo_electronico,
@@ -40,15 +41,16 @@ export async function POST(request: Request) {
         await tx.docente.create({
           data: {
             id_usuario: usuario.id_usuario,
-            codigo_docente: data.codigo,
+            codigo_docente: `${data.nombres.charAt(0).toLowerCase()}${data.dni}`,
             nombres: data.nombres,
             apellidos: data.apellidos,
+            dni: data.dni,
             correo_electronico: data.correo_electronico,
             categoria: data.categoria || 'auxiliar',
             modalidad: data.modalidad || 'contratado',
             especialidad: data.especialidad || '',
             grado_academico: data.grado_academico || '',
-            antiguedad: parseInt(data.antiguedad) || 0,
+            fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
             activo: true
           }
         });

@@ -3,9 +3,14 @@ import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
+    // OBTENER SOLO LOS PERÍODOS ACTIVOS Y EN ESTADO CORRECTO
     const periodos = await prisma.periodoAcademico.findMany({
-      where: { activo: true },
-      orderBy: { codigo: 'desc' }
+      where: { 
+        activo: true 
+      },
+      orderBy: { 
+        id_periodo: 'desc' 
+      }
     });
     return NextResponse.json(periodos);
   } catch (error) {
@@ -22,10 +27,10 @@ export async function POST(request: Request) {
         nombre: data.nombre,
         anio: parseInt(data.anio),
         semestre: parseInt(data.semestre),
-        fecha_inicio: new Date(data.fecha_inicio),
-        fecha_fin: new Date(data.fecha_fin),
-        fecha_inicio_clases: data.fecha_inicio_clases ? new Date(data.fecha_inicio_clases) : null,
-        fecha_fin_clases: data.fecha_fin_clases ? new Date(data.fecha_fin_clases) : null,
+        fecha_inicio: new Date(data.fecha_inicio + 'T00:00:00'),
+        fecha_fin: new Date(data.fecha_fin + 'T23:59:59'),
+        fecha_inicio_clases: data.fecha_inicio_clases ? new Date(data.fecha_inicio_clases + 'T00:00:00') : null,
+        fecha_fin_clases: data.fecha_fin_clases ? new Date(data.fecha_fin_clases + 'T23:59:59') : null,
         estado: data.estado || 'planificacion',
         activo: true
       }

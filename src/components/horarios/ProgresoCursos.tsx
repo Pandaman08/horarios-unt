@@ -96,7 +96,7 @@ export function ProgresoCursos({ cursos, onSelectCurso, cursoSeleccionadoId, tip
                         ? "bg-white/10 text-white border-white/20" 
                         : (curso.tipo_clase.toLowerCase().includes('teoria') ? "bg-indigo-50 text-indigo-700 border-indigo-100" : 
                            curso.tipo_clase.toLowerCase().includes('laboratorio') ? "bg-purple-50 text-purple-700 border-purple-100" :
-                           "bg-orange-50 text-orange-700 border-orange-100")
+                           "bg-sky-50 dark:bg-sky-950/30 text-sky-700 dark:text-sky-300 border-sky-100 dark:border-sky-800/50")
                     )}>
                       {curso.tipo_clase.toUpperCase()}
                     </span>

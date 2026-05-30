@@ -3,7 +3,7 @@
 import "@/styles/globals.css";
 import type { Metadata } from "next";
 import { Inter } from "next/font/google";
-import { SessionProvider } from "@/components/auth/SessionProvider";
+import { AppProviders } from "@/components/providers/AppProviders";
 import { iniciarCronOnce } from "@/lib/cronStarter";
 
 const inter = Inter({ subsets: ["latin"] });
@@ -24,8 +24,8 @@ export default function RootLayout({
 
   return (
     <html lang="es" suppressHydrationWarning>
-      <body className={inter.className}>
-        <SessionProvider>{children}</SessionProvider>
+      <body className={`${inter.className} antialiased`}>
+        <AppProviders>{children}</AppProviders>
       </body>
     </html>
   );

@@ -25,12 +25,12 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     // Ciclo II
     { docenteCodigo: 'z18153095', cursoCodigo: 'EE-201', tipoClase: 'teoria' },        // Zoraida Yanet Vidal Melgarejo
     { docenteCodigo: 'z18153095', cursoCodigo: 'EE-201', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'e99999999', cursoCodigo: 'EG-202', tipoClase: 'teoria' },        // Edgard Pelaez Vinces
-    { docenteCodigo: 'd99999999', cursoCodigo: 'EG-203', tipoClase: 'teoria' },        // Diego Llaro Cruz
-    { docenteCodigo: 'a99999999', cursoCodigo: 'EG-201', tipoClase: 'teoria' },        // Alex Herradas
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EG-206', tipoClase: 'teoria' },        // Miltón Cortez (Análisis Numérico)
-    { docenteCodigo: 'a99999999', cursoCodigo: 'EG-205', tipoClase: 'laboratorio' },   // Aristeres Tavara Aponte
-    { docenteCodigo: 's99999999', cursoCodigo: 'EG-205', tipoClase: 'teoria' },        // Segundo Roseli Jauregui Rosas
+    { docenteCodigo: 'e90000017', cursoCodigo: 'EG-202', tipoClase: 'teoria' },        // Edgard Pelaez Vinces
+    { docenteCodigo: 'd90000018', cursoCodigo: 'EG-203', tipoClase: 'teoria' },        // Diego Llaro Cruz
+    { docenteCodigo: 'a90000020', cursoCodigo: 'EG-201', tipoClase: 'teoria' },        // Alex Herradas
+    { docenteCodigo: 'm90000021', cursoCodigo: 'EG-206', tipoClase: 'teoria' },        // Miltón Cortez (Análisis Numérico)
+    { docenteCodigo: 'a90000022', cursoCodigo: 'EG-205', tipoClase: 'laboratorio' },   // Aristeres Tavara Aponte
+    { docenteCodigo: 's90000016', cursoCodigo: 'EG-205', tipoClase: 'teoria' },        // Segundo Roseli Jauregui Rosas
 
     // Ciclo IV
     { docenteCodigo: 'j18122605', cursoCodigo: 'EE-401', tipoClase: 'teoria' },        // Juan Carlos Obando Roldán
@@ -47,7 +47,7 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'c32978627', cursoCodigo: 'EL-402', tipoClase: 'laboratorio' },
     { docenteCodigo: 'j40990648', cursoCodigo: 'EP-402', tipoClase: 'teoria' },        // José Alberto Gómez Ávila
     { docenteCodigo: 'j40990648', cursoCodigo: 'EP-402', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'a99999999', cursoCodigo: 'EP-401', tipoClase: 'teoria' },        // Alberto Asmat Alva
+    { docenteCodigo: 'a90000019', cursoCodigo: 'EP-401', tipoClase: 'teoria' },        // Alberto Asmat Alva
 
     // Ciclo VI
     { docenteCodigo: 'r19082305', cursoCodigo: 'EE-603', tipoClase: 'teoria' },
@@ -58,12 +58,12 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'l18842081', cursoCodigo: 'EE-602', tipoClase: 'laboratorio' },
     { docenteCodigo: 'm17865408', cursoCodigo: 'EE-601', tipoClase: 'teoria' },
     { docenteCodigo: 'm17865408', cursoCodigo: 'EE-601', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'k99999999', cursoCodigo: 'EP-601', tipoClase: 'teoria' },        // Kevin Litman Florez Tolentino
-    { docenteCodigo: 'k99999999', cursoCodigo: 'EP-601', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EP-602', tipoClase: 'teoria' },        // Joe Alexis González Vásquez
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EP-602', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EL-602', tipoClase: 'teoria' },        // Juan Cabanillas
-    { docenteCodigo: 'l99999999', cursoCodigo: 'EL-601', tipoClase: 'teoria' },        // Luis Moncada Alvites
+    { docenteCodigo: 'k90000023', cursoCodigo: 'EP-601', tipoClase: 'teoria' },        // Kevin Litman Florez Tolentino
+    { docenteCodigo: 'k90000023', cursoCodigo: 'EP-601', tipoClase: 'laboratorio' },
+    { docenteCodigo: 'j90000015', cursoCodigo: 'EP-602', tipoClase: 'teoria' },        // Joe Alexis González Vásquez
+    { docenteCodigo: 'j90000015', cursoCodigo: 'EP-602', tipoClase: 'laboratorio' },
+    { docenteCodigo: 'j90000024', cursoCodigo: 'EL-602', tipoClase: 'teoria' },        // Juan Cabanillas
+    { docenteCodigo: 'l90000025', cursoCodigo: 'EL-601', tipoClase: 'teoria' },        // Luis Moncada Alvites
 
     // Ciclo VIII
     { docenteCodigo: 'j18122605', cursoCodigo: 'EL-802', tipoClase: 'teoria' },
@@ -80,7 +80,7 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'j40990648', cursoCodigo: 'EE-802', tipoClase: 'laboratorio' },
     { docenteCodigo: 'o18126940', cursoCodigo: 'EP-801', tipoClase: 'teoria' },        // Oscar Romel Alcántara Moreno
     { docenteCodigo: 'o18126940', cursoCodigo: 'EP-801', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EL-801', tipoClase: 'teoria' },        // Marco Celi Arevalo
+    { docenteCodigo: 'm90000026', cursoCodigo: 'EL-801', tipoClase: 'teoria' },        // Marco Celi Arevalo
 
     // Ciclo X
     { docenteCodigo: 'e18161457', cursoCodigo: 'EE-X03', tipoClase: 'teoria' },
@@ -93,22 +93,22 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'r18070765', cursoCodigo: 'EI-X01', tipoClase: 'teoria' },
     { docenteCodigo: 'o18126940', cursoCodigo: 'EE-X05', tipoClase: 'teoria' },
     { docenteCodigo: 'o18126940', cursoCodigo: 'EE-X05', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EE-X01', tipoClase: 'teoria' },        // Jorge Paul Cotrina Castellanos
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EE-X01', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EP-X01', tipoClase: 'teoria' },        // Joe Alexis González Vásquez (Responsabilidad Social)
+    { docenteCodigo: 'p90000001', cursoCodigo: 'EE-X01', tipoClase: 'teoria' },        // Jorge Paul Cotrina Castellanos
+    { docenteCodigo: 'p90000001', cursoCodigo: 'EE-X01', tipoClase: 'laboratorio' },
+    { docenteCodigo: 'j90000015', cursoCodigo: 'EP-X01', tipoClase: 'teoria' },        // Joe Alexis González Vásquez (Responsabilidad Social)
 
     // ==================== 2026-I (Ciclos impares) ====================
     // Ciclo I
     { docenteCodigo: 'm17865408', cursoCodigo: 'EE-102', tipoClase: 'teoria' },
     { docenteCodigo: 'm17865408', cursoCodigo: 'EE-102', tipoClase: 'laboratorio' },
     { docenteCodigo: 'a17434055', cursoCodigo: 'EE-101', tipoClase: 'teoria' },
-    { docenteCodigo: 'p99999999', cursoCodigo: 'EE-102', tipoClase: 'laboratorio' },   // Paul Cotrina Castellanos
-    { docenteCodigo: 'b18165597', cursoCodigo: 'EG-103', tipoClase: 'teoria' },        // Bertha Urtecho Zavaleta
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EG-101', tipoClase: 'teoria' },        // Jose Luis Ponte Bejarano
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EG-102', tipoClase: 'teoria' },        // Jorge Luis Rios Gonzales
-    { docenteCodigo: 's99999999', cursoCodigo: 'EG-104', tipoClase: 'teoria' },        // Segunda Gubar Obeso
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EG-105', tipoClase: 'teoria' },        // Miguel Ipanaque Zapata
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EG-105', tipoClase: 'teoria' },        // Martha Cardoso
+    { docenteCodigo: 'p90000001', cursoCodigo: 'EE-102', tipoClase: 'laboratorio' },   // Paul Cotrina Castellanos
+    { docenteCodigo: 'b90000002', cursoCodigo: 'EG-103', tipoClase: 'teoria' },        // Bertha Urtecho Zavaleta
+    { docenteCodigo: 'j90000003', cursoCodigo: 'EG-101', tipoClase: 'teoria' },        // Jose Luis Ponte Bejarano
+    { docenteCodigo: 'j90000004', cursoCodigo: 'EG-102', tipoClase: 'teoria' },        // Jorge Luis Rios Gonzales
+    { docenteCodigo: 's90000005', cursoCodigo: 'EG-104', tipoClase: 'teoria' },        // Segunda Gubar Obeso
+    { docenteCodigo: 'm90000006', cursoCodigo: 'EG-105', tipoClase: 'teoria' },        // Miguel Ipanaque Zapata
+    { docenteCodigo: 'm90000007', cursoCodigo: 'EG-105', tipoClase: 'teoria' },        // Martha Cardoso
 
     // Ciclo III
     { docenteCodigo: 'e18161457', cursoCodigo: 'EE-301', tipoClase: 'teoria' },
@@ -117,14 +117,14 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'z18153095', cursoCodigo: 'EE-302', tipoClase: 'laboratorio' },
     { docenteCodigo: 'j18122605', cursoCodigo: 'EL-301', tipoClase: 'teoria' },
     { docenteCodigo: 'j18122605', cursoCodigo: 'EL-301', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EP-304', tipoClase: 'teoria' },        // Marcos Ferrer Reyna
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EP-304', tipoClase: 'laboratorio' },
-    { docenteCodigo: 't99999999', cursoCodigo: 'EP-303', tipoClase: 'teoria' },        // Teresita Rojas García
-    { docenteCodigo: 't99999999', cursoCodigo: 'EP-303', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EP-301', tipoClase: 'teoria' },        // Juan Carrascal Cabanillas
-    { docenteCodigo: 'v99999999', cursoCodigo: 'EP-305', tipoClase: 'teoria' },        // Vilma Mendez Gil
-    { docenteCodigo: 'v99999999', cursoCodigo: 'EP-305', tipoClase: 'laboratorio' },
-    { docenteCodigo: 's99999999', cursoCodigo: 'EL-302', tipoClase: 'teoria' },        // Sheyla Laura Escobedo Rodríguez
+    { docenteCodigo: 'm90000008', cursoCodigo: 'EP-303', tipoClase: 'teoria' },        // Marcos Ferrer Reyna
+    { docenteCodigo: 'm90000008', cursoCodigo: 'EP-303', tipoClase: 'practica' },
+    { docenteCodigo: 't90000009', cursoCodigo: 'EP-302', tipoClase: 'teoria' },        // Teresita Rojas García
+    { docenteCodigo: 't90000009', cursoCodigo: 'EP-302', tipoClase: 'practica' },
+    { docenteCodigo: 'j90000010', cursoCodigo: 'EP-301', tipoClase: 'teoria' },        // Juan Carrascal Cabanillas
+    { docenteCodigo: 'v90000011', cursoCodigo: 'EP-304', tipoClase: 'teoria' },        // Vilma Mendez Gil
+    { docenteCodigo: 'v90000011', cursoCodigo: 'EP-304', tipoClase: 'laboratorio' },
+    { docenteCodigo: 's90000012', cursoCodigo: 'EL-302', tipoClase: 'teoria' },        // Sheyla Laura Escobedo Rodríguez
 
     // Ciclo V
     { docenteCodigo: 'l18842081', cursoCodigo: 'EE-502', tipoClase: 'teoria' },
@@ -132,17 +132,14 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'j18122605', cursoCodigo: 'EE-504', tipoClase: 'teoria' },
     { docenteCodigo: 'j18122605', cursoCodigo: 'EE-504', tipoClase: 'laboratorio' },
     { docenteCodigo: 'e18161457', cursoCodigo: 'EL-502', tipoClase: 'teoria' },
-    { docenteCodigo: 'e18161457', cursoCodigo: 'EL-502', tipoClase: 'laboratorio' },
     { docenteCodigo: 'r19082305', cursoCodigo: 'EE-501', tipoClase: 'teoria' },
     { docenteCodigo: 'r19082305', cursoCodigo: 'EE-501', tipoClase: 'laboratorio' },
     { docenteCodigo: 'c18147714', cursoCodigo: 'EE-503', tipoClase: 'teoria' },
     { docenteCodigo: 'c18147714', cursoCodigo: 'EE-503', tipoClase: 'laboratorio' },
     { docenteCodigo: 'c32978627', cursoCodigo: 'EL-501', tipoClase: 'teoria' },
     { docenteCodigo: 'c32978627', cursoCodigo: 'EL-501', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EP-502', tipoClase: 'teoria' },        // Marcos Baca Lopez
-    { docenteCodigo: 'm99999999', cursoCodigo: 'EP-502', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'a99999999', cursoCodigo: 'EP-501', tipoClase: 'teoria' },        // Ana Cuadra Mitzugaray
-    { docenteCodigo: 'a99999999', cursoCodigo: 'EP-501', tipoClase: 'laboratorio' },
+    { docenteCodigo: 'm90000013', cursoCodigo: 'EP-502', tipoClase: 'teoria' },        // Marcos Baca Lopez
+    { docenteCodigo: 'a90000014', cursoCodigo: 'EP-501', tipoClase: 'teoria' },        // Ana Cuadra Mitzugaray
 
     // Ciclo VII
     { docenteCodigo: 'j17896289', cursoCodigo: 'EE-704', tipoClase: 'teoria' },
@@ -152,15 +149,14 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     { docenteCodigo: 'r19082305', cursoCodigo: 'EE-704', tipoClase: 'teoria' },
     { docenteCodigo: 'r19082305', cursoCodigo: 'EE-704', tipoClase: 'laboratorio' },
     { docenteCodigo: 'e18161457', cursoCodigo: 'EL-702', tipoClase: 'teoria' },
-    { docenteCodigo: 'e18161457', cursoCodigo: 'EL-702', tipoClase: 'laboratorio' },
     { docenteCodigo: 'a17434055', cursoCodigo: 'EE-701', tipoClase: 'teoria' },
     { docenteCodigo: 'a17434055', cursoCodigo: 'EE-701', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'p99999999', cursoCodigo: 'EI-701', tipoClase: 'teoria' },        // Paul Cotrina Castellanos (Metodología)
+    { docenteCodigo: 'p90000001', cursoCodigo: 'EI-701', tipoClase: 'teoria' },        // Paul Cotrina Castellanos (Metodología)
     { docenteCodigo: 'r18070765', cursoCodigo: 'EL-701', tipoClase: 'teoria' },
     { docenteCodigo: 'r18070765', cursoCodigo: 'EL-701', tipoClase: 'laboratorio' },
     { docenteCodigo: 'o18126940', cursoCodigo: 'EE-702', tipoClase: 'teoria' },
     { docenteCodigo: 'o18126940', cursoCodigo: 'EE-702', tipoClase: 'laboratorio' },
-    { docenteCodigo: 'j99999999', cursoCodigo: 'EP-701', tipoClase: 'teoria' },        // Jhoe Alexis González Vásquez (Cadena de Suministro)
+    { docenteCodigo: 'j90000015', cursoCodigo: 'EP-701', tipoClase: 'teoria' },        // Jhoe Alexis González Vásquez (Cadena de Suministro)
 
     // ==================== CICLO IX (2026-I) ====================
     // 1. Juan Pedro Santos Fernández - Tesis I
@@ -190,6 +186,7 @@ export async function seedDocenteCurso(prisma: PrismaClient) {
     // 9. Camilo Suarez Rebaza - Hackeo Ético
     { docenteCodigo: 'c32978627', cursoCodigo: 'EL-902', tipoClase: 'teoria' },
     { docenteCodigo: 'c32978627', cursoCodigo: 'EL-902', tipoClase: 'laboratorio' },
+
   ];
 
   let insertados = 0;

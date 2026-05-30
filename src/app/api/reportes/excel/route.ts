@@ -2,282 +2,540 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import ExcelJS from 'exceljs';
 
-export async function GET(request: Request) {
-  const { searchParams } = new URL(request.url);
-  const id_periodo = searchParams.get('id_periodo');
-  const ciclo = searchParams.get('ciclo'); // "todos" o número del ciclo (1, 2, 3...)
+// ─────────────────────────────────────────────────────────────────────────────
+// PALETA (espejo exacto del PDF)
+// ─────────────────────────────────────────────────────────────────────────────
+const PASTEL = [
+  'FFbfdbfe', 'FFfecaca', 'FFbbf7d0', 'FFfef08a',
+  'FFfed7aa', 'FFddd6fe', 'FFbae6fd', 'FFfbcfe8', 'FFe2e8f0',
+];
+const TEXTO = [
+  'FF1d4ed8', 'FFb91c1c', 'FF15803d', 'FF854d0e',
+  'FF9a3412', 'FF6d28d9', 'FF0369a1', 'FF9d174d', 'FF475569',
+];
 
-  if (!id_periodo) {
-    return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
-  }
+const NAVY     = 'FF003366';
+const NAVY2    = 'FF0a4a8a';
+const NAVY3    = 'FF0a3a6a';
+const SLATE50  = 'FFF8FAFC';
+const SLATE100 = 'FFF1F5F9';
+const SLATE200 = 'FFE2E8F0';
+const WHITE    = 'FFFFFFFF';
+const TEXTDARK = 'FF1e293b';
+const TEXTMID  = 'FF475569';
 
-  try {
-    const periodo = await prisma.periodoAcademico.findUnique({
-      where: { id_periodo: parseInt(id_periodo) }
-    });
+// ─────────────────────────────────────────────────────────────────────────────
+// LAYOUT — 14 columnas
+// ─────────────────────────────────────────────────────────────────────────────
 
-    if (!periodo) {
-      return NextResponse.json({ error: 'Periodo no encontrado' }, { status: 404 });
-    }
+const TOTAL_COLS = 14;
+const ALL_L = 1;
+const ALL_R = 14;
 
-    // 1. Obtener cursos y sus horarios para el periodo y ciclo(s)
-    const whereCursos: any = {
-      activo: true,
+// ── 1. ANCHOS ACTUALIZADOS ────────────────────────────────────────────────────
+const COL_WIDTHS: Record<number, number> = {
+   1:  6,
+   2:  9,
+   3:  9,
+   4:  9,
+   5:  9,
+   6:  9,
+   7:  9,
+   8:  9,
+   9:  9,
+  10:  8,   // VIE c1 / T  (reducido)
+  11:  8,   // VIE c2 / P  (reducido)
+  12:  8,   // SAB c1 / L  (reducido)
+  13:  7,   // SAB c2 / G  (reducido)
+  14: 12,   // HORA / DEPTO (ampliado)
+};
+
+// ── Zona de grilla ────────────────────────────────────────────────────────────
+const G_HORA_L = 1;
+const G_DAYS: [number, number][] = [
+  [2,  3],   // LUNES
+  [4,  5],   // MARTES
+  [6,  7],   // MIÉRCOLES
+  [8,  9],   // JUEVES
+  [10, 11],  // VIERNES
+  [12, 13],  // SÁBADO
+];
+const G_HORA_R = 14;
+
+// ── 3. TABLA INFERIOR: constantes actualizadas ────────────────────────────────
+const BT_NUM     = 1;
+const BT_PROF    = [2,  4]  as [number, number];
+const BT_ASIG    = [5,  8]  as [number, number];
+const BT_T       = 9;
+const BT_P       = 10;
+const BT_L       = 11;
+const BT_G       = 12;
+const BT_HRS     = 13;
+const BT_DEPT    = [14, 14] as [number, number];   // ← ahora es tupla
+
+const W_PROF_BT = 27;
+const W_ASIG_BT = 36;
+const W_DEPT_BT = 12;   // ← 4. AUMENTADO
+
+// ─────────────────────────────────────────────────────────────────────────────
+// ESTILOS
+// ─────────────────────────────────────────────────────────────────────────────
+const fill = (argb: string): ExcelJS.Fill =>
+  ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
+
+const bThin  = (argb = 'FFCBD5E1') => ({ style: 'thin'   as ExcelJS.BorderStyle, color: { argb } });
+const bMed   = (argb = 'FF94A3B8') => ({ style: 'medium' as ExcelJS.BorderStyle, color: { argb } });
+const bThick = (argb = NAVY)       => ({ style: 'medium' as ExcelJS.BorderStyle, color: { argb } });
+
+const ctr: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle' };
+const lft: Partial<ExcelJS.Alignment> = { horizontal: 'left',   vertical: 'middle' };
+const rgt: Partial<ExcelJS.Alignment> = { horizontal: 'right',  vertical: 'middle' };
+
+function wc(
+  ws: ExcelJS.Worksheet, row: number, col: number,
+  opts: {
+    value?:    ExcelJS.CellValue;
+    mergeEnd?: number;
+    bg?:       string;
+    color?:    string;
+    bold?:     boolean;
+    italic?:   boolean;
+    size?:     number;
+    align?:    Partial<ExcelJS.Alignment>;
+    border?:   Partial<ExcelJS.Borders>;
+    wrap?:     boolean;
+  } = {}
+) {
+  if (opts.mergeEnd && opts.mergeEnd > col) ws.mergeCells(row, col, row, opts.mergeEnd);
+  const cell = ws.getCell(row, col);
+  if (opts.value !== undefined) cell.value = opts.value;
+  if (opts.bg)    cell.fill = fill(opts.bg);
+  if (opts.color || opts.bold || opts.italic || opts.size) {
+    cell.font = {
+      name: 'Arial', bold: opts.bold ?? false, italic: opts.italic ?? false,
+      size: opts.size ?? 9, color: { argb: opts.color ?? TEXTDARK },
     };
-    if (ciclo && ciclo !== 'todos') {
-      whereCursos.id_ciclo = parseInt(ciclo);
+  }
+  if (opts.align) cell.alignment = opts.wrap ? { ...opts.align, wrapText: true } : opts.align;
+  if (opts.border) cell.border = opts.border;
+  return cell;
+}
+
+function outerBorder(
+  ws: ExcelJS.Worksheet,
+  r1: number, r2: number, c1: number, c2: number,
+  b: ReturnType<typeof bMed> = bThick(),
+) {
+  for (let r = r1; r <= r2; r++) {
+    for (let c = c1; c <= c2; c++) {
+      const cell = ws.getCell(r, c);
+      const prev = cell.border ?? {};
+      cell.border = {
+        top:    r === r1 ? b : prev.top,
+        bottom: r === r2 ? b : prev.bottom,
+        left:   c === c1 ? b : prev.left,
+        right:  c === c2 ? b : prev.right,
+      };
     }
+  }
+}
 
-    const cursos = await prisma.curso.findMany({
-      where: whereCursos,
-      include: {
-        docente_cursos: {
-          where: { activo: true },
-          include: { docente: true }
-        },
-        horarios_asignados: {
-          where: { id_periodo: parseInt(id_periodo) },
-          include: { 
-            docente: true,
-            ambiente: true,
-            grupo: true
-          }
-        }
-      }
+function calcRowHeight(
+  texts: { text: string; colWidthChars: number }[],
+  fontSize = 8, minHeight = 16, padding = 5,
+): number {
+  const lineHeight = fontSize * 1.35;
+  let maxLines = 1;
+  for (const { text, colWidthChars } of texts) {
+    if (!text) continue;
+    const charsPerLine = Math.max(1, Math.floor(colWidthChars * 0.85));
+    const segments = text.split('\n');
+    let lines = 0;
+    for (const seg of segments) lines += Math.max(1, Math.ceil(seg.length / charsPerLine));
+    maxLines = Math.max(maxLines, lines);
+  }
+  return Math.max(minHeight, maxLines * lineHeight + padding);
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
+// HANDLER
+// ─────────────────────────────────────────────────────────────────────────────
+export async function GET(request: Request) {
+  try {
+    const { searchParams } = new URL(request.url);
+    const id_periodo = searchParams.get('id_periodo');
+    if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
+
+    const periodo = await prisma.periodoAcademico.findUnique({
+      where: { id_periodo: parseInt(id_periodo) },
     });
-
-    // Agrupar cursos por ciclo para las pestañas
-    const cursosPorCiclo = cursos.reduce((acc: any, curso) => {
-      const c = curso.id_ciclo || 0;
-      if (!acc[c]) acc[c] = [];
-      acc[c].push(curso);
-      return acc;
-    }, {});
+    const ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
 
     const workbook = new ExcelJS.Workbook();
-    workbook.creator = 'SGH UNT';
-    workbook.lastModifiedBy = 'SGH UNT';
+    workbook.creator = 'Sistema de Gestión de Horarios UNT';
     workbook.created = new Date();
-    workbook.modified = new Date();
 
-    const diasSemana = ['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
-    const horas = [
-      '7-8', '8-9', '9-10', '10-11', '11-12', '12-1',
-      'RECESO',
-      '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8'
-    ];
+    const fmt  = (d?: Date | null) => d ? new Date(d).toLocaleDateString('es-PE') : '—';
+    const fIni = fmt(periodo?.fecha_inicio_clases);
+    const fFin = fmt(periodo?.fecha_fin_clases);
+    const sem  = periodo?.semestre === 1 ? 'I' : 'II';
+    const pNom = periodo?.nombre  ?? '';
+    const pAno = String(periodo?.anio ?? '');
+    const pCod = periodo?.codigo  ?? '';
 
-    // Paleta de colores para cursos (colores pasteles suaves)
-    const coloresCursos = [
-      'E3F2FD', 'F1F8E9', 'FFFDE7', 'F3E5F5', 'E8EAF6', 
-      'E0F2F1', 'FFF3E0', 'FBE9E7', 'EFEBE9', 'FAFAFA'
-    ];
+    const HORAS       = ['07:00','08:00','09:00','10:00','11:00','12:00','13:00','14:00','15:00','16:00','17:00','18:00','19:00'];
+    const LABEL_HORAS = ['7-8','8-9','9-10','10-11','11-12','12-1','1-2','2-3','3-4','4-5','5-6','6-7','7-8'];
+    const DIAS_NOMBRE = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
 
-    // Paleta de colores SÓLIDOS (según imagen 2)
-    const coloresSolidos = [
-      '33CCFF', // Celeste
-      'FFFFFF', // Blanco
-      'FFFF00', // Amarillo
-      'CCFFCC', // Verde claro
-      '99CCFF', // Azul claro
-      'FF9999', // Salmón/Rosa
-      '00FFFF', // Cyan
-      'FFCC99', // Naranja claro
-      'CC99FF', // Morado claro
-      'C0C0C0'  // Gris
-    ];
+    for (const ciclo of ciclos) {
 
-    const toRoman = (num: number): string => {
-      const lookup: { [key: string]: number } = { X: 10, IX: 9, V: 5, IV: 4, I: 1 };
-      let roman = '';
-      for (let i in lookup) {
-        while (num >= lookup[i]) {
-          roman += i;
-          num -= lookup[i];
+      const horarios = await prisma.horarioAsignado.findMany({
+        where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } },
+        include: { docente: true, curso: true, ambiente: true, grupo: true },
+        orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
+      });
+      if (horarios.length === 0) continue;
+
+      // ── 2. cursosMap CON DEPARTAMENTO ──────────────────────────────────────
+      const cursosMap = new Map<string, {
+        docente:      string;
+        asignatura:   string;
+        T:            number;
+        P:            number;
+        L:            number;
+        G:            string;
+        THoras:       number;
+        departamento: string;   // ← añadido
+      }>();
+
+      for (const h of horarios) {
+        const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
+        if (!cursosMap.has(key)) {
+          cursosMap.set(key, {
+            docente:      `${h.docente.nombres} ${h.docente.apellidos}`,
+            asignatura:   h.curso.nombre,
+            T:            h.curso.horas_teoria      ?? 0,
+            P:            h.curso.horas_practica    ?? 0,
+            L:            h.curso.horas_laboratorio ?? 0,
+            G:            h.grupo.codigo_grupo,
+            THoras:       (h.curso.horas_teoria ?? 0) + (h.curso.horas_practica ?? 0) + (h.curso.horas_laboratorio ?? 0),
+            departamento: h.docente.especialidad ?? 'Ing. Sistemas',   // ← añadido
+          });
         }
       }
-      return roman;
-    };
+      const cursos = Array.from(cursosMap.values());
 
-    // Generamos las hojas dependiendo de la selección
-    let ciclosAGenerar: number[] = [];
-    
-    if (ciclo && ciclo !== 'todos') {
-      // Si se selecciona un ciclo individual
-      ciclosAGenerar = [parseInt(ciclo)];
-    } else {
-      // Si se selecciona "Todos los ciclos", generar 10 hojas
-      ciclosAGenerar = [1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    }
-
-    for (const cicloNum of ciclosAGenerar) {
-      const cursosDelCiclo = cursosPorCiclo[cicloNum] || [];
-
-      const sheetName = `CICLO ${toRoman(cicloNum)}`;
-      const worksheet = workbook.addWorksheet(sheetName);
-
-      // --- CONFIGURACIÓN DE COLUMNAS (Ajustadas para coincidir con imagen 2) ---
-      worksheet.columns = [
-        { width: 10 }, // A: HORA
-        { width: 22 }, // B: LUNES
-        { width: 22 }, // C: MARTES
-        { width: 22 }, // D: MIERCOLES
-        { width: 10 }, // E: JUEVES / N°
-        { width: 35 }, // F: VIERNES / PROFESOR
-        { width: 35 }, // G: SABADO / ASIGNATURA
-        { width: 10 }, // H: HORA / T
-        { width: 5 },  // I: P
-        { width: 5 },  // J: L
-        { width: 5 },  // K: G
-        { width: 10 }, // L: T. HORAS
-        { width: 25 }, // M: DEPARTAMENTO
-      ];
-
-      // --- ENCABEZADO INSTITUCIONAL (Columnas A a D) ---
-      const headerRows = [
-        { text: 'UNIVERSIDAD NACIONAL DE TRUJILLO', bold: true, size: 11 },
-        { text: 'FACULTAD DE INGENIERÍA TRUJILLO', bold: true, size: 10 },
-        { text: `ESCUELA:  INGENIERIA DE SISTEMAS`, bold: true, size: 10, blue: true },
-        { text: `CICLO:  ${toRoman(cicloNum)}      SECCION:  A`, bold: true, size: 10, blue: true },
-        { text: `AÑO ACADEMICO:  ${periodo.anio}      SEMESTRE:  ${periodo.semestre === 1 ? 'I' : 'II'}`, bold: true, size: 10, blue: true },
-        { text: `Inicio del Ciclo: ${periodo.fecha_inicio.toLocaleDateString()} Termino Ciclo: ${periodo.fecha_fin.toLocaleDateString()}`, bold: true, size: 9, blue: true }
-      ];
-
-      headerRows.forEach((row, i) => {
-        const r = worksheet.getRow(i + 1);
-        r.getCell(1).value = row.text;
-        worksheet.mergeCells(i + 1, 1, i + 1, 4);
-        r.getCell(1).alignment = { horizontal: 'center', vertical: 'middle' };
-        r.getCell(1).font = { 
-          bold: row.bold, 
-          size: row.size, 
-          color: { argb: row.blue ? '003366' : '000000' } 
-        };
+      // ── Crear hoja — A4 vertical ──────────────────────────────────────────
+      const ws = workbook.addWorksheet(`Ciclo ${ciclo.numero}`, {
+        pageSetup: {
+          paperSize:    9,
+          orientation:  'portrait',
+          fitToPage:    true,
+          fitToWidth:   1,
+          fitToHeight:  0,
+          margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.15, footer: 0.15 },
+        },
+        views: [{ showGridLines: false }],
       });
 
-      // --- TABLA DE DOCENTES Y ASIGNATURAS (Desde columna E, fila 1) ---
-      const startDocenteRow = 1;
-      const docHeader = worksheet.getRow(startDocenteRow);
-      docHeader.values = [null, null, null, null, 'N°', 'PROFESOR', 'ASIGNATURA', 'T', 'P', 'L', 'G', 'T. HORAS', 'DEPARTAMENTO'];
-      
-      // Estilo cabecera docentes (Imagen 2)
-      for (let i = 5; i <= 13; i++) {
-        const cell = docHeader.getCell(i);
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'F2F2F2' } };
-        cell.font = { bold: true, size: 8 };
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
+      for (const [col, w] of Object.entries(COL_WIDTHS)) {
+        ws.getColumn(Number(col)).width = w;
       }
 
-      const mapCursoColor: Record<number, string> = {};
-      const mapCursoNum: Record<number, number> = {};
-      
-      cursosDelCiclo.forEach((curso: any, idx: number) => {
-        const row = worksheet.getRow(startDocenteRow + idx + 1);
-        const docente = curso.docente_cursos[0]?.docente;
-        const color = coloresSolidos[idx % coloresSolidos.length];
-        mapCursoColor[curso.id_curso] = color;
-        mapCursoNum[curso.id_curso] = idx + 1;
+      let R = 1;
 
-        row.getCell(5).value = idx + 1;
-        row.getCell(6).value = docente ? `${docente.nombres} ${docente.apellidos}` : 'POR ASIGNAR';
-        row.getCell(7).value = curso.nombre;
-        row.getCell(8).value = curso.horas_teoria || '-';
-        row.getCell(9).value = curso.horas_practica || '-';
-        row.getCell(10).value = curso.horas_laboratorio || '-';
-        row.getCell(11).value = '1'; // Grupo
-        row.getCell(12).value = (curso.horas_teoria || 0) + (curso.horas_practica || 0) + (curso.horas_laboratorio || 0);
-        row.getCell(13).value = 'Ing. de Sistemas';
-
-        // Estilos y color sólido
-        for (let i = 5; i <= 13; i++) {
-          const cell = row.getCell(i);
-          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-          cell.font = { size: 8 };
-          cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
-          cell.alignment = { vertical: 'middle', horizontal: i === 6 || i === 7 ? 'left' : 'center' };
-        }
+      // ════════════════════════════════════════════════════════════════════
+      // BLOQUE 1: CABECERA INSTITUCIONAL
+      // ════════════════════════════════════════════════════════════════════
+      wc(ws, R, 1, {
+        value:    'UNIVERSIDAD NACIONAL DE TRUJILLO — FACULTAD DE INGENIERÍA TRUJILLO',
+        mergeEnd: ALL_R, bg: NAVY, color: WHITE, bold: true, size: 11, align: ctr,
       });
+      ws.getRow(R).height = 22; R++;
 
-      // --- GRILLA HORARIA (Desde fila 16, columnas A a H) ---
-      const startGridRow = 16;
-      const gridHeader = worksheet.getRow(startGridRow);
-      gridHeader.values = ['HORA', 'LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO', 'HORA'];
-      
-      // Estilo cabecera grilla (Verde suave en imagen 2)
-      for (let i = 1; i <= 8; i++) {
-        const cell = gridHeader.getCell(i);
-        cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'E2EFDA' } };
-        cell.font = { bold: true, size: 9 };
-        cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-        cell.alignment = { horizontal: 'center', vertical: 'middle' };
-      }
-
-      // Dibujar filas de horas
-      horas.forEach((hora, hIdx) => {
-        const row = worksheet.getRow(startGridRow + hIdx + 1);
-        row.getCell(1).value = hora;
-        row.getCell(8).value = hora;
-        row.height = 25; // Altura para que se vea como en la imagen
-        
-        for (let i = 1; i <= 8; i++) {
-          const cell = row.getCell(i);
-          cell.border = { top: { style: 'thin' }, left: { style: 'thin' }, bottom: { style: 'thin' }, right: { style: 'thin' } };
-          cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-          cell.font = { size: 9 };
-          if (hora === 'RECESO') {
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: 'FFFF00' } };
-          }
-        }
-        if (hora === 'RECESO') {
-          worksheet.mergeCells(startGridRow + hIdx + 1, 2, startGridRow + hIdx + 1, 7);
-        }
+      wc(ws, R, 1, {
+        value:    `ESCUELA PROF. ING. DE SISTEMAS   ·   HORARIO SEMESTRAL — CICLO ${ciclo.numero}   ·   ${pNom}  ${pAno} – SEM. ${sem}`,
+        mergeEnd: ALL_R, bg: NAVY2, color: WHITE, bold: true, size: 9, align: ctr,
       });
+      ws.getRow(R).height = 16; R++;
 
-      // Llenar asignaciones con MERGE y COLORES SÓLIDOS
-      cursosDelCiclo.forEach((curso: any) => {
-        const color = mapCursoColor[curso.id_curso];
-        const cursoNum = mapCursoNum[curso.id_curso];
-        
-        curso.horarios_asignados.forEach((asig: any) => {
-          const colIdx = asig.dia_semana + 2; // 0=Lunes -> Col 2
-          const horaInicio = asig.hora_inicio;
-          const horaFin = asig.hora_fin;
-          
-          const hIdxStart = horas.findIndex(h => h.startsWith(horaInicio.split(':')[0]));
-          const hIdxEnd = horas.findIndex(h => h.split('-')[1] === horaFin.split(':')[0].replace(/^0/, ''));
-          
-          if (hIdxStart !== -1) {
-            const startRow = startGridRow + hIdxStart + 1;
-            const endRow = hIdxEnd !== -1 ? startGridRow + hIdxEnd + 1 : startRow;
-            
-            // Merge si dura más de una hora
-            if (endRow > startRow) {
-              worksheet.mergeCells(startRow, colIdx, endRow, colIdx);
-            }
+      // ════════════════════════════════════════════════════════════════════
+      // BLOQUE 2: BOX INFORMATIVO
+      // ════════════════════════════════════════════════════════════════════
+      const boxStart = R;
 
-            const cell = worksheet.getRow(startRow).getCell(colIdx);
-            cell.value = `${cursoNum}\n${asig.ambiente ? asig.ambiente.nombre : ''}`;
-            cell.fill = { type: 'pattern', pattern: 'solid', fgColor: { argb: color } };
-            cell.font = { bold: true, size: 8 };
-            cell.alignment = { horizontal: 'center', vertical: 'middle', wrapText: true };
-          }
+      for (let c = 1; c <= TOTAL_COLS; c++) ws.getCell(R, c).fill = fill(SLATE200);
+      ws.getRow(R).height = 3; R++;
+
+      wc(ws, R, 1, {
+        value: 'ESCUELA:', mergeEnd: 2,
+        bg: NAVY, color: WHITE, bold: true, size: 7.5, align: rgt,
+        border: { right: bThin(WHITE) },
+      });
+      wc(ws, R, 3, {
+        value: 'ING. DE SISTEMAS', mergeEnd: 5,
+        bg: NAVY, color: 'FFF0F9FF', bold: true, size: 7.5, align: lft,
+        border: { right: bMed(WHITE) },
+      });
+      wc(ws, R, 6, {
+        value: 'CICLO:', mergeEnd: 7,
+        bg: NAVY2, color: WHITE, bold: true, size: 8, align: rgt,
+        border: { right: bThin(WHITE) },
+      });
+      wc(ws, R, 8, {
+        value: `${ciclo.numero}`,
+        bg: NAVY2, color: 'FFFBBF24', bold: true, size: 13, align: ctr,
+        border: { right: bMed(WHITE) },
+      });
+      wc(ws, R, 9, {
+        value: 'SECCIÓN:', mergeEnd: 10,
+        bg: NAVY2, color: WHITE, bold: true, size: 8, align: rgt,
+        border: { right: bThin(WHITE) },
+      });
+      wc(ws, R, 11, {
+        value: 'A',
+        bg: NAVY2, color: 'FFFBBF24', bold: true, size: 13, align: ctr,
+        border: { right: bMed(WHITE) },
+      });
+      wc(ws, R, 12, {
+        value: `AÑO: ${pAno}  SEM: ${sem}`, mergeEnd: ALL_R,
+        bg: NAVY2, color: WHITE, bold: true, size: 8, align: ctr,
+      });
+      ws.getRow(R).height = 20; R++;
+
+      wc(ws, R, 1, {
+        value: 'Inicio:', mergeEnd: 2,
+        bg: SLATE100, color: TEXTMID, bold: true, size: 7.5, align: rgt,
+        border: { bottom: bThin(), right: bThin() },
+      });
+      wc(ws, R, 3, {
+        value: fIni, mergeEnd: 5,
+        bg: SLATE100, color: NAVY, bold: true, size: 8, align: lft,
+        border: { bottom: bThin(), right: bMed() },
+      });
+      wc(ws, R, 6, {
+        value: 'Término:', mergeEnd: 7,
+        bg: SLATE100, color: TEXTMID, bold: true, size: 7.5, align: rgt,
+        border: { bottom: bThin(), right: bThin() },
+      });
+      wc(ws, R, 8, {
+        value: fFin, mergeEnd: 9,
+        bg: SLATE100, color: NAVY, bold: true, size: 8, align: lft,
+        border: { bottom: bThin(), right: bMed() },
+      });
+      wc(ws, R, 10, {
+        value: `Período: ${pNom}  •  Cód: ${pCod}`, mergeEnd: ALL_R,
+        bg: SLATE100, color: TEXTMID, italic: true, size: 7.5, align: ctr,
+        border: { bottom: bThin() },
+      });
+      ws.getRow(R).height = 13; R++;
+
+      const boxEnd = R - 1;
+      outerBorder(ws, boxStart + 1, boxEnd, 1, ALL_R, bThick());
+
+      for (let c = 1; c <= TOTAL_COLS; c++) ws.getCell(R, c).fill = fill(SLATE50);
+      ws.getRow(R).height = 5; R++;
+
+      // ════════════════════════════════════════════════════════════════════
+      // BLOQUE 3: GRILLA HORARIA
+      // ════════════════════════════════════════════════════════════════════
+      const gridHeaderR = R;
+
+      wc(ws, R, G_HORA_L, {
+        value: 'HORA', bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr,
+        border: { right: bThin(WHITE), bottom: bMed(WHITE) },
+      });
+      for (let d = 0; d < 6; d++) {
+        const [c1, c2] = G_DAYS[d];
+        wc(ws, R, c1, {
+          value: DIAS_NOMBRE[d], mergeEnd: c2,
+          bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr,
+          border: { right: bThin(WHITE), bottom: bMed(WHITE) },
         });
+      }
+      wc(ws, R, G_HORA_R, {
+        value: 'HORA', bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr,
+        border: { left: bThin(WHITE), bottom: bMed(WHITE) },
       });
+      ws.getRow(R).height = 18; R++;
+
+      for (let idx = 0; idx < HORAS.length; idx++) {
+        const hora  = HORAS[idx];
+        const label = LABEL_HORAS[idx];
+        const esAlm = hora === '13:00';
+
+        ws.getRow(R).height = esAlm ? 12 : 28;
+
+        wc(ws, R, G_HORA_L, {
+          value: label, bg: SLATE100, color: NAVY, bold: true, size: 8, align: ctr,
+          border: { bottom: bThin(), right: bThin() },
+        });
+
+        if (esAlm) {
+          const [c1] = G_DAYS[0];
+          const [, c2] = G_DAYS[5];
+          wc(ws, R, c1, {
+            value: '—   A L M U E R Z O   —', mergeEnd: c2,
+            bg: SLATE100, color: TEXTMID, bold: true, italic: true, size: 8, align: ctr,
+            border: { top: bMed(), bottom: bMed(), right: bThin() },
+          });
+          for (let c = 1; c <= G_HORA_R; c++) {
+            const cell = ws.getCell(R, c);
+            cell.border = { ...cell.border, top: bMed(), bottom: bMed() };
+          }
+        } else {
+          for (let d = 0; d < 6; d++) {
+            const [c1, c2] = G_DAYS[d];
+            const clase = horarios.find((h: any) => {
+              const hIni = parseInt(h.hora_inicio.split(':')[0]);
+              const hFin = parseInt(h.hora_fin.split(':')[0]);
+              const hAct = parseInt(hora.split(':')[0]);
+              return h.dia_semana === d && hAct >= hIni && hAct < hFin;
+            });
+
+            if (clase) {
+              const ci  = cursos.findIndex(c => c.asignatura === clase.curso.nombre && c.G === clase.grupo.codigo_grupo);
+              const bg  = PASTEL[ci % PASTEL.length];
+              const txt = TEXTO [ci % TEXTO .length];
+              wc(ws, R, c1, {
+                value: `${ci + 1}\n(${clase.ambiente.nombre})`, mergeEnd: c2,
+                bg, color: txt, bold: true, size: 8,
+                align: { horizontal: 'center', vertical: 'middle', wrapText: true },
+                border: { bottom: bThin(), right: bThin() },
+              });
+            } else {
+              wc(ws, R, c1, {
+                value: '', mergeEnd: c2,
+                bg: WHITE, align: ctr,
+                border: { bottom: bThin(), right: bThin() },
+              });
+            }
+          }
+        }
+
+        wc(ws, R, G_HORA_R, {
+          value: label, bg: SLATE100, color: NAVY, bold: true, size: 8, align: ctr,
+          border: { bottom: bThin(), left: bThin() },
+        });
+
+        R++;
+      }
+
+      const gridEnd = R - 1;
+      outerBorder(ws, gridHeaderR, gridEnd, G_HORA_L, G_HORA_R, bThick());
+
+      // ════════════════════════════════════════════════════════════════════
+      // BLOQUE 4: PLANA DOCENTE
+      // ════════════════════════════════════════════════════════════════════
+      for (let c = 1; c <= TOTAL_COLS; c++) ws.getCell(R, c).fill = fill(SLATE50);
+      ws.getRow(R).height = 6; R++;
+
+      const tblStart = R;
+
+      wc(ws, R, 1, {
+        value: 'PLANA DOCENTE Y ASIGNATURAS',
+        mergeEnd: ALL_R, bg: NAVY, color: WHITE, bold: true, size: 10, align: ctr,
+        border: { bottom: bMed(WHITE) },
+      });
+      ws.getRow(R).height = 17; R++;
+
+      // Sub-encabezado
+      const hdrBorder: Partial<ExcelJS.Borders> = { bottom: bThin(WHITE), right: bThin(WHITE) };
+      const hdrOpts = { bg: NAVY3, color: WHITE, bold: true, size: 7.5 };
+
+      wc(ws, R, BT_NUM,        { ...hdrOpts, value: 'Nº',          align: ctr, border: hdrBorder });
+      wc(ws, R, BT_PROF[0],    { ...hdrOpts, value: 'PROFESOR',    mergeEnd: BT_PROF[1], align: lft, border: hdrBorder });
+      wc(ws, R, BT_ASIG[0],    { ...hdrOpts, value: 'ASIGNATURA',  mergeEnd: BT_ASIG[1], align: lft, border: hdrBorder });
+      wc(ws, R, BT_T,          { ...hdrOpts, value: 'T',            align: ctr, border: hdrBorder });
+      wc(ws, R, BT_P,          { ...hdrOpts, value: 'P',            align: ctr, border: hdrBorder });
+      wc(ws, R, BT_L,          { ...hdrOpts, value: 'L',            align: ctr, border: hdrBorder });
+      wc(ws, R, BT_G,          { ...hdrOpts, value: 'G',            align: ctr, border: hdrBorder });
+      wc(ws, R, BT_HRS,        { ...hdrOpts, value: 'T.HRS',        align: ctr, border: hdrBorder });
+      // ── 7. HEADER DEPTO ACTUALIZADO ──────────────────────────────────────
+      wc(ws, R, BT_DEPT[0], {
+        ...hdrOpts,
+        value:    'DEPTO.',
+        align:    ctr,
+        border:   hdrBorder,
+      });
+      ws.getRow(R).height = 14; R++;
+
+      // Filas de cursos
+      const MIN_ROWS = Math.max(cursos.length, 6);
+      for (let i = 0; i < MIN_ROWS; i++) {
+        const curso = cursos[i];
+        const bg  = PASTEL[i % PASTEL.length];
+        const txt = TEXTO [i % TEXTO .length];
+
+        if (curso) {
+          // ── 5. calcRowHeight CONSIDERA DEPTO ───────────────────────────────
+          const rowH = calcRowHeight([
+            { text: curso.docente,      colWidthChars: W_PROF_BT },
+            { text: curso.asignatura,   colWidthChars: W_ASIG_BT },
+            { text: curso.departamento, colWidthChars: W_DEPT_BT },
+          ], 7.5, 14, 3);
+          ws.getRow(R).height = rowH;
+
+          const rBorder: Partial<ExcelJS.Borders> = { bottom: bThin(), right: bThin() };
+          wc(ws, R, BT_NUM,        { value: i + 1,            bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
+          wc(ws, R, BT_PROF[0],    { value: curso.docente,    bg, color: txt, bold: false, size: 7.5, align: lft, border: rBorder, wrap: true, mergeEnd: BT_PROF[1] });
+          wc(ws, R, BT_ASIG[0],    { value: curso.asignatura, bg, color: txt, bold: false, size: 7.5, align: lft, border: rBorder, wrap: true, mergeEnd: BT_ASIG[1] });
+          wc(ws, R, BT_T,          { value: curso.T,          bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
+          wc(ws, R, BT_P,          { value: curso.P,          bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
+          wc(ws, R, BT_L,          { value: curso.L,          bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
+          wc(ws, R, BT_G,          { value: curso.G,          bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
+          wc(ws, R, BT_HRS,        { value: curso.THoras,     bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
+          // ── 6. CELDA DEPTO ──────────────────────────────────────────────────
+          wc(ws, R, BT_DEPT[0], {
+            value: curso.departamento,
+            bg,
+            color: txt,
+            bold:  false,
+            size:  7,
+            align: lft,
+            border: rBorder,
+            wrap:  true,
+          });
+        } else {
+          ws.getRow(R).height = 13;
+          const stripeBg = i % 2 === 0 ? WHITE : SLATE50;
+          for (let c = 1; c <= TOTAL_COLS; c++) {
+            ws.getCell(R, c).fill   = fill(stripeBg);
+            ws.getCell(R, c).border = { bottom: bThin(), right: bThin() };
+          }
+        }
+        R++;
+      }
+
+      const tblEnd = R - 1;
+      outerBorder(ws, tblStart, tblEnd, 1, ALL_R, bThick());
+
+      // Leyenda
+      for (let c = 1; c <= TOTAL_COLS; c++) ws.getCell(R, c).fill = fill(SLATE50);
+      ws.getRow(R).height = 4; R++;
+
+      wc(ws, R, 1, {
+        value: `LEYENDA: Colores = numeración de docentes.  Clases programadas: ${horarios.length}  Período: ${pNom}  Cód: ${pCod}`,
+        mergeEnd: ALL_R,
+        bg: SLATE50, color: TEXTMID, italic: true, size: 7, align: ctr,
+        border: { top: bThin() },
+      });
+      ws.getRow(R).height = 11; R++;
     }
 
-    // --- GENERAR ARCHIVO ---
     const buffer = await workbook.xlsx.writeBuffer();
-    return new NextResponse(buffer, {
-      status: 200,
+    return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="Horarios_Sistemas_${periodo.anio}_${periodo.semestre}.xlsx"`
-      }
+        'Content-Disposition': `attachment; filename="horario_${periodo?.codigo ?? 'general'}.xlsx"`,
+      },
     });
 
   } catch (error: any) {
-    console.error('Error al generar Excel:', error);
-    return NextResponse.json({ error: 'Error interno del servidor', detalle: error.message }, { status: 500 });
+    console.error('Error generando Excel:', error);
+    return NextResponse.json(
+      { error: 'Error al generar Excel', details: error.message },
+      { status: 500 },
+    );
   }
 }

@@ -56,7 +56,7 @@ export class GestorVentanasAtencion {
       orderBy: [
         { modalidad: 'asc' }, 
         { categoria: 'asc' }, 
-        { antiguedad: 'desc' }
+        { fecha_ingreso: 'asc' }
       ]
     });
 
@@ -73,7 +73,7 @@ export class GestorVentanasAtencion {
     const idsDocentesConVentana = new Set(notificacionesExistentes.map((n: any) => n.id_docente || 0));
 
     // Filtrar la lista para quedarnos solo con los que NO tienen ventana
-    const docentesSinVentana = docentes.filter(d => !idsDocentesConVentana.has(d.id_docente));
+    const docentesSinVentana = docentes.filter((d:any) => !idsDocentesConVentana.has(d.id_docente));
     console.log(`Docentes sin ventana previa: ${docentesSinVentana.length}`);
 
     if (docentesSinVentana.length === 0) {
@@ -160,10 +160,11 @@ export class GestorVentanasAtencion {
 
         ventanasCreadas.push(ventana);
         
-        // Programar notificaciones SOLO para los docentes de esta ventana
+        // Programar notificaciones SOLO para los docentes de esta ventana (modo automático)
         await ServicioNotificador.programarNotificacionesVentana(
           ventana.id_ventana, 
-          docentesParaEstaVentana.map(d => d.id_docente)
+          docentesParaEstaVentana.map(d => d.id_docente),
+          true // esAutomatico = true
         );
         
         minutosRestantes -= minutosAsignados;
@@ -229,6 +230,26 @@ export class GestorVentanasAtencion {
     });
 
     if (!docente) return { tieneAcceso: false, mensaje: "Docente no encontrado" };
+
+    // PRIMERO: Verificar si el docente ya tiene horarios confirmados o asignados
+    // Si tiene horarios, permitir acceso en modo solo lectura para verlos
+    const horariosConfirmados = await prisma.horarioAsignado.findMany({
+      where: {
+        id_docente: id_docente,
+        estado: {
+          in: ["confirmado", "definitivo", "asignado", "publicado"]
+        }
+      },
+      take: 1
+    });
+
+    if (horariosConfirmados.length > 0) {
+      return { 
+        tieneAcceso: true, 
+        soloLectura: true,
+        mensaje: "Viendo horario confirmado" 
+      };
+    }
 
     const ahora = new Date();
     const horaActual = format(ahora, 'HH:mm');

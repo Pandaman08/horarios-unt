@@ -12,6 +12,7 @@ const rolePermissions: Record<string, string[]> = {
   "/dashboard/ventanas": ["administrador_sistema", "coordinador_academico", "operador_horarios"],
   "/dashboard/reportes": ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"],
   "/dashboard/configuracion": ["administrador_sistema"],
+  "/dashboard/notificaciones": ["administrador_sistema", "operador_horarios", "director_escuela", "coordinador_academico", "docente"],
   "/dashboard": ["administrador_sistema", "operador_horarios", "docente", "director_escuela", "coordinador_academico"],
 };
 
@@ -42,9 +43,13 @@ export default withAuth(
   {
     callbacks: {
       authorized: ({ token, req }) => {
-        // Permitir acceso a rutas de NextAuth sin token
+        // Permitir acceso a rutas de NextAuth y login sin token
         const pathname = req.nextUrl.pathname;
-        if (pathname.startsWith("/api/auth") || pathname.startsWith("/auth/login")) {
+        if (
+          pathname.startsWith("/api/auth") || 
+          pathname.startsWith("/auth/login") ||
+          pathname === "/api/periodos" // Permitir acceso público a periodos para la inicialización
+        ) {
           return true;
         }
         // Para el resto, requerir token
