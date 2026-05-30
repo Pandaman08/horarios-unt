@@ -5,6 +5,7 @@ generator client {
 datasource db {
   provider = "postgresql"
   url      = env("DATABASE_URL")
+  directUrl  = env("DIRECT_URL")
 }
 
 model Usuario {
@@ -12,7 +13,6 @@ model Usuario {
   codigo              String    @unique
   nombres             String
   apellidos           String
-  dni                 String?   @unique
   correo_electronico  String?   @unique
   contrasena_hash     String
   rol                 String
@@ -20,6 +20,7 @@ model Usuario {
   ultimo_acceso       DateTime?
   fecha_creacion      DateTime  @default(now())
   fecha_actualizacion DateTime  @default(now())
+  dni                 String?   @unique
   docente             Docente?
 }
 
@@ -29,7 +30,6 @@ model Docente {
   codigo_docente            String                            @unique
   nombres                   String
   apellidos                 String
-  dni                       String?
   modalidad                 String
   categoria                 String
   dedicacion                String?
@@ -40,14 +40,15 @@ model Docente {
   especialidad              String?
   horas_maximas_semanales   Int                               @default(40)
   activo                    Boolean                           @default(true)
+  dni                       String?
+  cola_notificaciones       ColaNotificaciones[]
+  disponibilidad            DisponibilidadDocente[]
   usuario                   Usuario?                          @relation(fields: [id_usuario], references: [id_usuario])
   docente_cursos            DocenteCurso[]
-  disponibilidad            DisponibilidadDocente[]
   historial_notificaciones  HistorialNotificaciones[]
   horarios_asignados        HorarioAsignado[]
   preferencias_notificacion PreferenciasNotificacionDocente[]
   selecciones_temporales    SeleccionTemporalHorario[]
-  cola_notificaciones       ColaNotificaciones[]
 }
 
 model Curso {
@@ -58,11 +59,11 @@ model Curso {
   horas_laboratorio      Int                        @default(0)
   horas_practica         Int                        @default(0)
   creditos               Int
-  id_ciclo               Int?
   plan_estudios          String?
   prerequisitos          String?
-  tipo_curso             String                     @default("linea_carrera") // "general" (EG), "linea_carrera" (EE), "electivo" (EL)
   activo                 Boolean                    @default(true)
+  id_ciclo               Int?
+  tipo_curso             String                     @default("linea_carrera")
   ciclo_rel              Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
   curso_ambientes        CursoAmbiente[]
   docente_cursos         DocenteCurso[]
@@ -72,12 +73,12 @@ model Curso {
 }
 
 model Ciclo {
-  id_ciclo            Int               @id @default(autoincrement())
-  numero              Int               @unique
-  nombre              String
-  activo              Boolean           @default(true)
-  cursos              Curso[]
-  grupos              Grupo[]
+  id_ciclo Int     @id @default(autoincrement())
+  numero   Int     @unique
+  nombre   String
+  activo   Boolean @default(true)
+  cursos   Curso[]
+  grupos   Grupo[]
 }
 
 model DocenteCurso {
@@ -98,14 +99,14 @@ model Grupo {
   id_grupo               Int                        @id @default(autoincrement())
   id_curso               Int
   id_periodo             Int
-  id_ciclo               Int?
   codigo_grupo           String
   capacidad_maxima       Int                        @default(40)
   cantidad_matriculados  Int                        @default(0)
   activo                 Boolean                    @default(true)
+  id_ciclo               Int?
+  ciclo                  Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
   curso                  Curso                      @relation(fields: [id_curso], references: [id_curso])
   periodo                PeriodoAcademico           @relation(fields: [id_periodo], references: [id_periodo])
-  ciclo                  Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
   horarios_asignados     HorarioAsignado[]
   selecciones_temporales SeleccionTemporalHorario[]
 
@@ -153,12 +154,12 @@ model PeriodoAcademico {
   fecha_fin_clases        DateTime?
   activo                  Boolean                    @default(true)
   estado                  String                     @default("planificacion")
+  conflictos              ConflictoHorario[]
+  disponibilidad_docentes DisponibilidadDocente[]
   grupos                  Grupo[]
   horarios_asignados      HorarioAsignado[]
   selecciones_temporales  SeleccionTemporalHorario[]
   ventanas_atencion       VentanaAtencion[]
-  disponibilidad_docentes DisponibilidadDocente[]
-  conflictos              ConflictoHorario[]
 }
 
 model VentanaAtencion {
@@ -175,8 +176,8 @@ model VentanaAtencion {
   cantidad_atendidos Int               @default(0)
   completado         Boolean           @default(false)
   activo             Boolean           @default(true)
-  periodo            PeriodoAcademico  @relation(fields: [id_periodo], references: [id_periodo])
   horarios_asignados HorarioAsignado[]
+  periodo            PeriodoAcademico  @relation(fields: [id_periodo], references: [id_periodo])
 }
 
 model HorarioAsignado {

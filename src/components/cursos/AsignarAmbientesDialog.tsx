@@ -27,6 +27,7 @@ import {
 } from "@/components/ui/table";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { Pagination } from "@/components/ui/pagination";
 
 interface AsignarAmbientesDialogProps {
   cursoId: number;
@@ -59,9 +60,23 @@ export function AsignarAmbientesDialog({
   const [saving, setSaving] = useState(false);
   const [tipoFiltro, setTipoFiltro] = useState<string>("todos");
 
+  // Paginación
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 5;
+
   const ambientesFiltrados = ambientes.filter(a => 
     tipoFiltro === "todos" || a.tipo === tipoFiltro
   );
+
+  const totalPages = Math.ceil(ambientesFiltrados.length / itemsPerPage);
+  const currentItems = ambientesFiltrados.slice(
+    (currentPage - 1) * itemsPerPage,
+    currentPage * itemsPerPage
+  );
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [tipoFiltro, isOpen]);
 
   useEffect(() => {
     if (isOpen) {
@@ -82,11 +97,6 @@ export function AsignarAmbientesDialog({
         if (!res.ok) {
           const errorData = contentType?.includes("application/json") ? await res.json() : {};
           throw new Error(errorData.error || `Error al cargar ${name}`);
-        }
-        if (!contentType?.includes("application/json")) {
-          const text = await res.text();
-          console.error(`Respuesta no es JSON de ${res.url}:`, text.substring(0, 200));
-          throw new Error(`La respuesta de ${name} no es un JSON válido`);
         }
         return res.json();
       };
@@ -154,9 +164,9 @@ export function AsignarAmbientesDialog({
 
   return (
     <Dialog open={isOpen} onOpenChange={onClose}>
-      <DialogContent className="w-[95vw] md:w-[90vw] lg:w-[1000px] max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-[32px] p-10 border-none shadow-2xl">
+      <DialogContent className="w-[95vw] md:w-[90vw] lg:w-[1000px] max-w-6xl max-h-[90vh] overflow-y-auto overflow-x-hidden rounded-[32px] p-10 border-none shadow-2xl bg-card text-foreground">
         <DialogHeader>
-          <DialogTitle>Ambientes Habilitados para {cursoNombre}</DialogTitle>
+          <DialogTitle className="text-xl font-bold">Ambientes Habilitados para {cursoNombre}</DialogTitle>
         </DialogHeader>
 
         {loading ? (
@@ -165,56 +175,59 @@ export function AsignarAmbientesDialog({
           </div>
         ) : (
           <div className="space-y-6">
-            <div className="flex items-center gap-4 bg-gray-50 p-4 rounded-2xl border border-gray-100">
+            <div className="flex items-center gap-4 bg-muted/50 p-4 rounded-2xl border border-border">
               <div className="space-y-1.5 flex-1 max-w-[300px]">
-                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-gray-400 ml-1">Filtrar por Tipo</Label>
+                <Label className="text-[10px] font-black uppercase tracking-[0.2em] text-muted-foreground ml-1">Filtrar por Tipo</Label>
                 <Select value={tipoFiltro} onValueChange={setTipoFiltro}>
-                  <SelectTrigger className="h-11 rounded-xl border-2 border-gray-200 bg-white font-bold">
+                  <SelectTrigger className="h-11 rounded-xl border-2 border-input bg-card font-bold text-foreground">
                     <SelectValue placeholder="Todos los tipos" />
                   </SelectTrigger>
-                  <SelectContent className="rounded-xl border-gray-100 shadow-xl">
+                  <SelectContent className="rounded-xl border-border shadow-xl bg-card">
                     <SelectItem value="todos" className="font-bold">Todos los tipos</SelectItem>
-                    <SelectItem value="teoria" className="font-bold">Teoría</SelectItem>
+                    <SelectItem value="aula" className="font-bold">Aula Teórica</SelectItem>
                     <SelectItem value="laboratorio" className="font-bold">Laboratorio</SelectItem>
-                    <SelectItem value="especializado" className="font-bold">Especializado</SelectItem>
+                    <SelectItem value="auditorio" className="font-bold">Auditorio</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
 
-            <div className="border rounded-2xl overflow-hidden shadow-sm">
+            <div className="border border-border rounded-2xl overflow-hidden shadow-sm">
               <Table>
-                <TableHeader className="bg-gray-50">
-                  <TableRow>
-                    <TableHead className="font-black uppercase tracking-widest text-[10px]">Ambiente</TableHead>
-                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Teoría</TableHead>
-                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Laboratorio</TableHead>
-                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px]">Práctica</TableHead>
+                <TableHeader className="bg-muted/50">
+                  <TableRow className="border-b border-border hover:bg-transparent">
+                    <TableHead className="font-black uppercase tracking-widest text-[10px] text-muted-foreground">Ambiente</TableHead>
+                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">Teoría</TableHead>
+                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">Laboratorio</TableHead>
+                    <TableHead className="text-center font-black uppercase tracking-widest text-[10px] text-muted-foreground">Práctica</TableHead>
                   </TableRow>
                 </TableHeader>
-                <TableBody>
-                  {ambientesFiltrados.map((ambiente) => (
-                    <TableRow key={ambiente.id_ambiente}>
+                <TableBody className="divide-y divide-border">
+                  {currentItems.map((ambiente) => (
+                    <TableRow key={ambiente.id_ambiente} className="hover:bg-muted/30 border-b border-border last:border-0 transition-colors">
                       <TableCell>
-                        <div className="font-medium">{ambiente.nombre}</div>
+                        <div className="font-medium text-foreground">{ambiente.nombre}</div>
                         <div className="text-xs text-muted-foreground">{ambiente.codigo} - {ambiente.tipo}</div>
                       </TableCell>
                       <TableCell className="text-center">
                         <Checkbox
                           checked={isChecked(ambiente.id_ambiente, "teoria")}
                           onCheckedChange={() => toggleAsignacion(ambiente.id_ambiente, "teoria")}
+                          className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                         />
                       </TableCell>
                       <TableCell className="text-center">
                         <Checkbox
                           checked={isChecked(ambiente.id_ambiente, "laboratorio")}
                           onCheckedChange={() => toggleAsignacion(ambiente.id_ambiente, "laboratorio")}
+                          className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                         />
                       </TableCell>
                       <TableCell className="text-center">
                         <Checkbox
                           checked={isChecked(ambiente.id_ambiente, "practica")}
                           onCheckedChange={() => toggleAsignacion(ambiente.id_ambiente, "practica")}
+                          className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground"
                         />
                       </TableCell>
                     </TableRow>
@@ -223,9 +236,15 @@ export function AsignarAmbientesDialog({
               </Table>
             </div>
 
+            <Pagination 
+              currentPage={currentPage}
+              totalPages={totalPages}
+              onPageChange={setCurrentPage}
+            />
+
             <div className="flex justify-end space-x-2">
-              <Button variant="outline" onClick={onClose}>Cancelar</Button>
-              <Button onClick={handleSave} disabled={saving}>
+              <Button variant="outline" onClick={onClose} className="rounded-xl border-border hover:bg-muted text-foreground">Cancelar</Button>
+              <Button onClick={handleSave} disabled={saving} className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90">
                 {saving && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                 Guardar Cambios
               </Button>

@@ -17,7 +17,8 @@ function parseTimeToToday(hora: string): Date {
   return d;
 }
 
-export function CountdownTimer({ horaFin, className, variant = "inline" }: CountdownTimerProps) {
+export function CountdownTimer(props: Readonly<CountdownTimerProps>) {
+  const { horaFin, className, variant = "inline" } = props;
   const [remaining, setRemaining] = useState("00:00:00");
 
   useEffect(() => {

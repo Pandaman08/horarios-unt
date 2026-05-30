@@ -43,7 +43,7 @@ export async function GET(request: Request) {
             activo: true
           }
         },
-        OR: ventanasActivas.map(v => ({
+        OR: ventanasActivas.map((v: any) => ({
           modalidad: v.modalidad,
           categoria: v.categoria
         }))
@@ -57,10 +57,10 @@ export async function GET(request: Request) {
         }
       },
       orderBy: [
-        { modalidad: 'asc' },
-        { categoria: 'asc' },
-        { antiguedad: 'desc' }
-      ]
+          { modalidad: 'asc' },
+          { categoria: 'asc' },
+          { fecha_ingreso: 'asc' }
+        ]
     });
 
     // Filtrar docentes que ya completaron su horario (opcional, pero recomendado)

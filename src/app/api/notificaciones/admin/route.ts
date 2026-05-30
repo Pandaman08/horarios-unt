@@ -12,6 +12,7 @@ export async function GET(request: Request) {
 
   const { searchParams } = new URL(request.url);
   const type = searchParams.get('type') || 'stats';
+  const idVentana = searchParams.get('id_ventana');
 
   try {
     if (type === 'stats') {
@@ -19,9 +20,12 @@ export async function GET(request: Request) {
       const colaFallida = await prisma.colaNotificaciones.count({ where: { estado: 'fallido' } });
       const historialExito = await prisma.historialNotificaciones.count({ where: { estado_envio: 'enviado' } });
       
+      const whereClause = idVentana ? { id_ventana: parseInt(idVentana) } : {};
+      
       const ultimasNotificaciones = await prisma.historialNotificaciones.findMany({
         take: 10,
         orderBy: { fecha_envio: 'desc' },
+        where: whereClause,
         include: { docente: true }
       });
 
