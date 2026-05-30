@@ -21,10 +21,10 @@ const COLORES_CURSOS = [
 
 // ─── HORAS DEL HORARIO ────────────────────────────────────────────────────────
 const HORAS = [
-  '07:00','08:00','09:00','10:00','11:00','12:00',
-  '13:00','14:00','15:00','16:00','17:00','18:00','19:00'
+  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
 ];
-const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function horaAMinutos(hora: string): number {
@@ -335,7 +335,7 @@ function generarGridHorario(horarios: any[], colorMap: Map<string, { color: any;
         const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '';
 
         const linea2 = mostrarDocente && docente ? docente : (cicloNum ? `${cicloNum}° Ciclo` : '');
-        const linea3 = mostrarAmbiente ? ambiente :  '';
+        const linea3 = mostrarAmbiente ? ambiente : '';
 
         return `
           <div class="class-card" style="background:${color.bg}; border-left-color:${color.border}; color:${color.text}; min-height:${height};">
@@ -461,7 +461,7 @@ function generarReporteUNT(options: {
       </tr>`;
     const horaNum = parseInt(hora.split(':')[0]);
     const horaLabel = `${horaNum}-${horaNum + 1}`;
-    const celdas = [0,1,2,3,4,5].map(dia => {
+    const celdas = [0, 1, 2, 3, 4, 5].map(dia => {
       const clase = horarios.find((h: any) => {
         if (h.dia_semana !== dia || !h.hora_inicio || !h.hora_fin) return false;
         return horaAMinutos(h.hora_inicio) === horaAMinutos(hora);
@@ -612,10 +612,10 @@ export async function GET(request: Request) {
         orderBy: [{ hora_inicio: 'asc' }]
       });
       reportTitle = `Reporte de Horarios: ${nombreDia}`;
-      
+
       const periodoSuffix = `${periodo?.anio ?? ''}-${periodo?.semestre === 1 ? 'I' : 'II'}`;
-      
-      const horariosSorted = [...horarios].sort((a, b) => 
+
+      const horariosSorted = [...horarios].sort((a, b) =>
         (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? '')
       );
 
@@ -712,13 +712,13 @@ export async function GET(request: Request) {
           </thead>
           <tbody>
             ${horariosSorted.map((h: any) => {
-              const ciclo = h.curso?.ciclo_rel?.numero ?? '—';
-              const curso = h.curso?.nombre ?? '—';
-              const grupo = h.grupo?.codigo_grupo ?? '—';
-              const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '—';
-              const ambiente = h.ambiente?.nombre ?? '—';
-              const tipo = h.tipo_clase ? h.tipo_clase.replace('_', ' ') : 'TEORÍA';
-              return `
+        const ciclo = h.curso?.ciclo_rel?.numero ?? '—';
+        const curso = h.curso?.nombre ?? '—';
+        const grupo = h.grupo?.codigo_grupo ?? '—';
+        const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '—';
+        const ambiente = h.ambiente?.nombre ?? '—';
+        const tipo = h.tipo_clase ? h.tipo_clase.replace('_', ' ') : 'TEORÍA';
+        return `
                 <tr>
                   <td style="font-weight:800; color:#003366; font-size:12px;">
                     ${h.hora_inicio ?? '—'}<br/>
@@ -740,7 +740,7 @@ export async function GET(request: Request) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+      }).join('')}
           </tbody>
         </table>
       `;
@@ -755,7 +755,7 @@ export async function GET(request: Request) {
         }
       });
 
-    // ── DOCENTE ───────────────────────────────────────────────────────────────
+      // ── DOCENTE ───────────────────────────────────────────────────────────────
     } else if (tipo === 'docente' || tipo === 'docente_propio') {
       let docenteId = id;
       if (tipo === 'docente_propio') {
@@ -787,19 +787,19 @@ export async function GET(request: Request) {
         * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
         @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
         </style></head><body>${generarReporteUNT({
-          horarios: docente.horarios_asignados ?? [],
-          titulo: reportTitle,
-          subtitulo: docente.codigo_docente ?? '',
-          periodo: periodo,
-          docenteNombre: `${docente.nombres} ${docente.apellidos}`,
-          paginaIndex: 0
-        })}</body></html>`;
+        horarios: docente.horarios_asignados ?? [],
+        titulo: reportTitle,
+        subtitulo: docente.codigo_docente ?? '',
+        periodo: periodo,
+        docenteNombre: `${docente.nombres} ${docente.apellidos}`,
+        paginaIndex: 0
+      })}</body></html>`;
       const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-docente-${docenteId}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
 
-    // ── AULA / TODAS LAS AULAS ────────────────────────────────────────────────
+      // ── AULA / TODAS LAS AULAS ────────────────────────────────────────────────
 
     } else if (tipo === 'aula' || tipo === 'aulas_todas') {
       if (tipo === 'aula' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ambiente' }, { status: 400 });
@@ -851,7 +851,7 @@ export async function GET(request: Request) {
       });
 
 
-    // ── CICLO / TODOS LOS CICLOS ──────────────────────────────────────────────
+      // ── CICLO / TODOS LOS CICLOS ──────────────────────────────────────────────
     } else if (tipo === 'ciclo' || tipo === 'ciclos_todos') {
       if (tipo === 'ciclo' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ciclo' }, { status: 400 });
 
@@ -900,7 +900,7 @@ export async function GET(request: Request) {
       });
 
 
-    // ── REPORTE GENERAL (formato UNT, landscape) ──────────────────────────────
+      // ── REPORTE GENERAL (formato UNT, landscape) ──────────────────────────────
     } else if (tipo === 'reporte_general') {
       const ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
       const paginas: string[] = [];
@@ -935,11 +935,11 @@ export async function GET(request: Request) {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-general.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
 
-    // ── LISTA: DOCENTES ───────────────────────────────────────────────────────
+      // ── LISTA: DOCENTES ───────────────────────────────────────────────────────
     } else if (tipo === 'reporte_docentes_lista') {
       const docentes = await prisma.docente.findMany({ orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] });
-      reportTitle = 'Plana Docente';
-      htmlContent = generarCabecera('Plana Docente', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Total', valor: String(docentes.length) }]);
+      reportTitle = 'Catálogo de Docentes';
+      htmlContent = generarCabecera('Catálogo de Docentes', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Docentes', valor: String(docentes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
         <thead><tr><th>Apellidos y Nombres</th><th>Código</th><th>Grado</th><th>Categoría</th><th>Modalidad</th><th>Correo</th></tr></thead>
         <tbody>${docentes.map((d: any) => `<tr>
@@ -952,7 +952,7 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
+      // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
     } else if (tipo === 'reporte_cursos') {
       const cursos = await prisma.curso.findMany({ include: { ciclo_rel: true }, orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] });
       reportTitle = 'Catálogo de Cursos';
@@ -970,11 +970,11 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
+      // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
     } else if (tipo === 'reporte_ambientes') {
       const ambientes = await prisma.ambiente.findMany({ orderBy: { nombre: 'asc' } });
-      reportTitle = 'Ambientes Académicos';
-      htmlContent = generarCabecera('Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
+      reportTitle = 'Catálogo de Ambientes Académicos';
+      htmlContent = generarCabecera('Catálogo de Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
         <thead><tr><th>Nombre / Código</th><th>Tipo</th><th style="text-align:center;">Capacidad</th><th>Pabellón / Piso</th></tr></thead>
         <tbody>${ambientes.map((a: any) => `<tr>
@@ -985,11 +985,11 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── LISTA: PERIODOS ───────────────────────────────────────────────────────
+      // ── LISTA: PERIODOS ───────────────────────────────────────────────────────
     } else if (tipo === 'reporte_periodos') {
       const periodos = await prisma.periodoAcademico.findMany({ orderBy: { anio: 'desc' } });
-      reportTitle = 'Periodos Académicos';
-      htmlContent = generarCabecera('Periodos Académicos', `${periodos.length} registrados`, periodoNombre);
+      reportTitle = 'Catálogo de Periodos Académicos';
+      htmlContent = generarCabecera('Catálogo de Periodos Académicos', `${periodos.length} registrados`, periodoNombre, [{ label: 'Periodos', valor: String(periodos.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
         <thead><tr><th>Código</th><th>Nombre</th><th>Año / Sem.</th><th>Estado</th><th>Inicio / Fin</th></tr></thead>
         <tbody>${periodos.map((p: any) => `<tr>
@@ -1001,7 +1001,7 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
+      // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
     } else if (tipo === 'estadisticas' || tipo === 'consolidado') {
       const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });

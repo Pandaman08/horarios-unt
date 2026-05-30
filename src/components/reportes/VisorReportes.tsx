@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers } from "lucide-react";
+import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -172,7 +172,7 @@ export function VisorReportes() {
     { id: 'aula', icon: School, title: 'Horario por Aula', description: 'Consolidado de clases de teoría por ambiente', color: 'indigo' },
     { id: 'dia', icon: Calendar, title: 'Reporte por Día', description: 'Verificar clases, docentes y aulas por cada día de la semana', color: 'emerald' },
     { id: 'docente', icon: User, title: 'Horario por Docente', description: 'Planes de dictado por investigador', color: 'amber' },
-    { id: 'ciclo', icon: Layers, title: 'Reporte por Ciclo', description: 'Docentes que enseñan por cada ciclo académico', color: 'purple' },
+    { id: 'ciclo', icon: Layers, title: 'Horario por Ciclo', description: 'Consolidado de clases programadas por ciclo académico', color: 'purple' },
     { id: 'reporte_general', icon: FileText, title: 'Horario Institucional', description: 'Consolidado oficial en formato horizontal por ciclo', color: 'indigo' },
     { id: 'gestion', icon: TrendingUp, title: 'Reporte de Gestión', description: 'KPIs globales y horas pendientes por asignar', color: 'slate' },
   ];
@@ -288,7 +288,7 @@ export function VisorReportes() {
                   disabled={generatingAula}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  PDF
+                  Descargar PDF
                 </Button>
               </div>
               </div>
@@ -315,22 +315,19 @@ export function VisorReportes() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Día de la Semana</Label>
-                <Select 
-                  value={selectedDia} 
+                <SearchableSelect
+                  options={[
+                    { value: "0", label: "Lunes" },
+                    { value: "1", label: "Martes" },
+                    { value: "2", label: "Miércoles" },
+                    { value: "3", label: "Jueves" },
+                    { value: "4", label: "Viernes" },
+                    { value: "5", label: "Sábado" }
+                  ]}
+                  value={selectedDia}
                   onValueChange={setSelectedDia}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Seleccione un día" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value="0">Lunes</SelectItem>
-                    <SelectItem value="1">Martes</SelectItem>
-                    <SelectItem value="2">Miércoles</SelectItem>
-                    <SelectItem value="3">Jueves</SelectItem>
-                    <SelectItem value="4">Viernes</SelectItem>
-                    <SelectItem value="5">Sábado</SelectItem>
-                  </SelectContent>
-                </Select>
+                  placeholder="Seleccione un día..."
+                />
               </div>
               <div className="flex gap-2">
                 <Button
@@ -339,7 +336,7 @@ export function VisorReportes() {
                   disabled={generatingDia}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  PDF
+                  Descargar PDF
                 </Button>
               </div>
             </div>
@@ -364,7 +361,7 @@ export function VisorReportes() {
                   disabled={generatingDocente}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  PDF
+                  Descargar PDF
                 </Button>
               </div>
             </div>
@@ -372,21 +369,22 @@ export function VisorReportes() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Ciclo Académico</Label>
-                <Select 
-                  value={selectedCicloReporte} 
+                <SearchableSelect
+                  options={ciclos
+                    .filter(c => {
+                      if (!currentPeriodoObj) return true;
+                      const isPar = c.numero % 2 === 0;
+                      return currentPeriodoObj.semestre === 1 ? !isPar : isPar;
+                    })
+                    .map(c => ({
+                      value: c.id_ciclo.toString(),
+                      label: c.nombre
+                    }))
+                  }
+                  value={selectedCicloReporte}
                   onValueChange={setSelectedCicloReporte}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Seleccione un ciclo" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {ciclos.map(c => (
-                      <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
-                        {c.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Seleccione un ciclo..."
+                />
               </div>
               <div className="flex gap-2">
                 <Button
@@ -395,7 +393,7 @@ export function VisorReportes() {
                   disabled={generatingCiclo}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  PDF
+                  Descargar PDF
                 </Button>
               </div>
             </div>

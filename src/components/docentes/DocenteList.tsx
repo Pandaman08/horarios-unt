@@ -20,11 +20,11 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-  BookOpen, 
-  Search, 
-  Mail, 
-  Phone, 
+import {
+  BookOpen,
+  Search,
+  Mail,
+  Phone,
   Users,
   UserCircle2,
   Filter,
@@ -92,12 +92,12 @@ export function DocenteList() {
     try {
       const url = `/api/reportes/pdf?tipo=reporte_docentes_lista&id_periodo=${periodoSeleccionado.id_periodo}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
         throw new Error(errorData.error || 'Error en la generación');
       }
-      
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -116,7 +116,7 @@ export function DocenteList() {
       setGeneratingReport(false);
     }
   };
-  
+
   const [formData, setFormData] = useState({
     nombres: "",
     apellidos: "",
@@ -129,7 +129,7 @@ export function DocenteList() {
     especialidad: "",
     fecha_ingreso: new Date().toISOString().split("T")[0],
   });
-  
+
   // Estados de Filtros
   const [filtroCategoria, setFiltroCategoria] = useState<string>("todos");
   const [filtroModalidad, setFiltroModalidad] = useState<string>("todos");
@@ -167,7 +167,7 @@ export function DocenteList() {
     const matchesCategoria = filtroCategoria === "todos" || d.categoria?.toUpperCase() === filtroCategoria.toUpperCase();
     const matchesModalidad = filtroModalidad === "todos" || d.modalidad?.toUpperCase() === filtroModalidad.toUpperCase();
     const matchesGrado = filtroGrado === "todos" || d.grado_academico === filtroGrado;
-    
+
     // Filtrar por ciclo y semestre
     let matchesCiclo = true;
     let matchesSemestre = true;
@@ -222,10 +222,10 @@ export function DocenteList() {
     try {
       const res = await fetch("/api/ciclos");
       const contentType = res.headers.get("content-type");
-      
+
       if (!res.ok) {
-        const errorData = contentType?.includes("application/json") 
-          ? await res.json() 
+        const errorData = contentType?.includes("application/json")
+          ? await res.json()
           : { error: `Error ${res.status}: ${res.statusText}` };
         throw new Error(errorData.error || "Error al cargar ciclos");
       }
@@ -260,8 +260,8 @@ export function DocenteList() {
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
-        const errorData = contentType?.includes("application/json") 
-          ? await res.json() 
+        const errorData = contentType?.includes("application/json")
+          ? await res.json()
           : { error: `Error ${res.status}: ${res.statusText}` };
         throw new Error(errorData.error || "Error al cargar docentes");
       }
@@ -290,12 +290,12 @@ export function DocenteList() {
     try {
       const url = `/api/reportes/pdf?tipo=docente&id_periodo=${periodoSeleccionado.id_periodo}&id=${docente.id_docente}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
         throw new Error(errorData.error || 'Error en la generación');
       }
-      
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -335,8 +335,8 @@ export function DocenteList() {
   const handleDocenteSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = editingDocente ? "PUT" : "POST";
-    const url = editingDocente 
-      ? `/api/docentes/${editingDocente.id_docente}` 
+    const url = editingDocente
+      ? `/api/docentes/${editingDocente.id_docente}`
       : "/api/docentes";
 
     try {
@@ -390,32 +390,32 @@ export function DocenteList() {
             </div>
           </div>
 
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-              <div className="relative flex-1 sm:min-w-[200px]">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-                <Input 
-                  placeholder="Buscar docente..." 
-                  className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                />
-              </div>
-              <div className="flex gap-2">
-                <Button 
-                  onClick={() => handleGenerateInstitutionalReport('pdf')} 
-                  disabled={generatingReport === true}
-                  variant="outline"
-                  className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
-                >
-                  {generatingReport === true ? (
-                    <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-                  ) : (
-                    <FileText className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  Descargar Lista
-                </Button>
-              </div>
-              <Dialog open={isDocenteDialogOpen} onOpenChange={(open) => {
+          <div className="flex items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar docente..."
+                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleGenerateInstitutionalReport('pdf')}
+                disabled={generatingReport === true}
+                variant="outline"
+                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+              >
+                {generatingReport === true ? (
+                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                ) : (
+                  <FileText className="mr-2 h-3.5 w-3.5" />
+                )}
+                Reporte de lista de docentes
+              </Button>
+            </div>
+            <Dialog open={isDocenteDialogOpen} onOpenChange={(open) => {
               setIsDocenteDialogOpen(open);
               if (!open) {
                 setEditingDocente(null);
@@ -424,7 +424,7 @@ export function DocenteList() {
             }}>
               <DialogTrigger asChild>
                 <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
-                  <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Docente 
+                  <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Docente
                 </Button>
               </DialogTrigger>
               <DialogContent className="sm:max-w-2xl rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
@@ -674,9 +674,9 @@ export function DocenteList() {
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
                           onClick={() => {
                             setEditingDocente(docente);
                             setFormData({
@@ -692,18 +692,18 @@ export function DocenteList() {
                               fecha_ingreso: docente.fecha_ingreso ? new Date(docente.fecha_ingreso).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
                             });
                             setIsDocenteDialogOpen(true);
-                          }} 
-                          title="Editar Docente" 
+                          }}
+                          title="Editar Docente"
                           className="h-7 w-7 rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-all"
                         >
                           <Edit className="h-3.5 w-3.5" />
                         </Button>
 
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleGenerateReport(docente, 'pdf')} 
-                          title="Descargar Horario PDF" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleGenerateReport(docente, 'pdf')}
+                          title="Descargar Horario PDF"
                           disabled={generatingReport === docente.id_docente}
                           className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-all"
                         >
@@ -714,21 +714,21 @@ export function DocenteList() {
                           )}
                         </Button>
 
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => { setSelectedDocente(docente); setIsAsignarOpen(true); }} 
-                          title="Asignar Cursos" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => { setSelectedDocente(docente); setIsAsignarOpen(true); }}
+                          title="Asignar Cursos"
                           className="h-7 w-7 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-600 transition-all"
                         >
                           <BookOpen className="h-3.5 w-3.5" />
                         </Button>
 
-                        <Button 
-                          variant="ghost" 
-                          size="icon" 
-                          onClick={() => handleDelete(docente.id_docente)} 
-                          title="Eliminar Docente" 
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={() => handleDelete(docente.id_docente)}
+                          title="Eliminar Docente"
                           className="h-7 w-7 rounded-lg hover:bg-red-500/10 hover:text-red-600 transition-all"
                         >
                           <Trash2 className="h-3.5 w-3.5" />
@@ -742,7 +742,7 @@ export function DocenteList() {
           </Table>
         </div>
 
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}

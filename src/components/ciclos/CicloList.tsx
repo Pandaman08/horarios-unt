@@ -27,11 +27,11 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
   Layers,
   RefreshCw,
   Calendar,
@@ -116,10 +116,10 @@ export function CicloList() {
     try {
       const res = await fetch("/api/ciclos");
       const contentType = res.headers.get("content-type");
-      
+
       if (!res.ok) {
-        const errorData = contentType?.includes("application/json") 
-          ? await res.json() 
+        const errorData = contentType?.includes("application/json")
+          ? await res.json()
           : { error: `Error ${res.status}: ${res.statusText}` };
         throw new Error(errorData.error || "Error al cargar ciclos");
       }
@@ -138,8 +138,8 @@ export function CicloList() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = editingCiclo ? "PUT" : "POST";
-    const url = editingCiclo 
-      ? `/api/ciclos/${editingCiclo.id_ciclo}` 
+    const url = editingCiclo
+      ? `/api/ciclos/${editingCiclo.id_ciclo}`
       : "/api/ciclos";
 
     try {
@@ -203,14 +203,14 @@ export function CicloList() {
 
     setGeneratingReport(999);
     try {
-      const url = `/api/reportes?tipo=ciclos_todos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const url = `/api/reportes/pdf?tipo=ciclos_todos&id_periodo=${periodoSeleccionado.id_periodo}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
         throw new Error(errorData.error || 'Error en la generación');
       }
-      
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -245,15 +245,15 @@ export function CicloList() {
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar ciclo..." 
+            <Input
+              placeholder="Buscar ciclo..."
               className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button 
-            onClick={handleGenerateConsolidatedReport} 
+          <Button
+            onClick={handleGenerateConsolidatedReport}
             disabled={generatingReport !== null}
             variant="outline"
             className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
@@ -263,7 +263,7 @@ export function CicloList() {
             ) : (
               <FileText className="mr-2 h-3.5 w-3.5" />
             )}
-            Reporte de Ciclos
+            Reporte de lista de ciclos
           </Button>
           <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
             <DialogTrigger asChild>
@@ -289,23 +289,23 @@ export function CicloList() {
                 <div className="grid grid-cols-1 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Número</Label>
-                    <Input 
+                    <Input
                       type="number"
-                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
-                      value={formData.numero} 
-                      onChange={(e) => setFormData({ ...formData, numero: e.target.value })} 
-                      required 
+                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                      value={formData.numero}
+                      onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
+                      required
                       min={1}
                       max={12}
                     />
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
-                    <Input 
-                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
-                      value={formData.nombre} 
-                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
-                      required 
+                    <Input
+                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                      value={formData.nombre}
+                      onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                      required
                       placeholder="Ej: I Ciclo"
                     />
                   </div>
@@ -353,8 +353,8 @@ export function CicloList() {
                     <TableCell className="px-4 py-2 text-center">
                       <span className={cn(
                         "px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-widest border",
-                        ciclo.activo 
-                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" 
+                        ciclo.activo
+                          ? "bg-emerald-500/10 text-emerald-600 border-emerald-500/20"
                           : "bg-muted text-muted-foreground border-border"
                       )}>
                         {ciclo.activo ? "Activo" : "Inactivo"}
@@ -377,7 +377,7 @@ export function CicloList() {
           </Table>
         </div>
 
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
