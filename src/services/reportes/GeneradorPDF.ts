@@ -1,61 +1,48 @@
-import puppeteer from "puppeteer";
+import puppeteer from 'puppeteer';
 
 export class GeneradorPDF {
-  static async generarDesdeHTML(
-    html: string,
-    landscape: boolean = false
-  ): Promise<Buffer> {
+  static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {
     let browser;
 
     try {
       browser = await puppeteer.launch({
         headless: true,
         args: [
-          "--no-sandbox",
-          "--disable-setuid-sandbox",
-          "--disable-dev-shm-usage",
-          "--disable-gpu",
-        ],
+          '--no-sandbox',
+          '--disable-setuid-sandbox',
+          '--disable-dev-shm-usage',
+          '--disable-gpu'
+        ]
       });
 
       const page = await browser.newPage();
-
-      await page.setContent(html, {
-        waitUntil: "load",
-        timeout: 30000,
+      
+      await page.setContent(html, { 
+        waitUntil: 'domcontentloaded',
+        timeout: 60000 
       });
-
-      await page.waitForNetworkIdle();
-
+      
       const pdf = await page.pdf({
-        format: "A4",
-        landscape,
+        format: 'A4',
+        landscape: landscape,
         printBackground: true,
         margin: {
-          top: "10mm",
-          right: "10mm",
-          bottom: "10mm",
-          left: "10mm",
-        },
+          top: '10mm',
+          right: '10mm',
+          bottom: '10mm',
+          left: '10mm'
+        }
       });
 
       await browser.close();
-
       return Buffer.from(pdf);
     } catch (error: any) {
-      if (browser) {
-        await browser.close();
-      }
-
+      if (browser) await browser.close();
       throw error;
     }
   }
 
-  static wrapLayout(
-    content: string,
-    title: string,
-    minimal: boolean = false
-  ): string {
+  static wrapLayout(content: string, title: string, minimal: boolean = false): string {
     if (minimal) {
       return `
         <!DOCTYPE html>
@@ -63,26 +50,20 @@ export class GeneradorPDF {
           <head>
             <meta charset="utf-8">
             <title>${title}</title>
-
             <style>
               @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-
-              body {
+              body { 
                 font-family: 'Inter', -apple-system, sans-serif;
                 margin: 0;
                 padding: 0;
                 color: #000;
                 background: white;
               }
-
               @media print {
-                .page-break {
-                  page-break-after: always;
-                }
+                .page-break { page-break-after: always; }
               }
             </style>
           </head>
-
           <body>
             ${content}
           </body>
@@ -96,11 +77,10 @@ export class GeneradorPDF {
         <head>
           <meta charset="utf-8">
           <title>${title}</title>
-
           <style>
             @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
 
-            body {
+            body { 
               font-family: 'Inter', -apple-system, sans-serif;
               margin: 0;
               padding: 0;
@@ -231,51 +211,29 @@ export class GeneradorPDF {
             }
 
             @media print {
-              .page-break {
-                page-break-after: always;
-              }
+              .page-break { page-break-after: always; }
             }
           </style>
         </head>
-
         <body>
           <div class="header">
             <div class="logo-container">
               <div class="logo-box">U</div>
-
               <div class="system-info">
                 <p>Gestión de Horarios Académicos</p>
               </div>
             </div>
-
             <div class="institution-info">
               <h1>Universidad Nacional de Trujillo</h1>
               <p>Escuela de Ingeniería de Sistemas</p>
-
-              <p
-                style="
-                  font-size: 10px;
-                  color: #94a3b8;
-                  margin-top: 8px;
-                "
-              >
-                ${new Date().toLocaleString("es-PE")}
-              </p>
+              <p style="font-size: 10px; color: #94a3b8; margin-top: 8px;">${new Date().toLocaleString('es-PE')}</p>
             </div>
           </div>
-
           <h2 class="report-title">${title}</h2>
-
           ${content}
-
           <div class="footer">
-            <span>
-              © ${new Date().getFullYear()} Sistema de Gestión de Horarios UNT
-            </span>
-
-            <span>
-              Documento generado automáticamente
-            </span>
+            <span>© ${new Date().getFullYear()} Sistema de Gestión de Horarios UNT</span>
+            <span>Documento generado automáticamente</span>
           </div>
         </body>
       </html>
