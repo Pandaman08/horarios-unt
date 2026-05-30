@@ -43,7 +43,7 @@ async function main() {
           modalidad: u.modalidad,
           categoria: u.categoria,
           correo_electronico: u.correo,
-          antiguedad: Math.floor(Math.random() * 20) + 1,
+          fecha_ingreso: new Date(new Date().getFullYear() - (Math.floor(Math.random() * 20) + 1), 0, 1),
         }
       });
     }

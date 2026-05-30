@@ -25,7 +25,7 @@ export default function MiHorarioPage() {
   }, [session, status, router]);
 
   if (!isReady) {
-    return <div className="p-8 text-center text-muted-foreground">Cargando...</div>;
+    return <div className="p-8 text-center text-muted-foreground dark:text-muted-foreground bg-background">Cargando...</div>;
   }
 
   return (

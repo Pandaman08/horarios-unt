@@ -104,18 +104,36 @@ export function VisorReportes() {
     let url = `/api/reportes/pdf?tipo=${tipo}&id_periodo=${id_periodo}`;
     if (id) url += `&id=${id}`;
 
-    const setLoading = {
-      docente: setGeneratingDocente,
-      aula: setGeneratingAula,
-      aulas_todas: setGeneratingTodasAulas,
-      dia: setGeneratingDia,
-      ciclo: setGeneratingCiclo,
-      ciclos_todos: setGeneratingTodosCiclos,
-      consolidado: setGeneratingConsolidado,
-      conflictos: setGeneratingConflictos,
-      estadisticas: setGeneratingEstadisticas,
-      reporte_general: setGeneratingReporteGeneral,
-    }[tipo as any];
+    type TipoReporte =
+  | 'docente'
+  | 'aula'
+  | 'aulas_todas'
+  | 'dia'
+  | 'ciclo'
+  | 'ciclos_todos'
+  | 'consolidado'
+  | 'conflictos'
+  | 'estadisticas'
+  | 'reporte_general';
+
+  const loadingMap: Record<
+    TipoReporte,
+    React.Dispatch<React.SetStateAction<boolean>>
+  > = {
+    docente: setGeneratingDocente,
+    aula: setGeneratingAula,
+    aulas_todas: setGeneratingTodasAulas,
+    dia: setGeneratingDia,
+    ciclo: setGeneratingCiclo,
+    ciclos_todos: setGeneratingTodosCiclos,
+    consolidado: setGeneratingConsolidado,
+    conflictos: setGeneratingConflictos,
+    estadisticas: setGeneratingEstadisticas,
+    reporte_general: setGeneratingReporteGeneral,
+  };
+
+  const setLoading = loadingMap[tipo as TipoReporte];
+    
 
     if (setLoading) setLoading(true);
 

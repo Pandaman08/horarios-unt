@@ -11,7 +11,7 @@ export async function PUT(
     const idNumber = parseInt(id);
     const data = await request.json();
 
-    const result = await prisma.$transaction(async (tx) => {
+    const result = await prisma.$transaction(async (tx: any) => {
       // 1. Actualizar Usuario
       const usuario = await tx.usuario.update({
         where: { id_usuario: idNumber },

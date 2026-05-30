@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
     }
 
     // Usar una transacción para asegurar atomicidad
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       // 1. Eliminar disponibilidad anterior para este docente y periodo
       await tx.disponibilidadDocente.deleteMany({
         where: {

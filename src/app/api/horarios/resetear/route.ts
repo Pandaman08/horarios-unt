@@ -9,7 +9,7 @@ export async function POST(request: Request) {
       return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
     }
 
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       // 1. Eliminar todos los horarios asignados para el periodo
       await tx.horarioAsignado.deleteMany({
         where: {

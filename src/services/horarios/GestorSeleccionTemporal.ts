@@ -76,7 +76,7 @@ export class GestorSeleccionTemporal {
 
     if (temporales.length === 0) throw new Error("No hay selecciones temporales para confirmar");
 
-    return await prisma.$transaction(async (tx) => {
+    return await prisma.$transaction(async (tx: any) => {
       const asignaciones = [];
       
       for (const temporal of temporales) {

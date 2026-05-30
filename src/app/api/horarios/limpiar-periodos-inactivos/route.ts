@@ -8,7 +8,7 @@ export async function POST() {
       where: { activo: false }
     });
 
-    console.log("Períodos inactivos encontrados:", periodosInactivos.map(p => ({ id: p.id_periodo, nombre: p.nombre })));
+    console.log("Períodos inactivos encontrados:", periodosInactivos.map((p: any) => ({ id: p.id_periodo, nombre: p.nombre })));
 
     let horariosBorrados = 0;
     let ventanasBorradas = 0;

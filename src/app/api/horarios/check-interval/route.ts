@@ -89,7 +89,7 @@ export async function GET() {
         ]
       });
 
-      const indexDocente = docentesOrdenados.findIndex(d => d.id_docente === docente.id_docente);
+      const indexDocente = docentesOrdenados.findIndex((d: any) => d.id_docente === docente.id_docente);
       const ventanas = await prisma.ventanaAtencion.findMany({
         where: { id_periodo: periodoActivo.id_periodo },
         orderBy: { orden_prioridad: 'asc' }
