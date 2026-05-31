@@ -7,13 +7,13 @@ import type { NextRequest } from "next/server";
 const rolePermissions: Record<string, string[]> = {
   "/dashboard/horarios/seleccion": ["docente"],
   "/dashboard/horarios/asignacion": ["operador_horarios", "administrador_sistema"],
-  "/dashboard/docentes": ["administrador_sistema", "director_escuela"],
-  "/dashboard/periodos": ["administrador_sistema", "coordinador_academico"],
-  "/dashboard/ventanas": ["administrador_sistema", "coordinador_academico", "operador_horarios"],
-  "/dashboard/reportes": ["administrador_sistema", "director_escuela", "coordinador_academico", "operador_horarios"],
+  "/dashboard/docentes": ["administrador_sistema", "operador_horarios"],
+  "/dashboard/periodos": ["administrador_sistema", "operador_horarios"],
+  "/dashboard/ventanas": ["administrador_sistema", "operador_horarios"],
+  "/dashboard/reportes": ["administrador_sistema", "operador_horarios"],
   "/dashboard/configuracion": ["administrador_sistema"],
-  "/dashboard/notificaciones": ["administrador_sistema", "operador_horarios", "director_escuela", "coordinador_academico", "docente"],
-  "/dashboard": ["administrador_sistema", "operador_horarios", "docente", "director_escuela", "coordinador_academico"],
+  "/dashboard/notificaciones": ["administrador_sistema", "operador_horarios", "docente"],
+  "/dashboard": ["administrador_sistema", "operador_horarios", "docente"],
 };
 
 export default withAuth(
@@ -47,8 +47,7 @@ export default withAuth(
         const pathname = req.nextUrl.pathname;
         if (
           pathname.startsWith("/api/auth") || 
-          pathname.startsWith("/auth/login") ||
-          pathname === "/api/periodos" // Permitir acceso público a periodos para la inicialización
+          pathname.startsWith("/auth/login")
         ) {
           return true;
         }

@@ -6,7 +6,8 @@ import { ProteccionVentana } from "@/components/auth/ProteccionVentana";
 import { 
   Calendar, 
   Clock,
-  Grid3X3
+  Grid3X3,
+  FileText
 } from "lucide-react";
 
 import { CountdownTimer } from "@/components/dashboard/CountdownTimer";
@@ -17,14 +18,14 @@ export default async function DashboardPage() {
     redirect("/auth/login");
   }
 
-  // Roles administrativos ven el Dashboard Principal con estadísticas y catálogos
-  if (['administrador_sistema', 'director_escuela', 'coordinador_academico'].includes(session.user.rol)) {
+  // Admin ve el Dashboard Principal
+  if (session.user.rol === 'administrador_sistema') {
     return <DashboardPrincipal />;
   }
 
-  // El operador tiene su propia vista de asignación, pero por defecto lo mandamos allá
-  if (session.user.rol === 'operador_horarios') {
-    redirect("/dashboard/horarios/asignacion");
+  // Operador (secretaria) va directamente a Asignación de Carga Lectiva
+  if (session.user.rol === "operador_horarios") {
+    redirect("/dashboard/carga-lectiva-asignacion");
   }
 
   // El docente ve su saludo y accesos directos
@@ -72,6 +73,28 @@ export default async function DashboardPage() {
               </div>
             </div>
 
+            {/* Declaración de Carga Horaria */}
+            <div className="p-3 bg-card rounded-xl border border-purple-200 dark:border-purple-900 shadow-sm flex flex-col justify-between group hover:border-purple-300 dark:hover:border-purple-800 transition-all bg-purple-50 dark:bg-purple-950/30">
+              <div className="flex items-start justify-between mb-2">
+                <div className="h-8 w-8 bg-purple-100 dark:bg-purple-900/50 rounded-lg flex items-center justify-center border border-purple-200 dark:border-purple-800 text-purple-600 dark:text-purple-400">
+                  <FileText className="h-4 w-4" />
+                </div>
+                <span className="text-[7px] font-black bg-purple-100 dark:bg-purple-900 text-purple-700 dark:text-purple-300 px-1.5 py-0.5 rounded uppercase tracking-widest">Importante</span>
+              </div>
+              <div>
+                <h3 className="text-xs font-bold text-foreground tracking-tight">Declaración de Carga Horaria</h3>
+                <p className="text-[10px] text-muted-foreground mt-1 mb-3 leading-tight line-clamp-2">
+                  Completa tu carga lectiva y no lectiva, genera formatos oficiales.
+                </p>
+                <a 
+                  href="/dashboard/carga-horaria" 
+                  className="inline-flex items-center justify-center bg-purple-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-purple-700 transition-all shadow-md w-full active:scale-95"
+                >
+                  IR A DECLARACIÓN
+                </a>
+              </div>
+            </div>
+
             {/* Mi Horario */}
             <div className="p-3 bg-card rounded-xl border border-emerald-200 dark:border-emerald-900 shadow-sm flex flex-col justify-between group hover:border-emerald-300 dark:hover:border-emerald-800 transition-all bg-emerald-50 dark:bg-emerald-950/30">
               <div className="flex items-start justify-between mb-2">
@@ -90,28 +113,6 @@ export default async function DashboardPage() {
                   className="inline-flex items-center justify-center bg-emerald-600 text-white px-3 py-1.5 rounded-lg text-[10px] font-bold hover:bg-emerald-700 transition-all shadow-md w-full active:scale-95"
                 >
                   VER MI HORARIO
-                </a>
-              </div>
-            </div>
-
-            {/* Selección de Horarios */}
-            <div className="p-3 bg-card rounded-xl border border-border shadow-sm flex flex-col justify-between group hover:border-border transition-all opacity-60">
-              <div className="flex items-start justify-between mb-2">
-                <div className="h-8 w-8 bg-muted rounded-lg flex items-center justify-center border border-border text-muted-foreground">
-                  <Calendar className="h-4 w-4" />
-                </div>
-                <span className="text-[7px] font-black bg-muted text-muted-foreground px-1.5 py-0.5 rounded uppercase tracking-widest">Inactivo</span>
-              </div>
-              <div>
-                <h3 className="text-xs font-bold text-foreground tracking-tight">Selección de Cursos</h3>
-                <p className="text-[10px] text-muted-foreground mt-1 mb-3 leading-tight line-clamp-2">
-                  Disponible solo durante ventana de atención programada.
-                </p>
-                <a 
-                  href="/dashboard/horarios/seleccion" 
-                  className="inline-flex items-center justify-center bg-muted text-muted-foreground px-3 py-1.5 rounded-lg text-[10px] font-bold cursor-not-allowed w-full"
-                >
-                  NO DISPONIBLE AHORA
                 </a>
               </div>
             </div>
