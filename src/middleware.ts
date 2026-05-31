@@ -23,6 +23,14 @@ export default withAuth(
 
     // Si no hay token y la ruta no es login, redirigir a login
     if (!token) {
+      if (
+        pathname.startsWith("/api/auth") ||
+        pathname.startsWith("/auth/login") ||
+        pathname === "/api/periodos"
+      ) {
+        return NextResponse.next();
+      }
+      
       const loginUrl = new URL("/auth/login", req.url);
       loginUrl.searchParams.set("callbackUrl", pathname);
       return NextResponse.redirect(loginUrl);

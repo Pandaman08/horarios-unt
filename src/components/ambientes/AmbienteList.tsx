@@ -27,22 +27,23 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
-  MapPin, 
-  Users, 
-  Building2, 
-  DoorOpen, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  MapPin,
+  Users,
+  Building2,
+  DoorOpen,
   Monitor,
   AlertTriangle,
   Info,
   Filter,
   AlertCircle,
   Download,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -94,7 +95,7 @@ export function AmbienteList() {
   const filteredAmbientes = ambientes.filter(a => {
     const matchesSearch = `${a.nombre} ${a.codigo} ${a.pabellon}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = filtroTipo === "todos" || a.tipo === filtroTipo;
-    
+
     const cMin = parseInt(capacidadMin) || 0;
     const cMax = parseInt(capacidadMax) || 50;
     const matchesCapacidad = a.capacidad >= cMin && a.capacidad <= cMax;
@@ -133,8 +134,8 @@ export function AmbienteList() {
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
-        const errorData = contentType?.includes("application/json") 
-          ? await res.json() 
+        const errorData = contentType?.includes("application/json")
+          ? await res.json()
           : { error: `Error ${res.status}: ${res.statusText}` };
         throw new Error(errorData.error || "Error al cargar ambientes");
       }
@@ -159,8 +160,8 @@ export function AmbienteList() {
     }
 
     const method = editingAmbiente ? "PUT" : "POST";
-    const url = editingAmbiente 
-      ? `/api/ambientes/${editingAmbiente.id_ambiente}` 
+    const url = editingAmbiente
+      ? `/api/ambientes/${editingAmbiente.id_ambiente}`
       : "/api/ambientes";
 
     try {
@@ -218,7 +219,7 @@ export function AmbienteList() {
     setIsDialogOpen(true);
   };
 
-  const handleGenerateConsolidatedReport = async () => {
+  const handleGenerateConsolidatedReport = async (formato: 'pdf' | 'excel' = 'pdf') => {
     if (!periodoSeleccionado) {
       toast.error("Seleccione un periodo académico primero");
       return;
@@ -226,24 +227,25 @@ export function AmbienteList() {
 
     setGeneratingReport(999);
     try {
-      const url = `/api/reportes?tipo=reporte_ambientes&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const url = `/api/reportes/pdf?tipo=reporte_ambientes&id_periodo=${periodoSeleccionado.id_periodo}&formato=${formato}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
         throw new Error(errorData.error || 'Error en la generación');
       }
-      
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Reporte_Ambientes_Academicos.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      a.download = `Reporte_Ambientes_Academicos.${extension}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Reporte de ambientes descargado");
+      toast.success(`Reporte de ambientes (${formato.toUpperCase()}) descargado`);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar reporte");
@@ -281,26 +283,28 @@ export function AmbienteList() {
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <div className="relative flex-1 sm:min-w-[280px]">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-              <Input 
-                placeholder="Buscar ambiente..." 
+              <Input
+                placeholder="Buscar ambiente..."
                 className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
             </div>
-            <Button 
-              onClick={handleGenerateConsolidatedReport} 
-              disabled={generatingReport !== null}
-              variant="outline"
-              className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
-            >
-              {generatingReport !== null ? (
-                <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-              ) : (
-                <FileText className="mr-2 h-3.5 w-3.5" />
-              )}
-              Reporte de Ambientes
-            </Button>
+            <div className="flex gap-2">
+              <Button
+                onClick={() => handleGenerateConsolidatedReport('pdf')}
+                disabled={generatingReport === 999}
+                variant="outline"
+                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+              >
+                {generatingReport === 999 ? (
+                  <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                ) : (
+                  <FileText className="mr-2 h-3.5 w-3.5" />
+                )}
+                Reporte de lista de ambientes
+              </Button>
+            </div>
             <Dialog open={isDialogOpen} onOpenChange={(open) => {
               setIsDialogOpen(open);
               if (!open) {
@@ -320,23 +324,23 @@ export function AmbienteList() {
                     {editingAmbiente ? "Editar Ambiente" : "Nuevo Ambiente"}
                   </DialogTitle>
                 </DialogHeader>
-                
+
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
-                      <Input value={formData.codigo} onChange={(e) => setFormData({...formData, codigo: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="A101" required />
+                      <Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="A101" required />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
-                      <Input value={formData.nombre} onChange={(e) => setFormData({...formData, nombre: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="Aula Magna" required />
+                      <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="Aula Magna" required />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
-                      <Select value={formData.tipo} onValueChange={(v) => setFormData({...formData, tipo: v})}>
+                      <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
                         <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
                           <SelectValue />
                         </SelectTrigger>
@@ -350,18 +354,18 @@ export function AmbienteList() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad</Label>
-                      <Input type="number" value={formData.capacidad} onChange={(e) => setFormData({...formData, capacidad: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Input type="number" value={formData.capacidad} onChange={(e) => setFormData({ ...formData, capacidad: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                   </div>
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pabellón</Label>
-                      <Input value={formData.pabellon} onChange={(e) => setFormData({...formData, pabellon: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="Pabellón A" />
+                      <Input value={formData.pabellon} onChange={(e) => setFormData({ ...formData, pabellon: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="Pabellón A" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Piso</Label>
-                      <Input value={formData.piso} onChange={(e) => setFormData({...formData, piso: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="1er Piso" />
+                      <Input value={formData.piso} onChange={(e) => setFormData({ ...formData, piso: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="1er Piso" />
                     </div>
                   </div>
 
@@ -397,10 +401,10 @@ export function AmbienteList() {
 
           <div className="space-y-1.5">
             <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Mínima</Label>
-            <Input 
-              type="number" 
-              value={capacidadMin} 
-              onChange={(e) => setCapacidadMin(e.target.value)} 
+            <Input
+              type="number"
+              value={capacidadMin}
+              onChange={(e) => setCapacidadMin(e.target.value)}
               className="h-8 rounded-lg bg-muted/30 border-border font-bold text-[10px]"
               placeholder="0"
             />
@@ -408,10 +412,10 @@ export function AmbienteList() {
 
           <div className="space-y-1.5">
             <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Máxima</Label>
-            <Input 
-              type="number" 
-              value={capacidadMax} 
-              onChange={(e) => setCapacidadMax(e.target.value)} 
+            <Input
+              type="number"
+              value={capacidadMax}
+              onChange={(e) => setCapacidadMax(e.target.value)}
               className="h-8 rounded-lg bg-muted/30 border-border font-bold text-[10px]"
               placeholder="50"
             />
@@ -485,7 +489,7 @@ export function AmbienteList() {
           </Table>
         </div>
 
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}
