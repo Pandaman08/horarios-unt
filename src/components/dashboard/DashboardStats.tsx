@@ -12,6 +12,7 @@ import {
   FlaskConical,
   GraduationCap,
   BarChart3,
+  BookOpen,
 } from "lucide-react";
 
 interface StatsData {
@@ -215,6 +216,7 @@ export function DashboardStats({
     data?.avanceCategoria?.length ? data.avanceCategoria : [];
 
   const reportLinks = [
+    { href: "/dashboard/carga-lectiva-asignacion", label: "Asignar Carga Lectiva", icon: BookOpen },
     { href: "/dashboard/reportes", label: t("reportByRoom"), icon: FileText },
     { href: "/dashboard/reportes", label: t("reportByLab"), icon: FlaskConical },
     { href: "/dashboard/reportes", label: t("reportByTeacher"), icon: GraduationCap },

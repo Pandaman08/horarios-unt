@@ -21,10 +21,10 @@ const COLORES_CURSOS = [
 
 // ─── HORAS DEL HORARIO ────────────────────────────────────────────────────────
 const HORAS = [
-  '07:00','08:00','09:00','10:00','11:00','12:00',
-  '13:00','14:00','15:00','16:00','17:00','18:00','19:00'
+  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
 ];
-const DIAS = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'];
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function horaAMinutos(hora: string): number {
@@ -335,7 +335,7 @@ function generarGridHorario(horarios: any[], colorMap: Map<string, { color: any;
         const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '';
 
         const linea2 = mostrarDocente && docente ? docente : (cicloNum ? `${cicloNum}° Ciclo` : '');
-        const linea3 = mostrarAmbiente ? ambiente :  '';
+        const linea3 = mostrarAmbiente ? ambiente : '';
 
         return `
           <div class="class-card" style="background:${color.bg}; border-left-color:${color.border}; color:${color.text}; min-height:${height};">
@@ -461,7 +461,7 @@ function generarReporteUNT(options: {
       </tr>`;
     const horaNum = parseInt(hora.split(':')[0]);
     const horaLabel = `${horaNum}-${horaNum + 1}`;
-    const celdas = [0,1,2,3,4,5].map(dia => {
+    const celdas = [0, 1, 2, 3, 4, 5].map(dia => {
       const clase = horarios.find((h: any) => {
         if (h.dia_semana !== dia || !h.hora_inicio || !h.hora_fin) return false;
         return horaAMinutos(h.hora_inicio) === horaAMinutos(hora);
@@ -586,6 +586,288 @@ export async function GET(request: Request) {
     const tipo = searchParams.get('tipo');
     const id = searchParams.get('id');
     const id_periodo = searchParams.get('id_periodo');
+    const id_declaracion = searchParams.get('idDeclaracion');
+    const formato = searchParams.get('formato') || 'pdf';
+
+    // Handle new carga horaria declaración formats
+    if (id_declaracion && (formato === 'formato1' || formato === 'formato2' || formato === 'formato3')) {
+      const declaracion = await prisma.declaracionHoraria.findUnique({
+        where: { id_declaracion: parseInt(id_declaracion) },
+        include: { docente: true, periodo: true, cargas_lectivas: { include: { curso: true, grupo: true } }, cargas_no_lectivas: true }
+      });
+
+      if (!declaracion) {
+        return NextResponse.json({ error: 'Declaración no encontrada' }, { status: 404 });
+      }
+
+      let htmlContent = '';
+      const docente = declaracion.docente;
+      const periodo = declaracion.periodo;
+      const fecha = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      if (formato === 'formato1') {
+        // Formato 1: Declaración de Carga Horaria Asignada
+        htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FORMATO N° 1 - DECLARACIÓN DE CARGA HORARIA ASIGNADA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 20px; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+    .header h2 { font-size: 12px; font-weight: 600; margin-top: 5px; }
+    .docente-info { border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
+    .docente-info .row { display: flex; gap: 10px; margin-bottom: 8px; }
+    .docente-info .label { font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    table td, table th { border: 1px solid #000; padding: 5px; text-align: center; font-size: 10px; }
+    table th { background-color: #f0f0f0; font-weight: 700; }
+    .actividades { margin-bottom: 15px; }
+    .actividades .item { margin-bottom: 8px; }
+    .firmas { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; }
+    .firma-line { border-top: 1px solid #000; margin-top: 60px; padding-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>FORMATO N° 1</h1>
+    <h2>DECLARACIÓN DE CARGA HORARIA ASIGNADA</h2>
+  </div>
+
+  <div class="docente-info">
+    <div class="row">
+      <span class="label">FACULTAD:</span> <span>Ingeniería</span>
+      <span class="label" style="margin-left: 30px;">DPTO. ACADÉMICO:</span> <span>Ingeniería de Sistemas</span>
+    </div>
+    <div class="row">
+      <span class="label">NOMBRE COMPLETO DEL PROFESOR:</span> <span>${docente?.nombres} ${docente?.apellidos}</span>
+    </div>
+    <div class="row">
+      <span class="label">CONDICIÓN:</span> <span>${declaracion.condicion || 'Nombrado'}</span>
+      <span class="label" style="margin-left: 30px;">CATEGORÍA:</span> <span>${declaracion.categoria || 'Asociado'}</span>
+      <span class="label" style="margin-left: 30px;">MODALIDAD:</span> <span>${docente?.modalidad || 'Tiempo Completo'}</span>
+    </div>
+    <div class="row">
+      <span class="label">AÑO ACADÉMICO:</span> <span>${periodo?.anio || 2026}</span>
+      <span class="label" style="margin-left: 30px;">CICLO(S):</span> <span>${periodo?.semestre === 1 ? 'I' : 'II'}</span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2">N°</th>
+        <th rowspan="2">TRABAJO LECTIVO - NOMBRE DEL CURSO</th>
+        <th rowspan="2">CUR.</th>
+        <th rowspan="2">ESC.</th>
+        <th rowspan="2">PROF.</th>
+        <th rowspan="2">CIC.</th>
+        <th rowspan="2">SEC.</th>
+        <th rowspan="2">N° AL</th>
+        <th colspan="3">H.T.</th>
+        <th rowspan="2">HP</th>
+        <th rowspan="2">HL</th>
+        <th rowspan="2">TOTAL</th>
+      </tr>
+      <tr>
+        <th>T</th>
+        <th>P</th>
+        <th>L</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${declaracion.cargas_lectivas.map((carga, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td style="text-align: left;">${carga.curso?.nombre || '—'}</td>
+          <td>Ing.</td>
+          <td>Sistemas</td>
+          <td>${i + 1}</td>
+          <td>${carga.curso?.ciclo_rel?.numero || '—'}</td>
+          <td>${carga.grupo?.codigo_grupo || '—'}</td>
+          <td>${carga.grupos_asignados || 30}</td>
+          <td>${carga.tipo_clase === 'teoria' ? carga.horas_semanales : 0}</td>
+          <td>${carga.tipo_clase === 'practica' ? carga.horas_semanales : 0}</td>
+          <td>${carga.tipo_clase === 'laboratorio' ? carga.horas_semanales : 0}</td>
+          <td>0</td>
+          <td>0</td>
+          <td>${carga.horas_semanales}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="actividades">
+    ${declaracion.cargas_no_lectivas.map(carga => {
+      const tipoNombre = {
+        PREPARACION_EVALUACION: 'Preparación y Evaluación',
+        TUTORIA: 'Tutoría',
+        INVESTIGACION: 'Investigación',
+        CAPACITACION: 'Capacitación',
+        GOBIERNO: 'Gobierno',
+        ADMINISTRACION: 'Administración',
+        ASESORIA: 'Asesoría',
+        RESPONSABILIDAD_SOCIAL: 'Responsabilidad Social',
+        COMITES_TECNICOS: 'Comités Técnicos',
+        OTRO: 'Otro'
+      }[carga.tipo] || 'Otro';
+      return `<div class="item"><strong>${carga.horas_semanales}.</strong> ${tipoNombre}${carga.descripcion ? `: ${carga.descripcion}` : ''}</div>`;
+    }).join('')}
+  </div>
+
+  <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
+
+  <div class="firmas">
+    <div>
+      <div class="firma-line"></div>
+      <div>Firma del Profesor</div>
+    </div>
+    <div>
+      <div class="firma-line"></div>
+      <div>Firma del Director de Dpto.</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 40px;">
+    <div class="firma-line" style="width: 300px; margin: 0 auto;"></div>
+    <div style="text-align: center;">V° B° DECANO FAC.</div>
+  </div>
+</body>
+</html>`;
+
+      } else if (formato === 'formato2') {
+        // Formato 2: Declaración Jurada No Incurso en Causal de Incompatibilidad
+        htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FORMATO N° 2 - DECLARACIÓN JURADA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 13px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+    .header h2 { font-size: 12px; font-weight: 600; margin-top: 8px; }
+    .declaracion { margin-bottom: 40px; }
+    .firma { margin-top: 60px; text-align: center; }
+    .firma-line { border-top: 1px solid #000; width: 300px; margin: 0 auto 8px auto; }
+    .nota { margin-top: 40px; font-size: 11px; border-top: 1px solid #000; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>FORMATO N° 2</h1>
+    <h2>DECLARACIÓN JURADA DE NO INCURSO EN CAUSALES DE INCOMPATIBILIDAD</h2>
+  </div>
+
+  <div class="declaracion">
+    <p>Yo, <strong>${docente?.nombres} ${docente?.apellidos}</strong> identificado con DNI N° ${docente?.dni || '—'} con código IBM N° ${docente?.codigo_docente || '—'} del Departamento Académico de Ingeniería de Sistemas de la Facultad de Ingeniería, en el marco del programa de racionalización de la plana docente universitaria, dispuesto por el D.N° 033-2006-ES, DECLARO BAJO JURAMENTO Y EN HONOR A LA VERDAD, que:</p>
+    <br/>
+    <p><strong>NO ESTOY INCURSO</strong> en causales de incompatibilidad laboral y <strong>NO TENGO</strong> impedimento para ejercer la docencia en la Universidad Nacional de Trujillo conforme lo dispuesto en los artículos 277° y 277°-A del concordado del Estatuto Universitario.</p>
+    <br/>
+    <p>EN CASO DE FALTAR A LA VERDAD ME SOMETO A LAS SANCIONES QUE SEAN APLICABLES ACUERDO A LA LEY; ASIMISMO, DE ENCONTRARME EN SITUACIÓN DE INCOMPATIBILIDAD ME OBLIGO A ACEPTAR LA DOCENCIA EN LA UNT, ME SOMETO A LAS SANCIONES PREVISTAS POR EL ESTATUTO.</p>
+    <br/>
+    <p>DEL MISMO FORMA ME OBLIGO A DISPONER LIQUIDO COMO PAGOS INDEBIDOS POR EL LAPSUS DE TIEMPO LABORADO ILEGALMENTE.</p>
+  </div>
+
+  <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
+
+  <div class="firma">
+    <div class="firma-line"></div>
+    <div style="font-weight: 600;">FIRMA DEL DECLARANTE</div>
+    <div>DNI: ${docente?.dni || '—'}</div>
+  </div>
+
+  <div class="nota">
+    <p><strong>Nota:</strong> Los docentes deberán suscribir obligatoriamente el presente formato en cada semestre, en el reverso de la Declaración de Carga Horaria Asignada</p>
+  </div>
+</body>
+</html>`;
+
+      } else if (formato === 'formato3') {
+        // Formato 3: Declaración Jurada - Sedes Descentralizadas
+        htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FORMATO N° 3 - DECLARACIÓN JURADA - SEDES DESCENTRALIZADAS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 13px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+    .header h2 { font-size: 12px; font-weight: 600; margin-top: 8px; }
+    .declaracion { margin-bottom: 40px; }
+    .firma { margin-top: 60px; text-align: center; }
+    .firma-line { border-top: 1px solid #000; width: 300px; margin: 0 auto 8px auto; }
+    .nota { margin-top: 40px; font-size: 11px; border-top: 1px solid #000; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>DECLARACIÓN JURADA DE LOS DOCENTES QUE PRESTAN SERVICIOS EN SEDES DESENTRALIZADAS</h1>
+  </div>
+
+  <div class="declaracion">
+    <p>Yo, <strong>${docente?.nombres} ${docente?.apellidos}</strong> identificado con DNI N° ${docente?.dni || '—'} con código IBM N° ${docente?.codigo_docente || '—'} del Departamento Académico de Ingeniería de Sistemas de la Facultad de Ingeniería, en el marco del programa de racionalización de la plana docente que labora en las Sedes Descentralizadas (R.C. No 072-2005-CU-UNT) y Directiva N° 001-2007-UNT, DECLARO BAJO JURAMENTO Y EN HONOR A LA VERDAD QUE:</p>
+    <br/>
+    <p>EN MI PRESTACIÓN DE SERVICIOS EN SEDES DESENTRALIZADAS NO ESTOY INCURSO EN INCOMPATIBILIDAD HORARIA Exclusivo y Tiempo Completo solo pueden tener carga horaria máxima de diez (10) horas semanales.</p>
+    <br/>
+    <p>Los docentes que ejerzan cargos académicos y administrativos: Jefe de Departamento Académico, Director de Escuela Académica, Coordinador de Posgrado, podrán tener hasta 05 horas semanales, sin exceder en total y entre las dos modalidades la capacidad máxima de cargo. (numeral 3 de la Directiva N° 005-2009-DCU-UNT).</p>
+    <br/>
+    <p>Los docentes que asumen el cargo de Director de Posgrado y aquellos que prestan servicios en Centros de Producción y Rentabilidad no pueden asumir carga horaria en Sedes Descentralizadas (punto 3 de la Directiva y art 23 del Reglamento).</p>
+    <br/>
+    <p>Los docentes beneficiarios de estudio de maestría o doctorado y Segunda especialidad solo pueden tener carga horaria máxima de tres (3) horas semanales (num. 4 de la Directiva).</p>
+    <br/>
+    <p>En el desarrollo de su carga horaria se respetará la rigurosidad de la carga lectiva asignada en la Sede Central, salvo en el caso de Sedes de Casca, Huamachuco, Tayabamba y Santiago de Chuco por ser distantes y solo se debe contar con un profesor y su carga horaria en la Sede Central (num. 5 y 7 de la Directiva y art 23 del Reglamento).</p>
+    <br/>
+    <p>Los docentes que asumen cargos laborales en la Sede de Huamachuco, Casca, Santiago de Chuco y Tayabamba deben estar laborando al menos un semestre para poder ser contratados en dicha sede (num 6 de la Directiva).</p>
+    <br/>
+    <p>EN CASO DE FALTAR A LA VERDAD ME SOMETO A LAS SANCIONES QUE SEAN APLICABLES ACUERDO A LA LEY; ASIMISMO, ME OBLIGO A DISPONER LIQUIDO COMO PAGOS INDEBIDOS POR EL PERIODO DE TIEMPO LABORADO ILEGALMENTE, CONFORME AL MONTO QUE LA UNIDAD DE REMUNERACIONES LIQUIDE COMO PAGOS INDEBIDOS POR EL TIEMPO LABORADO.</p>
+  </div>
+
+  <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
+
+  <div class="firma">
+    <div class="firma-line"></div>
+    <div style="font-weight: 600;">FIRMA DEL DECLARANTE</div>
+    <div>DNI: ${docente?.dni || '—'}</div>
+  </div>
+
+  <div class="nota">
+    <p><strong>Nota:</strong> Los docentes deberán suscribir obligatoriamente el presente formato para prestar servicios en cada Sede Descentralizadas, en el reverso de la Declaración de Carga Horaria</p>
+  </div>
+</body>
+</html>`;
+      }
+
+      const pdfBuffer = await (typeof GeneradorPDF?.generarDesdeHTML === 'function' 
+        ? GeneradorPDF.generarDesdeHTML(htmlContent, false)
+        : import('puppeteer').then(async (puppeteer) => {
+            const browser = await puppeteer.launch({ headless: true });
+            const page = await browser.newPage();
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+            const buffer = await page.pdf({ format: 'A4', printBackground: true });
+            await browser.close();
+            return buffer;
+          }));
+
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${formato}-declaracion-carga-horaria.pdf"`,
+          'Content-Length': pdfBuffer.length.toString()
+        }
+      });
+    }
 
     if (!id_periodo || isNaN(parseInt(id_periodo))) {
       return NextResponse.json({ error: 'Falta id_periodo o es inválido' }, { status: 400 });
@@ -611,10 +893,10 @@ export async function GET(request: Request) {
         orderBy: [{ hora_inicio: 'asc' }]
       });
       reportTitle = `Reporte de Horarios: ${nombreDia}`;
-      
+
       const periodoSuffix = `${periodo?.anio ?? ''}-${periodo?.semestre === 1 ? 'I' : 'II'}`;
-      
-      const horariosSorted = [...horarios].sort((a, b) => 
+
+      const horariosSorted = [...horarios].sort((a, b) =>
         (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? '')
       );
 
@@ -711,13 +993,13 @@ export async function GET(request: Request) {
           </thead>
           <tbody>
             ${horariosSorted.map((h: any) => {
-              const ciclo = h.curso?.ciclo_rel?.numero ?? '—';
-              const curso = h.curso?.nombre ?? '—';
-              const grupo = h.grupo?.codigo_grupo ?? '—';
-              const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '—';
-              const ambiente = h.ambiente?.nombre ?? '—';
-              const tipo = h.tipo_clase ? h.tipo_clase.replace('_', ' ') : 'TEORÍA';
-              return `
+        const ciclo = h.curso?.ciclo_rel?.numero ?? '—';
+        const curso = h.curso?.nombre ?? '—';
+        const grupo = h.grupo?.codigo_grupo ?? '—';
+        const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '—';
+        const ambiente = h.ambiente?.nombre ?? '—';
+        const tipo = h.tipo_clase ? h.tipo_clase.replace('_', ' ') : 'TEORÍA';
+        return `
                 <tr>
                   <td style="font-weight:800; color:#003366; font-size:12px;">
                     ${h.hora_inicio ?? '—'}<br/>
@@ -739,7 +1021,7 @@ export async function GET(request: Request) {
                   </td>
                 </tr>
               `;
-            }).join('')}
+      }).join('')}
           </tbody>
         </table>
       `;
@@ -754,7 +1036,7 @@ export async function GET(request: Request) {
         }
       });
 
-    // ── DOCENTE ───────────────────────────────────────────────────────────────
+      // ── DOCENTE ───────────────────────────────────────────────────────────────
     } else if (tipo === 'docente' || tipo === 'docente_propio') {
       let docenteId = id;
       if (tipo === 'docente_propio') {
@@ -777,6 +1059,7 @@ export async function GET(request: Request) {
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
 
+
       isLandscape = true;
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
 
@@ -785,19 +1068,20 @@ export async function GET(request: Request) {
         * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
         @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
         </style></head><body>${generarReporteUNT({
-          horarios: docente.horarios_asignados ?? [],
-          titulo: reportTitle,
-          subtitulo: docente.codigo_docente ?? '',
-          periodo: periodo,
-          docenteNombre: `${docente.nombres} ${docente.apellidos}`,
-          paginaIndex: 0
-        })}</body></html>`;
+        horarios: docente.horarios_asignados ?? [],
+        titulo: reportTitle,
+        subtitulo: docente.codigo_docente ?? '',
+        periodo: periodo,
+        docenteNombre: `${docente.nombres} ${docente.apellidos}`,
+        paginaIndex: 0
+      })}</body></html>`;
       const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-docente-${docenteId}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
 
-    // ── AULA / TODAS LAS AULAS ────────────────────────────────────────────────
+      // ── AULA / TODAS LAS AULAS ────────────────────────────────────────────────
+
     } else if (tipo === 'aula' || tipo === 'aulas_todas') {
       if (tipo === 'aula' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ambiente' }, { status: 400 });
 
@@ -847,7 +1131,8 @@ export async function GET(request: Request) {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
 
-    // ── CICLO / TODOS LOS CICLOS ──────────────────────────────────────────────
+
+      // ── CICLO / TODOS LOS CICLOS ──────────────────────────────────────────────
     } else if (tipo === 'ciclo' || tipo === 'ciclos_todos') {
       if (tipo === 'ciclo' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ciclo' }, { status: 400 });
 
@@ -895,7 +1180,8 @@ export async function GET(request: Request) {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
 
-    // ── REPORTE GENERAL (formato UNT, landscape) ──────────────────────────────
+
+      // ── REPORTE GENERAL (formato UNT, landscape) ──────────────────────────────
     } else if (tipo === 'reporte_general') {
       const ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
       const paginas: string[] = [];
@@ -930,11 +1216,11 @@ export async function GET(request: Request) {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-general.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
 
-    // ── LISTA: DOCENTES ───────────────────────────────────────────────────────
+      // ── LISTA: DOCENTES ───────────────────────────────────────────────────────
     } else if (tipo === 'reporte_docentes_lista') {
       const docentes = await prisma.docente.findMany({ orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] });
-      reportTitle = 'Plana Docente';
-      htmlContent = generarCabecera('Plana Docente', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Total', valor: String(docentes.length) }]);
+      reportTitle = 'Catálogo de Docentes';
+      htmlContent = generarCabecera('Catálogo de Docentes', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Docentes', valor: String(docentes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
         <thead><tr><th>Apellidos y Nombres</th><th>Código</th><th>Grado</th><th>Categoría</th><th>Modalidad</th><th>Correo</th></tr></thead>
         <tbody>${docentes.map((d: any) => `<tr>
@@ -947,7 +1233,7 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
+      // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
     } else if (tipo === 'reporte_cursos') {
       const cursos = await prisma.curso.findMany({ include: { ciclo_rel: true }, orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] });
       reportTitle = 'Catálogo de Cursos';
@@ -965,11 +1251,11 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
+      // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
     } else if (tipo === 'reporte_ambientes') {
       const ambientes = await prisma.ambiente.findMany({ orderBy: { nombre: 'asc' } });
-      reportTitle = 'Ambientes Académicos';
-      htmlContent = generarCabecera('Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
+      reportTitle = 'Catálogo de Ambientes Académicos';
+      htmlContent = generarCabecera('Catálogo de Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
         <thead><tr><th>Nombre / Código</th><th>Tipo</th><th style="text-align:center;">Capacidad</th><th>Pabellón / Piso</th></tr></thead>
         <tbody>${ambientes.map((a: any) => `<tr>
@@ -980,11 +1266,11 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── LISTA: PERIODOS ───────────────────────────────────────────────────────
+      // ── LISTA: PERIODOS ───────────────────────────────────────────────────────
     } else if (tipo === 'reporte_periodos') {
       const periodos = await prisma.periodoAcademico.findMany({ orderBy: { anio: 'desc' } });
-      reportTitle = 'Periodos Académicos';
-      htmlContent = generarCabecera('Periodos Académicos', `${periodos.length} registrados`, periodoNombre);
+      reportTitle = 'Catálogo de Periodos Académicos';
+      htmlContent = generarCabecera('Catálogo de Periodos Académicos', `${periodos.length} registrados`, periodoNombre, [{ label: 'Periodos', valor: String(periodos.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
         <thead><tr><th>Código</th><th>Nombre</th><th>Año / Sem.</th><th>Estado</th><th>Inicio / Fin</th></tr></thead>
         <tbody>${periodos.map((p: any) => `<tr>
@@ -996,7 +1282,7 @@ export async function GET(request: Request) {
         </tr>`).join('')}</tbody>
       </table></div>`;
 
-    // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
+      // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
     } else if (tipo === 'estadisticas' || tipo === 'consolidado') {
       const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
@@ -1030,6 +1316,7 @@ export async function GET(request: Request) {
         </div>`;
       }
     }
+
 
     const fullHTML = wrapLayout(htmlContent, reportTitle, isLandscape);
     const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, isLandscape);

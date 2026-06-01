@@ -27,19 +27,20 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Search, 
-  BookOpen, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  BookOpen,
   GraduationCap,
   AlertCircle,
   Clock,
   Filter,
   Calendar,
   Download,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -93,7 +94,7 @@ export function CursoList() {
       setSemestre(periodoSeleccionado.semestre);
     }
   }, [periodoSeleccionado]);
-  
+
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
   const [filtroHoras, setFiltroHoras] = useState<string>("todos");
@@ -107,7 +108,7 @@ export function CursoList() {
     const matchesSearch = `${c.nombre} ${c.codigo}`.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesTipo = filtroTipo === "todos" || c.tipo_curso === filtroTipo;
     const matchesCiclo = filtroCiclo === "todos" || c.id_ciclo?.toString() === filtroCiclo;
-    
+
     const totalHoras = c.horas_teoria + c.horas_laboratorio + c.horas_practica;
     let matchesHoras = true;
     if (filtroHoras === "0-3") matchesHoras = totalHoras <= 3;
@@ -158,10 +159,10 @@ export function CursoList() {
     try {
       const res = await fetch("/api/ciclos");
       const contentType = res.headers.get("content-type");
-      
+
       if (!res.ok) {
-        const errorData = contentType?.includes("application/json") 
-          ? await res.json() 
+        const errorData = contentType?.includes("application/json")
+          ? await res.json()
           : { error: `Error ${res.status}: ${res.statusText}` };
         throw new Error(errorData.error || "Error al cargar ciclos");
       }
@@ -186,8 +187,8 @@ export function CursoList() {
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
-        const errorData = contentType?.includes("application/json") 
-          ? await res.json() 
+        const errorData = contentType?.includes("application/json")
+          ? await res.json()
           : { error: `Error ${res.status}: ${res.statusText}` };
         throw new Error(errorData.error || "Error al cargar cursos");
       }
@@ -212,8 +213,8 @@ export function CursoList() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = editingCurso ? "PUT" : "POST";
-    const url = editingCurso 
-      ? `/api/cursos/${editingCurso.id_curso}` 
+    const url = editingCurso
+      ? `/api/cursos/${editingCurso.id_curso}`
       : "/api/cursos";
 
     try {
@@ -290,7 +291,7 @@ export function CursoList() {
     setEditingCurso(null);
   };
 
-  const handleGenerateReport = async () => {
+  const handleGenerateReport = async (formato: 'pdf' | 'excel' = 'pdf') => {
     if (!periodoSeleccionado) {
       toast.error("Seleccione un periodo académico primero");
       return;
@@ -298,24 +299,25 @@ export function CursoList() {
 
     setGeneratingReport(999);
     try {
-      const url = `/api/reportes?tipo=reporte_cursos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const url = `/api/reportes/pdf?tipo=reporte_cursos&id_periodo=${periodoSeleccionado.id_periodo}&formato=${formato}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
         throw new Error(errorData.error || 'Error en la generación');
       }
-      
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Reporte_Cursos_Sistemas.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      a.download = `Reporte_Cursos_Sistemas.${extension}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Reporte de cursos descargado");
+      toast.success(`Reporte de cursos (${formato.toUpperCase()}) descargado`);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar reporte");
@@ -339,31 +341,33 @@ export function CursoList() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar curso..." 
-              className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-            
-            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if(!open) { setEditingCurso(null); resetForm(); } }}>
+            <div className="relative flex-1 sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar curso..."
+                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
               <div className="flex items-center gap-2">
-                <Button 
-                  onClick={handleGenerateReport} 
-                  disabled={generatingReport !== null}
-                  variant="outline"
-                  className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
-                >
-                  {generatingReport !== null ? (
-                    <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-                  ) : (
-                    <FileText className="mr-2 h-3.5 w-3.5" />
-                  )}
-                  Reporte de Cursos
-                </Button>
+                <div className="flex gap-2">
+                  <Button
+                    onClick={() => handleGenerateReport('pdf')}
+                    disabled={generatingReport === 999}
+                    variant="outline"
+                    className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                  >
+                    {generatingReport === 999 ? (
+                      <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+                    ) : (
+                      <FileText className="mr-2 h-3.5 w-3.5" />
+                    )}
+                    Reporte de lista de cursos
+                  </Button>
+                </div>
                 <DialogTrigger asChild>
                   <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all">
                     <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
@@ -377,27 +381,27 @@ export function CursoList() {
                     {editingCurso ? "Editar Curso" : "Nuevo Curso"}
                   </DialogTitle>
                 </DialogHeader>
-                
+
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
-                      <Input 
-                        value={formData.codigo} 
-                        onChange={(e) => setFormData({...formData, codigo: e.target.value})} 
+                      <Input
+                        value={formData.codigo}
+                        onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
                         className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs"
                         placeholder="SIST001"
-                        required 
+                        required
                       />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
-                      <Input 
-                        value={formData.nombre} 
-                        onChange={(e) => setFormData({...formData, nombre: e.target.value})} 
+                      <Input
+                        value={formData.nombre}
+                        onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                         className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs"
                         placeholder="Matemática I"
-                        required 
+                        required
                       />
                     </div>
                   </div>
@@ -405,7 +409,7 @@ export function CursoList() {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
-                      <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({...formData, tipo_curso: v})}>
+                      <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
                         <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
                           <SelectValue />
                         </SelectTrigger>
@@ -418,7 +422,7 @@ export function CursoList() {
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
-                      <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({...formData, id_ciclo: v})}>
+                      <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
                         <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
                           <SelectValue placeholder="Seleccionar..." />
                         </SelectTrigger>
@@ -434,19 +438,19 @@ export function CursoList() {
                   <div className="grid grid-cols-4 gap-3">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Teoría</Label>
-                      <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({...formData, horas_teoria: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Lab.</Label>
-                      <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({...formData, horas_laboratorio: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Prác.</Label>
-                      <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({...formData, horas_practica: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Créd.</Label>
-                      <Input type="number" value={formData.creditos} onChange={(e) => setFormData({...formData, creditos: e.target.value})} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Input type="number" value={formData.creditos} onChange={(e) => setFormData({ ...formData, creditos: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                   </div>
 
@@ -580,7 +584,7 @@ export function CursoList() {
           </Table>
         </div>
 
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}

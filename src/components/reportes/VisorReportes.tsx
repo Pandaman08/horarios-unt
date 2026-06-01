@@ -5,7 +5,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers } from "lucide-react";
+import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers, FileSpreadsheet } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -94,7 +94,7 @@ export function VisorReportes() {
     }
   };
 
-  const handleDownload = async (tipo: string, id?: string) => {
+  const handleDownload = async (tipo: string, id?: string, formato: 'pdf' | 'excel' = 'pdf') => {
     if (!id_periodo) return;
     if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
       toast.warning("Seleccione un elemento de la lista");
@@ -148,22 +148,21 @@ export function VisorReportes() {
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      const fileName = tipo === 'reporte_general' ? 'Horario_Institucional_Sistemas.pdf' : `reporte-${tipo}${id ? `-${id}` : ''}.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      const fileName = tipo === 'reporte_general' ? `Horario_Institucional_Sistemas.${extension}` : `reporte-${tipo}${id ? `-${id}` : ''}.${extension}`;
       a.download = fileName;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("PDF generado correctamente");
+      toast.success(`${formato.toUpperCase()} generado correctamente`);
 
       if (tipo === 'docente') setSelectedDocente("");
       else if (tipo === 'aula') setSelectedAmbiente("");
       else if (tipo === 'ciclo') setSelectedCicloReporte("");
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Error al generar PDF");
-      toast.info("Abriendo vista de impresión manual...");
-      window.open(`${url}&format=html`, '_blank');
+      toast.error(error.message || `Error al generar ${formato.toUpperCase()}`);
     } finally {
       if (setLoading) setLoading(false);
     }
@@ -173,7 +172,7 @@ export function VisorReportes() {
     { id: 'aula', icon: School, title: 'Horario por Aula', description: 'Consolidado de clases de teoría por ambiente', color: 'indigo' },
     { id: 'dia', icon: Calendar, title: 'Reporte por Día', description: 'Verificar clases, docentes y aulas por cada día de la semana', color: 'emerald' },
     { id: 'docente', icon: User, title: 'Horario por Docente', description: 'Planes de dictado por investigador', color: 'amber' },
-    { id: 'ciclo', icon: Layers, title: 'Reporte por Ciclo', description: 'Docentes que enseñan por cada ciclo académico', color: 'purple' },
+    { id: 'ciclo', icon: Layers, title: 'Horario por Ciclo', description: 'Consolidado de clases programadas por ciclo académico', color: 'purple' },
     { id: 'reporte_general', icon: FileText, title: 'Horario Institucional', description: 'Consolidado oficial en formato horizontal por ciclo', color: 'indigo' },
     { id: 'gestion', icon: TrendingUp, title: 'Reporte de Gestión', description: 'KPIs globales y horas pendientes por asignar', color: 'slate' },
   ];
@@ -282,14 +281,16 @@ export function VisorReportes() {
                     placeholder="Buscar aula..."
                   />
                 </div>
+              <div className="flex gap-2">
                 <Button
                   className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                  onClick={() => handleDownload('aula', selectedAmbiente)}
+                  onClick={() => handleDownload('aula', selectedAmbiente, 'pdf')}
                   disabled={generatingAula}
                 >
-                  <CheckCircle2 className="h-4 w-4 mr-2" />
-                  Generar PDF Oficial
+                  <FileText className="h-4 w-4 mr-2" />
+                  Descargar PDF
                 </Button>
+              </div>
               </div>
               
               <div className="pt-4 border-t border-border/50">
@@ -314,31 +315,30 @@ export function VisorReportes() {
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Día de la Semana</Label>
-                <Select 
-                  value={selectedDia} 
+                <SearchableSelect
+                  options={[
+                    { value: "0", label: "Lunes" },
+                    { value: "1", label: "Martes" },
+                    { value: "2", label: "Miércoles" },
+                    { value: "3", label: "Jueves" },
+                    { value: "4", label: "Viernes" },
+                    { value: "5", label: "Sábado" }
+                  ]}
+                  value={selectedDia}
                   onValueChange={setSelectedDia}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Seleccione un día" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    <SelectItem value="0">Lunes</SelectItem>
-                    <SelectItem value="1">Martes</SelectItem>
-                    <SelectItem value="2">Miércoles</SelectItem>
-                    <SelectItem value="3">Jueves</SelectItem>
-                    <SelectItem value="4">Viernes</SelectItem>
-                    <SelectItem value="5">Sábado</SelectItem>
-                  </SelectContent>
-                </Select>
+                  placeholder="Seleccione un día..."
+                />
               </div>
-              <Button
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('dia', selectedDia)}
-                disabled={generatingDia}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('dia', selectedDia, 'pdf')}
+                  disabled={generatingDia}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Descargar PDF
+                </Button>
+              </div>
             </div>
           ) : selectedReporte === 'docente' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
@@ -354,43 +354,48 @@ export function VisorReportes() {
                   placeholder="Buscar docente..."
                 />
               </div>
-              <Button
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('docente', selectedDocente)}
-                disabled={generatingDocente}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('docente', selectedDocente, 'pdf')}
+                  disabled={generatingDocente}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Descargar PDF
+                </Button>
+              </div>
             </div>
           ) : selectedReporte === 'ciclo' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
                 <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Ciclo Académico</Label>
-                <Select 
-                  value={selectedCicloReporte} 
+                <SearchableSelect
+                  options={ciclos
+                    .filter(c => {
+                      if (!currentPeriodoObj) return true;
+                      const isPar = c.numero % 2 === 0;
+                      return currentPeriodoObj.semestre === 1 ? !isPar : isPar;
+                    })
+                    .map(c => ({
+                      value: c.id_ciclo.toString(),
+                      label: c.nombre
+                    }))
+                  }
+                  value={selectedCicloReporte}
                   onValueChange={setSelectedCicloReporte}
-                >
-                  <SelectTrigger className="h-11 rounded-lg border-border bg-muted/50">
-                    <SelectValue placeholder="Seleccione un ciclo" />
-                  </SelectTrigger>
-                  <SelectContent position="popper">
-                    {ciclos.map(c => (
-                      <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
-                        {c.nombre}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  placeholder="Seleccione un ciclo..."
+                />
               </div>
-              <Button
-                className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                onClick={() => handleDownload('ciclo', selectedCicloReporte)}
-                disabled={generatingCiclo}
-              >
-                <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
-              </Button>
+              <div className="flex gap-2">
+                <Button
+                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                  onClick={() => handleDownload('ciclo', selectedCicloReporte, 'pdf')}
+                  disabled={generatingCiclo}
+                >
+                  <FileText className="h-4 w-4 mr-2" />
+                  Descargar PDF
+                </Button>
+              </div>
             </div>
           ) : selectedReporte === 'reporte_general' ? (
             <div className="flex flex-col gap-4">
@@ -403,13 +408,13 @@ export function VisorReportes() {
                 <div className="flex justify-center gap-4">
                   <Button
                     className="h-12 bg-indigo-600 hover:bg-indigo-700 text-white rounded-xl px-6 font-bold shadow-lg shadow-indigo-900/20"
-                    onClick={() => handleDownload('reporte_general')}
+                    onClick={() => handleDownload('reporte_general', undefined, 'pdf')}
                     disabled={generatingReporteGeneral}
                   >
                     {generatingReporteGeneral ? (
                       <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando PDF...</>
                     ) : (
-                      <><Download className="h-5 w-5 mr-2" /> Descargar PDF</>
+                      <><FileText className="h-5 w-5 mr-2" /> Descargar PDF</>
                     )}
                   </Button>
                   <Button
@@ -418,10 +423,10 @@ export function VisorReportes() {
                     onClick={handleDownloadExcel}
                     disabled={generatingExcel}
                   >
-                    {generatingExcel ? (
+                    {generatingReporteGeneral ? (
                       <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando Excel...</>
                     ) : (
-                      <><FileText className="h-5 w-5 mr-2" /> Descargar Excel</>
+                      <><FileSpreadsheet className="h-5 w-5 mr-2" /> Descargar Excel</>
                     )}
                   </Button>
                 </div>
