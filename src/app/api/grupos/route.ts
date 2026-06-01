@@ -4,8 +4,8 @@ import { prisma } from '@/lib/prisma';
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
-    const id_periodo = searchParams.get('id_periodo');
-    const id_curso = searchParams.get('id_curso');
+    const id_periodo = searchParams.get('id_periodo') || searchParams.get('idPeriodo');
+    const id_curso = searchParams.get('id_curso') || searchParams.get('idCurso');
 
     const where: any = { activo: true };
     if (id_periodo) where.id_periodo = parseInt(id_periodo);

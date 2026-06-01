@@ -41,7 +41,7 @@ export async function POST(request: Request) {
 
     // Primero, borramos cualquier horario existente para empezar de nuevo
     console.log("🧹 Eliminando horarios antiguos...");
-    await prisma.$transaction(async (tx) => {
+    await prisma.$transaction(async (tx: any) => {
       await tx.horarioAsignado.deleteMany({
         where: { id_periodo: parseInt(id_periodo) }
       });
@@ -196,7 +196,7 @@ export async function POST(request: Request) {
           console.log(`  📚 Curso: ${curso.nombre} (${docenteCurso.tipo_clase})`);
           
           // Obtener todos los ambientes del tipo apropiado (aula para teoría, laboratorio para laboratorio)
-          const ambientesValidos = ambientes.filter(a => {
+          const ambientesValidos = ambientes.filter((a: any) => {
             if (docenteCurso.tipo_clase.toLowerCase() === 'teoria') {
               return a.tipo === 'aula' || a.tipo === 'auditorio';
             } else if (docenteCurso.tipo_clase.toLowerCase() === 'laboratorio') {

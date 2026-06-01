@@ -18,8 +18,8 @@ export class GeneradorPDF {
       const page = await browser.newPage();
       
       await page.setContent(html, { 
-        waitUntil: 'networkidle0',
-        timeout: 30000 
+        waitUntil: 'domcontentloaded',
+        timeout: 60000 
       });
       
       const pdf = await page.pdf({

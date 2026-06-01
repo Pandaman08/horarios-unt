@@ -27,6 +27,7 @@ import {
   ChevronDown,
   Search,
   Info,
+  Briefcase,
 } from "lucide-react";
 
 function DashboardLayoutInner({
@@ -51,25 +52,21 @@ function DashboardLayoutInner({
         icon: LayoutDashboard,
         roles: [
           "administrador_sistema",
-          "director_escuela",
-          "coordinador_academico",
           "docente",
           "operador_horarios",
         ],
       },
-      // {
-      //   title: t("navAttention"),
-      //   href: "/dashboard/horarios/asignacion",
-      //   icon: Users,
-      //   roles: ["administrador_sistema", "operador_horarios"],
-      // },
+      {
+        title: t("navAttention"),
+        href: "/dashboard/horarios/asignacion",
+        icon: Users,
+        roles: ["administrador_sistema"],
+      },
       {
         isGroup: true,
         title: t("navAcademic"),
         roles: [
           "administrador_sistema",
-          "director_escuela",
-          "coordinador_academico",
         ],
         items: [
           {
@@ -97,11 +94,6 @@ function DashboardLayoutInner({
             href: "/dashboard/catalogos?tab=periodos",
             icon: Calendar,
           },
-          {
-            title: t("navAvailability"),
-            href: "/dashboard/disponibilidad",
-            icon: ClipboardList,
-          },
         ],
       },
       {
@@ -110,8 +102,6 @@ function DashboardLayoutInner({
         icon: ClipboardList,
         roles: [
           "administrador_sistema",
-          "director_escuela",
-          "coordinador_academico",
           "operador_horarios",
         ],
       },
@@ -119,6 +109,22 @@ function DashboardLayoutInner({
         title: t("navAvailability"),
         href: "/dashboard/disponibilidad",
         icon: ClipboardList,
+        roles: [
+          "administrador_sistema",
+          "operador_horarios",
+          "docente",
+        ],
+      },
+      {
+        title: "Asignación Carga Lectiva",
+        href: "/dashboard/carga-lectiva-asignacion",
+        icon: Briefcase,
+        roles: ["administrador_sistema", "operador_horarios"],
+      },
+      {
+        title: "Carga Horaria",
+        href: "/dashboard/carga-horaria",
+        icon: Briefcase,
         roles: ["docente"],
       },
       {
@@ -133,8 +139,6 @@ function DashboardLayoutInner({
         icon: FileText,
         roles: [
           "administrador_sistema",
-          "director_escuela",
-          "coordinador_academico",
           "operador_horarios",
         ],
       },
@@ -144,8 +148,7 @@ function DashboardLayoutInner({
         icon: Bell,
         roles: [
           "administrador_sistema",
-          "director_escuela",
-          "coordinador_academico",
+          "operador_horarios",
           "docente",
         ],
       },

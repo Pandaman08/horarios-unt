@@ -11,8 +11,8 @@ export async function GET() {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  // Los administradores siempre tienen acceso
-  if (['administrador_sistema', 'director_escuela', 'coordinador_academico', 'operador_horarios'].includes(session.user.rol)) {
+  // Los administradores y operadores siempre tienen acceso
+  if (['administrador_sistema', 'operador_horarios'].includes(session.user.rol)) {
     return NextResponse.json({ tieneAcceso: true });
   }
 

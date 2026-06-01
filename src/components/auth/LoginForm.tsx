@@ -19,14 +19,37 @@ export function LoginForm() {
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
-  const fillLogin = (role: 'admin' | 'operador' | 'docente') => {
+  const fillLogin = async (role: 'admin' | 'operador' | 'docente') => {
     const creds = {
       admin: { email: 'admin@unitru.edu.pe', pass: '00000000' },
-      operador: { email: 'dvalerianor@unitru.edu.pe', pass: '80000001' },
+      operador: { email: 'dvalerianorodriguez@unitru.edu.pe', pass: '80000001' },
       docente: { email: 'eagredagamboa@unitru.edu.pe', pass: '18161457' },
     };
+
     setEmail(creds[role].email);
     setPassword(creds[role].pass);
+
+    // Iniciar sesión automáticamente
+    setLoading(true);
+    setError("");
+    try {
+      const res = await signIn("credentials", {
+        email: creds[role].email,
+        password: creds[role].pass,
+        redirect: false,
+      });
+
+      if (res?.error) {
+        setError("Credenciales incorrectas o usuario inactivo");
+      } else {
+        router.push("/dashboard");
+        router.refresh();
+      }
+    } catch (err) {
+      setError("Error de conexión, intente nuevamente");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -64,9 +87,9 @@ export function LoginForm() {
     <div className="w-full">
       <div className="lg:hidden text-center mb-10">
         <div className="bg-card w-20 h-20 rounded-3xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-primary/20 border-4 border-primary p-2">
-          <img 
-            src="/logount.png" 
-            alt="UNT Logo" 
+          <img
+            src="/logount.png"
+            alt="UNT Logo"
             className="h-14 w-auto object-contain"
           />
         </div>
@@ -80,7 +103,7 @@ export function LoginForm() {
       </div>
 
       <div className="bg-muted/50 rounded-2xl p-2 mb-8 flex gap-2 border border-border">
-        <button 
+        <button
           onClick={() => fillLogin('admin')}
           className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
         >
@@ -89,7 +112,7 @@ export function LoginForm() {
           </div>
           <span className="text-[10px] font-black text-muted-foreground group-hover:text-primary tracking-wider uppercase">ADMIN</span>
         </button>
-        <button 
+        <button
           onClick={() => fillLogin('operador')}
           className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
         >
@@ -98,7 +121,7 @@ export function LoginForm() {
           </div>
           <span className="text-[10px] font-black text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 tracking-wider uppercase">OPERADOR</span>
         </button>
-        <button 
+        <button
           onClick={() => fillLogin('docente')}
           className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
         >

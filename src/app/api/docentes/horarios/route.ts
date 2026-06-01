@@ -90,7 +90,7 @@ export async function GET(request: Request) {
     });
 
     // Formatear respuesta
-    const horariosFormato = horarios.map((h) => ({
+    const horariosFormato = horarios.map((h: any) => ({
       id_asignacion: h.id_asignacion,
       id_curso: h.id_curso,
       id_grupo: h.id_grupo,

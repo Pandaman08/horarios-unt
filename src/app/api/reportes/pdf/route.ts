@@ -5,12 +5,869 @@ import { prisma } from '@/lib/prisma';
 import { GeneradorPDF } from '@/services/reportes/GeneradorPDF';
 import { ServicioEstadisticas } from '@/services/reportes/ServicioEstadisticas';
 
+// ─── PALETA DE COLORES POR CURSO ─────────────────────────────────────────────
+const COLORES_CURSOS = [
+  { bg: '#dbeafe', border: '#3b82f6', text: '#1d4ed8' },
+  { bg: '#fce7f3', border: '#ec4899', text: '#be185d' },
+  { bg: '#fef9c3', border: '#eab308', text: '#854d0e' },
+  { bg: '#dcfce7', border: '#22c55e', text: '#15803d' },
+  { bg: '#ede9fe', border: '#8b5cf6', text: '#6d28d9' },
+  { bg: '#ffedd5', border: '#f97316', text: '#c2410c' },
+  { bg: '#cffafe', border: '#06b6d4', text: '#0e7490' },
+  { bg: '#fef2f2', border: '#ef4444', text: '#b91c1c' },
+  { bg: '#f0fdf4', border: '#4ade80', text: '#166534' },
+  { bg: '#fdf4ff', border: '#d946ef', text: '#86198f' },
+];
+
+// ─── HORAS DEL HORARIO ────────────────────────────────────────────────────────
+const HORAS = [
+  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
+];
+const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+
+// ─── HELPERS ──────────────────────────────────────────────────────────────────
+function horaAMinutos(hora: string): number {
+  const [h, m] = hora.split(':').map(Number);
+  return h * 60 + m;
+}
+
+function duracionHoras(inicio: string, fin: string): number {
+  return (horaAMinutos(fin) - horaAMinutos(inicio)) / 60;
+}
+
+function colorPorCurso(index: number) {
+  return COLORES_CURSOS[index % COLORES_CURSOS.length];
+}
+
+// ─── CONSTRUIR MAPA DE COLORES POR CURSO ────────────────────────────────────
+function buildColorMap(horarios: any[]): Map<string, { color: any; index: number }> {
+  const map = new Map<string, { color: any; index: number }>();
+  let idx = 0;
+  for (const h of horarios) {
+    const key = `${h.id_curso}-${h.id_grupo ?? 'sin_grupo'}`;
+    if (!map.has(key)) {
+      map.set(key, { color: colorPorCurso(idx), index: idx });
+      idx++;
+    }
+  }
+  return map;
+}
+
+// ─── CSS GLOBAL PARA LOS REPORTES VISUALES ───────────────────────────────────
+const CSS_VISUAL = `
+  @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap');
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: 'Inter', sans-serif; background: #f8fafc; color: #1e293b; }
+
+  .page-wrap { padding: 24px; max-width: 1200px; margin: 0 auto; }
+
+  /* ── Cabecera ── */
+  .report-header {
+    background: linear-gradient(135deg, #003366 0%, #0055a5 100%);
+    color: white;
+    padding: 20px 24px;
+    border-radius: 16px;
+    margin-bottom: 20px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+  }
+  .report-header h1 { font-size: 20px; font-weight: 800; }
+  .report-header .meta { font-size: 12px; opacity: .8; margin-top: 4px; }
+  .report-header .badge-right {
+    background: rgba(255,255,255,.15);
+    border: 1px solid rgba(255,255,255,.3);
+    border-radius: 10px;
+    padding: 8px 16px;
+    text-align: center;
+  }
+  .report-header .badge-right .val { font-size: 20px; font-weight: 900; }
+  .report-header .badge-right .lbl { font-size: 10px; opacity: .8; text-transform: uppercase; letter-spacing: .05em; }
+
+  /* ── Schedule Grid ── */
+  .schedule-wrap {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    margin-bottom: 20px;
+    box-shadow: 0 1px 4px rgba(0,0,0,.06);
+  }
+
+  .schedule-grid {
+    display: grid;
+    grid-template-columns: 130px repeat(6, 1fr);
+    border-left: 1px solid #e2e8f0;
+  }
+
+  /* Cabecera días */
+  .day-header {
+    background: #0d9488;
+    color: white;
+    font-weight: 700;
+    font-size: 12px;
+    text-align: center;
+    padding: 10px 4px;
+    border-right: 1px solid rgba(255,255,255,.2);
+    border-bottom: 2px solid #0f766e;
+  }
+  .day-header.hora-col {
+    background: #f1f5f9;
+    color: #64748b;
+  }
+
+  /* Filas de hora */
+  .hora-label {
+    background: #f8fafc;
+    color: #64748b;
+    font-size: 11px;
+    font-weight: 600;
+    text-align: center;
+    padding: 0 6px;
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #f1f5f9;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    min-height: 36px;
+  }
+
+  .cell {
+    border-right: 1px solid #e2e8f0;
+    border-bottom: 1px solid #f1f5f9;
+    padding: 2px;
+    min-height: 36px;
+    position: relative;
+  }
+  .cell:last-child { border-right: none; }
+
+  /* Bloque de clase */
+  .class-card {
+    border-radius: 5px;
+    padding: 3px 5px;
+    height: 100%;
+    min-height: 32px;
+    border-left: 3px solid;
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+    gap: 1px;
+  }
+  .class-card .course-code {
+    font-size: 10px;
+    font-weight: 800;
+    line-height: 1.2;
+  }
+  .class-card .course-sub {
+    font-size: 9px;
+    font-weight: 500;
+    opacity: .85;
+  }
+  .class-card .course-extra {
+    font-size: 9px;
+    opacity: .7;
+    display: none;
+    margin-top: 2px;
+  }
+
+  /* ── Leyenda ── */
+  .legend-wrap {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    padding: 16px 20px;
+    margin-bottom: 20px;
+  }
+  .legend-wrap h3 {
+    font-size: 12px;
+    font-weight: 700;
+    text-transform: uppercase;
+    color: #64748b;
+    letter-spacing: .05em;
+    margin-bottom: 12px;
+  }
+  .legend-items {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+  }
+  .legend-item {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    font-weight: 500;
+    color: #334155;
+  }
+  .legend-dot {
+    width: 12px;
+    height: 12px;
+    border-radius: 3px;
+    border-left: 3px solid;
+    flex-shrink: 0;
+  }
+
+  /* ── Stats cards ── */
+  .stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(180px, 1fr));
+    gap: 12px;
+    margin-bottom: 20px;
+  }
+  .stat-card {
+    background: white;
+    border-radius: 12px;
+    border: 1px solid #e2e8f0;
+    padding: 16px;
+  }
+  .stat-card .stat-val { font-size: 28px; font-weight: 900; color: #003366; }
+  .stat-card .stat-lbl { font-size: 10px; font-weight: 700; text-transform: uppercase; color: #64748b; letter-spacing: .05em; margin-bottom: 4px; }
+
+  /* ── Table básica para reportes de lista ── */
+  .list-wrap {
+    background: white;
+    border-radius: 16px;
+    border: 1px solid #e2e8f0;
+    overflow: hidden;
+    margin-bottom: 20px;
+  }
+  .list-table { width: 100%; border-collapse: collapse; }
+  .list-table th {
+    background: #f1f5f9;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .05em;
+    color: #475569;
+    padding: 10px 12px;
+    border-bottom: 2px solid #e2e8f0;
+    text-align: left;
+  }
+  .list-table td {
+    padding: 9px 12px;
+    font-size: 12px;
+    border-bottom: 1px solid #f1f5f9;
+    color: #334155;
+  }
+  .list-table tr:last-child td { border-bottom: none; }
+  .list-table tr:hover td { background: #f8fafc; }
+
+  .badge {
+    display: inline-block;
+    padding: 2px 8px;
+    border-radius: 6px;
+    font-size: 10px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: .03em;
+  }
+  .badge-teoria { background: #dbeafe; color: #1d4ed8; }
+  .badge-practica { background: #ede9fe; color: #6d28d9; }
+  .badge-lab { background: #dcfce7; color: #15803d; }
+
+  .page-break { page-break-after: always; }
+
+  @media print {
+    body { background: white; }
+    .page-wrap { padding: 12px; }
+    .report-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .class-card { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+    .day-header { -webkit-print-color-adjust: exact; print-color-adjust: exact; }
+  }
+`;
+
+// ─── GENERAR CABECERA DEL REPORTE ────────────────────────────────────────────
+function generarCabecera(titulo: string, subtitulo: string, periodoNombre: string, stats?: { label: string; valor: string }[]) {
+  const statsHtml = stats?.map(s => `
+    <div class="badge-right" style="margin-left:10px;">
+      <div class="val">${s.valor}</div>
+      <div class="lbl">${s.label}</div>
+    </div>
+  `).join('') ?? '';
+
+  return `
+    <div class="report-header">
+      <div>
+        <h1>${titulo}</h1>
+        <div class="meta">${subtitulo} &nbsp;·&nbsp; ${periodoNombre}</div>
+      </div>
+      <div style="display:flex; align-items:center;">
+        ${statsHtml}
+      </div>
+    </div>
+  `;
+}
+
+// ─── GENERAR GRID VISUAL DE HORARIO ──────────────────────────────────────────
+function generarGridHorario(horarios: any[], colorMap: Map<string, { color: any; index: number }>, mostrarDocente = false, mostrarAmbiente = true): string {
+  // Cabecera días
+  const headerHtml = `
+    <div class="day-header hora-col">Hora</div>
+    ${DIAS.map(d => `<div class="day-header">${d}</div>`).join('')}
+  `;
+
+  // Filas por hora
+  const filasHtml = HORAS.map(hora => {
+    const horaFin = `${String(parseInt(hora.split(':')[0]) + 1).padStart(2, '0')}:00`;
+    const celdas = DIAS.map((_, diaIdx) => {
+      const clasesEnCelda = horarios.filter(h => {
+        if (h.dia_semana !== diaIdx || !h.hora_inicio || !h.hora_fin) return false;
+        const inicioMin = horaAMinutos(h.hora_inicio);
+        const horaActualMin = horaAMinutos(hora);
+        return inicioMin === horaActualMin;
+      });
+
+      if (clasesEnCelda.length === 0) {
+        return `<div class="cell"></div>`;
+      }
+
+      const claseHtml = clasesEnCelda.map(h => {
+        const key = `${h.id_curso}-${h.id_grupo ?? 'sin_grupo'}`;
+        const colorEntry = colorMap.get(key);
+        const color = colorEntry?.color ?? COLORES_CURSOS[0];
+        const duracion = h.hora_inicio && h.hora_fin ? duracionHoras(h.hora_inicio, h.hora_fin) : 1;
+        const height = `${duracion * 36 + (duracion - 1)}px`;
+
+        const nombre = h.curso?.nombre ?? h.curso?.codigo ?? '—';
+        const cicloNum = h.curso?.ciclo_rel?.numero ?? '';
+        const ambiente = h.ambiente?.nombre ?? '—';
+        const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '';
+
+        const linea2 = mostrarDocente && docente ? docente : (cicloNum ? `${cicloNum}° Ciclo` : '');
+        const linea3 = mostrarAmbiente ? ambiente : '';
+
+        return `
+          <div class="class-card" style="background:${color.bg}; border-left-color:${color.border}; color:${color.text}; min-height:${height};">
+            <div class="course-code">${nombre.length > 14 ? nombre.substring(0, 13) + '…' : nombre}</div>
+            ${linea2 ? `<div class="course-sub">${linea2}</div>` : ''}
+            ${linea3 ? `<div class="course-extra">${linea3}</div>` : ''}
+          </div>
+        `;
+      }).join('');
+
+      return `<div class="cell">${claseHtml}</div>`;
+    }).join('');
+
+    return `
+      <div class="hora-label">${hora} - ${horaFin}</div>
+      ${celdas}
+    `;
+  }).join('');
+
+  return `
+    <div class="schedule-wrap">
+      <div class="schedule-grid">
+        ${headerHtml}
+        ${filasHtml}
+      </div>
+    </div>
+  `;
+}
+
+// ─── GENERAR LEYENDA ─────────────────────────────────────────────────────────
+function generarLeyenda(horarios: any[], colorMap: Map<string, { color: any; index: number }>): string {
+  const cursosVistos = new Map<string, { nombre: string; color: any }>();
+  for (const h of horarios) {
+    const key = `${h.id_curso}-${h.id_grupo ?? 'sin_grupo'}`;
+    if (!cursosVistos.has(key)) {
+      const entry = colorMap.get(key);
+      const nombre = h.curso?.nombre ?? h.curso?.codigo ?? '—';
+      cursosVistos.set(key, { nombre, color: entry?.color ?? COLORES_CURSOS[0] });
+    }
+  }
+
+  if (cursosVistos.size === 0) return '';
+
+  const itemsHtml = Array.from(cursosVistos.values()).map(c => `
+    <div class="legend-item">
+      <div class="legend-dot" style="background:${c.color.bg}; border-left-color:${c.color.border};"></div>
+      <span style="color:${c.color.text};">${c.nombre}</span>
+    </div>
+  `).join('');
+
+  return `
+    <div class="legend-wrap">
+      <h3>Leyenda de Cursos</h3>
+      <div class="legend-items">${itemsHtml}</div>
+    </div>
+  `;
+}
+
+// ─── GENERAR REPORTE ESTILO UNT (COMO REPORTE GENERAL) ─────────────────────
+function generarReporteUNT(options: {
+  horarios: any[];
+  titulo: string;
+  subtitulo: string;
+  periodo: any;
+  cicloNumero?: number;
+  ambiente?: string;
+  docenteNombre?: string;
+  paginaIndex?: number;
+}): string {
+  const { horarios, titulo, subtitulo, periodo, cicloNumero, ambiente, docenteNombre, paginaIndex = 0 } = options;
+  const isDocente = !!docenteNombre;
+  const etiquetaPrimera = ambiente ? 'AMBIENTE' : 'CICLO';
+  const valorPrimera = ambiente ?? cicloNumero ?? '—';
+  const colorMap = buildColorMap(horarios);
+
+  const cursosMap = new Map<string, any>();
+  horarios.forEach((h: any) => {
+    const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
+    if (!cursosMap.has(key)) {
+      cursosMap.set(key, {
+        docente: `${h.docente?.nombres ?? ''} ${h.docente?.apellidos ?? ''}`.trim(),
+        asignatura: h.curso?.nombre ?? '—',
+        T: h.curso?.horas_teoria ?? 0,
+        P: h.curso?.horas_practica ?? 0,
+        L: h.curso?.horas_laboratorio ?? 0,
+        G: h.grupo?.codigo_grupo ?? '—',
+        THoras: (h.curso?.horas_teoria ?? 0) + (h.curso?.horas_practica ?? 0) + (h.curso?.horas_laboratorio ?? 0),
+        departamento: h.docente?.especialidad ?? 'Ing. de Sistemas',
+      });
+    }
+  });
+  const listaCursos = Array.from(cursosMap.values());
+
+  const numColsTable = isDocente ? 8 : 9;
+
+  const filasCursosHtml = listaCursos.map((c, i) => {
+    const color = colorPorCurso(i);
+    const celdas = [
+      `<td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; padding:1px;">${i + 1}</td>`,
+      isDocente ? '' : `<td style="border:1px solid #cbd5e1; font-size:8px; padding:1px 3px;">${c.docente}</td>`,
+      `<td style="border:1px solid #cbd5e1; font-size:8px; padding:1px 3px; color:${color.text}; font-weight:700;">${c.asignatura}</td>`,
+      `<td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.T}</td>`,
+      `<td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.P}</td>`,
+      `<td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.L}</td>`,
+      `<td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.G}</td>`,
+      `<td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">${c.THoras}</td>`,
+      `<td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.departamento}</td>`,
+    ].filter(Boolean).join('');
+
+    return `<tr style="background:${color.bg};">${celdas}</tr>`;
+  }).join('');
+
+  const filasVacias = Array(Math.max(0, 6 - listaCursos.length)).fill(0).map(() =>
+    `<tr><td style="border:1px solid #cbd5e1; height:10px;" colspan="${numColsTable}"></td></tr>`
+  ).join('');
+
+  const filasMatriz = HORAS.map(hora => {
+    if (hora === '13:00') return `
+      <tr style="background:#f1f5f9; height:12px;">
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
+        <td colspan="6" style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; letter-spacing:5px;">ALMUERZO</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
+      </tr>`;
+    const horaNum = parseInt(hora.split(':')[0]);
+    const horaLabel = `${horaNum}-${horaNum + 1}`;
+    const celdas = [0, 1, 2, 3, 4, 5].map(dia => {
+      const clase = horarios.find((h: any) => {
+        if (h.dia_semana !== dia || !h.hora_inicio || !h.hora_fin) return false;
+        return horaAMinutos(h.hora_inicio) === horaAMinutos(hora);
+      });
+      if (clase) {
+        const key = `${clase.id_curso}-${clase.id_grupo ?? 'sin_grupo'}`;
+        const entry = colorMap.get(key);
+        const color = entry?.color ?? COLORES_CURSOS[0];
+        const cursoIdx = listaCursos.findIndex(c => c.asignatura === (clase.curso?.nombre ?? '—') && c.G === (clase.grupo?.codigo_grupo ?? '—'));
+        const cicloClase = clase.curso?.ciclo_rel?.numero ?? '';
+        return `<td style="border:1px solid #cbd5e1; background:${color.bg}; text-align:center; padding:1px; vertical-align:middle;">
+          <div style="font-weight:800; font-size:10px; color:${color.text};">${cursoIdx + 1}</div>
+          ${isDocente && cicloClase ? `<div style="font-size:8px; color:${color.text}; opacity:.9;">${cicloClase}° Ciclo</div>` : ''}
+          <div style="font-size:8px; color:${color.text}; opacity:.8;">(${clase.ambiente?.nombre ?? '—'})</div>
+        </td>`;
+      }
+      return `<td style="border:1px solid #cbd5e1;"></td>`;
+    }).join('');
+    return `<tr style="height:39px;">
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
+      ${celdas}
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
+    </tr>`;
+  }).join('');
+
+  const tableHeaders = [
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:22px; padding:2px;">Nº</th>`,
+    isDocente ? '' : `<th style="border:1px solid #1e4d80; font-size:8px; padding:2px;">PROFESOR</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; padding:2px;">ASIGNATURA</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">T</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">P</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">L</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">G</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:35px;">HRS</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:90px;">DEPTO.</th>`,
+  ].filter(Boolean).join('');
+
+  return `
+    <div style="padding:8px 12px; font-family:'Inter',sans-serif; ${paginaIndex > 0 ? 'page-break-before:always;' : ''}">
+      ${isDocente ? `
+        <div style="margin-bottom:6px; padding:6px 10px; background:#003366; color:white; border-radius:6px;">
+          <div style="font-size:14px; font-weight:900; text-transform:uppercase;">DOCENTE: ${docenteNombre}</div>
+        </div>
+      ` : ''}
+      <div style="display:flex; gap:10px; margin-bottom:8px; align-items:stretch;">
+        <div style="width:280px; border:2px solid #003366; border-radius:6px; padding:8px; display:flex; flex-direction:column; justify-content:space-between;">
+          <div style="text-align:center; margin-bottom:6px;">
+            <div style="font-weight:900; font-size:11px;">UNIVERSIDAD NACIONAL DE TRUJILLO</div>
+            <div style="font-weight:800; font-size:10px;">FACULTAD DE INGENIERÍA TRUJILLO</div>
+          </div>
+          <div>
+            <div style="font-size:9.5px; border-bottom:1px solid #ddd; padding-bottom:1px;"><strong>ESCUELA:</strong> INGENIERÍA DE SISTEMAS</div>
+            ${!isDocente ? `
+              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
+                <div><strong>${etiquetaPrimera}:</strong> ${valorPrimera}</div>
+                <div><strong>SECCIÓN:</strong> A</div>
+              </div>
+            ` : `
+              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
+                <div><strong>SECCIÓN:</strong> A</div>
+              </div>
+            `}
+            <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
+              <div><strong>AÑO:</strong> ${periodo?.anio ?? 2026}</div>
+              <div><strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}</div>
+            </div>
+          </div>
+          <div style="text-align:right; font-size:8.5px; font-weight:800; margin-top:6px; background:#f8fafc; padding:4px; border:1px solid #cbd5e1; border-radius:3px;">
+            <div>Inicio: ${periodo?.fecha_inicio_clases?.toLocaleDateString('es-PE') ?? '—'}</div>
+            <div>Término: ${periodo?.fecha_fin_clases?.toLocaleDateString('es-PE') ?? '—'}</div>
+          </div>
+        </div>
+        <div style="flex:1;">
+          <table style="width:100%; border-collapse:collapse; border:2px solid #003366; border-radius:8px; overflow:hidden;">
+            <thead>
+              <tr style="background:#003366; color:white;">
+                ${tableHeaders}
+              </tr>
+            </thead>
+            <tbody>${filasCursosHtml}${filasVacias}</tbody>
+          </table>
+        </div>
+      </div>
+      <table style="width:100%; border-collapse:collapse; border:2px solid #003366; border-radius:6px; overflow:hidden; table-layout:fixed;">
+        <thead>
+          <tr style="background:#003366; color:white; height:20px;">
+            <th style="border:1px solid #1e4d80; font-size:8px; width:55px;">HORA</th>
+            ${DIAS.map(d => `<th style="border:1px solid #1e4d80; font-size:8px;">${d.toUpperCase()}</th>`).join('')}
+            <th style="border:1px solid #1e4d80; font-size:8px; width:55px;">HORA</th>
+          </tr>
+        </thead>
+        <tbody>${filasMatriz}</tbody>
+      </table>
+      <div style="margin-top:4px; font-size:7px; color:#64748b; text-align:right; font-style:italic;">
+        Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT
+      </div>
+    </div>
+  `;
+}
+
+// ─── LAYOUT COMPLETO ─────────────────────────────────────────────────────────
+function wrapLayout(bodyHtml: string, titulo: string, landscape = false): string {
+  return `<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>${titulo}</title>
+  <style>${CSS_VISUAL}</style>
+</head>
+<body>
+  <div class="page-wrap">
+    ${bodyHtml}
+  </div>
+</body>
+</html>`;
+}
+
+// ═════════════════════════════════════════════════════════════════════════════
 export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const tipo = searchParams.get('tipo');
     const id = searchParams.get('id');
     const id_periodo = searchParams.get('id_periodo');
+    const id_declaracion = searchParams.get('idDeclaracion');
+    const formato = searchParams.get('formato') || 'pdf';
+
+    // Handle new carga horaria declaración formats
+    if (id_declaracion && (formato === 'formato1' || formato === 'formato2' || formato === 'formato3')) {
+      const declaracion = await prisma.declaracionHoraria.findUnique({
+        where: { id_declaracion: parseInt(id_declaracion) },
+        include: { docente: true, periodo: true, cargas_lectivas: { include: { curso: true, grupo: true } }, cargas_no_lectivas: true }
+      });
+
+      if (!declaracion) {
+        return NextResponse.json({ error: 'Declaración no encontrada' }, { status: 404 });
+      }
+
+      let htmlContent = '';
+      const docente = declaracion.docente;
+      const periodo = declaracion.periodo;
+      const fecha = new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' });
+
+      if (formato === 'formato1') {
+        // Formato 1: Declaración de Carga Horaria Asignada
+        htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FORMATO N° 1 - DECLARACIÓN DE CARGA HORARIA ASIGNADA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 20px; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+    .header h2 { font-size: 12px; font-weight: 600; margin-top: 5px; }
+    .docente-info { border: 1px solid #000; padding: 10px; margin-bottom: 15px; }
+    .docente-info .row { display: flex; gap: 10px; margin-bottom: 8px; }
+    .docente-info .label { font-weight: 700; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    table td, table th { border: 1px solid #000; padding: 5px; text-align: center; font-size: 10px; }
+    table th { background-color: #f0f0f0; font-weight: 700; }
+    .actividades { margin-bottom: 15px; }
+    .actividades .item { margin-bottom: 8px; }
+    .firmas { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; }
+    .firma-line { border-top: 1px solid #000; margin-top: 60px; padding-top: 5px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>FORMATO N° 1</h1>
+    <h2>DECLARACIÓN DE CARGA HORARIA ASIGNADA</h2>
+  </div>
+
+  <div class="docente-info">
+    <div class="row">
+      <span class="label">FACULTAD:</span> <span>Ingeniería</span>
+      <span class="label" style="margin-left: 30px;">DPTO. ACADÉMICO:</span> <span>Ingeniería de Sistemas</span>
+    </div>
+    <div class="row">
+      <span class="label">NOMBRE COMPLETO DEL PROFESOR:</span> <span>${docente?.nombres} ${docente?.apellidos}</span>
+    </div>
+    <div class="row">
+      <span class="label">CONDICIÓN:</span> <span>${declaracion.condicion || 'Nombrado'}</span>
+      <span class="label" style="margin-left: 30px;">CATEGORÍA:</span> <span>${declaracion.categoria || 'Asociado'}</span>
+      <span class="label" style="margin-left: 30px;">MODALIDAD:</span> <span>${docente?.modalidad || 'Tiempo Completo'}</span>
+    </div>
+    <div class="row">
+      <span class="label">AÑO ACADÉMICO:</span> <span>${periodo?.anio || 2026}</span>
+      <span class="label" style="margin-left: 30px;">CICLO(S):</span> <span>${periodo?.semestre === 1 ? 'I' : 'II'}</span>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th rowspan="2">N°</th>
+        <th rowspan="2">TRABAJO LECTIVO - NOMBRE DEL CURSO</th>
+        <th rowspan="2">CUR.</th>
+        <th rowspan="2">ESC.</th>
+        <th rowspan="2">PROF.</th>
+        <th rowspan="2">CIC.</th>
+        <th rowspan="2">SEC.</th>
+        <th rowspan="2">N° AL</th>
+        <th colspan="3">H.T.</th>
+        <th rowspan="2">HP</th>
+        <th rowspan="2">HL</th>
+        <th rowspan="2">TOTAL</th>
+      </tr>
+      <tr>
+        <th>T</th>
+        <th>P</th>
+        <th>L</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${declaracion.cargas_lectivas.map((carga, i) => `
+        <tr>
+          <td>${i + 1}</td>
+          <td style="text-align: left;">${carga.curso?.nombre || '—'}</td>
+          <td>Ing.</td>
+          <td>Sistemas</td>
+          <td>${i + 1}</td>
+          <td>${carga.curso?.ciclo_rel?.numero || '—'}</td>
+          <td>${carga.grupo?.codigo_grupo || '—'}</td>
+          <td>${carga.grupos_asignados || 30}</td>
+          <td>${carga.tipo_clase === 'teoria' ? carga.horas_semanales : 0}</td>
+          <td>${carga.tipo_clase === 'practica' ? carga.horas_semanales : 0}</td>
+          <td>${carga.tipo_clase === 'laboratorio' ? carga.horas_semanales : 0}</td>
+          <td>0</td>
+          <td>0</td>
+          <td>${carga.horas_semanales}</td>
+        </tr>
+      `).join('')}
+    </tbody>
+  </table>
+
+  <div class="actividades">
+    ${declaracion.cargas_no_lectivas.map(carga => {
+      const tipoNombre = {
+        PREPARACION_EVALUACION: 'Preparación y Evaluación',
+        TUTORIA: 'Tutoría',
+        INVESTIGACION: 'Investigación',
+        CAPACITACION: 'Capacitación',
+        GOBIERNO: 'Gobierno',
+        ADMINISTRACION: 'Administración',
+        ASESORIA: 'Asesoría',
+        RESPONSABILIDAD_SOCIAL: 'Responsabilidad Social',
+        COMITES_TECNICOS: 'Comités Técnicos',
+        OTRO: 'Otro'
+      }[carga.tipo] || 'Otro';
+      return `<div class="item"><strong>${carga.horas_semanales}.</strong> ${tipoNombre}${carga.descripcion ? `: ${carga.descripcion}` : ''}</div>`;
+    }).join('')}
+  </div>
+
+  <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
+
+  <div class="firmas">
+    <div>
+      <div class="firma-line"></div>
+      <div>Firma del Profesor</div>
+    </div>
+    <div>
+      <div class="firma-line"></div>
+      <div>Firma del Director de Dpto.</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 40px;">
+    <div class="firma-line" style="width: 300px; margin: 0 auto;"></div>
+    <div style="text-align: center;">V° B° DECANO FAC.</div>
+  </div>
+</body>
+</html>`;
+
+      } else if (formato === 'formato2') {
+        // Formato 2: Declaración Jurada No Incurso en Causal de Incompatibilidad
+        htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FORMATO N° 2 - DECLARACIÓN JURADA</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 13px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+    .header h2 { font-size: 12px; font-weight: 600; margin-top: 8px; }
+    .declaracion { margin-bottom: 40px; }
+    .firma { margin-top: 60px; text-align: center; }
+    .firma-line { border-top: 1px solid #000; width: 300px; margin: 0 auto 8px auto; }
+    .nota { margin-top: 40px; font-size: 11px; border-top: 1px solid #000; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>FORMATO N° 2</h1>
+    <h2>DECLARACIÓN JURADA DE NO INCURSO EN CAUSALES DE INCOMPATIBILIDAD</h2>
+  </div>
+
+  <div class="declaracion">
+    <p>Yo, <strong>${docente?.nombres} ${docente?.apellidos}</strong> identificado con DNI N° ${docente?.dni || '—'} con código IBM N° ${docente?.codigo_docente || '—'} del Departamento Académico de Ingeniería de Sistemas de la Facultad de Ingeniería, en el marco del programa de racionalización de la plana docente universitaria, dispuesto por el D.N° 033-2006-ES, DECLARO BAJO JURAMENTO Y EN HONOR A LA VERDAD, que:</p>
+    <br/>
+    <p><strong>NO ESTOY INCURSO</strong> en causales de incompatibilidad laboral y <strong>NO TENGO</strong> impedimento para ejercer la docencia en la Universidad Nacional de Trujillo conforme lo dispuesto en los artículos 277° y 277°-A del concordado del Estatuto Universitario.</p>
+    <br/>
+    <p>EN CASO DE FALTAR A LA VERDAD ME SOMETO A LAS SANCIONES QUE SEAN APLICABLES ACUERDO A LA LEY; ASIMISMO, DE ENCONTRARME EN SITUACIÓN DE INCOMPATIBILIDAD ME OBLIGO A ACEPTAR LA DOCENCIA EN LA UNT, ME SOMETO A LAS SANCIONES PREVISTAS POR EL ESTATUTO.</p>
+    <br/>
+    <p>DEL MISMO FORMA ME OBLIGO A DISPONER LIQUIDO COMO PAGOS INDEBIDOS POR EL LAPSUS DE TIEMPO LABORADO ILEGALMENTE.</p>
+  </div>
+
+  <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
+
+  <div class="firma">
+    <div class="firma-line"></div>
+    <div style="font-weight: 600;">FIRMA DEL DECLARANTE</div>
+    <div>DNI: ${docente?.dni || '—'}</div>
+  </div>
+
+  <div class="nota">
+    <p><strong>Nota:</strong> Los docentes deberán suscribir obligatoriamente el presente formato en cada semestre, en el reverso de la Declaración de Carga Horaria Asignada</p>
+  </div>
+</body>
+</html>`;
+
+      } else if (formato === 'formato3') {
+        // Formato 3: Declaración Jurada - Sedes Descentralizadas
+        htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FORMATO N° 3 - DECLARACIÓN JURADA - SEDES DESCENTRALIZADAS</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 13px; line-height: 1.6; }
+    .header { text-align: center; margin-bottom: 30px; }
+    .header h1 { font-size: 14px; font-weight: 700; text-transform: uppercase; }
+    .header h2 { font-size: 12px; font-weight: 600; margin-top: 8px; }
+    .declaracion { margin-bottom: 40px; }
+    .firma { margin-top: 60px; text-align: center; }
+    .firma-line { border-top: 1px solid #000; width: 300px; margin: 0 auto 8px auto; }
+    .nota { margin-top: 40px; font-size: 11px; border-top: 1px solid #000; padding-top: 15px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>DECLARACIÓN JURADA DE LOS DOCENTES QUE PRESTAN SERVICIOS EN SEDES DESENTRALIZADAS</h1>
+  </div>
+
+  <div class="declaracion">
+    <p>Yo, <strong>${docente?.nombres} ${docente?.apellidos}</strong> identificado con DNI N° ${docente?.dni || '—'} con código IBM N° ${docente?.codigo_docente || '—'} del Departamento Académico de Ingeniería de Sistemas de la Facultad de Ingeniería, en el marco del programa de racionalización de la plana docente que labora en las Sedes Descentralizadas (R.C. No 072-2005-CU-UNT) y Directiva N° 001-2007-UNT, DECLARO BAJO JURAMENTO Y EN HONOR A LA VERDAD QUE:</p>
+    <br/>
+    <p>EN MI PRESTACIÓN DE SERVICIOS EN SEDES DESENTRALIZADAS NO ESTOY INCURSO EN INCOMPATIBILIDAD HORARIA Exclusivo y Tiempo Completo solo pueden tener carga horaria máxima de diez (10) horas semanales.</p>
+    <br/>
+    <p>Los docentes que ejerzan cargos académicos y administrativos: Jefe de Departamento Académico, Director de Escuela Académica, Coordinador de Posgrado, podrán tener hasta 05 horas semanales, sin exceder en total y entre las dos modalidades la capacidad máxima de cargo. (numeral 3 de la Directiva N° 005-2009-DCU-UNT).</p>
+    <br/>
+    <p>Los docentes que asumen el cargo de Director de Posgrado y aquellos que prestan servicios en Centros de Producción y Rentabilidad no pueden asumir carga horaria en Sedes Descentralizadas (punto 3 de la Directiva y art 23 del Reglamento).</p>
+    <br/>
+    <p>Los docentes beneficiarios de estudio de maestría o doctorado y Segunda especialidad solo pueden tener carga horaria máxima de tres (3) horas semanales (num. 4 de la Directiva).</p>
+    <br/>
+    <p>En el desarrollo de su carga horaria se respetará la rigurosidad de la carga lectiva asignada en la Sede Central, salvo en el caso de Sedes de Casca, Huamachuco, Tayabamba y Santiago de Chuco por ser distantes y solo se debe contar con un profesor y su carga horaria en la Sede Central (num. 5 y 7 de la Directiva y art 23 del Reglamento).</p>
+    <br/>
+    <p>Los docentes que asumen cargos laborales en la Sede de Huamachuco, Casca, Santiago de Chuco y Tayabamba deben estar laborando al menos un semestre para poder ser contratados en dicha sede (num 6 de la Directiva).</p>
+    <br/>
+    <p>EN CASO DE FALTAR A LA VERDAD ME SOMETO A LAS SANCIONES QUE SEAN APLICABLES ACUERDO A LA LEY; ASIMISMO, ME OBLIGO A DISPONER LIQUIDO COMO PAGOS INDEBIDOS POR EL PERIODO DE TIEMPO LABORADO ILEGALMENTE, CONFORME AL MONTO QUE LA UNIDAD DE REMUNERACIONES LIQUIDE COMO PAGOS INDEBIDOS POR EL TIEMPO LABORADO.</p>
+  </div>
+
+  <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
+
+  <div class="firma">
+    <div class="firma-line"></div>
+    <div style="font-weight: 600;">FIRMA DEL DECLARANTE</div>
+    <div>DNI: ${docente?.dni || '—'}</div>
+  </div>
+
+  <div class="nota">
+    <p><strong>Nota:</strong> Los docentes deberán suscribir obligatoriamente el presente formato para prestar servicios en cada Sede Descentralizadas, en el reverso de la Declaración de Carga Horaria</p>
+  </div>
+</body>
+</html>`;
+      }
+
+      const pdfBuffer = await (typeof GeneradorPDF?.generarDesdeHTML === 'function' 
+        ? GeneradorPDF.generarDesdeHTML(htmlContent, false)
+        : import('puppeteer').then(async (puppeteer) => {
+            const browser = await puppeteer.launch({ headless: true });
+            const page = await browser.newPage();
+            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+            const buffer = await page.pdf({ format: 'A4', printBackground: true });
+            await browser.close();
+            return buffer;
+          }));
+
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${formato}-declaracion-carga-horaria.pdf"`,
+          'Content-Length': pdfBuffer.length.toString()
+        }
+      });
+    }
 
     if (!id_periodo || isNaN(parseInt(id_periodo))) {
       return NextResponse.json({ error: 'Falta id_periodo o es inválido' }, { status: 400 });
@@ -23,331 +880,311 @@ export async function GET(request: Request) {
     const periodo = await prisma.periodoAcademico.findUnique({
       where: { id_periodo: parseInt(id_periodo) }
     });
+    const periodoNombre = periodo?.nombre ?? '';
 
-    const generarCabeceraResumen = (titulo: string, valor: string, label: string, infoDerecha?: { label: string, valor: string }) => `
-      <div class="highlight-card" style="padding: 15px; margin-bottom: 20px;">
-        <div style="display: flex; justify-content: space-between; align-items: center;">
-          <div style="display: flex; align-items: center; gap: 15px;">
-            <div style="background: #003366; color: white; padding: 8px 16px; border-radius: 8px; font-weight: 800; text-transform: uppercase;">
-              ${titulo}
-            </div>
-            <div>
-              <p style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0;">${label}</p>
-              <p style="font-size: 14px; font-weight: 700; color: #1e293b; margin: 0;">${valor}</p>
-            </div>
-          </div>
-          ${infoDerecha ? `
-            <div style="text-align: right;">
-              <p style="font-size: 10px; font-weight: 700; color: #64748b; text-transform: uppercase; margin: 0;">${infoDerecha.label}</p>
-              <p style="font-size: 14px; font-weight: 700; color: #1e293b; margin: 0;">${infoDerecha.valor}</p>
-            </div>
-          ` : ''}
-        </div>
-      </div>
-    `;
-
+    // ── DÍA ──────────────────────────────────────────────────────────────────
     if (tipo === 'dia') {
-      if (!id || isNaN(parseInt(id))) {
-        return NextResponse.json({ error: 'Falta id de día' }, { status: 400 });
-      }
+      if (!id || isNaN(parseInt(id))) return NextResponse.json({ error: 'Falta id de día' }, { status: 400 });
       const diaIndex = parseInt(id);
-      const nombresDias = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
-      const nombreDia = nombresDias[diaIndex] || 'Desconocido';
+      const nombreDia = DIAS[diaIndex] ?? 'Desconocido';
       const horarios = await prisma.horarioAsignado.findMany({
         where: { id_periodo: parseInt(id_periodo), dia_semana: diaIndex },
         include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
         orderBy: [{ hora_inicio: 'asc' }]
       });
       reportTitle = `Reporte de Horarios: ${nombreDia}`;
-      htmlContent = generarCabeceraResumen(nombreDia, `${horarios.length} Clases Programadas`, "Resumen del Día", { label: "Periodo Académico", valor: periodo?.nombre || '' });
-      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${horarios.map(h => `<tr><td style="font-weight: 700; color: #003366;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso?.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div></td><td>${h.docente?.nombres || ''} ${h.docente?.apellidos || ''}</td><td><div style="font-weight: 600;">${h.ambiente?.nombre || '—'}</div></td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(h.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
 
+      const periodoSuffix = `${periodo?.anio ?? ''}-${periodo?.semestre === 1 ? 'I' : 'II'}`;
+
+      const horariosSorted = [...horarios].sort((a, b) =>
+        (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? '')
+      );
+
+      const content = `
+        <style>
+          .compact-header {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:12px 0; margin-bottom:12px;
+            border-bottom:2px solid #003366;
+          }
+          .compact-title {
+            font-size:20px; font-weight:800; color:#003366; margin:0;
+          }
+          .compact-meta {
+            font-size:12px; color:#64748b; text-align:right;
+          }
+          .compact-summary {
+            display:flex; justify-content:space-between; align-items:center;
+            padding:10px 16px; margin-bottom:12px;
+            background:#f8fafc; border-radius:8px;
+            border:1px solid #e2e8f0;
+          }
+          .compact-summary .day-badge {
+            background:#003366; color:white; padding:6px 14px;
+            border-radius:6px; font-weight:800; text-transform:uppercase;
+            letter-spacing:.05em; font-size:11px;
+          }
+          .compact-summary .count {
+            font-weight:900; font-size:18px; color:#003366;
+          }
+          .compact-summary .count-label {
+            font-size:10px; color:#64748b; text-transform:uppercase;
+            letter-spacing:.05em; font-weight:600;
+          }
+          .compact-table {
+            width:100%; border-collapse:collapse;
+          }
+          .compact-table th {
+            background:#003366; color:white; font-weight:700;
+            font-size:10px; text-transform:uppercase; letter-spacing:.05em;
+            padding:8px 10px; text-align:left;
+          }
+          .compact-table td {
+            padding:8px 10px; font-size:11px;
+            border-bottom:1px solid #e2e8f0;
+            vertical-align:top;
+          }
+          .compact-table tr:last-child td { border-bottom:none; }
+          .compact-badge {
+            display:inline-block; padding:2px 8px;
+            border-radius:4px; font-size:10px; font-weight:700;
+            text-transform:uppercase; letter-spacing:.03em;
+          }
+          .badge-ciclo { background:#f1f5f9; color:#475569; }
+          .badge-ambiente { background:#e2e8f0; color:#334155; }
+          .badge-tipo { background:#dbeafe; color:#1d4ed8; }
+        </style>
+
+        <div class="compact-header">
+          <div>
+            <h1 class="compact-title">UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
+            <div style="font-size:12px; color:#64748b; font-weight:600;">Facultad de Ingeniería - Escuela de Ingeniería de Sistemas</div>
+          </div>
+          <div class="compact-meta">
+            <div>Generado: ${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')}</div>
+            <div style="font-weight:700; color:#003366;">${periodo?.nombre ?? ''}</div>
+          </div>
+        </div>
+
+        <h2 style="font-size:16px; font-weight:800; color:#0f172a; margin:0 0 12px 0;">
+          REPORTE DE HORARIOS: ${nombreDia.toUpperCase()} (${periodoSuffix})
+        </h2>
+
+        <div class="compact-summary">
+          <div style="display:flex; align-items:center; gap:12px;">
+            <div class="day-badge">${nombreDia.toUpperCase()}</div>
+            <div>
+              <div class="count-label">Resumen del día</div>
+              <div class="count">${horariosSorted.length} CLASES PROGRAMADAS</div>
+            </div>
+          </div>
+        </div>
+
+        <table class="compact-table">
+          <thead>
+            <tr>
+              <th style="width:80px;">HORARIO</th>
+              <th style="width:60px; text-align:center;">CICLO</th>
+              <th>CURSO / GRUPO</th>
+              <th>DOCENTE</th>
+              <th style="width:120px;">AMBIENTE</th>
+              <th style="width:70px;">TIPO</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${horariosSorted.map((h: any) => {
+        const ciclo = h.curso?.ciclo_rel?.numero ?? '—';
+        const curso = h.curso?.nombre ?? '—';
+        const grupo = h.grupo?.codigo_grupo ?? '—';
+        const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '—';
+        const ambiente = h.ambiente?.nombre ?? '—';
+        const tipo = h.tipo_clase ? h.tipo_clase.replace('_', ' ') : 'TEORÍA';
+        return `
+                <tr>
+                  <td style="font-weight:800; color:#003366; font-size:12px;">
+                    ${h.hora_inicio ?? '—'}<br/>
+                    <span style="font-size:10px; color:#64748b; font-weight:500;">- ${h.hora_fin ?? ''}</span>
+                  </td>
+                  <td style="text-align:center;">
+                    <span class="compact-badge badge-ciclo">${ciclo}</span>
+                  </td>
+                  <td>
+                    <div style="font-weight:800; color:#0f172a;">${curso}</div>
+                    <div style="font-size:10px; color:#64748b;">Grupo: ${grupo}</div>
+                  </td>
+                  <td style="font-weight:600; color:#334155;">${docente}</td>
+                  <td>
+                    <span class="compact-badge badge-ambiente">${ambiente}</span>
+                  </td>
+                  <td>
+                    <span class="compact-badge badge-tipo">${tipo}</span>
+                  </td>
+                </tr>
+              `;
+      }).join('')}
+          </tbody>
+        </table>
+      `;
+
+      const fullHTML = GeneradorPDF.wrapLayout(content, reportTitle, true);
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, false);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="reporte-dia-${nombreDia.toLowerCase()}.pdf"`,
+          'Content-Length': pdfBuffer.length.toString()
+        }
+      });
+
+      // ── DOCENTE ───────────────────────────────────────────────────────────────
     } else if (tipo === 'docente' || tipo === 'docente_propio') {
       let docenteId = id;
-      
       if (tipo === 'docente_propio') {
         const session = await getServerSession(authOptions);
-        if (!session?.user?.id_usuario) {
-          return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
-        }
-        const docenteData = await prisma.docente.findUnique({
-          where: { id_usuario: session.user.id_usuario }
-        });
-        if (!docenteData) {
-          return NextResponse.json({ error: 'Usuario no es docente' }, { status: 403 });
-        }
+        if (!session?.user?.id_usuario) return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+        const docenteData = await prisma.docente.findUnique({ where: { id_usuario: session.user.id_usuario } });
+        if (!docenteData) return NextResponse.json({ error: 'Usuario no es docente' }, { status: 403 });
         docenteId = docenteData.id_docente.toString();
       }
+      if (!docenteId || isNaN(parseInt(docenteId))) return NextResponse.json({ error: 'Falta id de docente' }, { status: 400 });
 
-      if (!docenteId || isNaN(parseInt(docenteId))) {
-        return NextResponse.json({ error: 'Falta id de docente' }, { status: 400 });
-      }
       const docente = await prisma.docente.findUnique({
         where: { id_docente: parseInt(docenteId) },
-        include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true } } }
+        include: {
+          horarios_asignados: {
+            where: { id_periodo: parseInt(id_periodo) },
+            include: { curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true }
+          }
+        }
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
-      const totalHoras = (docente.horarios_asignados || []).reduce((acc: number, h: any) => {
-        if (!h.hora_inicio || !h.hora_fin) return acc;
-        try {
-          const [h1, m1] = h.hora_inicio.split(':').map(Number);
-          const [h2, m2] = h.hora_fin.split(':').map(Number);
-          if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return acc;
-          return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
-        } catch (e) { return acc; }
-      }, 0);
+
+
+      isLandscape = true;
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
-      htmlContent = generarCabeceraResumen(docente.codigo_docente || 'DOC', `${docente.nombres} ${docente.apellidos}`, "Docente", { label: "Total Horas", valor: `${totalHoras} hrs` });
-      htmlContent += `<div class="highlight-card"><table class="print-table"><thead><tr><th>Día</th><th>Horario</th><th>Ciclo</th><th>Curso / Grupo</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${(docente.horarios_asignados || []).sort((a,b)=>a.dia_semana-b.dia_semana || (a.hora_inicio || '').localeCompare(b.hora_inicio || '')).map(h => `<tr><td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana] || '—'}</td><td style="color: #003366; font-weight: 700;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td><td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${h.curso?.ciclo_rel?.numero || '—'}</span></td><td><div style="font-weight: 700;">${h.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div></td><td>${h.ambiente?.nombre || '—'}</td><td><span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(h.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div>`;
+
+      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
+        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
+        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+        </style></head><body>${generarReporteUNT({
+        horarios: docente.horarios_asignados ?? [],
+        titulo: reportTitle,
+        subtitulo: docente.codigo_docente ?? '',
+        periodo: periodo,
+        docenteNombre: `${docente.nombres} ${docente.apellidos}`,
+        paginaIndex: 0
+      })}</body></html>`;
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-docente-${docenteId}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
+      });
+
+      // ── AULA / TODAS LAS AULAS ────────────────────────────────────────────────
 
     } else if (tipo === 'aula' || tipo === 'aulas_todas') {
-      if ((tipo === 'aula') && (!id || isNaN(parseInt(id)))) {
-        return NextResponse.json({ error: 'Falta id de ambiente' }, { status: 400 });
-      }
+      if (tipo === 'aula' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ambiente' }, { status: 400 });
+
       let ambientesRaw: any[] = [];
       if (tipo === 'aula') {
-        const ambiente = await prisma.ambiente.findUnique({
+        const a = await prisma.ambiente.findUnique({
           where: { id_ambiente: parseInt(id!) },
-          include: {
-            horarios_asignados: {
-              where: { id_periodo: parseInt(id_periodo) },
-              include: {
-                curso: { include: { ciclo_rel: true } },
-                docente: true,
-                grupo: true
-              }
-            }
-          }
+          include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } }
         });
-        ambientesRaw = ambiente ? [ambiente] : [];
+        ambientesRaw = a ? [a] : [];
       } else {
         ambientesRaw = await prisma.ambiente.findMany({
-          include: {
-            horarios_asignados: {
-              where: { id_periodo: parseInt(id_periodo) },
-              include: {
-                curso: { include: { ciclo_rel: true } },
-                docente: true,
-                grupo: true
-              }
-            }
-          },
+          include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } },
           orderBy: { nombre: 'asc' }
         });
       }
 
-      const ambientesConHorarios = (ambientesRaw || []).filter(a => a && a.horarios_asignados && a.horarios_asignados.length > 0);
-      reportTitle = tipo === 'aula' ? `Horario Ambiente` : `Consolidado de Ambientes`;
+      reportTitle = tipo === 'aula' ? 'Horario de Ambiente' : 'Consolidado de Ambientes';
+      const ambientesConH = ambientesRaw.filter(a => a?.horarios_asignados?.length > 0);
 
-      if (ambientesConHorarios.length === 0) {
-        htmlContent = `<div class="highlight-card">No hay horarios asignados a ningún ambiente en este período.</div>`;
-      } else {
-        htmlContent = ambientesConHorarios.map((a, index) => {
-          const totalHoras = (a.horarios_asignados || []).reduce((acc: number, h: any) => {
-            if (!h.hora_inicio || !h.hora_fin) return acc;
-            try {
-              const [h1, m1] = h.hora_inicio.split(':').map(Number);
-              const [h2, m2] = h.hora_fin.split(':').map(Number);
-              if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return acc;
-              return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
-            } catch (e) { return acc; }
-          }, 0);
-
-          return `
-            <div style="${index !== ambientesConHorarios.length - 1 ? 'page-break-after: always;' : ''}">
-              ${generarCabeceraResumen(a.nombre || 'AULA', `${(a.tipo || '').replace('_', ' ')}`, "Ambiente", {
-                label: "Capacidad / Horas",
-                valor: `${a.capacidad || 0} est. / ${totalHoras} hrs`
-              })}
-              <div class="highlight-card">
-                <table class="print-table">
-                  <thead>
-                    <tr>
-                      <th>Día</th><th>Horario</th><th>Ciclo</th>
-                      <th>Curso / Grupo</th><th>Docente</th><th>Tipo</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${(a.horarios_asignados || [])
-                      .sort((a: any, b: any) => a.dia_semana - b.dia_semana || (a.hora_inicio || '').localeCompare(b.hora_inicio || ''))
-                      .map((h: any) => `
-                        <tr>
-                          <td style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana] || '—'}</td>
-                          <td style="color: #003366; font-weight: 700;">${h.hora_inicio || ''}-${h.hora_fin || ''}</td>
-                          <td style="text-align: center;">
-                            <span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">
-                              ${h.curso?.ciclo_rel?.numero || '—'}
-                            </span>
-                          </td>
-                          <td>
-                            <div style="font-weight: 700;">${h.curso?.nombre || '—'}</div>
-                            <div style="font-size: 9px; color: #64748b;">GRUPO: ${h.grupo?.codigo_grupo || '—'}</div>
-                          </td>
-                          <td>${h.docente?.nombres || ''} ${h.docente?.apellidos || ''}</td>
-                          <td>
-                            <span class="badge" style="background: ${h.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">
-                              ${(h.tipo_clase || '').toUpperCase()}
-                            </span>
-                          </td>
-                        </tr>
-                      `).join('')}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-          `;
-        }).join('');
-      }
-    } else if (tipo === 'ciclo' || tipo === 'ciclos_todos') {
-      if (tipo === 'ciclo' && (!id || isNaN(parseInt(id)))) {
-        return NextResponse.json({ error: 'Falta id de ciclo' }, { status: 400 });
-      }
-      const ciclosRaw = tipo === 'ciclo' ? [await prisma.ciclo.findUnique({ where: { id_ciclo: parseInt(id!) } })] : await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
-      reportTitle = tipo === 'ciclo' ? `Horario por Ciclo` : `Consolidado por Ciclos`;
-      htmlContent = (await Promise.all((ciclosRaw || []).map(async c => {
-        if (!c) return '';
-        const h = await prisma.horarioAsignado.findMany({ 
-          where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: c.id_ciclo } }, 
-          include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true }, 
-          orderBy:[{dia_semana:'asc'},{hora_inicio:'asc'}] 
+      if (ambientesConH.length === 0) {
+        const fullHTML = wrapLayout(`<div style="text-align:center; padding:40px; color:#64748b;">No hay horarios asignados en este período.</div>`, reportTitle, true);
+        const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+        return new Response(new Uint8Array(pdfBuffer), {
+          headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
         });
-        if(!h || h.length === 0) return '';
-        return `<div style="page-break-after: always;">${generarCabeceraResumen(c.nombre || 'CICLO', `${h.length} Clases Programadas`, "Ciclo Académico", { label: "Periodo", valor: periodo?.codigo || '' })}<div class="highlight-card"><table class="print-table"><thead><tr><th>Día / Hora</th><th>Curso / Grupo</th><th>Docente</th><th>Ambiente</th><th>Tipo</th></tr></thead><tbody>${h.map(clase => `<tr><td><div style="font-weight: 700;">${['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][clase.dia_semana] || '—'}</div><div style="color: #003366; font-size: 11px; font-weight: 700;">${clase.hora_inicio || ''}-${clase.hora_fin || ''}</div></td><td><div style="font-weight: 700;">${clase.curso?.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">GRUPO: ${clase.grupo?.codigo_grupo || '—'}</div></td><td>${clase.docente?.nombres || ''} ${clase.docente?.apellidos || ''}</td><td>${clase.ambiente?.nombre || '—'}</td><td style="text-align: center;"><span class="badge" style="background: ${clase.tipo_clase === 'teoria' ? '#e0f2fe; color: #0369a1;' : '#f3e8ff; color: #7e22ce;'}">${(clase.tipo_clase || '').toUpperCase()}</span></td></tr>`).join('')}</tbody></table></div></div>`;
-      }))).join('');
+      }
 
-    } else if (tipo === 'reporte_docentes_lista') {
-      const docentes = await prisma.docente.findMany({
-        orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }]
+      const paginas = ambientesConH.map((a, idx) =>
+        generarReporteUNT({
+          horarios: a.horarios_asignados,
+          titulo: a.nombre ?? 'Ambiente',
+          subtitulo: `${(a.tipo ?? '').replace('_', ' ')} · Cap. ${a.capacidad ?? 0} est.`,
+          periodo: periodo,
+          ambiente: a.nombre ?? 'Ambiente',
+          paginaIndex: idx
+        })
+      );
+
+      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
+        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
+        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+        </style></head><body>${paginas.join('')}</body></html>`;
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
-      reportTitle = 'Reporte General de Docentes';
-      htmlContent = `${generarCabeceraResumen("DOCENTES", `${docentes.length} Catedráticos`, "Plana Docente", { label: "Facultad", valor: "Ingeniería" })}
-        <div class="highlight-card">
-          <table class="print-table">
-            <thead>
-              <tr>
-                <th>Apellidos y Nombres</th>
-                <th>Código</th>
-                <th>Grado</th>
-                <th>Categoría</th>
-                <th>Modalidad</th>
-                <th>Correo</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${docentes.map(d => `
-                <tr>
-                  <td><div style="font-weight: 700;">${d.apellidos || ''}, ${d.nombres || ''}</div></td>
-                  <td style="font-family: monospace;">${d.codigo_docente || '—'}</td>
-                  <td style="font-size: 10px;">${d.grado_academico || '—'}</td>
-                  <td><span class="badge" style="background: #f1f5f9;">${d.categoria || '—'}</span></td>
-                  <td><span class="badge" style="background: #e0f2fe; color: #0369a1;">${d.modalidad || '—'}</span></td>
-                  <td style="font-size: 10px; color: #64748b;">${d.correo_electronico || '—'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>`;
 
-    } else if (tipo === 'reporte_cursos') {
-      const cursos = await prisma.curso.findMany({
-        include: { ciclo_rel: true },
-        orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }]
+
+      // ── CICLO / TODOS LOS CICLOS ──────────────────────────────────────────────
+    } else if (tipo === 'ciclo' || tipo === 'ciclos_todos') {
+      if (tipo === 'ciclo' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ciclo' }, { status: 400 });
+
+      const ciclosRaw = tipo === 'ciclo'
+        ? [await prisma.ciclo.findUnique({ where: { id_ciclo: parseInt(id!) } })]
+        : await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
+
+      reportTitle = tipo === 'ciclo' ? 'Horario por Ciclo' : 'Consolidado por Ciclos';
+      const paginas: string[] = [];
+
+      for (const ciclo of ciclosRaw) {
+        if (!ciclo) continue;
+        const horarios = await prisma.horarioAsignado.findMany({
+          where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } },
+          include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
+        });
+        if (!horarios.length) continue;
+        paginas.push(
+          generarReporteUNT({
+            horarios: horarios,
+            titulo: `Ciclo ${ciclo.numero} — ${ciclo.nombre ?? ''}`,
+            subtitulo: `${horarios.length} clases`,
+            periodo: periodo,
+            cicloNumero: ciclo.numero,
+            paginaIndex: paginas.length
+          })
+        );
+      }
+
+      if (paginas.length === 0) {
+        const fullHTML = wrapLayout(`<div style="text-align:center; padding:40px; color:#64748b;">No hay horarios asignados en este período.</div>`, reportTitle, true);
+        const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+        return new Response(new Uint8Array(pdfBuffer), {
+          headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
+        });
+      }
+
+      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
+        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
+        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+        </style></head><body>${paginas.join('')}</body></html>`;
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
-      reportTitle = 'Reporte de Cursos y Asignaturas';
-      htmlContent = `${generarCabeceraResumen("CURSOS", `${cursos.length} Asignaturas`, "Catálogo de Cursos", { label: "Periodo", valor: periodo?.codigo || '' })}
-        <div class="highlight-card">
-          <table class="print-table">
-            <thead>
-              <tr>
-                <th>Ciclo</th>
-                <th>Código</th>
-                <th>Asignatura</th>
-                <th style="text-align: center;">T</th>
-                <th style="text-align: center;">P</th>
-                <th style="text-align: center;">L</th>
-                <th style="text-align: center;">Total</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${cursos.map(c => `
-                <tr>
-                  <td style="text-align: center;"><span style="background: #f1f5f9; padding: 4px 8px; border-radius: 4px; font-weight: 800; border: 1px solid #e2e8f0;">${c.ciclo_rel?.numero || '—'}</span></td>
-                  <td style="font-family: monospace; font-weight: 600;">${c.codigo || '—'}</td>
-                  <td><div style="font-weight: 700;">${c.nombre || '—'}</div></td>
-                  <td style="text-align: center;">${c.horas_teoria || 0}</td>
-                  <td style="text-align: center;">${c.horas_practica || 0}</td>
-                  <td style="text-align: center;">${c.horas_laboratorio || 0}</td>
-                  <td style="text-align: center; font-weight: 800; color: #003366;">${(c.horas_teoria || 0) + (c.horas_practica || 0) + (c.horas_laboratorio || 0)}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>`;
 
-    } else if (tipo === 'reporte_ambientes') {
-      const ambientes = await prisma.ambiente.findMany({
-        orderBy: { nombre: 'asc' }
-      });
-      reportTitle = 'Reporte de Ambientes Académicos';
-      htmlContent = `${generarCabeceraResumen("AMBIENTES", `${ambientes.length} Espacios`, "Infraestructura", { label: "Facultad", valor: "Ingeniería" })}
-        <div class="highlight-card">
-          <table class="print-table">
-            <thead>
-              <tr>
-                <th>Nombre / Código</th>
-                <th>Tipo</th>
-                <th style="text-align: center;">Capacidad</th>
-                <th>Pabellón / Piso</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${ambientes.map(a => `
-                <tr>
-                  <td><div style="font-weight: 700;">${a.nombre || '—'}</div><div style="font-size: 9px; color: #64748b;">CÓD: ${a.codigo || '—'}</div></td>
-                  <td><span class="badge" style="background: #f1f5f9; color: #475569;">${(a.tipo || '').toUpperCase().replace('_', ' ')}</span></td>
-                  <td style="text-align: center; font-weight: 700;">${a.capacidad || 0} est.</td>
-                  <td>${a.pabellon || '-'} / ${a.piso || '-'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>`;
 
-    } else if (tipo === 'reporte_periodos') {
-      const periodos = await prisma.periodoAcademico.findMany({
-        orderBy: { anio: 'desc' }
-      });
-      reportTitle = 'Reporte de Periodos Académicos';
-      htmlContent = `${generarCabeceraResumen("PERIODOS", `${periodos.length} Registrados`, "Historial Académico")}
-        <div class="highlight-card">
-          <table class="print-table">
-            <thead>
-              <tr>
-                <th>Código</th>
-                <th>Nombre del Periodo</th>
-                <th>Año / Sem.</th>
-                <th>Estado</th>
-                <th>Inicio / Fin</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${periodos.map(p => `
-                <tr>
-                  <td style="font-weight: 700; color: #003366;">${p.codigo || '—'}</td>
-                  <td>${p.nombre || '—'}</td>
-                  <td style="text-align: center;">${p.anio || ''} - ${p.semestre === 1 ? 'I' : 'II'}</td>
-                  <td><span class="badge" style="background: #f1f5f9;">${(p.estado || '').toUpperCase()}</span></td>
-                  <td style="font-size: 11px;">${p.fecha_inicio?.toLocaleDateString() || '—'} al ${p.fecha_fin?.toLocaleDateString() || '—'}</td>
-                </tr>
-              `).join('')}
-            </tbody>
-          </table>
-        </div>`;
-
+      // ── REPORTE GENERAL (formato UNT, landscape) ──────────────────────────────
     } else if (tipo === 'reporte_general') {
-      isLandscape = true;
       const ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
-      const paginas = [];
+      const paginas: string[] = [];
 
       for (const ciclo of ciclos) {
         const horarios = await prisma.horarioAsignado.findMany({
@@ -355,186 +1192,133 @@ export async function GET(request: Request) {
           include: { docente: true, curso: true, ambiente: true, grupo: true },
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }]
         });
-
-        if (!horarios || horarios.length === 0) continue;
-
-        const cursosMap = new Map();
-        horarios.forEach(h => {
-          const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
-          if (!cursosMap.has(key)) {
-            cursosMap.set(key, {
-              docente: `${h.docente?.nombres || ''} ${h.docente?.apellidos || ''}`,
-              asignatura: h.curso?.nombre || '—',
-              T: h.curso?.horas_teoria || 0,
-              P: h.curso?.horas_practica || 0,
-              L: h.curso?.horas_laboratorio || 0,
-              G: h.grupo?.codigo_grupo || '—',
-              THoras: (h.curso?.horas_teoria || 0) + (h.curso?.horas_practica || 0) + (h.curso?.horas_laboratorio || 0),
-              departamento: h.docente?.especialidad || "Ing. de Sistemas"
-            });
-          }
-        });
-
-        const listaCursos = Array.from(cursosMap.values());
-        const colores = ['#bfdbfe ', '#fecaca', '#bbf7d0', '#fef08a', '#fed7aa', '#ddd6fe ', '#bae6fd', '#fbcfe8 ', '#e2e8f0'];
-        
-        const filasCursosHtml = listaCursos.map((c, i) => `
-          <tr style="background: ${colores[i % colores.length]};">
-            <td style="border: 1px solid black; text-align: center; font-size: 8.5px; padding: 2px;">${i + 1}</td>
-            <td style="border: 1px solid black; text-align: left; font-size: 8.5px; padding: 2px 5px;">${c.docente}</td>
-            <td style="border: 1px solid black; text-align: left; font-size: 8.5px; padding: 2px 5px;">${c.asignatura}</td>
-            <td style="border: 1px solid black; text-align: center; font-size: 8.5px;">${c.T}</td>
-            <td style="border: 1px solid black; text-align: center; font-size: 8.5px;">${c.P}</td>
-            <td style="border: 1px solid black; text-align: center; font-size: 8.5px;">${c.L}</td>
-            <td style="border: 1px solid black; text-align: center; font-size: 8.5px;">${c.G}</td>
-            <td style="border: 1px solid black; text-align: center; font-size: 8.5px; font-weight: bold;">${c.THoras}</td>
-            <td style="border: 1px solid black; text-align: center; font-size: 8.5px; padding: 2px;">${c.departamento}</td>
-          </tr>
-        `).join('');
-
-        const filasVacias = Array(Math.max(0, 11 - listaCursos.length)).fill(0).map(() => `
-          <tr><td style="border: 1px solid black; height: 16px;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td><td style="border: 1px solid black;"></td></tr>
-        `).join('');
-
-        const horas = ["07:00", "08:00", "09:00", "10:00", "11:00", "12:00", "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"];
-        const labelsHoras = ["7-8", "8-9", "9-10", "10-11", "11-12", "12-1", "1-2", "2-3", "3-4", "4-5", "5-6", "6-7", "7-8"];
-        const dias = [0, 1, 2, 3, 4, 5];
-
-        const filasMatriz = horas.map((hora, idx) => {
-          if (hora === "13:00") {
-            return `
-              <tr style="background: #f1f5f9; height: 15px;">
-                <td style="border: 1px solid black; text-align: center; font-size: 9px; font-weight: 800; border-top: 1.5px solid black; border-bottom: 1.5px solid black;">1-2</td>
-                <td colspan="6" style="border: 1px solid black; text-align: center; font-size: 9px; font-weight: 800; letter-spacing: 5px; border-top: 1.5px solid black; border-bottom: 1.5px solid black;">ALMUERZO</td>
-                <td style="border: 1px solid black; text-align: center; font-size: 9px; font-weight: 800; border-top: 1.5px solid black; border-bottom: 1.5px solid black;">1-2</td>
-              </tr>`;
-          }
-
-          const celdas = dias.map(dia => {
-            const clase = horarios.find(h => {
-              if (!h.hora_inicio || !h.hora_fin) return false;
-              try {
-                const [h_inicio] = h.hora_inicio.split(':').map(Number);
-                const [h_fin] = h.hora_fin.split(':').map(Number);
-                const h_actual = parseInt(hora.split(':')[0]);
-                return h.dia_semana === dia && h_actual >= h_inicio && h_actual < h_fin;
-              } catch (e) { return false; }
-            });
-
-            if (clase) {
-              const cursoIdx = listaCursos.findIndex(c => c.asignatura === (clase.curso?.nombre || '—') && c.G === (clase.grupo?.codigo_grupo || '—'));
-              const color = colores[cursoIdx % colores.length] || '#ffffff';
-              return `<td style="border: 1px solid black; background: ${color}; text-align: center; padding: 2px; vertical-align: middle;">
-                <div style="font-weight: 800; font-size: 11px; line-height: 1;">${cursoIdx + 1}</div>
-                <div style="font-size: 7.5px; font-weight: 600;">(${clase.ambiente?.nombre || '—'})</div>
-              </td>`;
-            }
-            return `<td style="border: 1px solid black;"></td>`;
-          }).join('');
-
-          return `<tr style="height: 32px;">
-            <td style="border: 1px solid black; text-align: center; font-size: 9px; font-weight: 800; background: #f8fafc;">${labelsHoras[idx]}</td>
-            ${celdas}
-            <td style="border: 1px solid black; text-align: center; font-size: 9px; font-weight: 800; background: #f8fafc;">${labelsHoras[idx]}</td>
-          </tr>`;
-        }).join('');
-
-        paginas.push(`
-          <div style="padding: 10px 20px; font-family: 'Inter', sans-serif; position: relative; ${ciclo !== ciclos[ciclos.length - 1] ? 'page-break-after: always;' : ''}">
-            <div style="display: flex; gap: 15px; margin-bottom: 15px; align-items: stretch;">
-              <div style="width: 320px; border: 2px solid black; padding: 12px; display: flex; flex-direction: column; justify-content: space-between;">
-                <div style="text-align: center; margin-bottom: 10px;">
-                  <div style="font-weight: 900; font-size: 12px; line-height: 1.2;">UNIVERSIDAD NACIONAL DE TRUJILLO</div>
-                  <div style="font-weight: 800; font-size: 11px; line-height: 1.2;">FACULTAD DE INGENIERÍA TRUJILLO</div>
-                </div>
-                <div style="space-y: 6px;">
-                  <div style="font-size: 10.5px; border-bottom: 1px solid #ddd; padding-bottom: 2px;">
-                    <span style="font-weight: 900;">ESCUELA:</span> 
-                    <span style="color: #000; font-weight: 700; margin-left: 5px;">INGENIERÍA DE SISTEMAS</span>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 10.5px; border-bottom: 1px solid #ddd; padding: 2px 0;">
-                    <div><span style="font-weight: 900;">CICLO:</span> <span style="font-weight: 700; margin-left: 5px;">${ciclo.numero}</span></div>
-                    <div style="margin-right: 20px;"><span style="font-weight: 900;">SECCIÓN:</span> <span style="font-weight: 700; margin-left: 5px;">A</span></div>
-                  </div>
-                  <div style="display: flex; justify-content: space-between; font-size: 10.5px; border-bottom: 1px solid #ddd; padding: 2px 0;">
-                    <div><span style="font-weight: 900;">AÑO ACADÉMICO:</span> <span style="font-weight: 700; margin-left: 5px;">${periodo?.anio || '2026'}</span></div>
-                    <div style="margin-right: 20px;"><span style="font-weight: 900;">SEMESTRE:</span> <span style="font-weight: 700; margin-left: 5px;">${periodo?.semestre === 1 ? 'I' : 'II'}</span></div>
-                  </div>
-                </div>
-                <div style="text-align: right; font-size: 9.5px; font-weight: 800; margin-top: 10px; background: #f8fafc; padding: 5px; border: 1px solid black;">
-                  <div style="margin-bottom: 3px;">Inicio del Ciclo : <span style="text-decoration: underline;">${periodo?.fecha_inicio_clases?.toLocaleDateString('es-PE') || '13-04-2026'}</span></div>
-                  <div>Término del Ciclo : <span style="text-decoration: underline;">${periodo?.fecha_fin_clases?.toLocaleDateString('es-PE') || '08-08-2026'}</span></div>
-                </div>
-              </div>
-              <div style="flex: 1;">
-                <table style="width: 100%; border-collapse: collapse; border: 2px solid black;">
-                  <thead>
-                    <tr style="background: #f1f5f9;">
-                      <th style="border: 1px solid black; font-size: 9px; width: 25px; padding: 4px;">Nº</th>
-                      <th style="border: 1px solid black; font-size: 9px; text-align: center; padding: 4px;">PROFESOR</th>
-                      <th style="border: 1px solid black; font-size: 9px; text-align: center; padding: 4px;">ASIGNATURA</th>
-                      <th style="border: 1px solid black; font-size: 9px; width: 18px;">T</th>
-                      <th style="border: 1px solid black; font-size: 9px; width: 18px;">P</th>
-                      <th style="border: 1px solid black; font-size: 9px; width: 18px;">L</th>
-                      <th style="border: 1px solid black; font-size: 9px; width: 18px;">G</th>
-                      <th style="border: 1px solid black; font-size: 9px; width: 40px;">T. HRS</th>
-                      <th style="border: 1px solid black; font-size: 9px; width: 100px;">DEPTO.</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    ${filasCursosHtml}
-                    ${filasVacias}
-                  </tbody>
-                </table>
-              </div>
-            </div>
-            <table style="width: 100%; border-collapse: collapse; border: 2px solid black; table-layout: fixed;">
-              <thead>
-                <tr style="background: #f1f5f9; height: 28px;">
-                  <th style="border: 1px solid black; font-size: 10px; width: 65px; font-weight: 900;">HORA</th>
-                  <th style="border: 1px solid black; font-size: 10px; font-weight: 900;">LUNES</th>
-                  <th style="border: 1px solid black; font-size: 10px; font-weight: 900;">MARTES</th>
-                  <th style="border: 1px solid black; font-size: 10px; font-weight: 900;">MIÉRCOLES</th>
-                  <th style="border: 1px solid black; font-size: 10px; font-weight: 900;">JUEVES</th>
-                  <th style="border: 1px solid black; font-size: 10px; font-weight: 900;">VIERNES</th>
-                  <th style="border: 1px solid black; font-size: 10px; font-weight: 900;">SÁBADO</th>
-                  <th style="border: 1px solid black; font-size: 10px; width: 65px; font-weight: 900;">HORA</th>
-                </tr>
-              </thead>
-              <tbody>
-                ${filasMatriz}
-              </tbody>
-            </table>
-            <div style="margin-top: 10px; font-size: 8px; color: #666; text-align: right; font-style: italic;">
-              Generado el ${new Date().toLocaleString('es-PE')} - Sistema de Gestión de Horarios UNT
-            </div>
-          </div>
-        `);
+        if (!horarios.length) continue;
+        paginas.push(
+          generarReporteUNT({
+            horarios: horarios,
+            titulo: 'Horario Semestral Consolidado',
+            subtitulo: `Ciclo ${ciclo.numero}`,
+            periodo: periodo,
+            cicloNumero: ciclo.numero,
+            paginaIndex: paginas.length
+          })
+        );
       }
-      htmlContent = paginas.join('');
-      reportTitle = 'Horario Semestral Consolidado';
 
+      reportTitle = 'Horario Semestral Consolidado';
+      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
+        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
+        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
+        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
+        </style></head><body>${paginas.join('')}</body></html>`;
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-general.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
+      });
+
+      // ── LISTA: DOCENTES ───────────────────────────────────────────────────────
+    } else if (tipo === 'reporte_docentes_lista') {
+      const docentes = await prisma.docente.findMany({ orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] });
+      reportTitle = 'Catálogo de Docentes';
+      htmlContent = generarCabecera('Catálogo de Docentes', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Docentes', valor: String(docentes.length) }]);
+      htmlContent += `<div class="list-wrap"><table class="list-table">
+        <thead><tr><th>Apellidos y Nombres</th><th>Código</th><th>Grado</th><th>Categoría</th><th>Modalidad</th><th>Correo</th></tr></thead>
+        <tbody>${docentes.map((d: any) => `<tr>
+          <td style="font-weight:700;">${d.apellidos ?? ''}, ${d.nombres ?? ''}</td>
+          <td style="font-family:monospace; font-size:11px;">${d.codigo_docente ?? '—'}</td>
+          <td style="font-size:11px;">${d.grado_academico ?? '—'}</td>
+          <td><span class="badge" style="background:#f1f5f9; color:#475569;">${d.categoria ?? '—'}</span></td>
+          <td><span class="badge badge-teoria">${d.modalidad ?? '—'}</span></td>
+          <td style="font-size:10px; color:#64748b;">${d.correo_electronico ?? '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+
+      // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
+    } else if (tipo === 'reporte_cursos') {
+      const cursos = await prisma.curso.findMany({ include: { ciclo_rel: true }, orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] });
+      reportTitle = 'Catálogo de Cursos';
+      htmlContent = generarCabecera('Catálogo de Cursos', `${cursos.length} asignaturas`, periodoNombre, [{ label: 'Cursos', valor: String(cursos.length) }]);
+      htmlContent += `<div class="list-wrap"><table class="list-table">
+        <thead><tr><th>Ciclo</th><th>Código</th><th>Asignatura</th><th style="text-align:center;">T</th><th style="text-align:center;">P</th><th style="text-align:center;">L</th><th style="text-align:center;">Total</th></tr></thead>
+        <tbody>${cursos.map((c: any) => `<tr>
+          <td style="text-align:center;"><span class="badge" style="background:#f1f5f9;">${c.ciclo_rel?.numero ?? '—'}</span></td>
+          <td style="font-family:monospace; font-weight:600;">${c.codigo ?? '—'}</td>
+          <td style="font-weight:700;">${c.nombre ?? '—'}</td>
+          <td style="text-align:center;">${c.horas_teoria ?? 0}</td>
+          <td style="text-align:center;">${c.horas_practica ?? 0}</td>
+          <td style="text-align:center;">${c.horas_laboratorio ?? 0}</td>
+          <td style="text-align:center; font-weight:800; color:#003366;">${(c.horas_teoria ?? 0) + (c.horas_practica ?? 0) + (c.horas_laboratorio ?? 0)}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+
+      // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
+    } else if (tipo === 'reporte_ambientes') {
+      const ambientes = await prisma.ambiente.findMany({ orderBy: { nombre: 'asc' } });
+      reportTitle = 'Catálogo de Ambientes Académicos';
+      htmlContent = generarCabecera('Catálogo de Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
+      htmlContent += `<div class="list-wrap"><table class="list-table">
+        <thead><tr><th>Nombre / Código</th><th>Tipo</th><th style="text-align:center;">Capacidad</th><th>Pabellón / Piso</th></tr></thead>
+        <tbody>${ambientes.map((a: any) => `<tr>
+          <td><div style="font-weight:700;">${a.nombre ?? '—'}</div><div style="font-size:9px; color:#64748b;">CÓD: ${a.codigo ?? '—'}</div></td>
+          <td><span class="badge" style="background:#f1f5f9; color:#475569;">${(a.tipo ?? '').toUpperCase().replace('_', ' ')}</span></td>
+          <td style="text-align:center; font-weight:700;">${a.capacidad ?? 0} est.</td>
+          <td>${a.pabellon ?? '-'} / ${a.piso ?? '-'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+
+      // ── LISTA: PERIODOS ───────────────────────────────────────────────────────
+    } else if (tipo === 'reporte_periodos') {
+      const periodos = await prisma.periodoAcademico.findMany({ orderBy: { anio: 'desc' } });
+      reportTitle = 'Catálogo de Periodos Académicos';
+      htmlContent = generarCabecera('Catálogo de Periodos Académicos', `${periodos.length} registrados`, periodoNombre, [{ label: 'Periodos', valor: String(periodos.length) }]);
+      htmlContent += `<div class="list-wrap"><table class="list-table">
+        <thead><tr><th>Código</th><th>Nombre</th><th>Año / Sem.</th><th>Estado</th><th>Inicio / Fin</th></tr></thead>
+        <tbody>${periodos.map((p: any) => `<tr>
+          <td style="font-weight:700; color:#003366;">${p.codigo ?? '—'}</td>
+          <td>${p.nombre ?? '—'}</td>
+          <td style="text-align:center;">${p.anio ?? ''} - ${p.semestre === 1 ? 'I' : 'II'}</td>
+          <td><span class="badge" style="background:#f1f5f9;">${(p.estado ?? '').toUpperCase()}</span></td>
+          <td style="font-size:11px;">${p.fecha_inicio?.toLocaleDateString() ?? '—'} al ${p.fecha_fin?.toLocaleDateString() ?? '—'}</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+
+      // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
     } else if (tipo === 'estadisticas' || tipo === 'consolidado') {
       const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
+
       const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) } } } });
-      const cargaDocentes = docentesConCarga.map(d => {
-        const horas = (d.horarios_asignados || []).reduce((acc, h) => {
+      const cargaDocentes = docentesConCarga.map((d: any) => {
+        const horas = (d.horarios_asignados || []).reduce((acc: number, h: any) => {
           if (!h.hora_inicio || !h.hora_fin) return acc;
-          try {
-            const [h1, m1] = h.hora_inicio.split(':').map(Number);
-            const [h2, m2] = h.hora_fin.split(':').map(Number);
-            if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return acc;
-            return acc + ((h2 * 60 + m2) - (h1 * 60 + m1)) / 60;
-          } catch (e) { return acc; }
+          try { return acc + duracionHoras(h.hora_inicio, h.hora_fin); } catch { return acc; }
         }, 0);
         return { nombre: `${d.nombres} ${d.apellidos}`, horas };
-      }).sort((a, b) => b.horas - a.horas);
-      reportTitle = 'Reporte de Gestión Académica';
-      htmlContent = `${generarCabeceraResumen("GESTIÓN", "Métricas de Periodo", "Reporte", { label: "Estado", valor: "Consolidado" })}<div class="highlight-card"><div style="display: grid; grid-template-columns: 1fr 1fr; gap: 20px; margin-bottom: 25px;"><div style="background: #f0f9ff; padding: 20px; border-radius: 12px; border: 1px solid #bae6fd;"><p style="font-size: 11px; font-weight: 700; color: #0369a1; text-transform: uppercase; margin: 0;">Total Asignaciones</p><p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.total_asignaciones}</p></div><div style="background: #f0fdf4; padding: 20px; border-radius: 12px; border: 1px solid #bbf7d0;"><p style="font-size: 11px; font-weight: 700; color: #15803d; text-transform: uppercase; margin: 0;">Promedio Horas</p><p style="font-size: 32px; font-weight: 800; margin: 10px 0 0 0;">${estadisticas.media_horas} hrs</p></div></div><h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Consolidado de Carga Horaria por Docente</h4><table class="print-table"><thead><tr><th>Docente</th><th style="text-align: right;">Total Horas</th></tr></thead><tbody>${cargaDocentes.map(d => `<tr><td style="font-weight: 600;">${d.nombre}</td><td style="text-align: right; font-weight: 800; color: #0369a1;">${d.horas} hrs</td></tr>`).join('')}</tbody></table><div style="background: #f8fafc; border: 1px solid #e2e8f0; border-radius: 12px; padding: 20px; margin-top: 25px;"><h4 style="margin: 0 0 15px 0; font-size: 12px; text-transform: uppercase; color: #475569;">Observaciones Automáticas</h4><ul style="margin: 0; padding-left: 20px; color: #334155; font-size: 13px;">${estadisticas.observaciones.map((o: string) => `<li style="margin-bottom: 8px;">${o}</li>`).join('')}</ul></div></div>`;
+      }).sort((a: any, b: any) => b.horas - a.horas);
+
+      reportTitle = 'Gestión Académica';
+      htmlContent = generarCabecera('Reporte de Gestión Académica', 'Consolidado del periodo', periodoNombre);
+      htmlContent += `<div class="stats-grid">
+        <div class="stat-card"><div class="stat-lbl">Total Asignaciones</div><div class="stat-val">${estadisticas.total_asignaciones}</div></div>
+        <div class="stat-card"><div class="stat-lbl">Promedio Horas</div><div class="stat-val">${estadisticas.media_horas}h</div></div>
+      </div>`;
+      htmlContent += `<div class="list-wrap"><table class="list-table">
+        <thead><tr><th>Docente</th><th style="text-align:right;">Total Horas</th></tr></thead>
+        <tbody>${cargaDocentes.map((d: any) => `<tr>
+          <td style="font-weight:600;">${d.nombre}</td>
+          <td style="text-align:right; font-weight:800; color:#003366;">${d.horas} hrs</td>
+        </tr>`).join('')}</tbody>
+      </table></div>`;
+      if (estadisticas.observaciones?.length) {
+        htmlContent += `<div class="list-wrap" style="padding:20px;">
+          <h4 style="font-size:12px; text-transform:uppercase; color:#64748b; margin-bottom:12px;">Observaciones</h4>
+          <ul style="padding-left:18px; color:#334155; font-size:13px;">${estadisticas.observaciones.map((o: string) => `<li style="margin-bottom:8px;">${o}</li>`).join('')}</ul>
+        </div>`;
+      }
     }
 
-    const fullHTML = GeneradorPDF.wrapLayout(htmlContent, reportTitle, tipo === 'reporte_general');
+
+    const fullHTML = wrapLayout(htmlContent, reportTitle, isLandscape);
     const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, isLandscape);
     return new Response(new Uint8Array(pdfBuffer), {
       headers: {
@@ -544,7 +1328,7 @@ export async function GET(request: Request) {
       }
     });
   } catch (error: any) {
-    console.error("ERROR_GENERACION_REPORTES:", error);
+    console.error('ERROR_GENERACION_REPORTES:', error);
     return NextResponse.json({ error: 'Error al generar PDF', details: error.message }, { status: 500 });
   }
 }

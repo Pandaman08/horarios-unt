@@ -67,7 +67,7 @@ interface Usuario {
     modalidad: string;
     especialidad: string;
     grado_academico: string;
-    antiguedad: number;
+    fecha_ingreso: string;
   } | null;
 }
 

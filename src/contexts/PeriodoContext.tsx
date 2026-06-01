@@ -32,23 +32,41 @@ export function PeriodoProvider({ children }: { children: React.ReactNode }) {
   const fetchPeriodos = useCallback(async () => {
     try {
       const response = await fetch('/api/periodos');
+      
+      // Verificar si la respuesta es JSON antes de parsear
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error('Expected JSON but received:', text.substring(0, 100));
+        return;
+      }
+
       const data = await response.json();
-      setPeriodos(data);
+      
+      // Si el error persiste y recibimos un objeto de error
+      if (data.error) {
+        console.error('API Error:', data.error);
+        return;
+      }
+
+      setPeriodos(Array.isArray(data) ? data : []);
       
       const activo = data.find((p: Periodo) => p.activo);
       setPeriodoActivo(activo || null);
 
-      // Si no hay periodo seleccionado previamente (en localStorage), usar el activo
-      const savedPeriodoId = localStorage.getItem('periodoSeleccionadoId');
-      if (savedPeriodoId) {
-        const saved = data.find((p: Periodo) => p.id_periodo === parseInt(savedPeriodoId));
-        if (saved) {
-          setPeriodoSeleccionadoState(saved);
-        } else {
-          setPeriodoSeleccionadoState(activo || data[0] || null);
-        }
+      // Selección automática: Al inicio siempre se selecciona el periodo activo
+      // Independientemente de lo que haya en localStorage (según requerimiento)
+      if (activo) {
+        setPeriodoSeleccionadoState(activo);
       } else {
-        setPeriodoSeleccionadoState(activo || data[0] || null);
+        // Solo si no hay un periodo marcado como activo, intentamos recuperar de localStorage
+        const savedPeriodoId = localStorage.getItem('periodoSeleccionadoId');
+        if (savedPeriodoId) {
+          const saved = data.find((p: Periodo) => p.id_periodo === parseInt(savedPeriodoId));
+          setPeriodoSeleccionadoState(saved || data[0] || null);
+        } else {
+          setPeriodoSeleccionadoState(data[0] || null);
+        }
       }
     } catch (error) {
       console.error('Error fetching periodos:', error);

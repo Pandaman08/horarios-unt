@@ -75,7 +75,6 @@ export async function PUT(
           modalidad: data.modalidad,
           categoria: data.categoria,
           dedicacion: data.dedicacion,
-          antiguedad: parseInt(data.antiguedad) || 0,
           fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
           correo_electronico: data.correo_electronico,
           telefono: data.telefono,

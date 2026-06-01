@@ -52,7 +52,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Calcular antigüedad y formatear respuesta
-    const docentesFormateados = docentes.map(d => {
+    const docentesFormateados = docentes.map((d: any) => {
       let antiguedad = 0;
       if (d.fecha_ingreso) {
         const hoy = new Date();
@@ -77,7 +77,7 @@ export async function GET(req: NextRequest) {
     });
 
     // Ordenar por antigüedad
-    docentesFormateados.sort((a, b) => {
+    docentesFormateados.sort((a: any, b: any) => {
       if (a.antiguedad === null) return 1;
       if (b.antiguedad === null) return -1;
       return orden === "antiguedad_asc" ? a.antiguedad - b.antiguedad : b.antiguedad - a.antiguedad;

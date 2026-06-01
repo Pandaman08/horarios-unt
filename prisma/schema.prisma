@@ -49,6 +49,7 @@ model Docente {
   horarios_asignados        HorarioAsignado[]
   preferencias_notificacion PreferenciasNotificacionDocente[]
   selecciones_temporales    SeleccionTemporalHorario[]
+  declaraciones_horarias    DeclaracionHoraria[]
 }
 
 model Curso {
@@ -70,6 +71,7 @@ model Curso {
   grupos                 Grupo[]
   horarios_asignados     HorarioAsignado[]
   selecciones_temporales SeleccionTemporalHorario[]
+  cargas_lectivas        CargaLectiva[]
 }
 
 model Ciclo {
@@ -109,6 +111,7 @@ model Grupo {
   periodo                PeriodoAcademico           @relation(fields: [id_periodo], references: [id_periodo])
   horarios_asignados     HorarioAsignado[]
   selecciones_temporales SeleccionTemporalHorario[]
+  cargas_lectivas        CargaLectiva[]
 
   @@unique([id_curso, codigo_grupo, id_periodo])
 }
@@ -160,6 +163,7 @@ model PeriodoAcademico {
   horarios_asignados      HorarioAsignado[]
   selecciones_temporales  SeleccionTemporalHorario[]
   ventanas_atencion       VentanaAtencion[]
+  declaraciones_horarias  DeclaracionHoraria[]
 }
 
 model VentanaAtencion {
@@ -346,4 +350,84 @@ model AuditoriaHorario {
   direccion_ip     String?
   motivo           String?
   fecha_registro   DateTime @default(now())
+}
+
+// ==============================
+// MODELOS PARA DECLARACIÓN DE CARGA HORARIA
+// ==============================
+
+enum EstadoDeclaracion {
+  BORRADOR
+  ENVIADO
+  APROBADO
+  RECHAZADO
+}
+
+enum TipoCargaNoLectiva {
+  PREPARACION_EVALUACION
+  TUTORIA
+  INVESTIGACION
+  CAPACITACION
+  GOBIERNO
+  ADMINISTRACION
+  ASESORIA
+  RESPONSABILIDAD_SOCIAL
+  COMITES_TECNICOS
+  OTRO
+}
+
+model DeclaracionHoraria {
+  id_declaracion       Int                  @id @default(autoincrement())
+  id_docente           Int
+  id_periodo           Int
+  ibm                  String
+  condicion            String
+  categoria            String
+  dedicacion           String
+  horas_dedicacion     Int
+  estado               EstadoDeclaracion    @default(BORRADOR)
+  fecha_creacion       DateTime             @default(now())
+  fecha_actualizacion  DateTime             @default(now())
+  fecha_envio          DateTime?
+  fecha_aprobacion     DateTime?
+  observaciones        String?
+  docente              Docente              @relation(fields: [id_docente], references: [id_docente])
+  periodo              PeriodoAcademico     @relation(fields: [id_periodo], references: [id_periodo])
+  cargas_lectivas      CargaLectiva[]
+  cargas_no_lectivas   CargaNoLectiva[]
+  formatos             FormatoDeclaracion[]
+
+  @@unique([id_docente, id_periodo])
+}
+
+model CargaLectiva {
+  id_carga_lectiva  Int              @id @default(autoincrement())
+  id_declaracion    Int
+  id_curso          Int
+  id_grupo          Int?
+  tipo_clase        String // teoria, practica, laboratorio
+  horas_semanales   Int
+  grupos_asignados  Int?
+  curso             Curso            @relation(fields: [id_curso], references: [id_curso])
+  grupo             Grupo?           @relation(fields: [id_grupo], references: [id_grupo])
+  declaracion       DeclaracionHoraria @relation(fields: [id_declaracion], references: [id_declaracion])
+}
+
+model CargaNoLectiva {
+  id_carga_no_lectiva Int                  @id @default(autoincrement())
+  id_declaracion      Int
+  tipo                TipoCargaNoLectiva
+  descripcion         String?
+  horas_semanales     Int
+  declaracion         DeclaracionHoraria   @relation(fields: [id_declaracion], references: [id_declaracion])
+}
+
+model FormatoDeclaracion {
+  id_formato      Int                  @id @default(autoincrement())
+  id_declaracion  Int
+  nombre_formato  String
+  tipo_archivo    String // pdf, excel
+  url_archivo     String?
+  fecha_generacion DateTime             @default(now())
+  declaracion     DeclaracionHoraria   @relation(fields: [id_declaracion], references: [id_declaracion])
 }
