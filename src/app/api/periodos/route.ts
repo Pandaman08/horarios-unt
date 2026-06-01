@@ -14,7 +14,12 @@ export async function GET() {
     });
     return NextResponse.json(periodos);
   } catch (error) {
-    return NextResponse.json({ error: 'Error al obtener periodos' }, { status: 500 });
+    console.error('Error en GET /api/periodos:', error);
+    const errorMessage = error instanceof Error ? error.message : 'Error desconocido';
+    return NextResponse.json({ 
+      error: 'Error al obtener periodos',
+      details: process.env.NODE_ENV === 'development' ? errorMessage : undefined 
+    }, { status: 500 });
   }
 }
 

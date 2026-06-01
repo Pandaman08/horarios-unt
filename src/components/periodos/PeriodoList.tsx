@@ -27,18 +27,19 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
-import { 
-  Plus, 
-  Edit, 
-  Trash2, 
-  Calendar, 
-  Search, 
-  Clock, 
-  CheckCircle2, 
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Calendar,
+  Search,
+  Clock,
+  CheckCircle2,
   AlertCircle,
   Timer,
   Download,
-  FileText
+  FileText,
+  FileSpreadsheet
 } from "lucide-react";
 import { Pagination } from "@/components/ui/pagination";
 import { format } from "date-fns";
@@ -85,7 +86,7 @@ export function PeriodoList() {
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 10;
 
-  const filteredPeriodos = periodos.filter(p => 
+  const filteredPeriodos = periodos.filter(p =>
     `${p.nombre} ${p.codigo}`.toLowerCase().includes(searchTerm.toLowerCase())
   );
 
@@ -119,8 +120,8 @@ export function PeriodoList() {
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
-        const errorData = contentType?.includes("application/json") 
-          ? await res.json() 
+        const errorData = contentType?.includes("application/json")
+          ? await res.json()
           : { error: `Error ${res.status}: ${res.statusText}` };
         throw new Error(errorData.error || "Error al cargar periodos");
       }
@@ -148,8 +149,8 @@ export function PeriodoList() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = editingPeriodo ? "PUT" : "POST";
-    const url = editingPeriodo 
-      ? `/api/periodos/${editingPeriodo.id_periodo}` 
+    const url = editingPeriodo
+      ? `/api/periodos/${editingPeriodo.id_periodo}`
       : "/api/periodos";
 
     try {
@@ -207,7 +208,7 @@ export function PeriodoList() {
     setIsDialogOpen(true);
   };
 
-  const handleGenerateSelectedPeriodReport = async () => {
+  const handleGenerateSelectedPeriodReport = async (formato: 'pdf' | 'excel' = 'pdf') => {
     if (!periodoSeleccionado) {
       toast.error("Seleccione un periodo académico primero");
       return;
@@ -215,24 +216,25 @@ export function PeriodoList() {
 
     setGeneratingReport(999);
     try {
-      const url = `/api/reportes?tipo=reporte_periodos&id_periodo=${periodoSeleccionado.id_periodo}`;
+      const url = `/api/reportes/pdf?tipo=reporte_periodos&id_periodo=${periodoSeleccionado.id_periodo}&formato=${formato}`;
       const response = await fetch(url);
-      
+
       if (!response.ok) {
         const errorData = await response.json().catch(() => ({ error: 'Error desconocido' }));
         throw new Error(errorData.error || 'Error en la generación');
       }
-      
+
       const blob = await response.blob();
       const downloadUrl = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
       a.href = downloadUrl;
-      a.download = `Reporte_Periodos_Academicos.pdf`;
+      const extension = formato === 'excel' ? 'xlsx' : 'pdf';
+      a.download = `Reporte_Periodos_Academicos.${extension}`;
       document.body.appendChild(a);
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success("Reporte de periodos descargado");
+      toast.success(`Reporte de periodos (${formato.toUpperCase()}) descargado`);
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar reporte");
@@ -286,26 +288,28 @@ export function PeriodoList() {
         <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
           <div className="relative flex-1 sm:min-w-[280px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar periodo..." 
+            <Input
+              placeholder="Buscar periodo..."
               className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button 
-            onClick={handleGenerateSelectedPeriodReport} 
-            disabled={generatingReport !== null}
-            variant="outline"
-            className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
-          >
-            {generatingReport !== null ? (
-              <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
-            ) : (
-              <FileText className="mr-2 h-3.5 w-3.5" />
-            )}
-            Reporte de Periodos
-          </Button>
+          <div className="flex gap-2">
+            <Button
+              onClick={() => handleGenerateSelectedPeriodReport('pdf')}
+              disabled={generatingReport === 999}
+              variant="outline"
+              className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+            >
+              {generatingReport === 999 ? (
+                <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
+              ) : (
+                <FileText className="mr-2 h-3.5 w-3.5" />
+              )}
+              Reporte de lista de periodos
+            </Button>
+          </div>
           <Dialog open={isDialogOpen} onOpenChange={(open) => {
             setIsDialogOpen(open);
             if (!open) {
@@ -332,7 +336,7 @@ export function PeriodoList() {
                   </div>
                 </div>
               </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
+              <form onSubmit={handleSubmit} className="space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                   <div className="space-y-1.5">
                     <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Código del Periodo</Label>
@@ -453,7 +457,7 @@ export function PeriodoList() {
           </Table>
         </div>
 
-        <Pagination 
+        <Pagination
           currentPage={currentPage}
           totalPages={totalPages}
           onPageChange={setCurrentPage}

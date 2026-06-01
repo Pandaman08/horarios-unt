@@ -378,20 +378,11 @@ export function ConfiguradorVentanas() {
               "text-[10px] font-medium",
               esLectura ? "text-amber-700" : "text-muted-foreground"
             )}>Período:</span>
-            <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-              <SelectTrigger className="w-auto border-none bg-transparent font-bold text-primary p-0 focus:ring-0 text-xs">
-                <SelectValue placeholder="Periodo" />
-                {periodoActualObj?.activo && <span className="text-muted-foreground ml-1 text-[9px]">(Activo)</span>}
-                {periodoActualObj?.estado === 'finalizado' && <span className="text-muted-foreground ml-1 text-[9px]">(Finalizado)</span>}
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-border shadow-xl">
-                {periodos.map((p) => (
-                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-xs py-1.5 focus:bg-primary/10 focus:text-primary">
-                    {p.codigo} {p.activo ? "(Activo)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <div className="w-auto border-none bg-transparent font-bold text-primary p-0 text-xs flex items-center">
+              <span>{periodoActualObj?.codigo || "Seleccione un periodo"}</span>
+              {periodoActualObj?.activo && <span className="text-muted-foreground ml-1 text-[9px]">(Activo)</span>}
+              {periodoActualObj?.estado === 'finalizado' && <span className="text-muted-foreground ml-1 text-[9px]">(Finalizado)</span>}
+            </div>
           </div>
         </div>
       </div>
@@ -468,18 +459,9 @@ export function ConfiguradorVentanas() {
 
               <div className="space-y-1.5">
                 <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Período Académico</Label>
-                <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo} disabled={isGeneratingHorarios || esLectura}>
-                  <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
-                    <SelectValue placeholder="Seleccionar período" />
-                  </SelectTrigger>
-                  <SelectContent className="rounded-lg border-border">
-                    {periodos.map(p => (
-                      <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-[10px]">
-                        {p.codigo}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <div className="h-8 rounded-lg bg-muted/50 border border-border flex items-center px-3 font-bold text-[10px] text-muted-foreground">
+                  {periodoActualObj?.codigo || "Seleccionar período"}
+                </div>
               </div>
             </div>
 
