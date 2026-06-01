@@ -53,6 +53,7 @@ function DashboardLayoutInner({
         roles: [
           "administrador_sistema",
           "docente",
+          "operador_horarios",
         ],
       },
       {

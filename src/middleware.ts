@@ -55,7 +55,8 @@ export default withAuth(
         const pathname = req.nextUrl.pathname;
         if (
           pathname.startsWith("/api/auth") || 
-          pathname.startsWith("/auth/login")
+          pathname.startsWith("/auth/login") ||
+          pathname === "/api/periodos"
         ) {
           return true;
         }
