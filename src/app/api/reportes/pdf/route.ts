@@ -130,7 +130,7 @@ function generarReporteUNT(options: {
         const cursoNum = listaCursosCabecera.findIndex(c => c.asignatura === h.curso?.nombre && c.G === h.grupo?.codigo_grupo) + 1;
         const tipoClase = h.tipo_clase === 'teoria' ? 'Teo.' : (h.tipo_clase === 'practica' ? 'Prác.' : 'Lab.');
 
-        return `<td rowspan="${duracionMaxima}" style="border:1px solid #cbd5e1; background:${color.bg}; vertical-align:middle; text-align:center; padding:1px;">
+        return `<td rowspan="${duracionMaxima}" style="border:1px solid #cbd5e1; background:${color.bg}; vertical-align:middle; text-align:center; padding:0; height:1px;">
           <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%;">
             <div style="font-weight:900; font-size:9px; color:${color.text};">${cursoNum}</div>
             <div style="font-size:6px; color:${color.text}; opacity:.8; margin:0px 0;">(${h.ambiente?.nombre || '—'})</div>
@@ -140,14 +140,14 @@ function generarReporteUNT(options: {
       }
 
       // Caso 2: Clases paralelas (Divisiones)
-      return `<td rowspan="${duracionMaxima}" style="border:1px solid #cbd5e1; padding:0; vertical-align:top;">
-        <div style="display:flex; height:100%; width:100%;">
+      return `<td rowspan="${duracionMaxima}" style="border:1px solid #cbd5e1; padding:0; vertical-align:top; height:1px;">
+        <div style="display:flex; height:100%; width:100%; align-items: stretch;">
           ${clases.map((h, idx) => {
             const infoCurso = cursosMap.get(`${h.id_curso}-${h.id_docente}-${h.id_grupo}`);
             const color = infoCurso?.color || COLORES_CURSOS[0];
             const cursoNum = listaCursosCabecera.findIndex(c => c.asignatura === h.curso?.nombre && c.G === h.grupo?.codigo_grupo) + 1;
             const tipoClase = h.tipo_clase === 'teoria' ? 'T' : (h.tipo_clase === 'practica' ? 'P' : 'L');
-            return `<div style="flex:1; background:${color.bg}; ${idx < clases.length - 1 ? 'border-right:1px solid #cbd5e1;' : ''} display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; overflow:hidden; padding:1px;">
+            return `<div style="flex:1; background:${color.bg}; ${idx < clases.length - 1 ? 'border-right:1px solid #cbd5e1;' : ''} display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; overflow:hidden; padding:2px;">
               <div style="font-weight:900; font-size:8px; color:${color.text};">${cursoNum}</div>
               <div style="font-size:5px; color:${color.text}; opacity:.8;">(${h.ambiente?.nombre?.substring(0,6) || '—'})</div>
               <div style="font-size:5px; color:${color.text}; font-weight:bold;">${tipoClase}</div>
