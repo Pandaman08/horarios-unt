@@ -47,44 +47,52 @@ function generarReporteUNT(options: {
   const cursosMap = new Map();
   horarios.forEach((h: any) => {
     const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
+    const duracion = duracionHoras(h.hora_inicio, h.hora_fin);
+    
     if (!cursosMap.has(key)) {
       cursosMap.set(key, {
         docente: `${h.docente?.nombres || ''} ${h.docente?.apellidos || ''}`.trim() || '—',
         asignatura: h.curso?.nombre || '—',
-        T: h.curso?.horas_teoria || 0,
-        P: h.curso?.horas_practica || 0,
-        L: h.curso?.horas_laboratorio || 0,
+        T: h.tipo_clase === 'teoria' ? duracion : 0,
+        P: h.tipo_clase === 'practica' ? duracion : 0,
+        L: h.tipo_clase === 'laboratorio' ? duracion : 0,
         G: h.grupo?.codigo_grupo || '—',
-        THoras: (h.curso?.horas_teoria || 0) + (h.curso?.horas_practica || 0) + (h.curso?.horas_laboratorio || 0),
+        THoras: duracion,
         departamento: h.docente?.especialidad || 'Ing. de Sistemas',
         color: COLORES_CURSOS[cursosMap.size % COLORES_CURSOS.length]
       });
+    } else {
+      const current = cursosMap.get(key);
+      if (h.tipo_clase === 'teoria') current.T += duracion;
+      else if (h.tipo_clase === 'practica') current.P += duracion;
+      else if (h.tipo_clase === 'laboratorio') current.L += duracion;
+      current.THoras += duracion;
     }
   });
   const listaCursosCabecera = Array.from(cursosMap.values());
 
   // 2. Generar filas de la tabla de cursos
   const filasCursosHtml = listaCursosCabecera.map((c, i) => `
-    <tr style="background:${c.color.bg}; height:14px;">
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${i + 1}</td>
-      ${isDocente ? '' : `<td style="border:1px solid #cbd5e1; font-size:8px; padding:0 3px;">${c.docente}</td>`}
-      <td style="border:1px solid #cbd5e1; font-size:8px; padding:0 3px; color:${c.color.text}; font-weight:700;">${c.asignatura}</td>
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.T}</td>
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.P}</td>
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.L}</td>
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.G}</td>
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">${c.THoras}</td>
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">${c.departamento}</td>
+    <tr style="background:${c.color.bg}; height:12px;">
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px;">${i + 1}</td>
+      ${isDocente ? '' : `<td style="border:1px solid #cbd5e1; font-size:7px; padding:0 2px;">${c.docente}</td>`}
+      <td style="border:1px solid #cbd5e1; font-size:7px; padding:0 2px; color:${c.color.text}; font-weight:700;">${c.asignatura}</td>
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px;">${c.T}</td>
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px;">${c.P}</td>
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px;">${c.L}</td>
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px;">${c.G}</td>
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px; font-weight:800;">${c.THoras}</td>
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px;">${c.departamento}</td>
     </tr>`).join('');
 
   // 3. Generar la Matriz de Horarios
   const omitirCeldas = new Set();
   const filasMatriz = HORAS.map((hora, i) => {
     if (hora === '13:00') {
-      return `<tr style="background:#f1f5f9; height:12px;">
-        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
-        <td colspan="6" style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; letter-spacing:5px;">ALMUERZO</td>
-        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
+      return `<tr style="background:#f1f5f9; height:10px;">
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px; font-weight:800;">1-2</td>
+        <td colspan="6" style="border:1px solid #cbd5e1; text-align:center; font-size:7px; font-weight:800; letter-spacing:5px;">ALMUERZO</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px; font-weight:800;">1-2</td>
       </tr>`;
     }
 
@@ -122,11 +130,11 @@ function generarReporteUNT(options: {
         const cursoNum = listaCursosCabecera.findIndex(c => c.asignatura === h.curso?.nombre && c.G === h.grupo?.codigo_grupo) + 1;
         const tipoClase = h.tipo_clase === 'teoria' ? 'Teo.' : (h.tipo_clase === 'practica' ? 'Prác.' : 'Lab.');
 
-        return `<td rowspan="${duracionMaxima}" style="border:1px solid #cbd5e1; background:${color.bg}; vertical-align:middle; text-align:center; padding:2px;">
+        return `<td rowspan="${duracionMaxima}" style="border:1px solid #cbd5e1; background:${color.bg}; vertical-align:middle; text-align:center; padding:1px;">
           <div style="display:flex; flex-direction:column; justify-content:center; align-items:center; height:100%; width:100%;">
-            <div style="font-weight:900; font-size:10px; color:${color.text};">${cursoNum}</div>
-            <div style="font-size:7px; color:${color.text}; opacity:.8; margin:1px 0;">(${h.ambiente?.nombre || '—'})</div>
-            <div style="font-size:7px; color:${color.text}; font-weight:800; text-transform:uppercase;">${tipoClase}</div>
+            <div style="font-weight:900; font-size:9px; color:${color.text};">${cursoNum}</div>
+            <div style="font-size:6px; color:${color.text}; opacity:.8; margin:0px 0;">(${h.ambiente?.nombre || '—'})</div>
+            <div style="font-size:6px; color:${color.text}; font-weight:800; text-transform:uppercase;">${tipoClase}</div>
           </div>
         </td>`;
       }
@@ -139,20 +147,20 @@ function generarReporteUNT(options: {
             const color = infoCurso?.color || COLORES_CURSOS[0];
             const cursoNum = listaCursosCabecera.findIndex(c => c.asignatura === h.curso?.nombre && c.G === h.grupo?.codigo_grupo) + 1;
             const tipoClase = h.tipo_clase === 'teoria' ? 'T' : (h.tipo_clase === 'practica' ? 'P' : 'L');
-            return `<div style="flex:1; background:${color.bg}; ${idx < clases.length - 1 ? 'border-right:1px solid #cbd5e1;' : ''} display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; overflow:hidden; padding:2px;">
-              <div style="font-weight:900; font-size:9px; color:${color.text};">${cursoNum}</div>
-              <div style="font-size:6px; color:${color.text}; opacity:.8;">(${h.ambiente?.nombre?.substring(0,6) || '—'})</div>
-              <div style="font-size:6px; color:${color.text}; font-weight:bold;">${tipoClase}</div>
+            return `<div style="flex:1; background:${color.bg}; ${idx < clases.length - 1 ? 'border-right:1px solid #cbd5e1;' : ''} display:flex; flex-direction:column; justify-content:center; align-items:center; text-align:center; overflow:hidden; padding:1px;">
+              <div style="font-weight:900; font-size:8px; color:${color.text};">${cursoNum}</div>
+              <div style="font-size:5px; color:${color.text}; opacity:.8;">(${h.ambiente?.nombre?.substring(0,6) || '—'})</div>
+              <div style="font-size:5px; color:${color.text}; font-weight:bold;">${tipoClase}</div>
             </div>`;
           }).join('')}
         </div>
       </td>`;
     }).join('');
 
-    return `<tr style="height:39px;">
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
+    return `<tr style="height:32px;">
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
       ${celdasDia}
-      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:7px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
     </tr>`;
   }).join('');
 
@@ -161,20 +169,49 @@ function generarReporteUNT(options: {
   const valorPrimera = ambiente ?? cicloNumero ?? '—';
 
   return `
-    <div style="padding:10px; font-family:sans-serif; ${paginaIndex > 0 ? 'page-break-before:always;' : ''}">
-      <div style="display:flex; gap:10px; margin-bottom:10px;">
-        <div style="width:280px; border:2px solid #003366; border-radius:6px; padding:8px;">
-          <div style="text-align:center; font-weight:900; font-size:11px; margin-bottom:5px;">UNIVERSIDAD NACIONAL DE TRUJILLO</div>
-          <div style="font-size:9px;"><strong>ESCUELA:</strong> INGENIERÍA DE SISTEMAS</div>
-          <div style="font-size:9px;"><strong>${etiquetaPrimera}:</strong> ${valorPrimera} <span style="margin-left:20px;"><strong>SECCIÓN:</strong> A</span></div>
-          <div style="font-size:9px;"><strong>AÑO:</strong> ${periodo?.anio || 2026} <span style="margin-left:20px;"><strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}</span></div>
-          <div style="font-size:8px; text-align:right; margin-top:5px;">Inicio: ${periodo?.fecha_inicio_clases?.toLocaleDateString('es-PE') || '—'} · Fin: ${periodo?.fecha_fin_clases?.toLocaleDateString('es-PE') || '—'}</div>
+    <div style="padding:10px; font-family:'Inter', sans-serif; height: 100%; ${paginaIndex > 0 ? 'page-break-before:always;' : ''}">
+      <div style="display:flex; gap:10px; margin-bottom:10px; align-items: stretch;">
+        <div style="width:310px; border:2px solid #003366; border-radius:10px; padding:8px; display:flex; flex-direction:column; gap:0;">
+          <div style="text-align:center; font-weight:900; font-size:12px; color:#000; margin-bottom:1px; text-transform:uppercase; letter-spacing:0.3px;">UNIVERSIDAD NACIONAL DE TRUJILLO</div>
+          <div style="text-align:center; font-weight:900; font-size:11px; color:#000; margin-bottom:6px; text-transform:uppercase; letter-spacing:0.2px;">FACULTAD DE INGENIERÍA TRUJILLO</div>
+          
+          <div style="border-bottom: 1px solid #cbd5e1; padding: 2px 0; font-size:9px; color:#000; display:flex; justify-content:space-between;">
+            <span style="font-weight:800;">ESCUELA:</span>
+            <span>INGENIERÍA DE SISTEMAS</span>
+          </div>
+          
+          <div style="border-bottom: 1px solid #cbd5e1; padding: 2px 0; font-size:9px; color:#000; display:flex; justify-content:space-between;">
+            <div><span style="font-weight:800;">${etiquetaPrimera}:</span> ${valorPrimera}</div>
+            <div><span style="font-weight:800;">SECCIÓN:</span> A</div>
+          </div>
+          
+          <div style="padding: 2px 0; font-size:9px; color:#000; display:flex; justify-content:space-between; margin-bottom:4px;">
+            <div><span style="font-weight:800;">AÑO:</span> ${periodo?.anio || 2026}</div>
+            <div><span style="font-weight:800;">SEMESTRE:</span> ${periodo?.semestre === 1 ? 'I' : 'II'}</div>
+          </div>
+          
+          <div style="background:#f1f5f9; border:1px solid #e2e8f0; border-radius:6px; padding:4px 8px; margin-top:auto;">
+            <div style="font-size:9px; text-align:right; color:#000; font-weight:700;">
+              Inicio: ${periodo?.fecha_inicio_clases?.toLocaleDateString('es-PE') || '—'}
+            </div>
+            <div style="font-size:9px; text-align:right; color:#000; font-weight:700;">
+              Término: ${periodo?.fecha_fin_clases?.toLocaleDateString('es-PE') || '—'}
+            </div>
+          </div>
         </div>
         <div style="flex:1;">
-          <table style="width:100%; border-collapse:collapse; border:2px solid #003366;">
+          <table style="width:100%; border-collapse:collapse; border:2px solid #003366; height:100%;">
             <thead>
-              <tr style="background:#003366; color:white; font-size:8px;">
-                <th>Nº</th> ${isDocente ? '' : '<th>PROFESOR</th>'} <th>ASIGNATURA</th> <th>T</th> <th>P</th> <th>L</th> <th>G</th> <th>HRS</th> <th>DEPTO.</th>
+              <tr style="background:#003366; color:white; font-size:8px; height:20px;">
+                <th style="width:20px; border:1px solid #003366;">Nº</th> 
+                ${isDocente ? '' : '<th style="border:1px solid #003366;">PROFESOR</th>'} 
+                <th style="border:1px solid #003366;">ASIGNATURA</th> 
+                <th style="width:18px; border:1px solid #003366;">T</th> 
+                <th style="width:18px; border:1px solid #003366;">P</th> 
+                <th style="width:18px; border:1px solid #003366;">L</th> 
+                <th style="width:22px; border:1px solid #003366;">G</th> 
+                <th style="width:28px; border:1px solid #003366;">HRS</th> 
+                <th style="border:1px solid #003366;">DEPTO.</th>
               </tr>
             </thead>
             <tbody>${filasCursosHtml}</tbody>
@@ -183,8 +220,10 @@ function generarReporteUNT(options: {
       </div>
       <table style="width:100%; border-collapse:collapse; border:2px solid #003366; table-layout:fixed;">
         <thead>
-          <tr style="background:#003366; color:white; font-size:8px; height:20px;">
-            <th style="width:50px;">HORA</th> ${DIAS.map(d => `<th>${d.toUpperCase()}</th>`).join('')} <th style="width:50px;">HORA</th>
+          <tr style="background:#003366; color:white; font-size:8px; height:22px;">
+            <th style="width:55px; border:1px solid #003366;">HORA</th> 
+            ${DIAS.map(d => `<th style="border:1px solid #003366;">${d.toUpperCase()}</th>`).join('')} 
+            <th style="width:55px; border:1px solid #003366;">HORA</th>
           </tr>
         </thead>
         <tbody>${filasMatriz}</tbody>
