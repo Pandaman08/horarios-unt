@@ -39,27 +39,52 @@ export async function POST(
       data: { activo: false }
     });
 
-    // Crear nuevas relaciones
-    const created = await Promise.all(
-      normalizedData.map((item: any) =>
-        prisma.docenteCurso.upsert({
-          where: {
-            id_docente_id_curso_tipo_clase: {
-              id_docente,
-              id_curso: item.id_curso,
-              tipo_clase: item.tipo_clase
-            }
-          },
-          update: { activo: true },
-          create: {
+    // Crear nuevas relaciones con validación de maximo_docentes
+    const created = [];
+    for (const item of normalizedData) {
+      // 1. Obtener curso y sus docentes actuales
+      const curso = await prisma.curso.findUnique({
+        where: { id_curso: item.id_curso },
+        include: { 
+          docente_cursos: { 
+            where: { activo: true, tipo_clase: item.tipo_clase } 
+          } 
+        }
+      });
+
+      if (!curso) continue;
+
+      // 2. Verificar si el docente ya está asignado (para no contar doble)
+      const yaAsignado = curso.docente_cursos.some(dc => dc.id_docente === id_docente);
+
+      // 3. Validar capacidad si no está asignado
+      if (!yaAsignado && curso.docente_cursos.length >= curso.maximo_docentes) {
+        // Podríamos lanzar error o simplemente omitir. 
+        // Para este caso, lanzaremos un error informativo para el primer curso que falle.
+        return NextResponse.json(
+          { error: `El curso ${curso.nombre} (${item.tipo_clase}) ya alcanzó el máximo de ${curso.maximo_docentes} docentes.` }, 
+          { status: 400 }
+        );
+      }
+
+      const res = await prisma.docenteCurso.upsert({
+        where: {
+          id_docente_id_curso_tipo_clase: {
             id_docente,
             id_curso: item.id_curso,
-            tipo_clase: item.tipo_clase,
-            activo: true
+            tipo_clase: item.tipo_clase
           }
-        })
-      )
-    );
+        },
+        update: { activo: true },
+        create: {
+          id_docente,
+          id_curso: item.id_curso,
+          tipo_clase: item.tipo_clase,
+          activo: true
+        }
+      });
+      created.push(res);
+    }
 
     return NextResponse.json(created);
   } catch (error) {

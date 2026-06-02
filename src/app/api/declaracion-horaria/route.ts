@@ -39,16 +39,37 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
-    const declaracion = await prisma.declaracionHoraria.create({
-      data: {
-        id_docente: data.id_docente,
-        id_periodo: data.id_periodo,
+    const declaracion = await prisma.declaracionHoraria.upsert({
+      where: {
+        id_docente_id_periodo: {
+          id_docente: parseInt(data.id_docente),
+          id_periodo: parseInt(data.id_periodo)
+        }
+      },
+      update: {
         ibm: data.ibm,
         condicion: data.condicion,
         categoria: data.categoria,
         dedicacion: data.dedicacion,
-        horas_dedicacion: data.horas_dedicacion,
+        horas_dedicacion: parseFloat(data.horas_dedicacion),
         estado: data.estado || 'BORRADOR'
+      },
+      create: {
+        id_docente: parseInt(data.id_docente),
+        id_periodo: parseInt(data.id_periodo),
+        ibm: data.ibm,
+        condicion: data.condicion,
+        categoria: data.categoria,
+        dedicacion: data.dedicacion,
+        horas_dedicacion: parseFloat(data.horas_dedicacion),
+        estado: data.estado || 'BORRADOR'
+      },
+      include: {
+        docente: true,
+        periodo: true,
+        cargas_lectivas: { include: { curso: true, grupo: true } },
+        cargas_no_lectivas: true,
+        formatos: true
       }
     });
     return NextResponse.json(declaracion);

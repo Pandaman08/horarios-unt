@@ -60,9 +60,7 @@ interface Curso {
   id_curso: number;
   codigo: string;
   nombre: string;
-  horas_teoria: number;
-  horas_laboratorio: number;
-  horas_practica: number;
+  maximo_docentes: number;
   creditos: number;
   id_ciclo?: number;
   tipo_curso: string;
@@ -97,7 +95,6 @@ export function CursoList() {
 
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
-  const [filtroHoras, setFiltroHoras] = useState<string>("todos");
   const [filtroCiclo, setFiltroCiclo] = useState<string>("todos");
 
   // Paginación
@@ -109,21 +106,15 @@ export function CursoList() {
     const matchesTipo = filtroTipo === "todos" || c.tipo_curso === filtroTipo;
     const matchesCiclo = filtroCiclo === "todos" || c.id_ciclo?.toString() === filtroCiclo;
 
-    const totalHoras = c.horas_teoria + c.horas_laboratorio + c.horas_practica;
-    let matchesHoras = true;
-    if (filtroHoras === "0-3") matchesHoras = totalHoras <= 3;
-    else if (filtroHoras === "4-6") matchesHoras = totalHoras > 3 && totalHoras <= 6;
-    else if (filtroHoras === "7+") matchesHoras = totalHoras > 6;
-
     // Filtrar por semestre según ciclo
     const ciclo = ciclos.find(cy => cy.id_ciclo === c.id_ciclo);
     if (ciclo) {
       const isPar = ciclo.numero % 2 === 0;
       const matchesSemestre = (semestre === 1 && !isPar) || (semestre === 2 && isPar);
-      return matchesSearch && matchesTipo && matchesCiclo && matchesHoras && matchesSemestre;
+      return matchesSearch && matchesTipo && matchesCiclo && matchesSemestre;
     }
 
-    return matchesSearch && matchesTipo && matchesCiclo && matchesHoras;
+    return matchesSearch && matchesTipo && matchesCiclo;
   });
 
   // Cálculo de paginación
@@ -135,14 +126,12 @@ export function CursoList() {
 
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filtroTipo, filtroHoras, filtroCiclo, semestre]);
+  }, [searchTerm, filtroTipo, filtroCiclo, semestre]);
 
   const [formData, setFormData] = useState({
     codigo: "",
     nombre: "",
-    horas_teoria: "0",
-    horas_laboratorio: "0",
-    horas_practica: "0",
+    maximo_docentes: "1",
     creditos: "0",
     id_ciclo: "",
     tipo_curso: "linea_carrera",
@@ -263,9 +252,7 @@ export function CursoList() {
     setFormData({
       codigo: curso.codigo,
       nombre: curso.nombre,
-      horas_teoria: curso.horas_teoria.toString(),
-      horas_laboratorio: curso.horas_laboratorio.toString(),
-      horas_practica: curso.horas_practica.toString(),
+      maximo_docentes: curso.maximo_docentes.toString(),
       creditos: curso.creditos.toString(),
       id_ciclo: curso.id_ciclo?.toString() || "",
       tipo_curso: curso.tipo_curso || "linea_carrera",
@@ -279,9 +266,7 @@ export function CursoList() {
     setFormData({
       codigo: "",
       nombre: "",
-      horas_teoria: "0",
-      horas_laboratorio: "0",
-      horas_practica: "0",
+      maximo_docentes: "1",
       creditos: "0",
       id_ciclo: "",
       tipo_curso: "linea_carrera",
@@ -435,18 +420,10 @@ export function CursoList() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-4 gap-3">
+                  <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Teoría</Label>
-                      <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Lab.</Label>
-                      <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Prác.</Label>
-                      <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
+                      <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Créd.</Label>
@@ -467,7 +444,7 @@ export function CursoList() {
         </div>
 
         {/* Barra de Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/50">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
           <div className="space-y-1.5">
             <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
             <Select value={filtroTipo} onValueChange={setFiltroTipo}>
@@ -504,21 +481,6 @@ export function CursoList() {
               </SelectContent>
             </Select>
           </div>
-
-          <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Horas Totales</Label>
-            <Select value={filtroHoras} onValueChange={setFiltroHoras}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
-                <SelectValue placeholder="Cualquiera" />
-              </SelectTrigger>
-              <SelectContent className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Cualquier cantidad</SelectItem>
-                <SelectItem value="0-3" className="text-[10px] font-bold">Corta (0-3 hrs)</SelectItem>
-                <SelectItem value="4-6" className="text-[10px] font-bold">Media (4-6 hrs)</SelectItem>
-                <SelectItem value="7+" className="text-[10px] font-bold">Intensa (7+ hrs)</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
         </div>
       </div>
 
@@ -529,7 +491,7 @@ export function CursoList() {
               <TableRow className="border-b border-border hover:bg-transparent">
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Horas (T-L-P)</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Máx. Docentes</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Créd.</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Ciclo</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
@@ -555,11 +517,9 @@ export function CursoList() {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <div className="flex items-center justify-center gap-2">
-                        <span className="text-[10px] font-black text-primary bg-primary/10 px-1.5 py-0.5 rounded">{curso.horas_teoria}</span>
-                        <span className="text-[10px] font-black text-blue-600 bg-blue-500/10 px-1.5 py-0.5 rounded">{curso.horas_laboratorio}</span>
-                        <span className="text-[10px] font-black text-emerald-600 bg-emerald-500/10 px-1.5 py-0.5 rounded">{curso.horas_practica}</span>
-                      </div>
+                      <span className="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                        {curso.maximo_docentes} {curso.maximo_docentes === 1 ? 'Docente' : 'Docentes'}
+                      </span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
                       <span className="text-[10px] font-bold text-foreground">{curso.creditos}</span>

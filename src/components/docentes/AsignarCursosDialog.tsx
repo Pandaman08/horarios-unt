@@ -48,6 +48,11 @@ interface Curso {
   codigo: string;
   nombre: string;
   tipo_curso: string;
+  maximo_docentes: number;
+  docente_cursos?: {
+    id_docente: number;
+    tipo_clase: string;
+  }[];
   id_ciclo?: number;
   ciclo_rel?: {
     id_ciclo: number;
@@ -205,6 +210,13 @@ export function AsignarCursosDialog({
     );
   };
 
+  const isFull = (curso: Curso, tipo_clase: string) => {
+    const asignados = curso.docente_cursos?.filter(dc => dc.tipo_clase.toLowerCase() === tipo_clase.toLowerCase()) || [];
+    // Si el docente actual ya está asignado, no está lleno (para él)
+    const yaAsignado = asignados.some(dc => dc.id_docente === docenteId);
+    return !yaAsignado && asignados.length >= curso.maximo_docentes;
+  };
+
   const handleSave = async () => {
     setSaving(true);
     try {
@@ -337,35 +349,70 @@ export function AsignarCursosDialog({
                     </TableRow>
                   </TableHeader>
                   <TableBody className="divide-y divide-border">
-                    {currentItems.map((curso) => (
-                      <TableRow key={curso.id_curso} className="hover:bg-muted/30 border-b border-border last:border-0 transition-colors">
-                        <TableCell className="px-3 py-1.5">
-                          <div className="font-medium text-foreground text-[12px]">{curso.nombre}</div>
-                          <div className="text-[10px] text-muted-foreground">{curso.codigo}</div>
-                        </TableCell>
-                        <TableCell className="text-center px-3 py-1.5">
-                          <Checkbox
-                            checked={isChecked(curso.id_curso, "teoria")}
-                            onCheckedChange={() => toggleAsignacion(curso.id_curso, "teoria")}
-                            className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-4 w-4"
-                          />
-                        </TableCell>
-                        <TableCell className="text-center px-3 py-1.5">
-                          <Checkbox
-                            checked={isChecked(curso.id_curso, "laboratorio")}
-                            onCheckedChange={() => toggleAsignacion(curso.id_curso, "laboratorio")}
-                            className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-4 w-4"
-                          />
-                        </TableCell>
-                        <TableCell className="text-center px-3 py-1.5">
-                          <Checkbox
-                            checked={isChecked(curso.id_curso, "practica")}
-                            onCheckedChange={() => toggleAsignacion(curso.id_curso, "practica")}
-                            className="border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-4 w-4"
-                          />
-                        </TableCell>
-                      </TableRow>
-                    ))}
+                    {currentItems.map((curso) => {
+                      const teoriaLleno = isFull(curso, "teoria");
+                      const labLleno = isFull(curso, "laboratorio");
+                      const pracLleno = isFull(curso, "practica");
+
+                      return (
+                        <TableRow key={curso.id_curso} className="hover:bg-muted/30 border-b border-border last:border-0 transition-colors">
+                          <TableCell className="px-3 py-1.5">
+                            <div className="font-medium text-foreground text-[12px]">{curso.nombre}</div>
+                            <div className="flex items-center gap-2">
+                              <span className="text-[10px] text-muted-foreground">{curso.codigo}</span>
+                              <span className={cn(
+                                "text-[8px] font-black px-1.5 py-0.5 rounded-full uppercase",
+                                "bg-primary/10 text-primary border border-primary/20"
+                              )}>
+                                Cap: {curso.maximo_docentes}
+                              </span>
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center px-3 py-1.5">
+                            <div className="flex flex-col items-center gap-1">
+                              <Checkbox
+                                disabled={teoriaLleno}
+                                checked={isChecked(curso.id_curso, "teoria")}
+                                onCheckedChange={() => toggleAsignacion(curso.id_curso, "teoria")}
+                                className={cn(
+                                  "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-4 w-4",
+                                  teoriaLleno && "opacity-20 cursor-not-allowed"
+                                )}
+                              />
+                              {teoriaLleno && <span className="text-[7px] font-black text-red-500 uppercase">Lleno</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center px-3 py-1.5">
+                            <div className="flex flex-col items-center gap-1">
+                              <Checkbox
+                                disabled={labLleno}
+                                checked={isChecked(curso.id_curso, "laboratorio")}
+                                onCheckedChange={() => toggleAsignacion(curso.id_curso, "laboratorio")}
+                                className={cn(
+                                  "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-4 w-4",
+                                  labLleno && "opacity-20 cursor-not-allowed"
+                                )}
+                              />
+                              {labLleno && <span className="text-[7px] font-black text-red-500 uppercase">Lleno</span>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-center px-3 py-1.5">
+                            <div className="flex flex-col items-center gap-1">
+                              <Checkbox
+                                disabled={pracLleno}
+                                checked={isChecked(curso.id_curso, "practica")}
+                                onCheckedChange={() => toggleAsignacion(curso.id_curso, "practica")}
+                                className={cn(
+                                  "border-primary data-[state=checked]:bg-primary data-[state=checked]:text-primary-foreground h-4 w-4",
+                                  pracLleno && "opacity-20 cursor-not-allowed"
+                                )}
+                              />
+                              {pracLleno && <span className="text-[7px] font-black text-red-500 uppercase">Lleno</span>}
+                            </div>
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                   </TableBody>
                 </Table>
               </div>

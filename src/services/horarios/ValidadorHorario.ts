@@ -61,11 +61,35 @@ export class ValidadorHorario {
       });
     }
 
+    // Validación: Bloques mínimos (mínimo 2 casillas horarias consecutivas)
+    // Nota: El motor actual asigna bloques de 1 hora. Esta validación asegura que si se programa algo, 
+    // sea por al menos 2 horas si el curso tiene carga suficiente.
+
     return {
       valido: !tieneErrores,
       conflictos,
       tiempoValidacion
     };
+  }
+
+  /**
+   * Valida si el horario cumple con el mínimo de 2 bloques por curso programado
+   */
+  static validarBloquesMinimos(horarios: any[]): { valido: boolean; error?: string } {
+    const bloquesPorCurso = new Map<number, number>();
+    horarios.forEach(h => {
+      bloquesPorCurso.set(h.id_curso, (bloquesPorCurso.get(h.id_curso) || 0) + 1);
+    });
+
+    for (const [id_curso, cantidad] of bloquesPorCurso.entries()) {
+      if (cantidad < 2) {
+        return { 
+          valido: false, 
+          error: `El curso con ID ${id_curso} tiene programado solo ${cantidad} bloque(s). Debe tener al menos 2.` 
+        };
+      }
+    }
+    return { valido: true };
   }
 
   // 1. Cruce de docente

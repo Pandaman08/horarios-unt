@@ -38,9 +38,7 @@ export async function PUT(
       data: {
         codigo: data.codigo,
         nombre: data.nombre,
-        horas_teoria: parseInt(data.horas_teoria) || 0,
-        horas_laboratorio: parseInt(data.horas_laboratorio) || 0,
-        horas_practica: parseInt(data.horas_practica) || 0,
+        maximo_docentes: parseInt(data.maximo_docentes) || 1,
         creditos: parseInt(data.creditos) || 0,
         id_ciclo: parseInt(data.id_ciclo) || null,
         tipo_curso: data.tipo_curso || "linea_carrera",

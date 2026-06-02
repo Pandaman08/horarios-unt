@@ -11,6 +11,7 @@ import { seedCursoAmbiente } from './seeders/curso_ambiente.seeder';
 import { seedGrupos } from './seeders/grupos.seeder';
 import { seedHorarios } from './seeders/horarios.seeder';
 import { seedDisponibilidad } from './seeders/disponibilidad.seeder';
+import { seedCargaLectiva } from './seeders/carga_lectiva.seeder';
 
 // Inicializar Prisma Client usando DIRECT_URL para el seed si está disponible
 // Esto evita errores de prepared statements con PgBouncer en Supabase/Vercel
@@ -85,6 +86,7 @@ async function main() {
     await seedCursoAmbiente(prisma);
     await seedGrupos(prisma);
     await seedDisponibilidad(prisma);  // Disponibilidad de docentes
+    await seedCargaLectiva(prisma);    // Nueva Carga Lectiva
     await seedHorarios(prisma);     // Usa los períodos creados en seedPeriodos
 
     console.log('--- Seed completado con éxito ---');

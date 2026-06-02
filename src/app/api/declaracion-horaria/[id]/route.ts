@@ -3,12 +3,13 @@ import { prisma } from '@/lib/prisma';
 
 export async function PUT(
   request: Request,
-  { params }: { params: { id: string } }
+  { params }: { params: Promise<{ id: string }> }
 ) {
   try {
+    const { id } = await params;
     const data = await request.json();
     const declaracion = await prisma.declaracionHoraria.update({
-      where: { id_declaracion: parseInt(params.id) },
+      where: { id_declaracion: parseInt(id) },
       data: {
         ibm: data.ibm,
         condicion: data.condicion,

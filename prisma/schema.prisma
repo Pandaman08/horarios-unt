@@ -55,9 +55,7 @@ model Curso {
   id_curso               Int                        @id @default(autoincrement())
   codigo                 String                     @unique
   nombre                 String
-  horas_teoria           Int                        @default(0)
-  horas_laboratorio      Int                        @default(0)
-  horas_practica         Int                        @default(0)
+  maximo_docentes        Int                        @default(1)
   creditos               Int
   plan_estudios          String?
   prerequisitos          String?

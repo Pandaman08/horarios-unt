@@ -39,7 +39,6 @@ import {
   FileSpreadsheet
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { AsignarCursosDialog } from "./AsignarCursosDialog";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
 import {
@@ -75,8 +74,6 @@ export function DocenteList() {
   const periodoSeleccionado = context?.periodoSeleccionado;
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [loading, setLoading] = useState(true);
-  const [selectedDocente, setSelectedDocente] = useState<Docente | null>(null);
-  const [isAsignarOpen, setIsAsignarOpen] = useState(false);
   const [isDocenteDialogOpen, setIsDocenteDialogOpen] = useState(false);
   const [editingDocente, setEditingDocente] = useState<Docente | null>(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -717,16 +714,6 @@ export function DocenteList() {
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => { setSelectedDocente(docente); setIsAsignarOpen(true); }}
-                          title="Asignar Cursos"
-                          className="h-7 w-7 rounded-lg hover:bg-emerald-500/10 hover:text-emerald-600 transition-all"
-                        >
-                          <BookOpen className="h-3.5 w-3.5" />
-                        </Button>
-
-                        <Button
-                          variant="ghost"
-                          size="icon"
                           onClick={() => handleDelete(docente.id_docente)}
                           title="Eliminar Docente"
                           className="h-7 w-7 rounded-lg hover:bg-red-500/10 hover:text-red-600 transition-all"
@@ -749,8 +736,6 @@ export function DocenteList() {
           className="border-t border-border bg-muted/10"
         />
       </div>
-
-      <AsignarCursosDialog docenteId={selectedDocente?.id_docente || 0} docenteNombre={`${selectedDocente?.apellidos}, ${selectedDocente?.nombres}`} isOpen={isAsignarOpen} onClose={() => { setIsAsignarOpen(false); setSelectedDocente(null); }} />
     </div>
   );
 }

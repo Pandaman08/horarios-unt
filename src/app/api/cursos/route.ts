@@ -7,6 +7,9 @@ export async function GET() {
       where: { activo: true },
       include: {
         ciclo_rel: true,
+        docente_cursos: {
+          where: { activo: true }
+        },
         curso_ambientes: {
           include: {
             ambiente: true
@@ -28,9 +31,7 @@ export async function POST(request: Request) {
       data: {
         codigo: data.codigo,
         nombre: data.nombre,
-        horas_teoria: parseInt(data.horas_teoria) || 0,
-        horas_laboratorio: parseInt(data.horas_laboratorio) || 0,
-        horas_practica: parseInt(data.horas_practica) || 0,
+        maximo_docentes: parseInt(data.maximo_docentes) || 1,
         creditos: parseInt(data.creditos) || 0,
         id_ciclo: data.id_ciclo ? parseInt(data.id_ciclo) : null,
         tipo_curso: data.tipo_curso || "linea_carrera",
@@ -39,32 +40,7 @@ export async function POST(request: Request) {
         activo: true
       }
     });
-    // Asignar ambientes automáticos según horas
-    if (parseInt(data.horas_teoria) > 0) {
-      const aulasTeoria = await prisma.ambiente.findMany({ where: { tipo: 'teoria', activo: true }, take: 1 });
-      if (aulasTeoria.length > 0) {
-        await prisma.cursoAmbiente.create({
-          data: { id_curso: curso.id_curso, id_ambiente: aulasTeoria[0].id_ambiente, tipo_clase: 'teoria' }
-        });
-      }
-    }
-    if (parseInt(data.horas_laboratorio) > 0) {
-      const laboratorios = await prisma.ambiente.findMany({ where: { tipo: 'laboratorio', activo: true }, take: 1 });
-      if (laboratorios.length > 0) {
-        await prisma.cursoAmbiente.create({
-          data: { id_curso: curso.id_curso, id_ambiente: laboratorios[0].id_ambiente, tipo_clase: 'laboratorio' }
-        });
-      }
-    }
-    if (parseInt(data.horas_practica) > 0) {
-      const aulasTeoria = await prisma.ambiente.findMany({ where: { tipo: 'teoria', activo: true }, take: 1 });
-      if (aulasTeoria.length > 0) {
-        await prisma.cursoAmbiente.create({
-          data: { id_curso: curso.id_curso, id_ambiente: aulasTeoria[0].id_ambiente, tipo_clase: 'practica' }
-        });
-      }
-    }
-
+    
     return NextResponse.json(curso);
   } catch (error) {
     console.error("Error al crear curso:", error);
