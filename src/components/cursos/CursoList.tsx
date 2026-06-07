@@ -518,7 +518,7 @@ export function CursoList() {
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
                       <span className="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
-                        {curso.maximo_docentes} {curso.maximo_docentes === 1 ? 'Docente' : 'Docentes'}
+                        {curso.maximo_docentes} 
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">

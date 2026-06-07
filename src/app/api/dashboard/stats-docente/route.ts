@@ -27,7 +27,7 @@ export async function GET(request: Request) {
     const [docente, periodo] = await Promise.all([
       prisma.docente.findUnique({
         where: { id_docente },
-        select: { modalidad: true, categoria: true, max_horas_lectivas: true, min_horas_lectivas: true },
+        select: { modalidad: true, categoria: true, horas_maximas_semanales: true },
       }),
       prisma.periodoAcademico.findUnique({
         where: { id_periodo },
@@ -73,13 +73,13 @@ export async function GET(request: Request) {
         horasNoLectivas: horasNoLectivas,
         horasTotales: horasTotales,
         cantidadCursos: cantidadCursos,
-        minHorasLectivas: docente?.min_horas_lectivas || 0,
-        maxHorasLectivas: docente?.max_horas_lectivas || 0,
+        minHorasLectivas: 0, // No existe en el modelo, valor por defecto
+        maxHorasLectivas: docente?.horas_maximas_semanales || 40,
       },
       alertas: {
         sinDisponibilidad: disponibilidad === 0,
         declaracionesPendientes: declaracionesPendientes > 0,
-        faltaCargaLectiva: horasLectivasAsignadas < (docente?.min_horas_lectivas || 0)
+        faltaCargaLectiva: false // Desactivado temporalmente ya que no existe min_horas_lectivas
       }
     });
   } catch (error) {

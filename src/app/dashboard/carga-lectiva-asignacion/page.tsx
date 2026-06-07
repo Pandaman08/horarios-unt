@@ -258,7 +258,11 @@ export default function AsignacionCargaLectivaPage() {
     setCargasLectivas(cargasLectivas.filter((_, i) => i !== index));
   };
 
-  const totalHoras = cargasLectivas.reduce((sum, carga) => sum + carga.horas_semanales, 0);
+  const totalHoras = cargasLectivas.reduce((sum, carga) => {
+    const grupos = carga.grupos_asignados || 0;
+    const horas = carga.horas_semanales || 0;
+    return sum + (grupos * horas);
+  }, 0);
   
   const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
   const esLectura = !periodoActualObj?.activo || periodoActualObj?.estado === 'finalizado';
@@ -524,28 +528,25 @@ export default function AsignacionCargaLectivaPage() {
                     </Select>
                   </div>
                   <div className="col-span-6 sm:col-span-3 lg:col-span-2 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Grupo</Label>
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Grupos</Label>
                     <Select
                       disabled={esLectura || !carga.id_curso}
-                      value={carga.id_grupo?.toString() || "none"}
+                      value={carga.grupos_asignados?.toString() || "0"}
                       onValueChange={(value) => {
                         const updated = [...cargasLectivas];
-                        updated[index].id_grupo = value === "none" ? null : parseInt(value);
+                        updated[index].grupos_asignados = parseInt(value);
                         setCargasLectivas(updated);
                       }}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder={carga.id_curso ? "Seleccionar grupo" : "N/A"} />
+                        <SelectValue placeholder={carga.id_curso ? "Número de grupos" : "N/A"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none" className="text-xs italic text-muted-foreground">Sin Grupo</SelectItem>
-                        {grupos
-                          .filter(g => g.id_curso === carga.id_curso)
-                          .map((grupo) => (
-                            <SelectItem key={grupo.id_grupo} value={grupo.id_grupo.toString()} className="text-xs font-bold">
-                              Grupo {grupo.codigo_grupo}
-                            </SelectItem>
-                          ))}
+                        {[0, 1, 2, 3, 4].map((num) => (
+                          <SelectItem key={num} value={num.toString()} className="text-xs font-bold">
+                            {num === 0 ? "Sin grupos" : `${num} grupo${num > 1 ? "s" : ""}`}
+                          </SelectItem>
+                        ))}
                       </SelectContent>
                     </Select>
                   </div>
@@ -563,20 +564,8 @@ export default function AsignacionCargaLectivaPage() {
                       }}
                     />
                   </div>
-                  <div className="col-span-4 sm:col-span-2 lg:col-span-2 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Alumnos</Label>
-                    <Input
-                      disabled={esLectura}
-                      type="number"
-                      className="h-8 text-xs text-center"
-                      value={carga.grupos_asignados || ""}
-                      onChange={(e) => {
-                        const updated = [...cargasLectivas];
-                        updated[index].grupos_asignados = parseInt(e.target.value) || 0;
-                        setCargasLectivas(updated);
-                      }}
-                    />
-                  </div>
+                  {/* Este campo se reemplazó por el selector de grupos, lo ocultamos */}
+                  <div className="col-span-0 hidden"></div>
                   {!esLectura && (
                     <div className="col-span-4 sm:col-span-2 lg:col-span-1 flex justify-end">
                       <Button

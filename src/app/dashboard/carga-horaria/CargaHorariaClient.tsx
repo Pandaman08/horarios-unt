@@ -26,17 +26,52 @@ const DEDICACIONES = [
 const CONDICIONES = ['Nombrado', 'Principal', 'Auxiliar', 'Jefe de Práctica', 'Profesor', 'Alumno'];
 const CATEGORIAS = ['Asociado', 'Principal', 'Auxiliar', 'Titular'];
 
-const TIPOS_CARGA_NO_LECTIVA = [
-  { value: 'PREPARACION_EVALUACION', label: 'Preparación y Evaluación' },
-  { value: 'TUTORIA', label: 'Tutoría' },
-  { value: 'INVESTIGACION', label: 'Investigación' },
-  { value: 'CAPACITACION', label: 'Capacitación' },
-  { value: 'GOBIERNO', label: 'Gobierno' },
-  { value: 'ADMINISTRACION', label: 'Administración' },
-  { value: 'ASESORIA', label: 'Asesoría' },
-  { value: 'RESPONSABILIDAD_SOCIAL', label: 'Responsabilidad Social' },
-  { value: 'COMITES_TECNICOS', label: 'Comités Técnicos' },
-  { value: 'OTRO', label: 'Otro' }
+const TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS = [
+  {
+    value: 'PREPARACION_EVALUACION',
+    label: 'Preparación y Evaluación',
+    descripcion: 'Preparación de clases, elaboración de materiales, evaluación de estudiantes (Max 50% del Trabajo Lectivo)'
+  },
+  {
+    value: 'TUTORIA',
+    label: 'Consejería y Tutoría',
+    descripcion: 'Acompañamiento académico y personal a estudiantes'
+  },
+  {
+    value: 'INVESTIGACION',
+    label: 'Investigación',
+    descripcion: 'Desarrollo de proyectos de investigación'
+  },
+  {
+    value: 'CAPACITACION',
+    label: 'Capacitación',
+    descripcion: 'Formación y actualización docente'
+  },
+  {
+    value: 'GOBIERNO',
+    label: 'Actividades de Gobierno',
+    descripcion: 'Participación en órganos de gobierno de la facultad'
+  },
+  {
+    value: 'ADMINISTRACION',
+    label: 'Actividades de Administración',
+    descripcion: 'Tareas administrativas asignadas'
+  },
+  {
+    value: 'ASESORIA',
+    label: 'Asesoría de Tesis, Exámenes Profesionales y Experiencia Profesional',
+    descripcion: 'Asesoría a tesis, dirección de exámenes y experiencias profesionales'
+  },
+  {
+    value: 'RESPONSABILIDAD_SOCIAL',
+    label: 'Responsabilidad Social Universitaria',
+    descripcion: 'Actividades de responsabilidad social (Mínimo 0.2 horas semanales)'
+  },
+  {
+    value: 'COMITES_TECNICOS',
+    label: 'Comités Técnicos y Comisiones',
+    descripcion: 'Participación en comités técnicos y comisiones'
+  }
 ];
 
 export default function CargaHorariaClient({ initialDocente }: { initialDocente: any }) {
@@ -99,10 +134,42 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           horas_dedicacion: data.horas_dedicacion
         });
         setCargasLectivas(data.cargas_lectivas || []);
-        setCargasNoLectivas(data.cargas_no_lectivas || []);
+        
+        // Initialize with all predefined types, merging existing ones
+        const cargasExistentes = data.cargas_no_lectivas || [];
+        const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map(tipo => {
+          const existente = cargasExistentes.find((c: any) => c.tipo === tipo.value);
+          if (existente) {
+            return existente;
+          }
+          return {
+            id_carga_no_lectiva: Date.now() + Math.random(),
+            tipo: tipo.value,
+            descripcion: '',
+            horas_semanales: 0
+          };
+        });
+        setCargasNoLectivas(cargasInicializadas);
+      } else {
+        // If no declaration exists, initialize with all predefined types
+        const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
+          id_carga_no_lectiva: Date.now() + idx,
+          tipo: tipo.value,
+          descripcion: '',
+          horas_semanales: 0
+        }));
+        setCargasNoLectivas(cargasInicializadas);
       }
     } catch (err) {
       console.error(err);
+      // Initialize with all predefined types even on error
+      const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
+        id_carga_no_lectiva: Date.now() + idx,
+        tipo: tipo.value,
+        descripcion: '',
+        horas_semanales: 0
+      }));
+      setCargasNoLectivas(cargasInicializadas);
     } finally {
       setLoading(false);
     }
@@ -110,6 +177,12 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
 
   const handleCreateOrSave = async () => {
     if (!initialDocente || !periodoActivo) return;
+
+    // Validate total hours don't exceed dedication
+    if (formData.horas_dedicacion > 0 && totalGeneral > formData.horas_dedicacion) {
+      alert(`Error: El total de horas (${totalGeneral}h) excede las horas de dedicación (${formData.horas_dedicacion}h)`);
+      return;
+    }
 
     try {
       let declaracionId = declaracion?.id_declaracion;
@@ -158,23 +231,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         }
       }
 
-      // Save cargas no lectivas
-      for (const carga of cargasNoLectivas) {
-        if (carga.id_carga_no_lectiva && typeof carga.id_carga_no_lectiva === 'number') {
-          // TODO: Update existing carga
-        } else {
-          await fetch('/api/carga-no-lectiva', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id_declaracion: declaracionId,
-              tipo: carga.tipo || 'OTRO',
-              descripcion: carga.descripcion || null,
-              horas_semanales: carga.horas_semanales || 0
-            })
-          });
-        }
-      }
+      // Save cargas no lectivas using upsert
+      await fetch('/api/carga-no-lectiva', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_declaracion: declaracionId,
+          cargas: cargasNoLectivas
+        })
+      });
 
       // Refresh data
       fetchDeclaracion(periodoActivo.id_periodo, initialDocente.id_docente);
@@ -196,15 +261,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }]);
   };
 
-  const addCargaNoLectiva = () => {
-    setCargasNoLectivas([...cargasNoLectivas, { 
-      id_carga_no_lectiva: Date.now(), 
-      tipo: 'OTRO', 
-      descripcion: '', 
-      horas_semanales: 0 
-    }]);
-  };
-
   const removeCargaLectiva = async (id: number) => {
     if (typeof id === 'number' && declaracion) {
       try {
@@ -214,17 +270,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       }
     }
     setCargasLectivas(cargasLectivas.filter(c => c.id_carga_lectiva !== id));
-  };
-
-  const removeCargaNoLectiva = async (id: number) => {
-    if (typeof id === 'number' && declaracion) {
-      try {
-        await fetch(`/api/carga-no-lectiva?id=${id}`, { method: 'DELETE' });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    setCargasNoLectivas(cargasNoLectivas.filter(c => c.id_carga_no_lectiva !== id));
   };
 
   const handleEnviar = async () => {
@@ -257,7 +302,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
   };
 
-  const totalLectivas = cargasLectivas.reduce((sum, c) => sum + (c.horas_semanales || 0), 0);
+  const totalLectivas = cargasLectivas.reduce((sum, c) => {
+    const grupos = c.grupos_asignados || 0;
+    const horas = c.horas_semanales || 0;
+    return sum + (grupos * horas);
+  }, 0);
   const totalNoLectivas = cargasNoLectivas.reduce((sum, c) => sum + (c.horas_semanales || 0), 0);
   const totalGeneral = totalLectivas + totalNoLectivas;
 
@@ -416,7 +465,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 ) : (
                   cargasLectivas.map(carga => {
                     const curso = cursos.find(c => c.id_curso === carga.id_curso);
-                    const grupo = grupos.find(g => g.id_grupo === carga.id_grupo);
                     return (
                       <div key={carga.id_carga_lectiva} className="grid grid-cols-12 gap-4 items-center p-4 bg-slate-50 rounded-lg">
                         <div className="col-span-4">
@@ -431,16 +479,19 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           }</p>
                         </div>
                         <div className="col-span-2">
-                          <Label className="text-sm text-slate-500">Grupo</Label>
-                          <p className="font-medium">{grupo ? grupo.codigo_grupo : '—'}</p>
+                          <Label className="text-sm text-slate-500">Grupos</Label>
+                          <p className="font-medium">{
+                            (carga.grupos_asignados || 0) === 0 ? 'Sin grupos' : 
+                            `${carga.grupos_asignados} grupo${(carga.grupos_asignados || 0) > 1 ? 's' : ''}`
+                          }</p>
                         </div>
-                        <div className="col-span-1">
+                        <div className="col-span-2">
                           <Label className="text-sm text-slate-500">Horas/Sem</Label>
                           <p className="font-medium">{carga.horas_semanales}</p>
                         </div>
-                        <div className="col-span-1">
-                          <Label className="text-sm text-slate-500">N° Grupos</Label>
-                          <p className="font-medium">{carga.grupos_asignados || '—'}</p>
+                        <div className="col-span-2">
+                          <Label className="text-sm text-slate-500">Subtotal</Label>
+                          <p className="font-medium">{(carga.grupos_asignados || 0) * (carga.horas_semanales || 0)}h</p>
                         </div>
                       </div>
                     );
@@ -453,71 +504,51 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
 
         <TabsContent value="no-lectiva" className="mt-4">
           <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
+            <CardHeader>
               <CardTitle>Carga No Lectiva</CardTitle>
-              <Button onClick={addCargaNoLectiva} size="sm" className="flex items-center gap-2">
-                <Plus size={16} /> Agregar
-              </Button>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                {cargasNoLectivas.map(carga => (
-                  <div key={carga.id_carga_no_lectiva} className="grid grid-cols-12 gap-4 items-end p-4 bg-slate-50 rounded-lg">
-                    <div className="col-span-4 space-y-1">
-                      <Label>Tipo de Actividad</Label>
-                      <Select
-                        value={carga.tipo || 'OTRO'}
-                        onValueChange={v => {
-                          const newCargas = [...cargasNoLectivas];
-                          const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                          newCargas[idx].tipo = v;
-                          setCargasNoLectivas(newCargas);
-                        }}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TIPOS_CARGA_NO_LECTIVA.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
+                {cargasNoLectivas.map(carga => {
+                  const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
+                  return (
+                    <div key={carga.id_carga_no_lectiva} className="grid grid-cols-12 gap-4 items-start p-4 bg-slate-50 rounded-lg">
+                      <div className="col-span-5 space-y-2">
+                        <Label className="font-medium text-slate-800">{tipoInfo?.label || carga.tipo}</Label>
+                        <p className="text-sm text-slate-500">{tipoInfo?.descripcion}</p>
+                      </div>
+                      <div className="col-span-5 space-y-1">
+                        <Label className="text-sm text-slate-500">Descripción de la actividad</Label>
+                        <Input
+                          placeholder="Describa su actividad específica"
+                          value={carga.descripcion || ''}
+                          onChange={e => {
+                            const newCargas = [...cargasNoLectivas];
+                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                            newCargas[idx].descripcion = e.target.value;
+                            setCargasNoLectivas(newCargas);
+                          }}
+                        />
+                      </div>
+                      <div className="col-span-2 space-y-1">
+                        <Label className="text-sm text-slate-500">Horas/Sem</Label>
+                        <Input
+                          type="number"
+                          min="0"
+                          step="0.1"
+                          value={carga.horas_semanales || 0}
+                          onChange={e => {
+                            const horas = parseFloat(e.target.value) || 0;
+                            const newCargas = [...cargasNoLectivas];
+                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                            newCargas[idx].horas_semanales = horas;
+                            setCargasNoLectivas(newCargas);
+                          }}
+                        />
+                      </div>
                     </div>
-                    <div className="col-span-5 space-y-1">
-                      <Label>Descripción</Label>
-                      <Input
-                        placeholder="Describa la actividad"
-                        value={carga.descripcion || ''}
-                        onChange={e => {
-                          const newCargas = [...cargasNoLectivas];
-                          const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                          newCargas[idx].descripcion = e.target.value;
-                          setCargasNoLectivas(newCargas);
-                        }}
-                      />
-                    </div>
-                    <div className="col-span-1 space-y-1">
-                      <Label>Horas</Label>
-                      <Input
-                        type="number"
-                        value={carga.horas_semanales || 0}
-                        onChange={e => {
-                          const newCargas = [...cargasNoLectivas];
-                          const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                          newCargas[idx].horas_semanales = parseInt(e.target.value) || 0;
-                          setCargasNoLectivas(newCargas);
-                        }}
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <Button variant="destructive" size="sm" onClick={() => removeCargaNoLectiva(carga.id_carga_no_lectiva)}>
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {cargasNoLectivas.length === 0 && (
-                  <div className="text-center py-8 text-slate-400">
-                    No hay cargas no lectivas agregadas
-                  </div>
-                )}
+                  );
+                })}
               </div>
             </CardContent>
           </Card>
