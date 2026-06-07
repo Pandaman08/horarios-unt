@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { User, ShieldCheck, Headphones, XCircle, Mail, Lock, ArrowRight } from "lucide-react";
+import { User, ShieldCheck, Headphones, XCircle, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),
@@ -18,6 +18,7 @@ export function LoginForm() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const [showPassword, setShowPassword] = useState(false);
 
   const fillLogin = async (role: 'admin' | 'operador' | 'docente') => {
     const creds = {
@@ -161,13 +162,20 @@ export function LoginForm() {
               <Lock className="h-5 w-5" />
             </div>
             <input
-              type="password"
+              type={showPassword ? "text" : "password"}
               value={password}
               onChange={(e) => setPassword(e.target.value)}
-              className="w-full pl-11 pr-4 py-4 rounded-2xl border-2 border-border bg-muted/20 focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-muted-foreground/50 font-medium text-foreground"
+              className="w-full pl-11 pr-12 py-4 rounded-2xl border-2 border-border bg-muted/20 focus:bg-card focus:border-primary focus:ring-4 focus:ring-primary/10 outline-none transition-all placeholder:text-muted-foreground/50 font-medium text-foreground"
               placeholder="••••••••"
               required
             />
+            <button
+              type="button"
+              onClick={() => setShowPassword(!showPassword)}
+              className="absolute inset-y-0 right-0 pr-4 flex items-center text-muted-foreground hover:text-primary transition-colors"
+            >
+              {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
+            </button>
           </div>
         </div>
 
