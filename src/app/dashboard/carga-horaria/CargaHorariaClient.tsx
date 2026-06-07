@@ -7,7 +7,6 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { Plus, Trash2, Save, Send, FileText, Download, Loader2, BookOpen, CheckCircle2, User, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -491,273 +490,243 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         </Card>
       </div>
 
-      {/* Tabs para Cargas */}
-      <Tabs defaultValue="lectiva" className="w-full">
-        <TabsList className="w-full max-w-md">
-          <TabsTrigger value="lectiva" className="flex-1">Carga Lectiva</TabsTrigger>
-          <TabsTrigger value="no-lectiva" className="flex-1">Carga No Lectiva</TabsTrigger>
-          <TabsTrigger value="formatos" className="flex-1">Formatos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="lectiva" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Carga Lectiva Asignada</CardTitle>
-            </CardHeader>
-            <CardContent>
-              {cargasLectivas.length === 0 ? (
-                <div className="text-center py-10 text-slate-400">
-                  <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
-                  <p className="text-sm">Aún no hay carga lectiva asignada</p>
-                </div>
-              ) : (
-                <div className="overflow-x-auto">
-                  <table className="w-full border-collapse">
-                    <thead>
-                      <tr className="border-b-2 border-slate-200">
-                        <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">ASIGNATURA</th>
-                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">T</th>
-                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">P</th>
-                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">L</th>
-                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">G</th>
-                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">HRS</th>
-                        <th className="text-center py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">TIPO</th>
-                        <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">ESCUELA</th>
-                        <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">CICLO</th>
+      {/* Carga Lectiva Asignada */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Carga Lectiva Asignada</CardTitle>
+        </CardHeader>
+        <CardContent>
+          {cargasLectivas.length === 0 ? (
+            <div className="text-center py-10 text-slate-400">
+              <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
+              <p className="text-sm">Aún no hay carga lectiva asignada</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <table className="w-full border-collapse">
+                <thead>
+                  <tr className="border-b-2 border-slate-200">
+                    <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">CÓDIGO</th>
+                    <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">NOMBRE DEL CURSO</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">CUR.</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">ESC. PROF.</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">CIC.</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">SEC.</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">N° AL.</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">HT</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">HP</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">HL</th>
+                    <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">TOTAL</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-slate-100">
+                  {cursosArray.map(({ curso, cargas }, index) => {
+                    // Separar cargas por tipo
+                    const cargaTeoria = cargas.find(c => c.tipo_clase === 'teoria');
+                    const cargaPractica = cargas.find(c => c.tipo_clase === 'practica');
+                    const cargaLaboratorio = cargas.find(c => c.tipo_clase === 'laboratorio');
+                    
+                    // Obtener valores directos (HT, HP, HL = horas semanales)
+                    const HT = cargaTeoria?.horas_semanales || 0;
+                    const HP = cargaPractica?.horas_semanales || 0;
+                    const gruposL = cargaLaboratorio?.grupos_asignados || 0;
+                    const horasL = cargaLaboratorio?.horas_semanales || 0;
+                    const HL = gruposL * horasL;
+                    
+                    // Calcular total
+                    const totalHoras = HT + HP + HL;
+                    
+                    // Datos para las columnas
+                    const escuela = "Ing. Sistemas";
+                    
+                    // Mapeo de cursos a ciclos según el seeder
+                    const cursoCiclos: { [key: string]: string } = {
+                      'introducción a la programación': 'I',
+                      'introducción a la ingeniería de sistemas': 'I',
+                      'desarrollo personal': 'I',
+                      'desarrollo del pensamiento lógico matemático': 'I',
+                      'lectura crítica y redacción de textos académicos': 'I',
+                      'introducción al análisis matemático': 'I',
+                      'estadística general': 'I',
+                      
+                      'programación orientada a objetos ii': 'III',
+                      'sistémica': 'III',
+                      'ingeniería gráfica': 'III',
+                      'matemática aplicada i': 'III',
+                      'estadística aplicada': 'III',
+                      'administración general': 'III',
+                      'física electrónica': 'III',
+                      'psicología organizacional': 'III',
+                      
+                      'ingeniería de datos i': 'V',
+                      'sistemas de información': 'V',
+                      'transformación digital': 'V',
+                      'tecnologías web': 'V',
+                      'arquitectura y organización de computadoras': 'V',
+                      'teleinformática': 'V',
+                      'investigación de operaciones': 'V',
+                      'contabilidad gerencial': 'V',
+                      
+                      'ingeniería del software i': 'VII',
+                      'redes y comunicaciones i': 'VII',
+                      'negocios electrónicos': 'VII',
+                      'gestión de servicios de tic': 'VII',
+                      'metodología de la investigación científica': 'VII',
+                      'administración de base de datos': 'VII',
+                      'planeamiento estratégico de la información': 'VII',
+                      'cadena de suministros': 'VII',
+                      
+                      'tesis i': 'IX',
+                      'analítica de negocios': 'IX',
+                      'auditoría informática': 'IX',
+                      'gestión de proyectos de tic': 'IX',
+                      'ingeniería web': 'IX',
+                      'computación en la nube': 'IX',
+                      'hackeo ético': 'IX',
+                    };
+                    
+                    // Determinar ciclo
+                    let ciclo = 'V';
+                    if (curso?.nombre) {
+                      const nombreCurso = curso.nombre.toLowerCase().trim();
+                      if (cursoCiclos[nombreCurso]) {
+                        ciclo = cursoCiclos[nombreCurso];
+                      }
+                    }
+                    
+                    return (
+                      <tr key={`${index}-${curso?.id_curso || curso?.nombre || 'unknown'}`} className="hover:bg-slate-50 transition-colors">
+                        {/* CÓDIGO */}
+                        <td className="py-3 px-3">
+                          <span className="font-medium text-slate-800 text-sm">{curso?.codigo || ''}</span>
+                        </td>
+                        {/* NOMBRE DEL CURSO */}
+                        <td className="py-3 px-3">
+                          <div className="font-medium text-slate-800 text-sm">{curso?.nombre || 'Curso sin nombre'}</div>
+                        </td>
+                        {/* CUR. */}
+                        <td className="py-3 px-2 text-center">
+                          <span className={`text-sm font-semibold ${curso?.codigo?.toUpperCase().startsWith('EL') ? 'text-purple-700' : 'text-slate-600'}`}>
+                            {curso?.codigo?.toUpperCase().startsWith('EL') ? 'EL' : 'OB'}
+                          </span>
+                        </td>
+                        {/* ESC. PROF. */}
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm text-slate-600">{escuela}</span>
+                        </td>
+                        {/* CIC. */}
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm font-semibold text-slate-800">{ciclo}</span>
+                        </td>
+                        {/* SEC. */}
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm text-slate-600">A</span>
+                        </td>
+                        {/* N° AL. */}
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm text-slate-600">50</span>
+                        </td>
+                        {/* HT */}
+                        <td className="py-3 px-2 text-center">
+                          {HT > 0 ? (
+                            <span className="text-sm font-semibold text-slate-800">{HT}</span>
+                          ) : (
+                            <span className="text-slate-300 text-sm">-</span>
+                          )}
+                        </td>
+                        {/* HP */}
+                        <td className="py-3 px-2 text-center">
+                          {HP > 0 ? (
+                            <span className="text-sm font-semibold text-slate-800">{HP}</span>
+                          ) : (
+                            <span className="text-slate-300 text-sm">-</span>
+                          )}
+                        </td>
+                        {/* HL */}
+                        <td className="py-3 px-2 text-center">
+                          {HL > 0 ? (
+                            <span className="text-sm font-semibold text-slate-800">{HL}</span>
+                          ) : (
+                            <span className="text-slate-300 text-sm">-</span>
+                          )}
+                        </td>
+                        {/* TOTAL */}
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm font-bold text-slate-800">{totalHoras}</span>
+                        </td>
                       </tr>
-                    </thead>
-                    <tbody className="divide-y divide-slate-100">
-                      {cursosArray.map(({ curso, cargas }, index) => {
-                        // Separar cargas por tipo
-                        const cargaTeoria = cargas.find(c => c.tipo_clase === 'teoria');
-                        const cargaPractica = cargas.find(c => c.tipo_clase === 'practica');
-                        const cargaLaboratorio = cargas.find(c => c.tipo_clase === 'laboratorio');
-                        
-                        // Obtener valores directos
-                        const horasTeoria = cargaTeoria?.horas_semanales || 0;
-                        const horasPractica = cargaPractica?.horas_semanales || 0;
-                        const gruposLaboratorio = cargaLaboratorio?.grupos_asignados || 0;
-                        const horasLaboratorio = cargaLaboratorio?.horas_semanales || 0;
-                        
-                        // Calcular horas totales
-                        const gruposTeoria = cargaTeoria?.grupos_asignados || 0;
-                        const gruposPractica = cargaPractica?.grupos_asignados || 0;
-                        const horasTeoriaTotal = gruposTeoria * horasTeoria;
-                        const horasPracticaTotal = gruposPractica * horasPractica;
-                        const horasLabTotal = gruposLaboratorio * horasLaboratorio;
-                        const totalHoras = horasTeoriaTotal + horasPracticaTotal + horasLabTotal;
-                        
-                        // Datos para las columnas
-                        const esElectivo = (curso?.nombre?.toLowerCase().includes('electivo')) || 
-                                         (curso?.codigo?.toUpperCase().startsWith('EL-'));
-                        const tipo = esElectivo ? 'ELECTIVO' : 'OBLIGATORIO';
-                        const escuela = "Ingeniería de Sistemas";
-                        
-                        // Mapeo de cursos a ciclos según el seeder
-                        const cursoCiclos: { [key: string]: string } = {
-                          // Ciclo I: 'I',
-                          'introducción a la programación': 'I',
-                          'introducción a la ingeniería de sistemas': 'I',
-                          'desarrollo personal': 'I',
-                          'desarrollo del pensamiento lógico matemático': 'I',
-                          'lectura crítica y redacción de textos académicos': 'I',
-                          'introducción al análisis matemático': 'I',
-                          'estadística general': 'I',
-                          
-                          // Ciclo III
-                          'programación orientada a objetos ii': 'III',
-                          'sistémica': 'III',
-                          'ingeniería gráfica': 'III',
-                          'matemática aplicada i': 'III',
-                          'estadística aplicada': 'III',
-                          'administración general': 'III',
-                          'física electrónica': 'III',
-                          'psicología organizacional': 'III',
-                          
-                          // Ciclo V
-                          'ingeniería de datos i': 'V',
-                          'sistemas de información': 'V',
-                          'transformación digital': 'V',
-                          'tecnologías web': 'V',
-                          'arquitectura y organización de computadoras': 'V',
-                          'teleinformática': 'V',
-                          'investigación de operaciones': 'V',
-                          'contabilidad gerencial': 'V',
-                          
-                          // Ciclo VII
-                          'ingeniería del software i': 'VII',
-                          'redes y comunicaciones i': 'VII',
-                          'negocios electrónicos': 'VII',
-                          'gestión de servicios de tic': 'VII',
-                          'metodología de la investigación científica': 'VII',
-                          'administración de base de datos': 'VII',
-                          'planeamiento estratégico de la información': 'VII',
-                          'cadena de suministros': 'VII',
-                          
-                          // Ciclo IX
-                          'tesis i': 'IX',
-                          'analítica de negocios': 'IX',
-                          'auditoría informática': 'IX',
-                          'gestión de proyectos de tic': 'IX',
-                          'ingeniería web': 'IX',
-                          'computación en la nube': 'IX',
-                          'hackeo ético': 'IX',
-                        };
-                        
-                        // Determinar ciclo
-                        let ciclo = 'V';
-                        if (curso?.nombre) {
-                          const nombreCurso = curso.nombre.toLowerCase().trim();
-                          if (cursoCiclos[nombreCurso]) {
-                            ciclo = cursoCiclos[nombreCurso];
-                          }
-                        }
-                        
-                        // Convertir numeral a texto
-                        const cicloTexto = ciclo === 'I' ? '1er Ciclo' :
-                                         ciclo === 'III' ? '3er Ciclo' :
-                                         ciclo === 'V' ? '5to Ciclo' :
-                                         ciclo === 'VII' ? '7mo Ciclo' :
-                                         ciclo === 'IX' ? '9no Ciclo' : ciclo;
-                        
-                        const tipoColor = tipo === 'ELECTIVO' 
-                          ? 'bg-purple-100 text-purple-700 border-purple-200' 
-                          : 'bg-emerald-100 text-emerald-700 border-emerald-200';
-                        
-                        return (
-                          <tr key={`${index}-${curso?.id_curso || curso?.nombre || 'unknown'}`} className="hover:bg-slate-50 transition-colors">
-                            <td className="py-3 px-3">
-                              <div className="font-medium text-slate-800 text-sm">{curso?.nombre || 'Curso sin nombre'}</div>
-                              <div className="text-xs text-slate-400">{curso?.codigo || ''}</div>
-                            </td>
-                            {/* Columna T - Horas Teoría */}
-                            <td className="py-3 px-2 text-center">
-                              {cargaTeoria ? (
-                                <span className="text-sm font-semibold text-slate-800">{horasTeoria}</span>
-                              ) : (
-                                <span className="text-slate-300 text-sm">-</span>
-                              )}
-                            </td>
-                            {/* Columna P - Horas Práctica */}
-                            <td className="py-3 px-2 text-center">
-                              {cargaPractica ? (
-                                <span className="text-sm font-semibold text-slate-800">{horasPractica}</span>
-                              ) : (
-                                <span className="text-slate-300 text-sm">-</span>
-                              )}
-                            </td>
-                            {/* Columna L - Horas Laboratorio */}
-                            <td className="py-3 px-2 text-center">
-                              {cargaLaboratorio ? (
-                                <span className="text-sm font-semibold text-slate-800">{horasLaboratorio}</span>
-                              ) : (
-                                <span className="text-slate-300 text-sm">-</span>
-                              )}
-                            </td>
-                            {/* Columna G - Grupos Laboratorio */}
-                            <td className="py-3 px-2 text-center">
-                              {cargaLaboratorio ? (
-                                <span className="text-sm font-semibold text-slate-800">{gruposLaboratorio}</span>
-                              ) : (
-                                <span className="text-slate-300 text-sm">-</span>
-                              )}
-                            </td>
-                            {/* Columna HRS - Total Horas */}
-                            <td className="py-3 px-2 text-center">
-                              <span className="text-sm font-semibold text-slate-800">{totalHoras}</span>
-                            </td>
-                            {/* Columna TIPO */}
-                            <td className="py-3 px-3 text-center">
-                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold border ${tipoColor}`}>
-                                {tipo}
-                              </span>
-                            </td>
-                            {/* Columna ESCUELA */}
-                            <td className="py-3 px-3">
-                              <span className="text-sm text-slate-600">{escuela}</span>
-                            </td>
-                            {/* Columna CICLO */}
-                            <td className="py-3 px-3">
-                              <span className="text-sm font-medium text-slate-700">{cicloTexto}</span>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                      {/* Fila de total general */}
-                      <tr className="bg-slate-100 border-t border-slate-300">
-                        <td className="py-3 px-3 font-semibold text-slate-800 text-sm">TOTAL</td>
-                        <td className="py-3 px-2 text-center">
-                          <span className="text-sm font-semibold text-slate-800">
-                            {cargasLectivas.filter(c => c.tipo_clase === 'teoria').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className="text-sm font-semibold text-slate-800">
-                            {cargasLectivas.filter(c => c.tipo_clase === 'practica').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className="text-sm font-semibold text-slate-800">
-                            {cargasLectivas.filter(c => c.tipo_clase === 'laboratorio').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className="text-sm font-semibold text-slate-800">
-                            {cargasLectivas.filter(c => c.tipo_clase === 'laboratorio').reduce((sum, c) => sum + (c.grupos_asignados || 0), 0)}
-                          </span>
-                        </td>
-                        <td className="py-3 px-2 text-center">
-                          <span className="text-lg font-bold text-slate-800">{totalLectivas}</span>
-                        </td>
-                        <td className="py-3 px-3"></td>
-                        <td className="py-3 px-3"></td>
-                        <td className="py-3 px-3"></td>
-                      </tr>
-                    </tbody>
-                  </table>
-                </div>
-              )}
-            </CardContent>
-          </Card>
-        </TabsContent>
+                    );
+                  })}
+                  {/* Fila de total general */}
+                  <tr className="bg-slate-100 border-t border-slate-300">
+                    <td className="py-3 px-3 font-semibold text-slate-800 text-sm" colSpan={7}>TOTAL LECTIVA</td>
+                    <td className="py-3 px-2 text-center">
+                      <span className="text-sm font-semibold text-slate-800">
+                        {cargasLectivas.filter(c => c.tipo_clase === 'teoria').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-center">
+                      <span className="text-sm font-semibold text-slate-800">
+                        {cargasLectivas.filter(c => c.tipo_clase === 'practica').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-center">
+                      <span className="text-sm font-semibold text-slate-800">
+                        {cargasLectivas.filter(c => c.tipo_clase === 'laboratorio').reduce((sum, c) => sum + ((c.grupos_asignados || 0) * (c.horas_semanales || 0)), 0)}
+                      </span>
+                    </td>
+                    <td className="py-3 px-2 text-center">
+                      <span className="text-lg font-bold text-slate-800">{totalLectivas}</span>
+                    </td>
+                  </tr>
+                </tbody>
+              </table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <TabsContent value="no-lectiva" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-indigo-900">Carga No Lectiva</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
+      {/* Carga No Lectiva Asignada */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-indigo-900">Carga No Lectiva</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="overflow-x-auto">
+            <table className="w-full border-collapse">
+              <thead>
+                <tr className="border-b-2 border-indigo-200">
+                  <th className="text-left py-3 px-3 font-semibold text-indigo-700 text-xs uppercase tracking-wide bg-indigo-50">TIPO</th>
+                  <th className="text-left py-3 px-3 font-semibold text-indigo-700 text-xs uppercase tracking-wide bg-indigo-50">DESCRIPCIÓN</th>
+                  <th className="text-center py-3 px-3 font-semibold text-indigo-700 text-xs uppercase tracking-wide bg-indigo-50">HRS</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
                 {cargasNoLectivas.map((carga, index) => {
                   const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
-                  // Colores vibrantes para cada fila
                   const colors = [
-                    { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-800', label: 'text-rose-700' },
-                    { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', label: 'text-amber-700' },
-                    { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', label: 'text-emerald-700' },
-                    { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-800', label: 'text-cyan-700' },
-                    { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-800', label: 'text-violet-700' },
-                    { bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', text: 'text-fuchsia-800', label: 'text-fuchsia-700' },
-                    { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', label: 'text-orange-700' },
-                    { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-800', label: 'text-sky-700' },
+                    { bg: 'bg-rose-50', text: 'text-rose-800' },
+                    { bg: 'bg-amber-50', text: 'text-amber-800' },
+                    { bg: 'bg-emerald-50', text: 'text-emerald-800' },
+                    { bg: 'bg-cyan-50', text: 'text-cyan-800' },
+                    { bg: 'bg-violet-50', text: 'text-violet-800' },
+                    { bg: 'bg-fuchsia-50', text: 'text-fuchsia-800' },
+                    { bg: 'bg-orange-50', text: 'text-orange-800' },
+                    { bg: 'bg-sky-50', text: 'text-sky-800' },
                   ];
                   const color = colors[index % colors.length];
                   
                   return (
-                    <div 
-                      key={carga.id_carga_no_lectiva} 
-                      className={`grid grid-cols-12 gap-4 items-start p-4 rounded-xl border-2 ${color.bg} ${color.border} hover:shadow-md transition-shadow`}
-                    >
-                      <div className="col-span-4 space-y-1">
-                        <Label className={`font-bold ${color.label}`}>{tipoInfo?.label || carga.tipo}</Label>
-                        <p className={`text-xs ${color.text} opacity-80`}>{tipoInfo?.descripcion}</p>
-                      </div>
-                      <div className="col-span-5 space-y-1">
-                        <Label className="text-xs font-medium text-slate-600">Descripción de la actividad</Label>
+                    <tr key={carga.id_carga_no_lectiva} className={`hover:bg-slate-50 ${color.bg}`}>
+                      <td className="py-3 px-3">
+                        <div className={`font-semibold text-sm ${color.text}`}>{tipoInfo?.label || carga.tipo}</div>
+                        <p className="text-xs text-slate-500">{tipoInfo?.descripcion}</p>
+                      </td>
+                      <td className="py-3 px-3">
                         <Input
                           placeholder="Describa su actividad..."
                           value={carga.descripcion || ''}
-                          className="bg-white border-slate-200 focus:border-indigo-400"
+                          className="bg-white border-slate-200"
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
                             const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
@@ -765,17 +734,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                             setCargasNoLectivas(newCargas);
                           }}
                         />
-                      </div>
-                      <div className="col-span-3 space-y-1">
-                        <Label className="text-xs font-medium text-slate-600">Horas por semana</Label>
+                      </td>
+                      <td className="py-3 px-3 w-32">
                         <Input
                           type="number"
                           min="0"
                           step="1"
-                          className={`bg-white border-slate-200 focus:border-indigo-400 font-semibold text-lg ${color.text}`}
+                          className={`bg-white border-slate-200 font-semibold text-lg ${color.text}`}
                           value={carga.horas_semanales || 0}
                           onChange={e => {
-                            // Asegurar que solo sea entero
                             const horas = Math.floor(parseFloat(e.target.value) || 0);
                             const newCargas = [...cargasNoLectivas];
                             const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
@@ -783,49 +750,65 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                             setCargasNoLectivas(newCargas);
                           }}
                         />
-                      </div>
-                    </div>
+                      </td>
+                    </tr>
                   );
                 })}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                {/* Fila de total para carga no lectiva */}
+                <tr className="bg-indigo-100 border-t-2 border-indigo-300">
+                  <td className="py-3 px-3 font-bold text-indigo-900 text-sm" colSpan={2}>TOTAL NO LECTIVA</td>
+                  <td className="py-3 px-3 text-center">
+                    <span className="text-lg font-bold text-indigo-900">{totalNoLectivas}</span>
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
 
-        <TabsContent value="formatos" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Formatos de Declaración</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { key: 'formato1', label: 'Formato 01 - Carga Horaria Asignada' },
-                  { key: 'formato2', label: 'Formato 02 - Declaración Jurada' },
-                  { key: 'formato3', label: 'Formato 03 - Sedes Descentralizadas' }
-                ].map((formato) => (
-                  <div 
-                    key={formato.key} 
-                    className="p-4 border rounded-lg hover:bg-slate-50 transition cursor-pointer flex items-center justify-between"
-                    onClick={() => handleGenerarFormato(formato.key)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="text-blue-500" size={32} />
-                      <div>
-                        <p className="font-medium">{formato.label}</p>
-                        <Badge variant="outline" className="mt-1">
-                          {declaracion ? 'Disponible' : 'Guardar primero'}
-                        </Badge>
-                      </div>
-                    </div>
-                    <Download className="text-slate-400" size={20} />
+      {/* TOTAL GENERAL */}
+      <table className="w-full border-collapse mt-4">
+        <tbody>
+          <tr>
+            <td className="border-2 border-slate-800 p-3 text-right font-bold text-slate-800">TOTAL</td>
+            <td className="border-2 border-slate-800 p-3 text-center font-bold text-slate-800 text-lg">{totalGeneral}</td>
+          </tr>
+        </tbody>
+      </table>
+
+      {/* Formatos de Declaración */}
+      <Card>
+        <CardHeader>
+          <CardTitle>Formatos de Declaración</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { key: 'formato1', label: 'Formato 01 - Carga Horaria Asignada' },
+              { key: 'formato2', label: 'Formato 02 - Declaración Jurada' },
+              { key: 'formato3', label: 'Formato 03 - Sedes Descentralizadas' }
+            ].map((formato) => (
+              <div 
+                key={formato.key} 
+                className="p-4 border rounded-lg hover:bg-slate-50 transition cursor-pointer flex items-center justify-between"
+                onClick={() => handleGenerarFormato(formato.key)}
+              >
+                <div className="flex items-center gap-3">
+                  <FileText className="text-blue-500" size={32} />
+                  <div>
+                    <p className="font-medium">{formato.label}</p>
+                    <Badge variant="outline" className="mt-1">
+                      {declaracion ? 'Disponible' : 'Guardar primero'}
+                    </Badge>
                   </div>
-                ))}
+                </div>
+                <Download className="text-slate-400" size={20} />
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
