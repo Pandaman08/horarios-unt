@@ -42,7 +42,7 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
       ciclo: 'I',
       asignaciones: [
         { docente: 'MARCELINO TORRES VILLANUEVA', curso: 'INTRODUCCIÓN A LA PROGRAMACIÓN', T: 2, P: 0, L: 2, gruposLab: 2 },
-        { docente: 'ALBERTO CARLOS MENDOZA DE LOS SANTOS', curso: 'INTRODUCCIÓN A LA ING. DE SISTEMAS', T: 1, P: 2, L: 0, gruposLab: 0 },
+        { docente: 'ALBERTO CARLOS MENDOZA DE LOS SANTOS', curso: 'INTRODUCCIÓN A LA INGENIERÍA DE SISTEMAS', T: 1, P: 2, L: 0, gruposLab: 0 },
         { docente: 'PAUL COTRINA CASTELLANOS', curso: 'INTRODUCCIÓN A LA PROGRAMACIÓN', T: 0, P: 0, L: 2, gruposLab: 2 },
         { docente: 'BERTHA URTECHO ZAVALETA', curso: 'DESARROLLO PERSONAL', T: 2, P: 2, L: 0, gruposLab: 0 },
         { docente: 'JOSE LUIS PONTE BEJARANO', curso: 'DESARROLLO DEL PENSAMIENTO LÓGICO MATEMÁTICO', T: 1, P: 4, L: 0, gruposLab: 0 },
@@ -76,7 +76,8 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
         { docente: 'ROBERT JERRY SÁNCHEZ TICONA', curso: 'TECNOLOGÍAS WEB', T: 1, P: 1, L: 2, gruposLab: 3 },
         { docente: 'CÉSAR AUGUSTO ARELLANO SALAZAR', curso: 'ARQUITECTURA Y ORGANIZACIÓN DE COMPUTADORAS', T: 1, P: 2, L: 2, gruposLab: 3 },
         { docente: 'CAMILO ERNESTO SUÁREZ REBAZA', curso: 'TELEINFORMÁTICA', T: 1, P: 2, L: 2, gruposLab: 2 },
-
+        { docente: 'MARCOS BACA LÓPEZ', curso: 'INVESTIGACIÓN DE OPERACIONES', T: 1, P: 2, L: 2, gruposLab: 3 },
+        { docente: 'ANA CUADRA MITZUGARAY', curso: 'CONTABILIDAD GERENCIAL', T: 1, P: 2, L: 2, gruposLab: 1 },
       ]
     },
     // ==================== CICLO VII ====================
@@ -92,6 +93,7 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
         { docente: 'RICARDO DARÍO MENDOZA RIVERA', curso: 'ADMINISTRACIÓN DE BASE DE DATOS', T: 1, P: 1, L: 3, gruposLab: 2 },
         { docente: 'OSCAR ROMEL ALCÁNTARA MORENO', curso: 'PLANEAMIENTO ESTRATÉGICO DE LA INFORMACIÓN', T: 1, P: 2, L: 2, gruposLab: 4 },
         { docente: 'PAUL COTRINA CASTELLANOS', curso: 'NEGOCIOS ELECTRÓNICOS', T: 0, P: 0, L: 2, gruposLab: 2 },
+        { docente: 'JHOE GONZÁLEZ VÁSQUEZ', curso: 'CADENA DE SUMINISTROS', T: 2, P: 2, L: 0, gruposLab: 0 },
       ]
     },
     // ==================== CICLO IX ====================
@@ -105,7 +107,7 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
         { docente: 'JOSÉ ALBERTO GÓMEZ ÁVILA', curso: 'GESTIÓN DE PROYECTOS DE TIC', T: 1, P: 2, L: 2, gruposLab: 3 },
         { docente: 'MARCELINO TORRES VILLANUEVA', curso: 'INGENIERÍA WEB', T: 1, P: 1, L: 3, gruposLab: 3 },
         { docente: 'JOSÉ ALBERTO GÓMEZ ÁVILA', curso: 'COMPUTACIÓN EN LA NUBE', T: 1, P: 1, L: 3, gruposLab: 3 },
-        { docente: 'CAMILO ERNESTO SUÁREZ REBAZA', curso: 'HACKEo ÉTICO', T: 2, P: 0, L: 2, gruposLab: 2 },
+        { docente: 'CAMILO ERNESTO SUÁREZ REBAZA', curso: 'HACKEO ÉTICO', T: 2, P: 0, L: 2, gruposLab: 2 },
       ]
     },
   ];

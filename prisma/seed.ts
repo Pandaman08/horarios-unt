@@ -7,7 +7,6 @@ import { seedCursos } from './seeders/cursos.seeder';
 import { seedDocentes } from './seeders/docentes.seeder';
 import { seedUsuariosAdministrativos } from './seeders/usuarios_administrativos.seeder';
 import { seedGrupos } from './seeders/grupos.seeder';
-import { seedHorarios } from './seeders/horarios.seeder';
 import { seedDisponibilidad } from './seeders/disponibilidad.seeder';
 import { seedCargaLectivaCompleta } from './seeders/carga_lectiva_completa.seeder';
 
@@ -85,7 +84,6 @@ async function main() {
     await seedGrupos(prisma);
     await seedDisponibilidad(prisma);  // Disponibilidad de docentes
     await seedCargaLectivaCompleta(prisma);    // Carga Lectiva COMPLETA por ciclos
-    await seedHorarios(prisma);     // Usa los períodos creados en seedPeriodos
 
     console.log('--- Seed completado con éxito ---');
   } catch (error) {

@@ -28,6 +28,7 @@ import {
   Search,
   Info,
   Briefcase,
+  CheckCircle2,
 } from "lucide-react";
 
 function DashboardLayoutInner({
@@ -119,6 +120,12 @@ function DashboardLayoutInner({
         title: "Asignación Carga Lectiva",
         href: "/dashboard/carga-lectiva-asignacion",
         icon: Briefcase,
+        roles: ["administrador_sistema", "operador_horarios"],
+      },
+      {
+        title: "Aprobación Carga Horaria",
+        href: "/dashboard/aprobacion-carga-horaria",
+        icon: CheckCircle2,
         roles: ["administrador_sistema", "operador_horarios"],
       },
       {

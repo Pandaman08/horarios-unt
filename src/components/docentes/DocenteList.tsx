@@ -165,12 +165,12 @@ export function DocenteList() {
     const matchesModalidad = filtroModalidad === "todos" || d.modalidad?.toUpperCase() === filtroModalidad.toUpperCase();
     const matchesGrado = filtroGrado === "todos" || d.grado_academico === filtroGrado;
 
-    // Filtrar por ciclo y semestre
+    // Filtrar por ciclo y semestre (solo si hay filtros activos)
     let matchesCiclo = true;
     let matchesSemestre = true;
 
     if (filtroCiclo !== "todos" || semestre !== 0) {
-      // Obtener todos los ciclos asociados al docente
+      // Obtener todos los ciclos asociados al docente (a través de declaracion_horaria o docente_cursos)
       const docenteCiclos = new Set<number>();
       d.docente_cursos?.forEach(dc => {
         if (dc.curso?.id_ciclo) {
@@ -185,17 +185,18 @@ export function DocenteList() {
 
       // Filtrar por semestre
       if (semestre !== 0) {
-        matchesSemestre = Array.from(docenteCiclos).some(cicloId => {
-          const ciclo = ciclos.find(c => c.id_ciclo === cicloId);
-          if (ciclo) {
-            const isPar = ciclo.numero % 2 === 0;
-            return (semestre === 1 && !isPar) || (semestre === 2 && isPar);
-          }
-          return false;
-        });
-        // Si el docente no tiene cursos, no se muestra solo si se está filtrando por semestre
+        // Si el docente no tiene cursos, se muestra incluso con filtro de semestre
         if (docenteCiclos.size === 0) {
-          matchesSemestre = false;
+          matchesSemestre = true;
+        } else {
+          matchesSemestre = Array.from(docenteCiclos).some(cicloId => {
+            const ciclo = ciclos.find(c => c.id_ciclo === cicloId);
+            if (ciclo) {
+              const isPar = ciclo.numero % 2 === 0;
+              return (semestre === 1 && !isPar) || (semestre === 2 && isPar);
+            }
+            return false;
+          });
         }
       }
     }

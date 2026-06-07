@@ -50,22 +50,16 @@ export async function POST(request: Request) {
       });
     });
 
-    // Paso 1: Obtener docentes con disponibilidad y cursos, y TODOS los ambientes
+    // Paso 1: Obtener docentes con disponibilidad, declaración horaria y carga lectiva, y TODOS los ambientes
     console.log("📋 Obteniendo docentes y ambientes...");
     const [docentes, ambientes] = await Promise.all([
       prisma.docente.findMany({
         where: { 
           activo: true,
-          docente_cursos: {
+          declaraciones_horarias: {
             some: {
-              activo: true,
-              curso: {
-                grupos: {
-                  some: {
-                    id_periodo: parseInt(id_periodo)
-                  }
-                }
-              }
+              id_periodo: parseInt(id_periodo),
+              estado: "APROBADO"
             }
           }
         },
@@ -73,18 +67,13 @@ export async function POST(request: Request) {
           disponibilidad: {
             where: { id_periodo: parseInt(id_periodo), disponible: true }
           },
-          docente_cursos: {
-            where: { 
-              activo: true,
-              curso: {
-                grupos: {
-                  some: {
-                    id_periodo: parseInt(id_periodo)
-                  }
-                }
+          declaraciones_horarias: {
+            where: { id_periodo: parseInt(id_periodo), estado: "APROBADO" },
+            include: {
+              cargas_lectivas: {
+                include: { curso: true }
               }
-            },
-            include: { curso: true }
+            }
           }
         }
       }),
@@ -191,15 +180,16 @@ export async function POST(request: Request) {
       for (const docente of docentesOrdenados) {
         console.log(`\n👉 Procesando docente: ${docente.nombres} ${docente.apellidos}`);
         
-        for (const docenteCurso of docente.docente_cursos) {
-          const curso = docenteCurso.curso;
-          console.log(`  📚 Curso: ${curso.nombre} (${docenteCurso.tipo_clase})`);
+        for (const declaracion of docente.declaraciones_horarias) {
+          for (const cargaLectiva of declaracion.cargas_lectivas) {
+            const curso = cargaLectiva.curso;
+            console.log(`  📚 Curso: ${curso.nombre} (${cargaLectiva.tipo_clase})`);
           
           // Obtener todos los ambientes del tipo apropiado (aula para teoría, laboratorio para laboratorio)
           const ambientesValidos = ambientes.filter((a: any) => {
-            if (docenteCurso.tipo_clase.toLowerCase() === 'teoria') {
+            if (cargaLectiva.tipo_clase.toLowerCase() === 'teoria') {
               return a.tipo === 'aula' || a.tipo === 'auditorio';
-            } else if (docenteCurso.tipo_clase.toLowerCase() === 'laboratorio') {
+            } else if (cargaLectiva.tipo_clase.toLowerCase() === 'laboratorio') {
               return a.tipo === 'laboratorio';
             } else { // practica
               return a.tipo === 'aula' || a.tipo === 'laboratorio' || a.tipo === 'auditorio';
@@ -240,9 +230,8 @@ export async function POST(request: Request) {
 
           const grupoSeleccionado = grupos[0];
 
-          const horasRequeridas = docenteCurso.tipo_clase === 'teoria' ? curso.horas_teoria :
-                                   docenteCurso.tipo_clase === 'laboratorio' ? curso.horas_laboratorio :
-                                   curso.horas_practica;
+          // Para carga lectiva, usamos las horas que ya están definidas en la carga lectiva
+          const horasRequeridas = cargaLectiva.horas_semanales * cargaLectiva.grupos_asignados;
 
           console.log(`    ⏱️ Horas requeridas: ${horasRequeridas}`);
           
@@ -254,7 +243,7 @@ export async function POST(request: Request) {
                 id_docente: docente.id_docente,
                 id_curso: curso.id_curso,
                 id_periodo: parseInt(id_periodo),
-                tipo_clase: docenteCurso.tipo_clase
+                tipo_clase: cargaLectiva.tipo_clase
               }
             });
 
@@ -305,7 +294,7 @@ export async function POST(request: Request) {
                   id_docente: docente.id_docente,
                   id_curso: curso.id_curso,
                   id_grupo: grupoSeleccionado.id_grupo,
-                  tipo_clase: docenteCurso.tipo_clase,
+                  tipo_clase: cargaLectiva.tipo_clase,
                   id_ambiente: ambienteSeleccionado.id_ambiente,
                   dia_semana: disponibilidad.dia_semana,
                   hora_inicio: disponibilidad.hora_inicio,
@@ -336,6 +325,7 @@ export async function POST(request: Request) {
             }
           }
         }
+      }
       }
 
       console.log(`\n🎉 Total horarios creados en modo automático: ${totalHorariosCreados}`);

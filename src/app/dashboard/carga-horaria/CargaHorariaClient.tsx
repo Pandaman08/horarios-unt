@@ -9,7 +9,7 @@ import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Send, FileText, Download, Loader2, BookOpen, CheckCircle2, User } from 'lucide-react';
+import { Plus, Trash2, Save, Send, FileText, Download, Loader2, BookOpen, CheckCircle2, User, XCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
 const DEDICACIONES = [
@@ -323,13 +323,24 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           <Button onClick={handleCreateOrSave} className="flex items-center gap-2">
             <Save size={16} /> Guardar Borrador
           </Button>
-          {declaracion && declaracion.estado === 'BORRADOR' && (
+          {declaracion && (declaracion.estado === 'BORRADOR' || declaracion.estado === 'RECHAZADO') && (
             <Button onClick={handleEnviar} variant="default" className="bg-green-600 hover:bg-green-700 flex items-center gap-2">
               <Send size={16} /> Enviar para Aprobación
             </Button>
           )}
         </div>
       </div>
+
+      {/* Comentarios de rechazo (si hay) */}
+      {declaracion && declaracion.estado === 'RECHAZADO' && declaracion.observaciones && (
+        <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
+          <h3 className="font-bold text-red-700 flex items-center gap-2">
+            <XCircle size={20} />
+            Declaración Rechazada - Comentarios para corregir:
+          </h3>
+          <p className="text-red-600 mt-2">{declaracion.observaciones}</p>
+        </div>
+      )}
 
       {/* Datos del Docente y Periodo */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
