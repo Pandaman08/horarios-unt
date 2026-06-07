@@ -680,7 +680,7 @@ export async function GET(request: Request) {
       </tr>
     </thead>
     <tbody>
-      ${declaracion.cargas_lectivas.map((carga, i) => `
+      ${declaracion.cargas_lectivas.map((carga: { curso: { nombre: any; ciclo_rel: { numero: any; }; }; grupo: { codigo_grupo: any; }; grupos_asignados: any; tipo_clase: string; horas_semanales: any; }, i: number) => `
         <tr>
           <td>${i + 1}</td>
           <td style="text-align: left;">${carga.curso?.nombre || '—'}</td>
@@ -702,21 +702,40 @@ export async function GET(request: Request) {
   </table>
 
   <div class="actividades">
-    ${declaracion.cargas_no_lectivas.map(carga => {
-      const tipoNombre = {
-        PREPARACION_EVALUACION: 'Preparación y Evaluación',
-        TUTORIA: 'Tutoría',
-        INVESTIGACION: 'Investigación',
-        CAPACITACION: 'Capacitación',
-        GOBIERNO: 'Gobierno',
-        ADMINISTRACION: 'Administración',
-        ASESORIA: 'Asesoría',
-        RESPONSABILIDAD_SOCIAL: 'Responsabilidad Social',
-        COMITES_TECNICOS: 'Comités Técnicos',
-        OTRO: 'Otro'
-      }[carga.tipo] || 'Otro';
-      return `<div class="item"><strong>${carga.horas_semanales}.</strong> ${tipoNombre}${carga.descripcion ? `: ${carga.descripcion}` : ''}</div>`;
-    }).join('')}
+    ${(() => {
+      // Predefined activity types that should always appear
+      const tiposPredefinidos = [
+        { key: 'PREPARACION_EVALUACION', label: '2. PREPARACIÓN Y EVALUACIÓN (Máx 50% del Trabajo Lectivo)' },
+        { key: 'TUTORIA', label: '3. CONSEJERÍA Y TUTORÍA' },
+        { key: 'INVESTIGACION', label: '4. INVESTIGACIÓN' },
+        { key: 'CAPACITACION', label: '5. CAPACITACIÓN' },
+        { key: 'GOBIERNO', label: '6. ACTIVIDADES DE GOBIERNO' },
+        { key: 'ADMINISTRACION', label: '7. ACTIVIDADES DE ADMINISTRACIÓN' },
+        { key: 'ASESORIA', label: '8. ASESORÍA DE TESIS, EXÁMENES PROFESIONALES Y EXPERIENCIA PROFESIONAL' },
+        { key: 'RESPONSABILIDAD_SOCIAL', label: '9. RESPONSABILIDAD SOCIAL UNIVERSITARIA' },
+        { key: 'COMITES_TECNICOS', label: '10. COMITÉS TÉCNICOS Y COMISIONES' }
+      ];
+
+      // Define interface for type safety
+      interface CargaNoLectiva {
+        tipo: string;
+        horas_semanales?: number;
+        descripcion?: string | null;
+      }
+
+      // Create a map of existing cargas for quick lookup
+      const cargasMap = new Map<string, CargaNoLectiva>(
+        (declaracion.cargas_no_lectivas as CargaNoLectiva[]).map(c => [c.tipo, c])
+      );
+
+      // Generate HTML for all predefined types
+      return tiposPredefinidos.map(tipo => {
+        const carga = cargasMap.get(tipo.key);
+        const horas = carga?.horas_semanales ?? 0;
+        const descripcion = carga?.descripcion ?? '';
+        return `<div class="item"><strong>${horas}.</strong> ${tipo.label}${descripcion ? `: ${descripcion}` : ''}</div>`;
+      }).join('');
+    })()}
   </div>
 
   <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
@@ -854,7 +873,7 @@ export async function GET(request: Request) {
         : import('puppeteer').then(async (puppeteer) => {
             const browser = await puppeteer.launch({ headless: true });
             const page = await browser.newPage();
-            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+            await page.setContent(htmlContent); // Remove waitUntil since it's static HTML
             const buffer = await page.pdf({ format: 'A4', printBackground: true });
             await browser.close();
             return buffer;
