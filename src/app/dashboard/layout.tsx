@@ -69,26 +69,31 @@ function DashboardLayoutInner({
             title: t("navTeachers"),
             href: "/dashboard/catalogos?tab=docentes",
             icon: Users,
+            roles: ["administrador_sistema"],
           },
           {
             title: t("navCourses"),
             href: "/dashboard/catalogos?tab=cursos",
             icon: BookOpen,
+            roles: ["administrador_sistema"],
           },
           {
             title: t("navRooms"),
             href: "/dashboard/catalogos?tab=ambientes",
             icon: MapPin,
+            roles: ["administrador_sistema"],
           },
           {
             title: t("navCycles"),
             href: "/dashboard/catalogos?tab=ciclos",
             icon: Layers,
+            roles: ["administrador_sistema"],
           },
           {
             title: t("navPeriods"),
             href: "/dashboard/catalogos?tab=periodos",
             icon: Calendar,
+            roles: ["administrador_sistema"],
           },
         ],
       },
@@ -163,6 +168,7 @@ function DashboardLayoutInner({
             title: t("navUsers"),
             href: "/dashboard/usuarios",
             icon: ShieldCheck,
+            roles: ["administrador_sistema"],
           },
         ],
       },
@@ -209,7 +215,7 @@ function DashboardLayoutInner({
     if (pathname !== path) return false;
     if (!query) return true;
     const tab = new URLSearchParams(query).get("tab");
-    return tab ? searchParams.get("tab") === tab : true;
+    return tab ? (searchParams && searchParams.get("tab") === tab) : true;
   };
 
   const initials =
@@ -455,11 +461,7 @@ function DashboardLayoutInner({
           </div>
         </header>
 
-        {/* Ayuda contextual */}
-        <div className="px-4 py-2 bg-card/80 border-b border-border/60 hidden lg:flex items-center gap-2 text-xs text-muted-foreground">
-          <Info className="h-3.5 w-3.5 shrink-0 text-primary" />
-          <span>{t("helpTip")}</span>
-        </div>
+
 
         <main className="flex-1 p-4 overflow-x-hidden overflow-y-auto">
           <div className="w-full max-w-full">{children}</div>

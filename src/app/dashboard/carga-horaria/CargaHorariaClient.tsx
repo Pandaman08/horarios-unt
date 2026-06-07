@@ -310,6 +310,21 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const totalNoLectivas = cargasNoLectivas.reduce((sum, c) => sum + (c.horas_semanales || 0), 0);
   const totalGeneral = totalLectivas + totalNoLectivas;
 
+  // Función para agrupar cargas por curso
+  const cargasPorCurso = cargasLectivas.reduce((acc, carga) => {
+    const cursoId = carga.id_curso;
+    if (!cursoId) return acc;
+    
+    if (!acc[cursoId]) {
+      acc[cursoId] = { curso: cursos.find(c => c.id_curso === cursoId), cargas: [] };
+    }
+    acc[cursoId].cargas.push(carga);
+    return acc;
+  }, {} as Record<number, { curso: any; cargas: any[] }>);
+  
+  // Aseguramos el tipo para el map
+  const cursosArray = Object.values(cargasPorCurso) as Array<{ curso: any; cargas: any[] }>;
+
   if (loading) return <div className="p-8">Cargando...</div>;
 
   return (
@@ -378,8 +393,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 <div className="space-y-2">
                   <Label>Condición</Label>
                   <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Seleccionar condición" />
                     </SelectTrigger>
                     <SelectContent>
                       {CONDICIONES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
@@ -389,11 +404,33 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 <div className="space-y-2">
                   <Label>Categoría</Label>
                   <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Seleccionar categoría">
+                        {formData.categoria ? (
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              formData.categoria === 'Titular' ? 'bg-emerald-500' :
+                              formData.categoria === 'Principal' ? 'bg-blue-500' :
+                              formData.categoria === 'Asociado' ? 'bg-amber-500' : 'bg-slate-500'
+                            }`} />
+                            <span className="font-medium">{formData.categoria}</span>
+                          </div>
+                        ) : "Seleccionar categoría"}
+                      </SelectValue>
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {CATEGORIAS.map(c => (
+                        <SelectItem key={c} value={c}>
+                          <div className="flex items-center gap-2">
+                            <div className={`w-2 h-2 rounded-full ${
+                              c === 'Titular' ? 'bg-emerald-500' :
+                              c === 'Principal' ? 'bg-blue-500' :
+                              c === 'Asociado' ? 'bg-amber-500' : 'bg-slate-500'
+                            }`} />
+                            {c}
+                          </div>
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 </div>
@@ -406,8 +443,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       setFormData({ ...formData, dedicacion: v, horas_dedicacion: ded?.horas || 0 });
                     }}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                    <SelectTrigger className="h-12">
+                      <SelectValue placeholder="Seleccionar dedicación" />
                     </SelectTrigger>
                     <SelectContent>
                       {DEDICACIONES.map(d => <SelectItem key={d.label} value={d.label}>{d.label}</SelectItem>)}
@@ -424,28 +461,28 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             <CardTitle>Resumen de Horas</CardTitle>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-600 font-medium">Carga Lectiva</p>
-                <p className="text-3xl font-bold text-blue-700">{totalLectivas}</p>
+            <div className="grid grid-cols-3 gap-3 text-center">
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">Carga Lectiva</p>
+                <p className="text-2xl font-bold text-slate-800 mt-1">{totalLectivas}</p>
               </div>
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <p className="text-sm text-purple-600 font-medium">Carga No Lectiva</p>
-                <p className="text-3xl font-bold text-purple-700">{totalNoLectivas}</p>
+              <div className="p-4 bg-slate-50 rounded-lg">
+                <p className="text-xs text-slate-500 uppercase tracking-wide">Carga No Lectiva</p>
+                <p className="text-2xl font-bold text-slate-800 mt-1">{totalNoLectivas}</p>
               </div>
               <div className={`p-4 rounded-lg ${totalGeneral === formData.horas_dedicacion ? 'bg-green-50' : 'bg-red-50'}`}>
-                <p className={`text-sm font-medium ${totalGeneral === formData.horas_dedicacion ? 'text-green-600' : 'text-red-600'}`}>Total</p>
-                <p className={`text-3xl font-bold ${totalGeneral === formData.horas_dedicacion ? 'text-green-700' : 'text-red-700'}`}>{totalGeneral}</p>
+                <p className={`text-xs font-medium uppercase tracking-wide ${totalGeneral === formData.horas_dedicacion ? 'text-green-700' : 'text-red-700'}`}>Total</p>
+                <p className={`text-2xl font-bold ${totalGeneral === formData.horas_dedicacion ? 'text-green-800' : 'text-red-800'} mt-1`}>{totalGeneral}</p>
               </div>
             </div>
             {formData.horas_dedicacion > 0 && (
-              <div className="text-center">
-                <p className="text-sm text-slate-500">
-                  Horas de dedicación: <span className="font-bold">{formData.horas_dedicacion}h</span>
+              <div className="text-center p-3">
+                <p className="text-sm text-slate-600">
+                  Horas de dedicación: <span className="font-semibold text-slate-800">{formData.horas_dedicacion}h</span>
                 </p>
                 {totalGeneral !== formData.horas_dedicacion && (
-                  <p className="text-sm text-red-500 mt-1">
-                    ⚠️ El total debe coincidir con las horas de dedicación
+                  <p className="text-sm text-red-500 mt-2">
+                    El total debe coincidir con las horas de dedicación
                   </p>
                 )}
               </div>
@@ -468,47 +505,218 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <CardTitle>Carga Lectiva Asignada</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {cargasLectivas.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
-                    Aún no hay carga lectiva asignada por el departamento.
-                  </div>
-                ) : (
-                  cargasLectivas.map(carga => {
-                    const curso = cursos.find(c => c.id_curso === carga.id_curso);
-                    return (
-                      <div key={carga.id_carga_lectiva} className="grid grid-cols-12 gap-4 items-center p-4 bg-slate-50 rounded-lg">
-                        <div className="col-span-4">
-                          <Label className="text-sm text-slate-500">Curso</Label>
-                          <p className="font-medium">{curso ? `${curso.codigo} - ${curso.nombre}` : '—'}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-sm text-slate-500">Tipo</Label>
-                          <p className="font-medium">{
-                            carga.tipo_clase === 'teoria' ? 'Teoría' : 
-                            carga.tipo_clase === 'practica' ? 'Práctica' : 'Laboratorio'
-                          }</p>
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-sm text-slate-500">Grupos</Label>
-                          <p className="font-medium">{
-                            (carga.grupos_asignados || 0) === 0 ? 'Sin grupos' : 
-                            `${carga.grupos_asignados} grupo${(carga.grupos_asignados || 0) > 1 ? 's' : ''}`
-                          }</p>
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-sm text-slate-500">Horas/Sem</Label>
-                          <p className="font-medium">{carga.horas_semanales}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-sm text-slate-500">Subtotal</Label>
-                          <p className="font-medium">{(carga.grupos_asignados || 0) * (carga.horas_semanales || 0)}h</p>
-                        </div>
-                      </div>
-                    );
-                  })
-                )}
-              </div>
+              {cargasLectivas.length === 0 ? (
+                <div className="text-center py-10 text-slate-400">
+                  <BookOpen className="w-12 h-12 mx-auto mb-3 opacity-40" />
+                  <p className="text-sm">Aún no hay carga lectiva asignada</p>
+                </div>
+              ) : (
+                <div className="overflow-x-auto">
+                  <table className="w-full border-collapse">
+                    <thead>
+                      <tr className="border-b-2 border-slate-200">
+                        <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">ASIGNATURA</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">T</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">P</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">L</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">G</th>
+                        <th className="text-center py-3 px-2 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">HRS</th>
+                        <th className="text-center py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">TIPO</th>
+                        <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">ESCUELA</th>
+                        <th className="text-left py-3 px-3 font-semibold text-slate-700 text-xs uppercase tracking-wide bg-slate-50">CICLO</th>
+                      </tr>
+                    </thead>
+                    <tbody className="divide-y divide-slate-100">
+                      {cursosArray.map(({ curso, cargas }, index) => {
+                        // Separar cargas por tipo
+                        const cargaTeoria = cargas.find(c => c.tipo_clase === 'teoria');
+                        const cargaPractica = cargas.find(c => c.tipo_clase === 'practica');
+                        const cargaLaboratorio = cargas.find(c => c.tipo_clase === 'laboratorio');
+                        
+                        // Obtener valores directos
+                        const horasTeoria = cargaTeoria?.horas_semanales || 0;
+                        const horasPractica = cargaPractica?.horas_semanales || 0;
+                        const gruposLaboratorio = cargaLaboratorio?.grupos_asignados || 0;
+                        const horasLaboratorio = cargaLaboratorio?.horas_semanales || 0;
+                        
+                        // Calcular horas totales
+                        const gruposTeoria = cargaTeoria?.grupos_asignados || 0;
+                        const gruposPractica = cargaPractica?.grupos_asignados || 0;
+                        const horasTeoriaTotal = gruposTeoria * horasTeoria;
+                        const horasPracticaTotal = gruposPractica * horasPractica;
+                        const horasLabTotal = gruposLaboratorio * horasLaboratorio;
+                        const totalHoras = horasTeoriaTotal + horasPracticaTotal + horasLabTotal;
+                        
+                        // Datos para las columnas
+                        const esElectivo = (curso?.nombre?.toLowerCase().includes('electivo')) || 
+                                         (curso?.codigo?.toUpperCase().startsWith('EL-'));
+                        const tipo = esElectivo ? 'ELECTIVO' : 'OBLIGATORIO';
+                        const escuela = "Ingeniería de Sistemas";
+                        
+                        // Mapeo de cursos a ciclos según el seeder
+                        const cursoCiclos: { [key: string]: string } = {
+                          // Ciclo I: 'I',
+                          'introducción a la programación': 'I',
+                          'introducción a la ingeniería de sistemas': 'I',
+                          'desarrollo personal': 'I',
+                          'desarrollo del pensamiento lógico matemático': 'I',
+                          'lectura crítica y redacción de textos académicos': 'I',
+                          'introducción al análisis matemático': 'I',
+                          'estadística general': 'I',
+                          
+                          // Ciclo III
+                          'programación orientada a objetos ii': 'III',
+                          'sistémica': 'III',
+                          'ingeniería gráfica': 'III',
+                          'matemática aplicada i': 'III',
+                          'estadística aplicada': 'III',
+                          'administración general': 'III',
+                          'física electrónica': 'III',
+                          'psicología organizacional': 'III',
+                          
+                          // Ciclo V
+                          'ingeniería de datos i': 'V',
+                          'sistemas de información': 'V',
+                          'transformación digital': 'V',
+                          'tecnologías web': 'V',
+                          'arquitectura y organización de computadoras': 'V',
+                          'teleinformática': 'V',
+                          'investigación de operaciones': 'V',
+                          'contabilidad gerencial': 'V',
+                          
+                          // Ciclo VII
+                          'ingeniería del software i': 'VII',
+                          'redes y comunicaciones i': 'VII',
+                          'negocios electrónicos': 'VII',
+                          'gestión de servicios de tic': 'VII',
+                          'metodología de la investigación científica': 'VII',
+                          'administración de base de datos': 'VII',
+                          'planeamiento estratégico de la información': 'VII',
+                          'cadena de suministros': 'VII',
+                          
+                          // Ciclo IX
+                          'tesis i': 'IX',
+                          'analítica de negocios': 'IX',
+                          'auditoría informática': 'IX',
+                          'gestión de proyectos de tic': 'IX',
+                          'ingeniería web': 'IX',
+                          'computación en la nube': 'IX',
+                          'hackeo ético': 'IX',
+                        };
+                        
+                        // Determinar ciclo
+                        let ciclo = 'V';
+                        if (curso?.nombre) {
+                          const nombreCurso = curso.nombre.toLowerCase().trim();
+                          if (cursoCiclos[nombreCurso]) {
+                            ciclo = cursoCiclos[nombreCurso];
+                          }
+                        }
+                        
+                        // Convertir numeral a texto
+                        const cicloTexto = ciclo === 'I' ? '1er Ciclo' :
+                                         ciclo === 'III' ? '3er Ciclo' :
+                                         ciclo === 'V' ? '5to Ciclo' :
+                                         ciclo === 'VII' ? '7mo Ciclo' :
+                                         ciclo === 'IX' ? '9no Ciclo' : ciclo;
+                        
+                        const tipoColor = tipo === 'ELECTIVO' 
+                          ? 'bg-purple-100 text-purple-700 border-purple-200' 
+                          : 'bg-emerald-100 text-emerald-700 border-emerald-200';
+                        
+                        return (
+                          <tr key={`${index}-${curso?.id_curso || curso?.nombre || 'unknown'}`} className="hover:bg-slate-50 transition-colors">
+                            <td className="py-3 px-3">
+                              <div className="font-medium text-slate-800 text-sm">{curso?.nombre || 'Curso sin nombre'}</div>
+                              <div className="text-xs text-slate-400">{curso?.codigo || ''}</div>
+                            </td>
+                            {/* Columna T - Horas Teoría */}
+                            <td className="py-3 px-2 text-center">
+                              {cargaTeoria ? (
+                                <span className="text-sm font-semibold text-slate-800">{horasTeoria}</span>
+                              ) : (
+                                <span className="text-slate-300 text-sm">-</span>
+                              )}
+                            </td>
+                            {/* Columna P - Horas Práctica */}
+                            <td className="py-3 px-2 text-center">
+                              {cargaPractica ? (
+                                <span className="text-sm font-semibold text-slate-800">{horasPractica}</span>
+                              ) : (
+                                <span className="text-slate-300 text-sm">-</span>
+                              )}
+                            </td>
+                            {/* Columna L - Horas Laboratorio */}
+                            <td className="py-3 px-2 text-center">
+                              {cargaLaboratorio ? (
+                                <span className="text-sm font-semibold text-slate-800">{horasLaboratorio}</span>
+                              ) : (
+                                <span className="text-slate-300 text-sm">-</span>
+                              )}
+                            </td>
+                            {/* Columna G - Grupos Laboratorio */}
+                            <td className="py-3 px-2 text-center">
+                              {cargaLaboratorio ? (
+                                <span className="text-sm font-semibold text-slate-800">{gruposLaboratorio}</span>
+                              ) : (
+                                <span className="text-slate-300 text-sm">-</span>
+                              )}
+                            </td>
+                            {/* Columna HRS - Total Horas */}
+                            <td className="py-3 px-2 text-center">
+                              <span className="text-sm font-semibold text-slate-800">{totalHoras}</span>
+                            </td>
+                            {/* Columna TIPO */}
+                            <td className="py-3 px-3 text-center">
+                              <span className={`inline-block px-2 py-1 rounded-full text-xs font-bold border ${tipoColor}`}>
+                                {tipo}
+                              </span>
+                            </td>
+                            {/* Columna ESCUELA */}
+                            <td className="py-3 px-3">
+                              <span className="text-sm text-slate-600">{escuela}</span>
+                            </td>
+                            {/* Columna CICLO */}
+                            <td className="py-3 px-3">
+                              <span className="text-sm font-medium text-slate-700">{cicloTexto}</span>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                      {/* Fila de total general */}
+                      <tr className="bg-slate-100 border-t border-slate-300">
+                        <td className="py-3 px-3 font-semibold text-slate-800 text-sm">TOTAL</td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {cargasLectivas.filter(c => c.tipo_clase === 'teoria').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {cargasLectivas.filter(c => c.tipo_clase === 'practica').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {cargasLectivas.filter(c => c.tipo_clase === 'laboratorio').reduce((sum, c) => sum + (c.horas_semanales || 0), 0)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-sm font-semibold text-slate-800">
+                            {cargasLectivas.filter(c => c.tipo_clase === 'laboratorio').reduce((sum, c) => sum + (c.grupos_asignados || 0), 0)}
+                          </span>
+                        </td>
+                        <td className="py-3 px-2 text-center">
+                          <span className="text-lg font-bold text-slate-800">{totalLectivas}</span>
+                        </td>
+                        <td className="py-3 px-3"></td>
+                        <td className="py-3 px-3"></td>
+                        <td className="py-3 px-3"></td>
+                      </tr>
+                    </tbody>
+                  </table>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
@@ -516,23 +724,40 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         <TabsContent value="no-lectiva" className="mt-4">
           <Card>
             <CardHeader>
-              <CardTitle>Carga No Lectiva</CardTitle>
+              <CardTitle className="text-indigo-900">Carga No Lectiva</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-4">
-                {cargasNoLectivas.map(carga => {
+              <div className="space-y-3">
+                {cargasNoLectivas.map((carga, index) => {
                   const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
+                  // Colores vibrantes para cada fila
+                  const colors = [
+                    { bg: 'bg-rose-50', border: 'border-rose-200', text: 'text-rose-800', label: 'text-rose-700' },
+                    { bg: 'bg-amber-50', border: 'border-amber-200', text: 'text-amber-800', label: 'text-amber-700' },
+                    { bg: 'bg-emerald-50', border: 'border-emerald-200', text: 'text-emerald-800', label: 'text-emerald-700' },
+                    { bg: 'bg-cyan-50', border: 'border-cyan-200', text: 'text-cyan-800', label: 'text-cyan-700' },
+                    { bg: 'bg-violet-50', border: 'border-violet-200', text: 'text-violet-800', label: 'text-violet-700' },
+                    { bg: 'bg-fuchsia-50', border: 'border-fuchsia-200', text: 'text-fuchsia-800', label: 'text-fuchsia-700' },
+                    { bg: 'bg-orange-50', border: 'border-orange-200', text: 'text-orange-800', label: 'text-orange-700' },
+                    { bg: 'bg-sky-50', border: 'border-sky-200', text: 'text-sky-800', label: 'text-sky-700' },
+                  ];
+                  const color = colors[index % colors.length];
+                  
                   return (
-                    <div key={carga.id_carga_no_lectiva} className="grid grid-cols-12 gap-4 items-start p-4 bg-slate-50 rounded-lg">
-                      <div className="col-span-5 space-y-2">
-                        <Label className="font-medium text-slate-800">{tipoInfo?.label || carga.tipo}</Label>
-                        <p className="text-sm text-slate-500">{tipoInfo?.descripcion}</p>
+                    <div 
+                      key={carga.id_carga_no_lectiva} 
+                      className={`grid grid-cols-12 gap-4 items-start p-4 rounded-xl border-2 ${color.bg} ${color.border} hover:shadow-md transition-shadow`}
+                    >
+                      <div className="col-span-4 space-y-1">
+                        <Label className={`font-bold ${color.label}`}>{tipoInfo?.label || carga.tipo}</Label>
+                        <p className={`text-xs ${color.text} opacity-80`}>{tipoInfo?.descripcion}</p>
                       </div>
                       <div className="col-span-5 space-y-1">
-                        <Label className="text-sm text-slate-500">Descripción de la actividad</Label>
+                        <Label className="text-xs font-medium text-slate-600">Descripción de la actividad</Label>
                         <Input
-                          placeholder="Describa su actividad específica"
+                          placeholder="Describa su actividad..."
                           value={carga.descripcion || ''}
+                          className="bg-white border-slate-200 focus:border-indigo-400"
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
                             const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
@@ -541,18 +766,20 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           }}
                         />
                       </div>
-                      <div className="col-span-2 space-y-1">
-                        <Label className="text-sm text-slate-500">Horas/Sem</Label>
+                      <div className="col-span-3 space-y-1">
+                        <Label className="text-xs font-medium text-slate-600">Horas por semana</Label>
                         <Input
                           type="number"
                           min="0"
-                          step="0.1"
+                          step="1"
+                          className={`bg-white border-slate-200 focus:border-indigo-400 font-semibold text-lg ${color.text}`}
                           value={carga.horas_semanales || 0}
                           onChange={e => {
-                            const horas = parseFloat(e.target.value) || 0;
+                            // Asegurar que solo sea entero
+                            const horas = Math.floor(parseFloat(e.target.value) || 0);
                             const newCargas = [...cargasNoLectivas];
                             const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                            newCargas[idx].horas_semanales = horas;
+                            newCargas[idx].horas_semanales = Math.max(0, horas);
                             setCargasNoLectivas(newCargas);
                           }}
                         />
