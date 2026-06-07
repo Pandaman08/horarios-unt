@@ -57,12 +57,7 @@ function DashboardLayoutInner({
           "operador_horarios",
         ],
       },
-      {
-        title: t("navAttention"),
-        href: "/dashboard/horarios/asignacion",
-        icon: Users,
-        roles: ["administrador_sistema"],
-      },
+
       {
         isGroup: true,
         title: t("navAcademic"),
