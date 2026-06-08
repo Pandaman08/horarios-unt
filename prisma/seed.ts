@@ -39,6 +39,8 @@ async function main() {
       '"CargaNoLectiva"',
       '"FormatoDeclaracion"',
       '"DeclaracionHoraria"',
+      '"DocenteCurso"',
+      '"CursoAmbiente"',
       '"Grupo"',
       '"DisponibilidadDocente"',
       '"ColaNotificaciones"',

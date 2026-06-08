@@ -16,7 +16,7 @@ export interface SolicitudAsignacion {
 }
 
 export interface Conflicto {
-  tipo: 'CRUCE_DOCENTE' | 'CRUCE_GRUPO' | 'OCUPACION_AMBIENTE' | 'EXCESO_HORAS_DIARIAS' | 'FUERA_FRANJA' | 'CURSO_NO_ASIGNABLE' | 'AMBIENTE_NO_VALIDO' | 'HORAS_COMPLETADAS';
+  tipo: 'CRUCE_DOCENTE' | 'CRUCE_GRUPO' | 'OCUPACION_AMBIENTE' | 'EXCESO_HORAS_DIARIAS' | 'FUERA_FRANJA' | 'CURSO_NO_ASIGNABLE' | 'AMBIENTE_NO_VALIDO' | 'HORAS_COMPLETADAS' | 'CARGA_NO_APROBADA';
   mensaje: string;     // texto legible
   severidad: 'ERROR' | 'ADVERTENCIA';
   detalle?: any;
@@ -44,6 +44,7 @@ export class ValidadorHorario {
       this.validarCursoAsignable(solicitud),
       this.validarAmbienteValido(solicitud),
       this.validarHorasCompletadas(solicitud),
+      this.validarDeclaracionAprobada(solicitud),
     ];
 
     const resultados = await Promise.all(validaciones);
@@ -363,6 +364,27 @@ export class ValidadorHorario {
         mensaje: `Se excede el total de horas de ${s.tipoClase} para este curso (${horasTope}h).`,
         severidad: 'ERROR',
         detalle: { horasAsignadas: (minutosTotales + minutosNueva) / 60, tope: horasTope }
+      });
+    }
+
+    return conflictos;
+  }
+
+  // 9. Declaración Horaria Aprobada
+  private static async validarDeclaracionAprobada(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    const declaracion = await prisma.declaracionHoraria.findFirst({
+      where: {
+        id_docente: s.docenteId,
+        id_periodo: s.periodoId
+      }
+    });
+
+    if (!declaracion || declaracion.estado !== 'APROBADO') {
+      conflictos.push({
+        tipo: 'CARGA_NO_APROBADA',
+        mensaje: 'No se pueden generar horarios. La carga lectiva del docente aún no ha sido aprobada por el administrador.',
+        severidad: 'ERROR'
       });
     }
 
