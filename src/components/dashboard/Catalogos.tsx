@@ -40,27 +40,6 @@ export default function CatalogosPage() {
 
   return (
     <div className="w-full max-w-[1400px] mx-auto space-y-4 animate-in fade-in duration-500 pb-4 px-3 sm:px-4 overflow-x-hidden">
-      {/* HEADER */}
-
-      {activeTab !== "ventanas" && (
-        <div className="flex items-center gap-3">
-          <div className="h-11 w-11 rounded-xl bg-primary/10 border border-primary/20 flex items-center justify-center">
-            <Database className="h-5 w-5 text-primary" />
-          </div>
-
-          <div>
-            <h1 className="text-2xl font-bold tracking-tight">
-              Catálogos
-            </h1>
-
-            <p className="text-sm text-muted-foreground">
-              Gestión de datos maestros
-              del sistema
-            </p>
-          </div>
-        </div>
-      )}
-
       {/* CONTENT */}
 
       <div className="bg-card rounded-xl shadow-sm border border-border overflow-hidden p-3 md:p-4 w-full">

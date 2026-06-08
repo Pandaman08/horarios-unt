@@ -126,7 +126,7 @@ function DashboardLayoutInner({
         title: "Aprobación Carga Horaria",
         href: "/dashboard/aprobacion-carga-horaria",
         icon: CheckCircle2,
-        roles: ["administrador_sistema", "operador_horarios"],
+        roles: ["administrador_sistema"],
       },
       {
         title: "Carga Horaria",
