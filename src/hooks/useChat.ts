@@ -19,7 +19,8 @@ export const useChat = () => {
   const [isLoading, setIsLoading] = useState(false);
   const [isHydrated, setIsHydrated] = useState(false);
   
-  // Usar una ref para evitar bucles de guardado
+  // Ref para mantener ID sincrónico (fuera del ciclo de re-renderizado)
+  const activeIdRef = useRef<string | null>(null);
   const isInitialLoad = useRef(true);
 
   // 1. Cargar datos de localStorage al inicializar
@@ -48,6 +49,7 @@ export const useChat = () => {
     
     if (savedActiveId) {
       setActiveConversationId(savedActiveId);
+      activeIdRef.current = savedActiveId;
     }
     
     setIsHydrated(true);
@@ -79,13 +81,14 @@ export const useChat = () => {
     };
 
     setConversations(prev => {
-      let currentId = activeConversationId;
+      let currentId = activeIdRef.current;
       const exists = prev.find(c => c.id === currentId);
 
       // Si no hay ID activo o el ID no existe en la lista (chat nuevo)
       if (!currentId || !exists) {
         const newId = currentId || Math.random().toString(36).substring(7);
-        if (!currentId) setActiveConversationId(newId);
+        activeIdRef.current = newId;
+        setActiveConversationId(newId);
         
         const title = role === 'user' 
           ? content.substring(0, 30) + (content.length > 30 ? '...' : '') 
@@ -111,26 +114,30 @@ export const useChat = () => {
         });
       }
     });
-  }, [activeConversationId]);
+  }, []);
 
   const startNewChat = useCallback(() => {
+    activeIdRef.current = null;
     setActiveConversationId(null);
   }, []);
 
   const loadConversation = useCallback((id: string) => {
+    activeIdRef.current = id;
     setActiveConversationId(id);
   }, []);
 
   const deleteConversation = useCallback((id: string) => {
     setConversations(prev => prev.filter(c => c.id !== id));
-    if (activeConversationId === id) {
+    if (activeIdRef.current === id) {
+      activeIdRef.current = null;
       setActiveConversationId(null);
     }
-  }, [activeConversationId]);
+  }, []);
 
   const clearHistory = useCallback(() => {
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(ACTIVE_ID_KEY);
+    activeIdRef.current = null;
     setConversations([]);
     setActiveConversationId(null);
   }, []);
