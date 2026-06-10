@@ -394,9 +394,11 @@ function DashboardLayoutInner({
             </div>
           </div>
 
-          <div className="hidden md:block">
-            <PeriodoSelector />
-          </div>
+          {userRol !== 'docente' && (
+            <div className="hidden md:block">
+              <PeriodoSelector />
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             <FontSizeAdjuster />

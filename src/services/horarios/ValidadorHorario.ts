@@ -153,7 +153,9 @@ export class ValidadorHorario {
   // 2. Cruce de grupo
   private static async validarCruceGrupo(s: SolicitudAsignacion): Promise<Conflicto[]> {
     const conflictos: Conflicto[] = [];
-    const cruce = await prisma.horarioAsignado.findFirst({
+    
+    // Horario asignado
+    const cruceAsignado = await prisma.horarioAsignado.findFirst({
       where: {
         id_grupo: s.grupoId,
         id_periodo: s.periodoId,
@@ -161,16 +163,41 @@ export class ValidadorHorario {
         id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined,
         OR: [
           { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
-          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } }
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
         ]
       },
       include: { curso: true }
     });
 
-    if (cruce) {
+    if (cruceAsignado) {
       conflictos.push({
         tipo: 'CRUCE_GRUPO',
-        mensaje: `El grupo ya tiene el curso ${cruce.curso.nombre} asignado en este horario.`,
+        mensaje: `El grupo ya tiene el curso ${cruceAsignado.curso.nombre} asignado en este horario.`,
+        severidad: 'ERROR'
+      });
+    }
+
+    // Selección temporal
+    const cruceTemporal = await prisma.seleccionTemporalHorario.findFirst({
+      where: {
+        id_grupo: s.grupoId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
+        fecha_expiracion: { gt: new Date() },
+        OR: [
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
+        ]
+      },
+      include: { curso: true }
+    });
+
+    if (cruceTemporal) {
+      conflictos.push({
+        tipo: 'CRUCE_GRUPO',
+        mensaje: `El grupo ya tiene una selección temporal bloqueada para el curso ${cruceTemporal.curso.nombre}.`,
         severidad: 'ERROR'
       });
     }
@@ -181,7 +208,9 @@ export class ValidadorHorario {
   // 3. Ocupación de ambiente
   private static async validarOcupacionAmbiente(s: SolicitudAsignacion): Promise<Conflicto[]> {
     const conflictos: Conflicto[] = [];
-    const ocupado = await prisma.horarioAsignado.findFirst({
+    
+    // Horario asignado
+    const ocupadoAsignado = await prisma.horarioAsignado.findFirst({
       where: {
         id_ambiente: s.ambienteId,
         id_periodo: s.periodoId,
@@ -189,15 +218,39 @@ export class ValidadorHorario {
         id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined,
         OR: [
           { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
-          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } }
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
         ]
       }
     });
 
-    if (ocupado) {
+    if (ocupadoAsignado) {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente seleccionado ya está ocupado en este horario.',
+        severidad: 'ERROR'
+      });
+    }
+
+    // Selección temporal
+    const ocupadoTemporal = await prisma.seleccionTemporalHorario.findFirst({
+      where: {
+        id_ambiente: s.ambienteId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
+        fecha_expiracion: { gt: new Date() },
+        OR: [
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
+        ]
+      }
+    });
+
+    if (ocupadoTemporal) {
+      conflictos.push({
+        tipo: 'OCUPACION_AMBIENTE',
+        mensaje: 'El ambiente seleccionado tiene una selección temporal pendiente en este horario.',
         severidad: 'ERROR'
       });
     }

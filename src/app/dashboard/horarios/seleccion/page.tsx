@@ -271,18 +271,21 @@ export default function SeleccionHorariosPage() {
       const res = await fetch(url);
       if (res.ok) {
         const data = await res.json();
-        setCursosProgreso(data);
+        setCursosProgreso(Array.isArray(data) ? data : []);
         
-        const algunConfirmado = data.some((c: any) => c.confirmado);
+        const algunConfirmado = Array.isArray(data) && data.some((c: any) => c.confirmado);
         setYaConfirmo(algunConfirmado);
 
-        if (data.length > 0 && !cursoSeleccionado) {
+        if (Array.isArray(data) && data.length > 0 && !cursoSeleccionado) {
           setCursoSeleccionado({ id: data[0].id_curso, tipo: data[0].tipo_clase });
         }
       } else {
         setCursosProgreso([]);
-        const errorData = await res.json();
-        toast.error(errorData.error || "Error al cargar cursos");
+        // Si el error es 404 o 400, no mostrar toast ruidoso, solo vaciar
+        if (res.status !== 404 && res.status !== 400) {
+          const errorData = await res.json().catch(() => ({}));
+          toast.error(errorData.error || "Error al cargar cursos");
+        }
       }
     } catch (error) {
       toast.error("Error al cargar cursos del docente");
@@ -408,18 +411,11 @@ export default function SeleccionHorariosPage() {
 
           <div className="flex items-center gap-4 bg-muted/30 p-3 rounded-2xl border border-border w-full md:w-auto">
             <div className="flex items-center gap-2 px-3">
-              <Clock className="h-4 w-4 text-muted-foreground" />
-              <span className="text-xs font-bold text-muted-foreground">Período:</span>
-              <Select value={idPeriodo} onValueChange={setIdPeriodo}>
-                <SelectTrigger className="w-[140px] h-9 border-border bg-background rounded-xl shadow-sm font-bold text-xs focus:ring-2 focus:ring-primary">
-                  <SelectValue placeholder="Ciclo" />
-                </SelectTrigger>
-                <SelectContent className="rounded-xl border-border shadow-xl bg-popover">
-                  {periodos.map(p => (
-                    <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold">{p.nombre}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <Calendar className="h-4 w-4 text-primary" />
+              <span className="text-xs font-bold text-muted-foreground">Período Lectivo:</span>
+              <span className="text-sm font-black text-primary bg-primary/10 px-3 py-1 rounded-lg border border-primary/20">
+                {periodos.find(p => p.id_periodo.toString() === idPeriodo)?.nombre || "Cargando..."}
+              </span>
             </div>
           </div>
         </div>

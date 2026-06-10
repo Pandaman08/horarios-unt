@@ -1052,10 +1052,12 @@ export async function GET(request: Request) {
             return buffer;
           }));
 
+      const filename = `${formato}-declaracion-carga-horaria.pdf`;
+
       return new Response(new Uint8Array(pdfBuffer), {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${formato}-declaracion-carga-horaria.pdf"`,
+          'Content-Disposition': `attachment; filename="${filename}"`,
           'Content-Length': pdfBuffer.length.toString()
         }
       });
