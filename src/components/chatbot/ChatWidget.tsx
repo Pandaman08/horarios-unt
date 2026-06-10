@@ -66,13 +66,14 @@ export const ChatWidget = () => {
     // Cancelar cualquier habla previa
     window.speechSynthesis.cancel();
     
-    // Limpiar Markdown para la lectura
+    // 🔧 Limpieza SUPER agresiva de Markdown para la lectura de voz
     const cleanText = text
-      .replace(/\*\*/g, '') // Negrita
-      .replace(/\*/g, '')  // Cursiva
-      .replace(/`/g, '')   // Código
-      .replace(/#+\s/g, '') // Encabezados
-      .replace(/\[.*\]\(.*\)/g, '') // Links
+      .replace(/\*\*(.*?)\*\*/g, '$1')       // Remover **negritas**
+      .replace(/\*(.*?)\*/g, '$1')           // Remover *cursivas*
+      .replace(/`(.*?)`/g, '$1')             // Remover `código`
+      .replace(/#+\s*/g, '')                 // Remover ## encabezados
+      .replace(/\[([^\]]+)\]\([^)]+\)/g, '$1') // Remover [links](url)
+      .replace(/[*_`#]/g, '')                // Eliminar cualquier símbolo Markdown suelto
       .trim();
     
     const utterance = new SpeechSynthesisUtterance(cleanText);
