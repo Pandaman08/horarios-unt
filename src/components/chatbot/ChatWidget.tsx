@@ -28,7 +28,11 @@ export const ChatWidget = () => {
     loadConversation,
     startNewChat,
     deleteConversation,
+    isHydrated
   } = useChat();
+
+  // No renderizar nada del chat hasta que esté hidratado para evitar bugs visuales
+  if (!isHydrated && isOpen) return null;
   const { isListening, transcript, startListening, stopListening, isSupported, error: voiceError } = useVoiceRecognition();
   const pathname = usePathname();
 

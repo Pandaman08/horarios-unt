@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatMessage } from '@/services/ai/ChatbotService';
 
 interface Conversation {
@@ -17,16 +17,21 @@ export const useChat = () => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [isHydrated, setIsHydrated] = useState(false);
+  
+  // Usar una ref para evitar bucles de guardado
+  const isInitialLoad = useRef(true);
 
-  // Cargar datos de localStorage al inicializar
+  // 1. Cargar datos de localStorage al inicializar
   useEffect(() => {
+    if (typeof window === 'undefined') return;
+
     const savedConversations = localStorage.getItem(STORAGE_KEY);
     const savedActiveId = localStorage.getItem(ACTIVE_ID_KEY);
 
     if (savedConversations) {
       try {
         const parsed = JSON.parse(savedConversations);
-        // Convertir strings de fecha a objetos Date
         const hydrated = parsed.map((c: any) => ({
           ...c,
           createdAt: new Date(c.createdAt),
@@ -40,20 +45,26 @@ export const useChat = () => {
         console.error('Failed to load conversations:', e);
       }
     }
+    
     if (savedActiveId) {
       setActiveConversationId(savedActiveId);
     }
+    
+    setIsHydrated(true);
+    isInitialLoad.current = false;
   }, []);
 
-  // Guardar datos en localStorage
+  // 2. Guardar datos en localStorage solo después de la hidratación y cuando hay cambios reales
   useEffect(() => {
-    if (conversations.length > 0) {
-      localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
-    }
+    if (!isHydrated) return;
+    
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
     if (activeConversationId) {
       localStorage.setItem(ACTIVE_ID_KEY, activeConversationId);
+    } else {
+      localStorage.removeItem(ACTIVE_ID_KEY);
     }
-  }, [conversations, activeConversationId]);
+  }, [conversations, activeConversationId, isHydrated]);
 
   const messages = activeConversationId 
     ? conversations.find(c => c.id === activeConversationId)?.messages || [] 
@@ -67,55 +78,47 @@ export const useChat = () => {
       timestamp: new Date(),
     };
 
-    if (!activeConversationId) {
-      // Crear nueva conversación
-      const newId = Math.random().toString(36).substring(7);
-      // Generar título basado en la primera pregunta
-      const title = role === 'user' ? content.substring(0, 30) + (content.length > 30 ? '...' : '') : 'Nueva Conversación';
-      
-      setConversations(prev => [{
-        id: newId,
-        title,
-        createdAt: new Date(),
-        messages: [newMessage],
-      }, ...prev]);
-      setActiveConversationId(newId);
-    } else {
-      // Añadir a conversación existente
-      setConversations(prev => prev.map(c => {
-        if (c.id === activeConversationId) {
-          // Si es la primera respuesta, actualizar el título si es necesario
-          let title = c.title;
-          if (c.messages.length === 0 && role === 'user') {
-             title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+    setConversations(prev => {
+      let currentId = activeConversationId;
+      const exists = prev.find(c => c.id === currentId);
+
+      // Si no hay ID activo o el ID no existe en la lista (chat nuevo)
+      if (!currentId || !exists) {
+        const newId = currentId || Math.random().toString(36).substring(7);
+        if (!currentId) setActiveConversationId(newId);
+        
+        const title = role === 'user' 
+          ? content.substring(0, 30) + (content.length > 30 ? '...' : '') 
+          : 'Nueva Conversación';
+
+        return [{
+          id: newId,
+          title,
+          createdAt: new Date(),
+          messages: [newMessage],
+        }, ...prev];
+      } else {
+        // Añadir a conversación existente
+        return prev.map(c => {
+          if (c.id === currentId) {
+            let title = c.title;
+            if (c.messages.length === 0 && role === 'user') {
+              title = content.substring(0, 30) + (content.length > 30 ? '...' : '');
+            }
+            return { ...c, messages: [...c.messages, newMessage], title };
           }
-          return { ...c, messages: [...c.messages, newMessage], title };
-        }
-        return c;
-      }));
-    }
+          return c;
+        });
+      }
+    });
   }, [activeConversationId]);
 
-  const clearHistory = useCallback(() => {
-    if (activeConversationId) {
-       // No eliminar del historial, solo limpiar mensajes activos?
-       // O mejor, crear nueva conversación
-       const newId = Math.random().toString(36).substring(7);
-       setActiveConversationId(newId);
-    } else {
-       // No hay active ID, no hacer nada o crear nueva
-       const newId = Math.random().toString(36).substring(7);
-       setActiveConversationId(newId);
-    }
-  }, [activeConversationId]);
+  const startNewChat = useCallback(() => {
+    setActiveConversationId(null);
+  }, []);
 
   const loadConversation = useCallback((id: string) => {
     setActiveConversationId(id);
-  }, []);
-
-  const startNewChat = useCallback(() => {
-    const newId = Math.random().toString(36).substring(7);
-    setActiveConversationId(newId);
   }, []);
 
   const deleteConversation = useCallback((id: string) => {
@@ -124,6 +127,13 @@ export const useChat = () => {
       setActiveConversationId(null);
     }
   }, [activeConversationId]);
+
+  const clearHistory = useCallback(() => {
+    localStorage.removeItem(STORAGE_KEY);
+    localStorage.removeItem(ACTIVE_ID_KEY);
+    setConversations([]);
+    setActiveConversationId(null);
+  }, []);
 
   return {
     messages,
@@ -136,5 +146,6 @@ export const useChat = () => {
     loadConversation,
     startNewChat,
     deleteConversation,
+    isHydrated
   };
 };
