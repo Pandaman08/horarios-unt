@@ -7,35 +7,89 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { Plus, Trash2, Save, Send, FileText, Download } from 'lucide-react';
+import { toast } from "sonner";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { 
+  Plus, 
+  Trash2, 
+  Save, 
+  Send, 
+  FileText, 
+  Download, 
+  Loader2, 
+  BookOpen, 
+  CheckCircle2, 
+  User, 
+  XCircle,
+  LayoutGrid,
+  Info,
+  Clock,
+  Briefcase
+} from 'lucide-react';
+import { cn } from '@/lib/utils';
 
 const DEDICACIONES = [
-  { label: 'Dedicación Exclusiva', horas: 40 },
   { label: 'Tiempo Completo 40 h', horas: 40 },
-  { label: 'Tiempo Completo 30 h', horas: 30 },
-  { label: 'Tiempo Parcial 20 h', horas: 20 },
-  { label: 'Tiempo Parcial 16 h', horas: 16 },
-  { label: 'Tiempo Parcial 12 h', horas: 12 },
-  { label: 'Tiempo Parcial 10 h', horas: 10 },
-  { label: 'Tiempo Parcial 8 h', horas: 8 }
+  { label: 'Tiempo Parcial 20 h', horas: 20 }
 ];
 
 const CONDICIONES = ['Nombrado', 'Principal', 'Auxiliar', 'Jefe de Práctica', 'Profesor', 'Alumno'];
 const CATEGORIAS = ['Asociado', 'Principal', 'Auxiliar', 'Titular'];
 
-const TIPOS_CARGA_NO_LECTIVA = [
-  { value: 'PREPARACION_EVALUACION', label: 'Preparación y Evaluación' },
-  { value: 'TUTORIA', label: 'Tutoría' },
-  { value: 'INVESTIGACION', label: 'Investigación' },
-  { value: 'CAPACITACION', label: 'Capacitación' },
-  { value: 'GOBIERNO', label: 'Gobierno' },
-  { value: 'ADMINISTRACION', label: 'Administración' },
-  { value: 'ASESORIA', label: 'Asesoría' },
-  { value: 'RESPONSABILIDAD_SOCIAL', label: 'Responsabilidad Social' },
-  { value: 'COMITES_TECNICOS', label: 'Comités Técnicos' },
-  { value: 'OTRO', label: 'Otro' }
+const TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS = [
+  {
+    value: 'PREPARACION_EVALUACION',
+    label: 'Preparación y Evaluación',
+    descripcion: 'Preparación de clases, elaboración de materiales, evaluación de estudiantes (Max 50% del Trabajo Lectivo)'
+  },
+  {
+    value: 'TUTORIA',
+    label: 'Consejería y Tutoría',
+    descripcion: 'Acompañamiento académico y personal a estudiantes'
+  },
+  {
+    value: 'INVESTIGACION',
+    label: 'Investigación',
+    descripcion: 'Desarrollo de proyectos de investigación'
+  },
+  {
+    value: 'CAPACITACION',
+    label: 'Capacitación',
+    descripcion: 'Formación y actualización docente'
+  },
+  {
+    value: 'GOBIERNO',
+    label: 'Actividades de Gobierno',
+    descripcion: 'Participación en órganos de gobierno de la facultad'
+  },
+  {
+    value: 'ADMINISTRACION',
+    label: 'Actividades de Administración',
+    descripcion: 'Tareas administrativas asignadas'
+  },
+  {
+    value: 'ASESORIA',
+    label: 'Asesoría de Tesis, Exámenes Profesionales y Experiencia Profesional',
+    descripcion: 'Asesoría a tesis, dirección de exámenes y experiencias profesionales'
+  },
+  {
+    value: 'RESPONSABILIDAD_SOCIAL',
+    label: 'Responsabilidad Social Universitaria',
+    descripcion: 'Actividades de responsabilidad social (Mínimo 0.2 horas semanales)'
+  },
+  {
+    value: 'COMITES_TECNICOS',
+    label: 'Comités Técnicos y Comisiones',
+    descripcion: 'Participación en comités técnicos y comisiones'
+  }
 ];
 
 export default function CargaHorariaClient({ initialDocente }: { initialDocente: any }) {
@@ -98,10 +152,42 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           horas_dedicacion: data.horas_dedicacion
         });
         setCargasLectivas(data.cargas_lectivas || []);
-        setCargasNoLectivas(data.cargas_no_lectivas || []);
+        
+        // Initialize with all predefined types, merging existing ones
+        const cargasExistentes = data.cargas_no_lectivas || [];
+        const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map(tipo => {
+          const existente = cargasExistentes.find((c: any) => c.tipo === tipo.value);
+          if (existente) {
+            return existente;
+          }
+          return {
+            id_carga_no_lectiva: Date.now() + Math.random(),
+            tipo: tipo.value,
+            descripcion: '',
+            horas_semanales: 0
+          };
+        });
+        setCargasNoLectivas(cargasInicializadas);
+      } else {
+        // If no declaration exists, initialize with all predefined types
+        const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
+          id_carga_no_lectiva: Date.now() + idx,
+          tipo: tipo.value,
+          descripcion: '',
+          horas_semanales: 0
+        }));
+        setCargasNoLectivas(cargasInicializadas);
       }
     } catch (err) {
       console.error(err);
+      // Initialize with all predefined types even on error
+      const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
+        id_carga_no_lectiva: Date.now() + idx,
+        tipo: tipo.value,
+        descripcion: '',
+        horas_semanales: 0
+      }));
+      setCargasNoLectivas(cargasInicializadas);
     } finally {
       setLoading(false);
     }
@@ -109,6 +195,12 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
 
   const handleCreateOrSave = async () => {
     if (!initialDocente || !periodoActivo) return;
+
+    // Validate total hours don't exceed dedication
+    if (formData.horas_dedicacion > 0 && totalGeneral > formData.horas_dedicacion) {
+      toast.error(`Error: El total de horas (${totalGeneral}h) excede las horas de dedicación (${formData.horas_dedicacion}h)`);
+      return;
+    }
 
     try {
       let declaracionId = declaracion?.id_declaracion;
@@ -157,30 +249,22 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         }
       }
 
-      // Save cargas no lectivas
-      for (const carga of cargasNoLectivas) {
-        if (carga.id_carga_no_lectiva && typeof carga.id_carga_no_lectiva === 'number') {
-          // TODO: Update existing carga
-        } else {
-          await fetch('/api/carga-no-lectiva', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id_declaracion: declaracionId,
-              tipo: carga.tipo || 'OTRO',
-              descripcion: carga.descripcion || null,
-              horas_semanales: carga.horas_semanales || 0
-            })
-          });
-        }
-      }
+      // Save cargas no lectivas using upsert
+      await fetch('/api/carga-no-lectiva', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          id_declaracion: declaracionId,
+          cargas: cargasNoLectivas
+        })
+      });
 
       // Refresh data
       fetchDeclaracion(periodoActivo.id_periodo, initialDocente.id_docente);
-      alert('Declaración guardada correctamente');
+      toast.success('Declaración guardada correctamente');
     } catch (err) {
       console.error(err);
-      alert('Error al guardar la declaración');
+      toast.error('Error al guardar la declaración');
     }
   };
 
@@ -195,15 +279,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }]);
   };
 
-  const addCargaNoLectiva = () => {
-    setCargasNoLectivas([...cargasNoLectivas, { 
-      id_carga_no_lectiva: Date.now(), 
-      tipo: 'OTRO', 
-      descripcion: '', 
-      horas_semanales: 0 
-    }]);
-  };
-
   const removeCargaLectiva = async (id: number) => {
     if (typeof id === 'number' && declaracion) {
       try {
@@ -215,29 +290,26 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     setCargasLectivas(cargasLectivas.filter(c => c.id_carga_lectiva !== id));
   };
 
-  const removeCargaNoLectiva = async (id: number) => {
-    if (typeof id === 'number' && declaracion) {
-      try {
-        await fetch(`/api/carga-no-lectiva?id=${id}`, { method: 'DELETE' });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    setCargasNoLectivas(cargasNoLectivas.filter(c => c.id_carga_no_lectiva !== id));
-  };
-
   const handleEnviar = async () => {
     if (!declaracion) return;
+
+    // Validación obligatoria de horas totales
+    if (totalGeneral !== formData.horas_dedicacion) {
+      toast.error(`Error: Para enviar la declaración, el total de horas (${totalGeneral}h) debe ser exactamente igual a las horas de dedicación asignadas (${formData.horas_dedicacion}h).`);
+      return;
+    }
+
     try {
       await fetch(`/api/declaracion-horaria/${declaracion.id_declaracion}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, estado: 'ENVIADO' })
       });
-      alert('Declaración enviada para aprobación');
+      toast.success('Declaración enviada para aprobación');
       fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente);
     } catch (err) {
       console.error(err);
+      toast.error('Error al enviar la declaración');
     }
   };
 
@@ -256,88 +328,159 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
   };
 
-  const totalLectivas = cargasLectivas.reduce((sum, c) => sum + (c.horas_semanales || 0), 0);
+  const totalLectivas = cargasLectivas.reduce((sum, c) => {
+    const grupos = c.grupos_asignados || 0;
+    const horas = c.horas_semanales || 0;
+    return sum + (grupos * horas);
+  }, 0);
   const totalNoLectivas = cargasNoLectivas.reduce((sum, c) => sum + (c.horas_semanales || 0), 0);
   const totalGeneral = totalLectivas + totalNoLectivas;
+
+  // Función para agrupar cargas por curso
+  const cargasPorCurso = cargasLectivas.reduce((acc, carga) => {
+    const cursoId = carga.id_curso;
+    if (!cursoId) return acc;
+    
+    if (!acc[cursoId]) {
+      acc[cursoId] = { curso: cursos.find(c => c.id_curso === cursoId), cargas: [] };
+    }
+    acc[cursoId].cargas.push(carga);
+    return acc;
+  }, {} as Record<number, { curso: any; cargas: any[] }>);
+  
+  // Aseguramos el tipo para el map
+  const cursosArray = Object.values(cargasPorCurso) as Array<{ curso: any; cargas: any[] }>;
 
   if (loading) return <div className="p-8">Cargando...</div>;
 
   return (
-    <div className="p-6 max-w-7xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Declaración de Carga Horaria</h1>
-          <p className="text-slate-500 mt-1">Gestiona tu carga lectiva y no lectiva para el periodo académico</p>
-        </div>
-        <div className="flex gap-2">
-          <Button onClick={handleCreateOrSave} className="flex items-center gap-2">
-            <Save size={16} /> Guardar Borrador
-          </Button>
-          {declaracion && declaracion.estado === 'BORRADOR' && (
-            <Button onClick={handleEnviar} variant="default" className="bg-green-600 hover:bg-green-700 flex items-center gap-2">
-              <Send size={16} /> Enviar para Aprobación
-            </Button>
-          )}
-        </div>
-      </div>
+    <div className="p-6 space-y-4 bg-[#f8fafc] min-h-screen">
+      {/* Header Unificado */}
+      <Card className="shadow-sm border-slate-200 overflow-hidden">
+        <CardContent className="p-0">
+          <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-white">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100">
+                <LayoutGrid className="text-blue-600 w-5 h-5" />
+              </div>
+              <div>
+                <h1 className="text-lg font-bold text-slate-900 leading-none">Declaración de Carga Horaria</h1>
+                <p className="text-slate-500 text-xs mt-1">Gestiona tu carga lectiva y no lectiva para el periodo académico</p>
+              </div>
+            </div>
+            <div className="flex flex-wrap gap-2">
+              <Button 
+                onClick={handleCreateOrSave} 
+                variant="outline" 
+                size="sm"
+                className="h-9 px-4 text-xs font-bold uppercase border-slate-200 hover:bg-slate-50 flex items-center gap-2"
+              >
+                <Save size={14} /> Guardar Borrador
+              </Button>
+              {declaracion && (declaracion.estado === 'BORRADOR' || declaracion.estado === 'RECHAZADO') && (
+                <Button 
+                  onClick={handleEnviar} 
+                  variant="default" 
+                  size="sm"
+                  className="h-9 px-4 text-xs font-bold uppercase bg-emerald-600 hover:bg-emerald-700 text-white flex items-center gap-2 shadow-sm shadow-emerald-100"
+                >
+                  <Send size={14} /> Enviar para Aprobación
+                </Button>
+              )}
+              {declaracion && (
+                <div className="flex items-center gap-2 px-3 py-1.5 bg-slate-50 border border-slate-200 rounded-md">
+                  <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">Estado:</span>
+                  <Badge 
+                    variant="outline" 
+                    className={cn(
+                      "text-[9px] font-bold uppercase px-2 py-0.5",
+                      declaracion.estado === 'BORRADOR' ? "bg-amber-50 text-amber-700 border-amber-100" :
+                      declaracion.estado === 'ENVIADO' ? "bg-blue-50 text-blue-700 border-blue-100" :
+                      declaracion.estado === 'APROBADO' ? "bg-emerald-50 text-emerald-700 border-emerald-100" :
+                      "bg-rose-50 text-rose-700 border-rose-100"
+                    )}
+                  >
+                    {declaracion.estado}
+                  </Badge>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
-      {/* Datos del Docente y Periodo */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Datos del Docente</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
+      {/* Comentarios de rechazo */}
+      {declaracion && declaracion.estado === 'RECHAZADO' && declaracion.observaciones && (
+        <Card className="border-rose-200 bg-rose-50/30 shadow-none">
+          <CardContent className="p-4 flex items-start gap-3">
+            <div className="mt-0.5 text-rose-600">
+              <XCircle size={18} />
+            </div>
+            <div>
+              <h3 className="text-sm font-bold text-rose-800 uppercase tracking-tight">Declaración Rechazada</h3>
+              <p className="text-sm text-rose-700 mt-1 leading-relaxed">{declaracion.observaciones}</p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+        {/* Datos del Docente */}
+        <Card className="p-4 lg:col-span-2 shadow-sm border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <User size={16} className="text-blue-500" />
+              Datos del Docente
+            </h3>
+          </div>
+          <CardContent className="p-4 space-y-6">
             {initialDocente && (
-              <div className="grid grid-cols-2 gap-4">
-                <div>
-                  <Label className="text-sm text-slate-500">Docente</Label>
-                  <p className="font-medium">{initialDocente.nombres} {initialDocente.apellidos}</p>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nombre Completo</p>
+                  <p className="text-sm font-bold text-slate-700">{initialDocente.nombres} {initialDocente.apellidos}</p>
                 </div>
-                <div>
-                  <Label className="text-sm text-slate-500">Departamento Académico</Label>
-                  <p className="font-medium">{initialDocente.especialidad || 'Ingeniería de Sistemas'}</p>
-                </div>
-                <div>
-                  <Label className="text-sm text-slate-500">Facultad</Label>
-                  <p className="font-medium">Ingeniería</p>
+                <div className="space-y-1">
+                  <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Departamento Académico</p>
+                  <p className="text-sm font-medium text-slate-600">{initialDocente.especialidad || 'Ingeniería de Sistemas'}</p>
                 </div>
               </div>
             )}
-            <div className="border-t pt-4 mt-4">
-              <h4 className="font-medium mb-4">Confirmar Datos</h4>
-              <div className="grid grid-cols-2 gap-4">
+            
+            <div className="pt-4 border-t border-slate-100">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>IBM</Label>
+                  <Label className="text-[11px] font-bold text-slate-500 uppercase">IBM / Código</Label>
                   <Input
                     value={formData.ibm}
                     onChange={e => setFormData({ ...formData, ibm: e.target.value })}
+                    className="h-10 bg-slate-50/50 border-slate-200 focus:bg-white transition-all text-sm"
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Condición</Label>
+                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Condición</Label>
                   <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                    <SelectTrigger className="h-10 bg-slate-50/50 border-slate-200 focus:bg-white transition-all text-sm">
+                      <SelectValue placeholder="Seleccionar condición" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CONDICIONES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {CONDICIONES.map(c => <SelectItem key={c} value={c} className="text-sm">{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Categoría</Label>
+                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Categoría</Label>
                   <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                    <SelectTrigger className="h-10 bg-slate-50/50 border-slate-200 focus:bg-white transition-all text-sm">
+                      <SelectValue placeholder="Seleccionar categoría" />
                     </SelectTrigger>
                     <SelectContent>
-                      {CATEGORIAS.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}
+                      {CATEGORIAS.map(c => <SelectItem key={c} value={c} className="text-sm">{c}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
                 <div className="space-y-2">
-                  <Label>Dedicación</Label>
+                  <Label className="text-[11px] font-bold text-slate-500 uppercase">Dedicación Horaria</Label>
                   <Select
                     value={formData.dedicacion}
                     onValueChange={v => {
@@ -345,11 +488,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       setFormData({ ...formData, dedicacion: v, horas_dedicacion: ded?.horas || 0 });
                     }}
                   >
-                    <SelectTrigger>
-                      <SelectValue placeholder="Seleccionar" />
+                    <SelectTrigger className="h-10 bg-slate-50/50 border-slate-200 focus:bg-white transition-all text-sm">
+                      <SelectValue placeholder="Seleccionar dedicación" />
                     </SelectTrigger>
                     <SelectContent>
-                      {DEDICACIONES.map(d => <SelectItem key={d.label} value={d.label}>{d.label}</SelectItem>)}
+                      {DEDICACIONES.map(d => <SelectItem key={d.label} value={d.label} className="text-sm">{d.label}</SelectItem>)}
                     </SelectContent>
                   </Select>
                 </div>
@@ -358,132 +501,190 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Resumen de Horas</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-3 gap-4 text-center">
-              <div className="p-4 bg-blue-50 rounded-lg">
-                <p className="text-sm text-blue-600 font-medium">Carga Lectiva</p>
-                <p className="text-3xl font-bold text-blue-700">{totalLectivas}</p>
+        {/* Resumen de Horas */}
+        <Card className="p-4 shadow-sm border-slate-200 overflow-hidden">
+          <div className="px-4 py-3 border-b border-slate-100">
+            <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+              <Clock size={16} className="text-indigo-500" />
+              Resumen de Horas
+            </h3>
+          </div>
+          <CardContent className="p-4 space-y-4">
+            <div className="space-y-3">
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">Carga Lectiva</span>
+                <span className="text-lg font-black text-blue-600">{totalLectivas}h</span>
               </div>
-              <div className="p-4 bg-purple-50 rounded-lg">
-                <p className="text-sm text-purple-600 font-medium">Carga No Lectiva</p>
-                <p className="text-3xl font-bold text-purple-700">{totalNoLectivas}</p>
+              <div className="flex justify-between items-center p-3 bg-slate-50 rounded-lg border border-slate-100">
+                <span className="text-[11px] font-bold text-slate-500 uppercase tracking-tight">No Lectiva</span>
+                <span className="text-lg font-black text-indigo-600">{totalNoLectivas}h</span>
               </div>
-              <div className={`p-4 rounded-lg ${totalGeneral === formData.horas_dedicacion ? 'bg-green-50' : 'bg-red-50'}`}>
-                <p className={`text-sm font-medium ${totalGeneral === formData.horas_dedicacion ? 'text-green-600' : 'text-red-600'}`}>Total</p>
-                <p className={`text-3xl font-bold ${totalGeneral === formData.horas_dedicacion ? 'text-green-700' : 'text-red-700'}`}>{totalGeneral}</p>
+              <div className={cn(
+                "flex justify-between items-center p-3 rounded-lg border transition-all duration-300",
+                totalGeneral === formData.horas_dedicacion 
+                  ? "bg-emerald-50 border-emerald-100 shadow-sm shadow-emerald-50" 
+                  : "bg-rose-50 border-rose-100"
+              )}>
+                <div className="flex flex-col">
+                  <span className={cn(
+                    "text-[11px] font-bold uppercase tracking-tight",
+                    totalGeneral === formData.horas_dedicacion ? "text-emerald-600" : "text-rose-600"
+                  )}>Total Registrado</span>
+                  <span className="text-[9px] text-slate-400 font-medium">Meta: {formData.horas_dedicacion}h</span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className={cn(
+                    "text-2xl font-black",
+                    totalGeneral === formData.horas_dedicacion ? "text-emerald-700" : "text-rose-700"
+                  )}>{totalGeneral}h</span>
+                  {totalGeneral === formData.horas_dedicacion && (
+                    <CheckCircle2 size={20} className="text-emerald-500" />
+                  )}
+                </div>
               </div>
             </div>
-            {formData.horas_dedicacion > 0 && (
-              <div className="text-center">
-                <p className="text-sm text-slate-500">
-                  Horas de dedicación: <span className="font-bold">{formData.horas_dedicacion}h</span>
+            
+            {formData.horas_dedicacion > 0 && totalGeneral !== formData.horas_dedicacion && (
+              <div className="p-3 bg-amber-50 border border-amber-100 rounded-lg flex gap-2 items-start">
+                <Info size={14} className="text-amber-500 mt-0.5 shrink-0" />
+                <p className="text-[10px] text-amber-700 leading-tight font-medium">
+                  La suma total debe coincidir exactamente con las {formData.horas_dedicacion}h de dedicación asignadas.
                 </p>
-                {totalGeneral !== formData.horas_dedicacion && (
-                  <p className="text-sm text-red-500 mt-1">
-                    ⚠️ El total debe coincidir con las horas de dedicación
-                  </p>
-                )}
               </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      {/* Tabs para Cargas */}
-      <Tabs defaultValue="lectiva" className="w-full">
-        <TabsList className="w-full max-w-md">
-          <TabsTrigger value="lectiva" className="flex-1">Carga Lectiva</TabsTrigger>
-          <TabsTrigger value="no-lectiva" className="flex-1">Carga No Lectiva</TabsTrigger>
-          <TabsTrigger value="formatos" className="flex-1">Formatos</TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="lectiva" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Carga Lectiva Asignada</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {cargasLectivas.length === 0 ? (
-                  <div className="text-center py-8 text-slate-400">
-                    Aún no hay carga lectiva asignada por el departamento.
-                  </div>
-                ) : (
-                  cargasLectivas.map(carga => {
-                    const curso = cursos.find(c => c.id_curso === carga.id_curso);
-                    const grupo = grupos.find(g => g.id_grupo === carga.id_grupo);
+      {/* Carga Lectiva Asignada */}
+      <Card className="p-4 shadow-sm border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <BookOpen size={16} className="text-blue-500" />
+            Carga Lectiva Asignada
+          </h3>
+          <Badge variant="secondary" className="bg-blue-50 text-blue-700 hover:bg-blue-50 text-[10px] font-bold px-2 py-0.5 border-blue-100 uppercase">
+            Total: {totalLectivas}h
+          </Badge>
+        </div>
+        <CardContent className="p-0">
+          {cargasLectivas.length === 0 ? (
+            <div className="text-center py-16 bg-white">
+              <BookOpen className="w-10 h-10 mx-auto mb-3 text-slate-200" />
+              <p className="text-slate-400 font-medium text-xs">Aún no hay carga lectiva asignada</p>
+            </div>
+          ) : (
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-slate-50/50">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-4 h-10">Código</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-4 h-10">Curso</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-2 h-10 text-center">Tipo</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-2 h-10 text-center">Escuela</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-2 h-10 text-center">Ciclo</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-2 h-10 text-center">HT</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-2 h-10 text-center">HP</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-2 h-10 text-center">HL</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-4 h-10 text-right">Total</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {cursosArray.map(({ curso, cargas }, index) => {
+                    const HT = cargas.find(c => c.tipo_clase === 'teoria')?.horas_semanales || 0;
+                    const HP = cargas.find(c => c.tipo_clase === 'practica')?.horas_semanales || 0;
+                    const cLaboratorio = cargas.find(c => c.tipo_clase === 'laboratorio');
+                    const HL = (cLaboratorio?.grupos_asignados || 0) * (cLaboratorio?.horas_semanales || 0);
+                    const totalHoras = HT + HP + HL;
+                    
+                    const cursoCiclos: { [key: string]: string } = {
+                      'introducción a la programación': 'I', 'introducción a la ingeniería de sistemas': 'I',
+                      'programación orientada a objetos ii': 'III', 'sistémica': 'III',
+                      'ingeniería de datos i': 'V', 'sistemas de información': 'V',
+                      'ingeniería del software i': 'VII', 'redes y comunicaciones i': 'VII',
+                      'tesis i': 'IX', 'analítica de negocios': 'IX'
+                    };
+                    let ciclo = 'V';
+                    if (curso?.nombre) {
+                      const nombre = curso.nombre.toLowerCase().trim();
+                      if (cursoCiclos[nombre]) ciclo = cursoCiclos[nombre];
+                    }
+                    
                     return (
-                      <div key={carga.id_carga_lectiva} className="grid grid-cols-12 gap-4 items-center p-4 bg-slate-50 rounded-lg">
-                        <div className="col-span-4">
-                          <Label className="text-sm text-slate-500">Curso</Label>
-                          <p className="font-medium">{curso ? `${curso.codigo} - ${curso.nombre}` : '—'}</p>
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-sm text-slate-500">Tipo</Label>
-                          <p className="font-medium">{
-                            carga.tipo_clase === 'teoria' ? 'Teoría' : 
-                            carga.tipo_clase === 'practica' ? 'Práctica' : 'Laboratorio'
-                          }</p>
-                        </div>
-                        <div className="col-span-2">
-                          <Label className="text-sm text-slate-500">Grupo</Label>
-                          <p className="font-medium">{grupo ? grupo.codigo_grupo : '—'}</p>
-                        </div>
-                        <div className="col-span-1">
-                          <Label className="text-sm text-slate-500">Horas/Sem</Label>
-                          <p className="font-medium">{carga.horas_semanales}</p>
-                        </div>
-                        <div className="col-span-1">
-                          <Label className="text-sm text-slate-500">N° Grupos</Label>
-                          <p className="font-medium">{carga.grupos_asignados || '—'}</p>
-                        </div>
-                      </div>
+                      <TableRow key={`${index}-${curso?.id_curso}`} className="hover:bg-slate-50/50 border-slate-100 last:border-0">
+                        <TableCell className="px-4 py-3 text-xs font-bold text-slate-700">{curso?.codigo}</TableCell>
+                        <TableCell className="px-4 py-3 text-xs font-medium text-slate-800">{curso?.nombre}</TableCell>
+                        <TableCell className="px-2 py-3 text-center">
+                          <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 bg-white">
+                            {curso?.codigo?.startsWith('EL') ? 'EL' : 'OB'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="px-2 py-3 text-center text-[11px] text-slate-500 font-medium">Sistemas</TableCell>
+                        <TableCell className="px-2 py-3 text-center text-[11px] font-bold text-slate-700">{ciclo}</TableCell>
+                        <TableCell className="px-2 py-3 text-center text-xs text-slate-600">{HT || '-'}</TableCell>
+                        <TableCell className="px-2 py-3 text-center text-xs text-slate-600">{HP || '-'}</TableCell>
+                        <TableCell className="px-2 py-3 text-center text-xs text-slate-600">{HL || '-'}</TableCell>
+                        <TableCell className="px-4 py-3 text-right text-xs font-black text-slate-900">{totalHoras}h</TableCell>
+                      </TableRow>
                     );
-                  })
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
+                  })}
+                  <TableRow className="bg-slate-50/80 hover:bg-slate-50 font-bold border-t border-slate-200">
+                    <TableCell colSpan={8} className="px-4 py-3 text-[11px] font-bold uppercase text-slate-600 tracking-wider">Total Carga Lectiva</TableCell>
+                    <TableCell className="px-4 py-3 text-right text-sm font-black text-blue-600">{totalLectivas}h</TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
 
-        <TabsContent value="no-lectiva" className="mt-4">
-          <Card>
-            <CardHeader className="flex flex-row items-center justify-between">
-              <CardTitle>Carga No Lectiva</CardTitle>
-              <Button onClick={addCargaNoLectiva} size="sm" className="flex items-center gap-2">
-                <Plus size={16} /> Agregar
-              </Button>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                {cargasNoLectivas.map(carga => (
-                  <div key={carga.id_carga_no_lectiva} className="grid grid-cols-12 gap-4 items-end p-4 bg-slate-50 rounded-lg">
-                    <div className="col-span-4 space-y-1">
-                      <Label>Tipo de Actividad</Label>
-                      <Select
-                        value={carga.tipo || 'OTRO'}
-                        onValueChange={v => {
-                          const newCargas = [...cargasNoLectivas];
-                          const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                          newCargas[idx].tipo = v;
-                          setCargasNoLectivas(newCargas);
-                        }}
-                      >
-                        <SelectTrigger><SelectValue /></SelectTrigger>
-                        <SelectContent>
-                          {TIPOS_CARGA_NO_LECTIVA.map(t => <SelectItem key={t.value} value={t.value}>{t.label}</SelectItem>)}
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="col-span-5 space-y-1">
-                      <Label>Descripción</Label>
+      {/* Carga No Lectiva Asignada */}
+      <Card className="p-4 shadow-sm border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100 flex justify-between items-center">
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <Briefcase size={16} className="text-indigo-500" />
+            Carga No Lectiva Asignada
+          </h3>
+          <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 hover:bg-indigo-50 text-[10px] font-bold px-2 py-0.5 border-indigo-100 uppercase">
+            Total: {totalNoLectivas}h
+          </Badge>
+        </div>
+        <CardContent className="p-0">
+          <Table>
+            <TableHeader className="bg-slate-50/50">
+              <TableRow className="hover:bg-transparent">
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-4 h-10">Tipo de Actividad</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-4 h-10">Descripción de Actividades</TableHead>
+                <TableHead className="text-[10px] font-bold uppercase text-slate-500 px-4 h-10 text-right">Horas/Sem</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {cargasNoLectivas.map((carga, index) => {
+                const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
+                const colors = [
+                  { bg: 'bg-rose-50/40', text: 'text-rose-700', border: 'border-rose-100' },
+                  { bg: 'bg-amber-50/40', text: 'text-amber-700', border: 'border-amber-100' },
+                  { bg: 'bg-emerald-50/40', text: 'text-emerald-700', border: 'border-emerald-100' },
+                  { bg: 'bg-cyan-50/40', text: 'text-cyan-700', border: 'border-cyan-100' },
+                  { bg: 'bg-indigo-50/40', text: 'text-indigo-700', border: 'border-indigo-100' },
+                  { bg: 'bg-fuchsia-50/40', text: 'text-fuchsia-700', border: 'border-fuchsia-100' },
+                  { bg: 'bg-orange-50/40', text: 'text-orange-700', border: 'border-orange-100' },
+                  { bg: 'bg-sky-50/40', text: 'text-sky-700', border: 'border-sky-100' },
+                ];
+                const color = colors[index % colors.length];
+                
+                return (
+                  <TableRow key={carga.id_carga_no_lectiva} className={cn("border-slate-100", color.bg)}>
+                    <TableCell className="px-4 py-3 w-[30%]">
+                      <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
+                      <p className="text-[10px] text-slate-500 leading-tight mt-0.5 line-clamp-2">{tipoInfo?.descripcion}</p>
+                    </TableCell>
+                    <TableCell className="px-4 py-3">
                       <Input
-                        placeholder="Describa la actividad"
+                        placeholder="Describa brevemente la actividad..."
                         value={carga.descripcion || ''}
+                        className="bg-white/80 border-white/50 h-8 text-xs focus:bg-white transition-all shadow-none"
                         onChange={e => {
                           const newCargas = [...cargasNoLectivas];
                           const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
@@ -491,71 +692,110 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           setCargasNoLectivas(newCargas);
                         }}
                       />
-                    </div>
-                    <div className="col-span-1 space-y-1">
-                      <Label>Horas</Label>
-                      <Input
-                        type="number"
-                        value={carga.horas_semanales || 0}
-                        onChange={e => {
-                          const newCargas = [...cargasNoLectivas];
-                          const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                          newCargas[idx].horas_semanales = parseInt(e.target.value) || 0;
-                          setCargasNoLectivas(newCargas);
-                        }}
-                      />
-                    </div>
-                    <div className="col-span-1">
-                      <Button variant="destructive" size="sm" onClick={() => removeCargaNoLectiva(carga.id_carga_no_lectiva)}>
-                        <Trash2 size={16} />
-                      </Button>
-                    </div>
-                  </div>
-                ))}
-                {cargasNoLectivas.length === 0 && (
-                  <div className="text-center py-8 text-slate-400">
-                    No hay cargas no lectivas agregadas
-                  </div>
-                )}
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="formatos" className="mt-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>Formatos de Declaración</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {[
-                  { key: 'formato1', label: 'Formato 01 - Carga Horaria Asignada' },
-                  { key: 'formato2', label: 'Formato 02 - Declaración Jurada' },
-                  { key: 'formato3', label: 'Formato 03 - Sedes Descentralizadas' }
-                ].map((formato) => (
-                  <div 
-                    key={formato.key} 
-                    className="p-4 border rounded-lg hover:bg-slate-50 transition cursor-pointer flex items-center justify-between"
-                    onClick={() => handleGenerarFormato(formato.key)}
-                  >
-                    <div className="flex items-center gap-3">
-                      <FileText className="text-blue-500" size={32} />
-                      <div>
-                        <p className="font-medium">{formato.label}</p>
-                        <Badge variant="outline" className="mt-1">
-                          {declaracion ? 'Disponible' : 'Guardar primero'}
-                        </Badge>
+                    </TableCell>
+                    <TableCell className="px-4 py-3 w-32 text-right">
+                      <div className="flex items-center justify-end gap-2">
+                        <Input
+                          type="number"
+                          min="0"
+                          step="1"
+                          className={cn("bg-white border-white/50 h-8 w-16 text-center font-black text-sm shadow-none", color.text)}
+                          value={carga.horas_semanales || 0}
+                          onChange={e => {
+                            const horas = Math.floor(parseFloat(e.target.value) || 0);
+                            const newCargas = [...cargasNoLectivas];
+                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                            newCargas[idx].horas_semanales = Math.max(0, horas);
+                            setCargasNoLectivas(newCargas);
+                          }}
+                        />
+                        <span className={cn("text-xs font-bold", color.text)}>h</span>
                       </div>
-                    </div>
-                    <Download className="text-slate-400" size={20} />
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+              <TableRow className="bg-indigo-50/80 hover:bg-indigo-50 font-bold border-t border-indigo-200">
+                <TableCell colSpan={2} className="px-4 py-3 text-[11px] font-bold uppercase text-indigo-700 tracking-wider">Total Carga No Lectiva</TableCell>
+                <TableCell className="px-4 py-3 text-right text-sm font-black text-indigo-800">{totalNoLectivas}h</TableCell>
+              </TableRow>
+            </TableBody>
+          </Table>
+        </CardContent>
+      </Card>
+
+      {/* TOTAL GENERAL CARD */}
+      <Card className="bg-white border-slate-200 overflow-hidden shadow-sm">
+        <CardContent className="p-4 flex justify-between items-center">
+          <div className="flex items-center gap-3">
+            <div className="w-8 h-8 rounded-full bg-emerald-50 flex items-center justify-center border border-emerald-100">
+              <CheckCircle2 className="text-emerald-600 w-5 h-5" />
+            </div>
+            <div>
+              <p className="text-slate-500 text-[10px] font-bold uppercase tracking-widest">Total General de Carga</p>
+              <p className="text-slate-400 text-[10px] font-medium uppercase tracking-tight">Carga Lectiva + No Lectiva</p>
+            </div>
+          </div>
+          <div className="flex flex-col items-end">
+            <span className={cn(
+              "text-3xl font-black transition-colors",
+              totalGeneral === formData.horas_dedicacion ? "text-emerald-600" : "text-slate-900"
+            )}>{totalGeneral}h</span>
+            <div className="flex items-center gap-1.5 mt-1">
+              <div className={cn(
+                "w-2 h-2 rounded-full",
+                totalGeneral === formData.horas_dedicacion ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
+              )} />
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-tight">
+                {totalGeneral === formData.horas_dedicacion ? "Carga Completa" : `Faltan ${formData.horas_dedicacion - totalGeneral}h`}
+              </span>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Formatos de Declaración */}
+      <Card className="p-4 shadow-sm border-slate-200 overflow-hidden">
+        <div className="px-4 py-3 border-b border-slate-100">
+          <h3 className="text-sm font-bold text-slate-800 flex items-center gap-2">
+            <FileText size={16} className="text-blue-500" />
+            Formatos de Declaración Oficiales
+          </h3>
+        </div>
+        <CardContent className="p-4">
+          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3">
+            {[
+              { key: 'formato1', label: 'Carga Horaria Asignada', sub: 'Formato 01 - Detalle' },
+              { key: 'formato2', label: 'Declaración Jurada', sub: 'Formato 02 - Legal' },
+              { key: 'formato3', label: 'Sedes Descentralizadas', sub: 'Formato 03 - Sedes' }
+            ].map((formato) => (
+              <div 
+                key={formato.key} 
+                className={cn(
+                  "p-3 rounded-xl border transition-all duration-200 flex items-center justify-between group",
+                  declaracion 
+                    ? "bg-white border-slate-100 hover:border-blue-300 hover:shadow-md cursor-pointer" 
+                    : "bg-slate-50 border-slate-100 opacity-60 grayscale cursor-not-allowed"
+                )}
+                onClick={() => declaracion && handleGenerarFormato(formato.key)}
+              >
+                <div className="flex items-center gap-3">
+                  <div className="p-2 bg-slate-50 rounded-lg group-hover:bg-blue-50 transition-colors">
+                    <FileText className="text-slate-400 group-hover:text-blue-500 transition-colors" size={20} />
                   </div>
-                ))}
+                  <div>
+                    <p className="text-xs font-bold text-slate-700 leading-tight">{formato.label}</p>
+                    <p className="text-[10px] text-slate-400 font-medium">{formato.sub}</p>
+                  </div>
+                </div>
+                <div className="p-1.5 rounded-full bg-slate-50 group-hover:bg-blue-100 transition-colors">
+                  <Download className="text-slate-300 group-hover:text-blue-600 transition-colors" size={14} />
+                </div>
               </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-      </Tabs>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

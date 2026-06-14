@@ -55,15 +55,16 @@ model Curso {
   id_curso               Int                        @id @default(autoincrement())
   codigo                 String                     @unique
   nombre                 String
-  horas_teoria           Int                        @default(0)
-  horas_laboratorio      Int                        @default(0)
-  horas_practica         Int                        @default(0)
+  maximo_docentes        Int                        @default(1)
   creditos               Int
   plan_estudios          String?
   prerequisitos          String?
   activo                 Boolean                    @default(true)
   id_ciclo               Int?
   tipo_curso             String                     @default("linea_carrera")
+  horas_teoria           Int                        @default(0)
+  horas_practica         Int                        @default(0)
+  horas_laboratorio      Int                        @default(0)
   ciclo_rel              Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
   curso_ambientes        CursoAmbiente[]
   docente_cursos         DocenteCurso[]

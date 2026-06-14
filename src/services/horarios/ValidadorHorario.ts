@@ -16,7 +16,7 @@ export interface SolicitudAsignacion {
 }
 
 export interface Conflicto {
-  tipo: 'CRUCE_DOCENTE' | 'CRUCE_GRUPO' | 'OCUPACION_AMBIENTE' | 'EXCESO_HORAS_DIARIAS' | 'FUERA_FRANJA' | 'CURSO_NO_ASIGNABLE' | 'AMBIENTE_NO_VALIDO' | 'HORAS_COMPLETADAS';
+  tipo: 'CRUCE_DOCENTE' | 'CRUCE_GRUPO' | 'OCUPACION_AMBIENTE' | 'EXCESO_HORAS_DIARIAS' | 'FUERA_FRANJA' | 'CURSO_NO_ASIGNABLE' | 'AMBIENTE_NO_VALIDO' | 'HORAS_COMPLETADAS' | 'CARGA_NO_APROBADA';
   mensaje: string;     // texto legible
   severidad: 'ERROR' | 'ADVERTENCIA';
   detalle?: any;
@@ -44,6 +44,7 @@ export class ValidadorHorario {
       this.validarCursoAsignable(solicitud),
       this.validarAmbienteValido(solicitud),
       this.validarHorasCompletadas(solicitud),
+      this.validarDeclaracionAprobada(solicitud),
     ];
 
     const resultados = await Promise.all(validaciones);
@@ -61,11 +62,35 @@ export class ValidadorHorario {
       });
     }
 
+    // Validación: Bloques mínimos (mínimo 2 casillas horarias consecutivas)
+    // Nota: El motor actual asigna bloques de 1 hora. Esta validación asegura que si se programa algo, 
+    // sea por al menos 2 horas si el curso tiene carga suficiente.
+
     return {
       valido: !tieneErrores,
       conflictos,
       tiempoValidacion
     };
+  }
+
+  /**
+   * Valida si el horario cumple con el mínimo de 2 bloques por curso programado
+   */
+  static validarBloquesMinimos(horarios: any[]): { valido: boolean; error?: string } {
+    const bloquesPorCurso = new Map<number, number>();
+    horarios.forEach(h => {
+      bloquesPorCurso.set(h.id_curso, (bloquesPorCurso.get(h.id_curso) || 0) + 1);
+    });
+
+    for (const [id_curso, cantidad] of bloquesPorCurso.entries()) {
+      if (cantidad < 2) {
+        return { 
+          valido: false, 
+          error: `El curso con ID ${id_curso} tiene programado solo ${cantidad} bloque(s). Debe tener al menos 2.` 
+        };
+      }
+    }
+    return { valido: true };
   }
 
   // 1. Cruce de docente
@@ -128,7 +153,9 @@ export class ValidadorHorario {
   // 2. Cruce de grupo
   private static async validarCruceGrupo(s: SolicitudAsignacion): Promise<Conflicto[]> {
     const conflictos: Conflicto[] = [];
-    const cruce = await prisma.horarioAsignado.findFirst({
+    
+    // Horario asignado
+    const cruceAsignado = await prisma.horarioAsignado.findFirst({
       where: {
         id_grupo: s.grupoId,
         id_periodo: s.periodoId,
@@ -136,16 +163,41 @@ export class ValidadorHorario {
         id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined,
         OR: [
           { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
-          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } }
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
         ]
       },
       include: { curso: true }
     });
 
-    if (cruce) {
+    if (cruceAsignado) {
       conflictos.push({
         tipo: 'CRUCE_GRUPO',
-        mensaje: `El grupo ya tiene el curso ${cruce.curso.nombre} asignado en este horario.`,
+        mensaje: `El grupo ya tiene el curso ${cruceAsignado.curso.nombre} asignado en este horario.`,
+        severidad: 'ERROR'
+      });
+    }
+
+    // Selección temporal
+    const cruceTemporal = await prisma.seleccionTemporalHorario.findFirst({
+      where: {
+        id_grupo: s.grupoId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
+        fecha_expiracion: { gt: new Date() },
+        OR: [
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
+        ]
+      },
+      include: { curso: true }
+    });
+
+    if (cruceTemporal) {
+      conflictos.push({
+        tipo: 'CRUCE_GRUPO',
+        mensaje: `El grupo ya tiene una selección temporal bloqueada para el curso ${cruceTemporal.curso.nombre}.`,
         severidad: 'ERROR'
       });
     }
@@ -156,7 +208,9 @@ export class ValidadorHorario {
   // 3. Ocupación de ambiente
   private static async validarOcupacionAmbiente(s: SolicitudAsignacion): Promise<Conflicto[]> {
     const conflictos: Conflicto[] = [];
-    const ocupado = await prisma.horarioAsignado.findFirst({
+    
+    // Horario asignado
+    const ocupadoAsignado = await prisma.horarioAsignado.findFirst({
       where: {
         id_ambiente: s.ambienteId,
         id_periodo: s.periodoId,
@@ -164,15 +218,39 @@ export class ValidadorHorario {
         id_asignacion: s.asignacionId ? { not: s.asignacionId } : undefined,
         OR: [
           { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
-          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } }
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
         ]
       }
     });
 
-    if (ocupado) {
+    if (ocupadoAsignado) {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente seleccionado ya está ocupado en este horario.',
+        severidad: 'ERROR'
+      });
+    }
+
+    // Selección temporal
+    const ocupadoTemporal = await prisma.seleccionTemporalHorario.findFirst({
+      where: {
+        id_ambiente: s.ambienteId,
+        id_periodo: s.periodoId,
+        dia_semana: s.diaSemana,
+        fecha_expiracion: { gt: new Date() },
+        OR: [
+          { hora_inicio: { lte: s.horaInicio }, hora_fin: { gt: s.horaInicio } },
+          { hora_inicio: { lt: s.horaFin }, hora_fin: { gte: s.horaFin } },
+          { hora_inicio: { gte: s.horaInicio }, hora_fin: { lte: s.horaFin } }
+        ]
+      }
+    });
+
+    if (ocupadoTemporal) {
+      conflictos.push({
+        tipo: 'OCUPACION_AMBIENTE',
+        mensaje: 'El ambiente seleccionado tiene una selección temporal pendiente en este horario.',
         severidad: 'ERROR'
       });
     }
@@ -339,6 +417,27 @@ export class ValidadorHorario {
         mensaje: `Se excede el total de horas de ${s.tipoClase} para este curso (${horasTope}h).`,
         severidad: 'ERROR',
         detalle: { horasAsignadas: (minutosTotales + minutosNueva) / 60, tope: horasTope }
+      });
+    }
+
+    return conflictos;
+  }
+
+  // 9. Declaración Horaria Aprobada
+  private static async validarDeclaracionAprobada(s: SolicitudAsignacion): Promise<Conflicto[]> {
+    const conflictos: Conflicto[] = [];
+    const declaracion = await prisma.declaracionHoraria.findFirst({
+      where: {
+        id_docente: s.docenteId,
+        id_periodo: s.periodoId
+      }
+    });
+
+    if (!declaracion || declaracion.estado !== 'APROBADO') {
+      conflictos.push({
+        tipo: 'CARGA_NO_APROBADA',
+        mensaje: 'No se pueden generar horarios. La carga lectiva del docente aún no ha sido aprobada por el administrador.',
+        severidad: 'ERROR'
       });
     }
 

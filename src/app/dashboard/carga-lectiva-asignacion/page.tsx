@@ -42,6 +42,12 @@ import { usePeriodo } from "@/contexts/PeriodoContext";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 
+import { 
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+
 interface DocenteDisp {
   id_docente: number;
   codigo_docente: string;
@@ -63,6 +69,7 @@ interface Curso {
 
 interface Grupo {
   id_grupo: number;
+  id_curso: number;
   codigo_grupo: string;
 }
 
@@ -251,7 +258,11 @@ export default function AsignacionCargaLectivaPage() {
     setCargasLectivas(cargasLectivas.filter((_, i) => i !== index));
   };
 
-  const totalHoras = cargasLectivas.reduce((sum, carga) => sum + carga.horas_semanales, 0);
+  const totalHoras = cargasLectivas.reduce((sum, carga) => {
+    const grupos = carga.grupos_asignados || 0;
+    const horas = carga.horas_semanales || 0;
+    return sum + (grupos * horas);
+  }, 0);
   
   const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
   const esLectura = !periodoActualObj?.activo || periodoActualObj?.estado === 'finalizado';
@@ -457,16 +468,39 @@ export default function AsignacionCargaLectivaPage() {
                       onValueChange={(value) => {
                         const updated = [...cargasLectivas];
                         updated[index].id_curso = parseInt(value);
+                        updated[index].id_grupo = null; // Resetear grupo al cambiar de curso
                         setCargasLectivas(updated);
                       }}
                     >
-                      <SelectTrigger className="h-8 text-[11px] font-semibold truncate">
+                      <SelectTrigger className="h-8 text-[11px] font-semibold truncate w-full">
                         <SelectValue placeholder="Seleccionar curso" />
                       </SelectTrigger>
-                      <SelectContent className="max-w-[300px]">
+                      <SelectContent className="max-w-[400px]">
                         {cursosVisibles.map((curso) => (
-                          <SelectItem key={curso.id_curso} value={curso.id_curso.toString()} className="text-[11px]">
-                            <span className="font-bold">{curso.codigo}</span> - {curso.nombre} {curso.ciclo_rel ? `(Ciclo ${curso.ciclo_rel.numero})` : ''}
+                          <SelectItem 
+                            key={curso.id_curso} 
+                            value={curso.id_curso.toString()} 
+                            className="text-[11px]"
+                          >
+                            <Popover>
+                              <PopoverTrigger asChild>
+                                <div className="flex items-center gap-1 w-full cursor-help">
+                                  <span className="font-bold shrink-0">{curso.codigo}</span>
+                                  <span className="truncate max-w-[180px]">- {curso.nombre}</span>
+                                  {curso.ciclo_rel && <span className="text-[9px] opacity-60 shrink-0">(C{curso.ciclo_rel.numero})</span>}
+                                </div>
+                              </PopoverTrigger>
+                              <PopoverContent side="right" className="w-80 p-3 text-[11px] font-semibold bg-popover shadow-xl border-primary/20 z-[100]">
+                                <div className="flex flex-col gap-1">
+                                  <div className="text-primary font-black uppercase tracking-wider text-[9px]">Nombre completo del curso</div>
+                                  <div className="text-foreground leading-tight">{curso.nombre}</div>
+                                  <div className="mt-1 pt-1 border-t border-border flex justify-between text-[9px] text-muted-foreground uppercase">
+                                    <span>Código: {curso.codigo}</span>
+                                    {curso.ciclo_rel && <span>Ciclo: {curso.ciclo_rel.numero}</span>}
+                                  </div>
+                                </div>
+                              </PopoverContent>
+                            </Popover>
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -494,24 +528,23 @@ export default function AsignacionCargaLectivaPage() {
                     </Select>
                   </div>
                   <div className="col-span-6 sm:col-span-3 lg:col-span-2 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Grupo</Label>
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Grupos</Label>
                     <Select
-                      disabled={esLectura}
-                      value={carga.id_grupo?.toString() || "none"}
+                      disabled={esLectura || !carga.id_curso}
+                      value={carga.grupos_asignados?.toString() || "0"}
                       onValueChange={(value) => {
                         const updated = [...cargasLectivas];
-                        updated[index].id_grupo = value === "none" ? null : parseInt(value);
+                        updated[index].grupos_asignados = parseInt(value);
                         setCargasLectivas(updated);
                       }}
                     >
                       <SelectTrigger className="h-8 text-xs">
-                        <SelectValue placeholder="N/A" />
+                        <SelectValue placeholder={carga.id_curso ? "Número de grupos" : "N/A"} />
                       </SelectTrigger>
                       <SelectContent>
-                        <SelectItem value="none" className="text-xs italic text-muted-foreground">Sin Grupo</SelectItem>
-                        {grupos.map((grupo) => (
-                          <SelectItem key={grupo.id_grupo} value={grupo.id_grupo.toString()} className="text-xs font-bold">
-                            {grupo.codigo_grupo}
+                        {[0, 1, 2, 3, 4].map((num) => (
+                          <SelectItem key={num} value={num.toString()} className="text-xs font-bold">
+                            {num === 0 ? "Sin grupos" : `${num} grupo${num > 1 ? "s" : ""}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
@@ -531,20 +564,8 @@ export default function AsignacionCargaLectivaPage() {
                       }}
                     />
                   </div>
-                  <div className="col-span-4 sm:col-span-2 lg:col-span-2 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Alumnos</Label>
-                    <Input
-                      disabled={esLectura}
-                      type="number"
-                      className="h-8 text-xs text-center"
-                      value={carga.grupos_asignados || ""}
-                      onChange={(e) => {
-                        const updated = [...cargasLectivas];
-                        updated[index].grupos_asignados = parseInt(e.target.value) || 0;
-                        setCargasLectivas(updated);
-                      }}
-                    />
-                  </div>
+                  {/* Este campo se reemplazó por el selector de grupos, lo ocultamos */}
+                  <div className="col-span-0 hidden"></div>
                   {!esLectura && (
                     <div className="col-span-4 sm:col-span-2 lg:col-span-1 flex justify-end">
                       <Button

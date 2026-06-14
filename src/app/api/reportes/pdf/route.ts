@@ -624,12 +624,14 @@ export async function GET(request: Request) {
     .docente-info .row { display: flex; gap: 10px; margin-bottom: 8px; }
     .docente-info .label { font-weight: 700; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
-    table td, table th { border: 1px solid #000; padding: 5px; text-align: center; font-size: 10px; }
+    table td, table th { border: 1px solid #000; padding: 5px; text-align: center; font-size: 9px; }
     table th { background-color: #f0f0f0; font-weight: 700; }
     .actividades { margin-bottom: 15px; }
     .actividades .item { margin-bottom: 8px; }
     .firmas { margin-top: 40px; display: grid; grid-template-columns: 1fr 1fr; gap: 40px; text-align: center; }
     .firma-line { border-top: 1px solid #000; margin-top: 60px; padding-top: 5px; }
+    .total-final { margin-top: 20px; padding: 10px; background-color: #f0f0f0; border: 2px solid #000; }
+    .total-row { display: flex; justify-content: space-around; font-weight: 700; }
   </style>
 </head>
 <body>
@@ -643,83 +645,273 @@ export async function GET(request: Request) {
       <span class="label">FACULTAD:</span> <span>Ingeniería</span>
       <span class="label" style="margin-left: 30px;">DPTO. ACADÉMICO:</span> <span>Ingeniería de Sistemas</span>
     </div>
-    <div class="row">
-      <span class="label">NOMBRE COMPLETO DEL PROFESOR:</span> <span>${docente?.nombres} ${docente?.apellidos}</span>
-    </div>
-    <div class="row">
-      <span class="label">CONDICIÓN:</span> <span>${declaracion.condicion || 'Nombrado'}</span>
-      <span class="label" style="margin-left: 30px;">CATEGORÍA:</span> <span>${declaracion.categoria || 'Asociado'}</span>
-      <span class="label" style="margin-left: 30px;">MODALIDAD:</span> <span>${docente?.modalidad || 'Tiempo Completo'}</span>
-    </div>
-    <div class="row">
+    <table style="width: 100%; border-collapse: collapse; margin-top: 8px;">
+      <tr>
+        <th style="border: 1px solid #000; padding: 4px; text-align: left;">NOMBRE COMPLETO</th>
+        <th style="border: 1px solid #000; padding: 4px; text-align: left;">CONDICIÓN</th>
+        <th style="border: 1px solid #000; padding: 4px; text-align: left;">CATEGORÍA</th>
+        <th style="border: 1px solid #000; padding: 4px; text-align: left;">DEDICACIÓN</th>
+      </tr>
+      <tr>
+        <td style="border: 1px solid #000; padding: 4px;">${docente?.nombres} ${docente?.apellidos}</td>
+        <td style="border: 1px solid #000; padding: 4px;">${declaracion.condicion || 'Nombrado'}</td>
+        <td style="border: 1px solid #000; padding: 4px;">${declaracion.categoria || 'Asociado'}</td>
+        <td style="border: 1px solid #000; padding: 4px;">${declaracion.dedicacion || 'Tiempo Completo'}</td>
+      </tr>
+    </table>
+    <div class="row" style="margin-top: 8px;">
       <span class="label">AÑO ACADÉMICO:</span> <span>${periodo?.anio || 2026}</span>
-      <span class="label" style="margin-left: 30px;">CICLO(S):</span> <span>${periodo?.semestre === 1 ? 'I' : 'II'}</span>
+      <span class="label" style="margin-left: 30px;">CICLO(SEM):</span> <span>${periodo?.semestre === 1 ? 'I' : 'II'}</span>
+      <span class="label" style="margin-left: 30px;">INICIO:</span> <span>${periodo?.fecha_inicio_clases ? new Date(periodo.fecha_inicio_clases).toLocaleDateString('es-PE') : '01/04/2015'}</span>
+      <span class="label" style="margin-left: 30px;">FINAL:</span> <span>${periodo?.fecha_fin_clases ? new Date(periodo.fecha_fin_clases).toLocaleDateString('es-PE') : '24/07/2015'}</span>
     </div>
   </div>
 
+  <!-- 1. TRABAJO LECTIVO -->
+  <div style="font-weight: 700; margin-bottom: 5px;">1. TRABAJO LECTIVO - Datos completos y claros</div>
   <table>
     <thead>
       <tr>
-        <th rowspan="2">N°</th>
-        <th rowspan="2">TRABAJO LECTIVO - NOMBRE DEL CURSO</th>
-        <th rowspan="2">CUR.</th>
-        <th rowspan="2">ESC.</th>
-        <th rowspan="2">PROF.</th>
-        <th rowspan="2">CIC.</th>
-        <th rowspan="2">SEC.</th>
-        <th rowspan="2">N° AL</th>
-        <th colspan="3">H.T.</th>
-        <th rowspan="2">HP</th>
-        <th rowspan="2">HL</th>
-        <th rowspan="2">TOTAL</th>
-      </tr>
-      <tr>
-        <th>T</th>
-        <th>P</th>
-        <th>L</th>
+        <th>CÓDIGO</th>
+        <th>NOMBRE DEL CURSO</th>
+        <th>CUR.</th>
+        <th>ESC. PROF.</th>
+        <th>CIC.</th>
+        <th>SEC.</th>
+        <th>N° AL</th>
+        <th>HT</th>
+        <th>HP</th>
+        <th>HL</th>
+        <th>TOTAL</th>
       </tr>
     </thead>
     <tbody>
-      ${declaracion.cargas_lectivas.map((carga, i) => `
-        <tr>
-          <td>${i + 1}</td>
-          <td style="text-align: left;">${carga.curso?.nombre || '—'}</td>
-          <td>Ing.</td>
-          <td>Sistemas</td>
-          <td>${i + 1}</td>
-          <td>${carga.curso?.ciclo_rel?.numero || '—'}</td>
-          <td>${carga.grupo?.codigo_grupo || '—'}</td>
-          <td>${carga.grupos_asignados || 30}</td>
-          <td>${carga.tipo_clase === 'teoria' ? carga.horas_semanales : 0}</td>
-          <td>${carga.tipo_clase === 'practica' ? carga.horas_semanales : 0}</td>
-          <td>${carga.tipo_clase === 'laboratorio' ? carga.horas_semanales : 0}</td>
-          <td>0</td>
-          <td>0</td>
-          <td>${carga.horas_semanales}</td>
-        </tr>
-      `).join('')}
+      ${(() => {
+        // Agrupar cargas por curso
+        const cursosMap = new Map();
+        declaracion.cargas_lectivas.forEach((carga: any) => {
+          if (carga.curso) {
+            const cursoId = carga.curso.id_curso;
+            if (!cursosMap.has(cursoId)) {
+              cursosMap.set(cursoId, {
+                curso: carga.curso,
+                cargas: [],
+                HT: 0,
+                HP: 0,
+                gruposL: 0,
+                horasL: 0
+              });
+            }
+            const cursoData = cursosMap.get(cursoId);
+            cursoData.cargas.push(carga);
+            
+            if (carga.tipo_clase === 'teoria') {
+              cursoData.HT = carga.horas_semanales;
+            } else if (carga.tipo_clase === 'practica') {
+              cursoData.HP = carga.horas_semanales;
+            } else if (carga.tipo_clase === 'laboratorio') {
+              cursoData.gruposL = carga.grupos_asignados || 0;
+              cursoData.horasL = carga.horas_semanales || 0;
+            }
+          }
+        });
+
+        let totalHT = 0;
+        let totalHP = 0;
+        let totalHL = 0;
+
+        const filas = Array.from(cursosMap.values()).map((data: any, i: number) => {
+          const HL = data.gruposL * data.horasL;
+          totalHT += data.HT;
+          totalHP += data.HP;
+          totalHL += HL;
+          const total = data.HT + data.HP + HL;
+
+          // Determinar ciclo
+          let ciclo = 'V';
+          const cursoCiclos: any = {
+            'introducción a la programación': 'I',
+            'introducción a la ingeniería de sistemas': 'I',
+            'desarrollo personal': 'I',
+            'desarrollo del pensamiento lógico matemático': 'I',
+            'lectura crítica y redacción de textos académicos': 'I',
+            'introducción al análisis matemático': 'I',
+            'estadística general': 'I',
+            'programación orientada a objetos ii': 'III',
+            'sistémica': 'III',
+            'ingeniería gráfica': 'III',
+            'matemática aplicada i': 'III',
+            'estadística aplicada': 'III',
+            'administración general': 'III',
+            'física electrónica': 'III',
+            'psicología organizacional': 'III',
+            'ingeniería de datos i': 'V',
+            'sistemas de información': 'V',
+            'transformación digital': 'V',
+            'tecnologías web': 'V',
+            'arquitectura y organización de computadoras': 'V',
+            'teleinformática': 'V',
+            'investigación de operaciones': 'V',
+            'contabilidad gerencial': 'V',
+            'ingeniería del software i': 'VII',
+            'redes y comunicaciones i': 'VII',
+            'negocios electrónicos': 'VII',
+            'gestión de servicios de tic': 'VII',
+            'metodología de la investigación científica': 'VII',
+            'administración de base de datos': 'VII',
+            'planeación estratégica de la información': 'VII',
+            'cadena de suministros': 'VII',
+            'tesis i': 'IX',
+            'analítica de negocios': 'IX',
+            'auditoría informática': 'IX',
+            'gestión de proyectos de tic': 'IX',
+            'ingeniería web': 'IX',
+            'computación en la nube': 'IX',
+            'hackeo ético': 'IX'
+          };
+          
+          const nombreCurso = (data.curso?.nombre || '').toLowerCase().trim();
+          if (cursoCiclos[nombreCurso]) {
+            ciclo = cursoCiclos[nombreCurso];
+          }
+
+          return `
+            <tr>
+              <td>${data.curso?.codigo || '—'}</td>
+              <td style="text-align: left;">${data.curso?.nombre || '—'}</td>
+              <td style="font-weight: 700; ${data.curso?.codigo?.toUpperCase().startsWith('EL') ? 'color: #6b21a8;' : ''}">${data.curso?.codigo?.toUpperCase().startsWith('EL') ? 'EL' : 'OB'}</td>
+              <td>Ing. Sistemas</td>
+              <td>${ciclo}</td>
+              <td>A</td>
+              <td>50</td>
+              <td>${data.HT || 0}</td>
+              <td>${data.HP || 0}</td>
+              <td>${HL}</td>
+              <td style="font-weight: 700;">${total}</td>
+            </tr>
+          `;
+        });
+
+        // Total lectiva
+        filas.push(`
+          <tr style="background-color: #e0e0e0; font-weight: 700;">
+            <td colspan="7" style="text-align: left;">TOTAL LECTIVA</td>
+            <td>${totalHT}</td>
+            <td>${totalHP}</td>
+            <td>${totalHL}</td>
+            <td>${totalHT + totalHP + totalHL}</td>
+          </tr>
+        `);
+
+        return filas.join('');
+      })()}
     </tbody>
   </table>
 
-  <div class="actividades">
-    ${declaracion.cargas_no_lectivas.map(carga => {
-      const tipoNombre = {
-        PREPARACION_EVALUACION: 'Preparación y Evaluación',
-        TUTORIA: 'Tutoría',
-        INVESTIGACION: 'Investigación',
-        CAPACITACION: 'Capacitación',
-        GOBIERNO: 'Gobierno',
-        ADMINISTRACION: 'Administración',
-        ASESORIA: 'Asesoría',
-        RESPONSABILIDAD_SOCIAL: 'Responsabilidad Social',
-        COMITES_TECNICOS: 'Comités Técnicos',
-        OTRO: 'Otro'
-      }[carga.tipo] || 'Otro';
-      return `<div class="item"><strong>${carga.horas_semanales}.</strong> ${tipoNombre}${carga.descripcion ? `: ${carga.descripcion}` : ''}</div>`;
-    }).join('')}
+  <!-- 2. TRABAJO NO LECTIVO -->
+  <div style="margin-top: 15px;">
+    <table>
+      <thead>
+        <tr>
+          <th style="text-align: left;">TIPO</th>
+          <th>DESCRIPCIÓN</th>
+          <th>HRS</th>
+        </tr>
+      </thead>
+      <tbody>
+        ${(() => {
+          // Predefined activity types that should always appear
+          const tiposPredefinidos = [
+            { key: 'PREPARACION_EVALUACION', label: '1. PREPARACIÓN Y EVALUACIÓN', descripcion: 'Preparación de clases, elaboración de materiales, evaluación de estudiantes (Máx 50% del Trabajo Lectivo)' },
+            { key: 'TUTORIA', label: '2. CONSEJERÍA Y TUTORÍA', descripcion: 'Acompañamiento académico y personal a estudiantes' },
+            { key: 'INVESTIGACION', label: '3. INVESTIGACIÓN', descripcion: 'Desarrollo de proyectos de investigación' },
+            { key: 'CAPACITACION', label: '4. CAPACITACIÓN', descripcion: 'Formación y actualización docente' },
+            { key: 'GOBIERNO', label: '5. ACTIVIDADES DE GOBIERNO', descripcion: 'Participación en órganos de gobierno de la facultad' },
+            { key: 'ADMINISTRACION', label: '6. ACTIVIDADES DE ADMINISTRACIÓN', descripcion: 'Tareas administrativas asignadas' },
+            { key: 'ASESORIA', label: '7. ASESORÍA DE TESIS, EXÁMENES PROFESIONALES Y EXPERIENCIA PROFESIONAL', descripcion: 'Asesoría a tesis, dirección de exámenes y experiencias profesionales' },
+            { key: 'RESPONSABILIDAD_SOCIAL', label: '8. RESPONSABILIDAD SOCIAL UNIVERSITARIA', descripcion: 'Actividades de responsabilidad social (Mínimo 0.2 horas semanales)' },
+            { key: 'COMITES_TECNICOS', label: '9. COMITÉS TÉCNICOS Y COMISIONES', descripcion: 'Participación en comités técnicos y comisiones' }
+          ];
+
+          // Define interface for type safety
+          interface CargaNoLectiva {
+            tipo: string;
+            horas_semanales?: number;
+            descripcion?: string | null;
+          }
+
+          // Create a map of existing cargas for quick lookup
+          const cargasMap = new Map<string, CargaNoLectiva>(
+            (declaracion.cargas_no_lectivas as CargaNoLectiva[]).map(c => [c.tipo, c])
+          );
+
+          let totalNoLectivas = 0;
+          const filas = tiposPredefinidos.map(tipo => {
+            const carga = cargasMap.get(tipo.key);
+            const horas = carga?.horas_semanales ?? 0;
+            totalNoLectivas += horas;
+            const descripcion = carga?.descripcion ?? '';
+            return `
+              <tr>
+                <td style="text-align: left;">
+                  <strong>${tipo.label}</strong>
+                  <br><small style="font-style: italic;">${tipo.descripcion}</small>
+                </td>
+                <td style="text-align: left;">${descripcion}</td>
+                <td style="font-weight: 700;">${horas}</td>
+              </tr>
+            `;
+          });
+
+          // Total no lectiva
+          filas.push(`
+            <tr style="background-color: #e0e0e0; font-weight: 700;">
+              <td colspan="2" style="text-align: left;">TOTAL NO LECTIVA</td>
+              <td>${totalNoLectivas}</td>
+            </tr>
+          `);
+
+          return filas.join('');
+        })()}
+      </tbody>
+    </table>
   </div>
 
-  <div style="text-align: right; margin-bottom: 10px;">Trujillo, ${fecha}</div>
+  <!-- TOTAL GENERAL -->
+  <table style="width: 100%; border-collapse: collapse; margin-top: 10px;">
+    <tr>
+      <td style="border: 1px solid #000; padding: 4px; text-align: right; font-weight: 700;">TOTAL</td>
+      <td style="border: 1px solid #000; padding: 4px; text-align: center; font-weight: 700;">
+        ${(() => {
+          const cursosMap = new Map();
+          declaracion.cargas_lectivas.forEach((carga: any) => {
+            if (carga.curso) {
+              const cursoId = carga.curso.id_curso;
+              if (!cursosMap.has(cursoId)) {
+                cursosMap.set(cursoId, { HT: 0, HP: 0, gruposL: 0, horasL: 0 });
+              }
+              const cursoData = cursosMap.get(cursoId);
+              if (carga.tipo_clase === 'teoria') cursoData.HT = carga.horas_semanales;
+              else if (carga.tipo_clase === 'practica') cursoData.HP = carga.horas_semanales;
+              else if (carga.tipo_clase === 'laboratorio') {
+                cursoData.gruposL = carga.grupos_asignados || 0;
+                cursoData.horasL = carga.horas_semanales || 0;
+              }
+            }
+          });
+          let totalL = 0;
+          cursosMap.forEach((data: any) => {
+            totalL += data.HT + data.HP + (data.gruposL * data.horasL);
+          });
+          const totalNL = declaracion.cargas_no_lectivas.reduce((sum: number, c: any) => sum + (c.horas_semanales || 0), 0);
+          const totalGeneral = totalL + totalNL;
+          return totalGeneral;
+        })()}
+      </td>
+    </tr>
+  </table>
+
+  <div style="text-align: right; margin-bottom: 10px; margin-top: 20px;">Trujillo, ${fecha}</div>
 
   <div class="firmas">
     <div>
@@ -854,16 +1046,18 @@ export async function GET(request: Request) {
         : import('puppeteer').then(async (puppeteer) => {
             const browser = await puppeteer.launch({ headless: true });
             const page = await browser.newPage();
-            await page.setContent(htmlContent, { waitUntil: 'networkidle0' });
+            await page.setContent(htmlContent); // Remove waitUntil since it's static HTML
             const buffer = await page.pdf({ format: 'A4', printBackground: true });
             await browser.close();
             return buffer;
           }));
 
+      const filename = `${formato}-declaracion-carga-horaria.pdf`;
+
       return new Response(new Uint8Array(pdfBuffer), {
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': `attachment; filename="${formato}-declaracion-carga-horaria.pdf"`,
+          'Content-Disposition': `attachment; filename="${filename}"`,
           'Content-Length': pdfBuffer.length.toString()
         }
       });

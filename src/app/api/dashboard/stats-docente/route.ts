@@ -10,9 +10,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const id_docente = session.user.id_docente;
+    let id_docente = session.user.id_docente ? Number(session.user.id_docente) : null;
+    
     if (!id_docente) {
-      return NextResponse.json({ error: 'ID de docente no encontrado' }, { status: 400 });
+      // Intentar buscar por id_usuario si no está en la sesión
+      const docenteDB = await prisma.docente.findFirst({
+        where: { id_usuario: String(session.user.id_usuario) },
+        select: { id_docente: true }
+      });
+      
+      if (!docenteDB) {
+        return NextResponse.json({ error: 'ID de docente no encontrado' }, { status: 400 });
+      }
+      id_docente = docenteDB.id_docente;
     }
 
     const { searchParams } = new URL(request.url);
@@ -27,7 +37,7 @@ export async function GET(request: Request) {
     const [docente, periodo] = await Promise.all([
       prisma.docente.findUnique({
         where: { id_docente },
-        select: { modalidad: true, categoria: true, max_horas_lectivas: true, min_horas_lectivas: true },
+        select: { modalidad: true, categoria: true, horas_maximas_semanales: true },
       }),
       prisma.periodoAcademico.findUnique({
         where: { id_periodo },
@@ -41,10 +51,7 @@ export async function GET(request: Request) {
       include: { curso: true }
     });
 
-    // Sumar créditos o usar algún cálculo para horas lectivas (asumiremos 1 asignacion = 2 horas o segun el curso)
-    // Para simplificar, contaremos las asignaciones. Usualmente 1 asignacion = 1 hora o 2 horas. 
-    // Mirando como el sistema lo calcula en otros lados... usaremos la cantidad.
-    const horasLectivasAsignadas = asignacionesLectivas.length * 2; // Aproximación
+    const horasLectivasAsignadas = asignacionesLectivas.length * 2; 
 
     // Obtener cursos distintos asignados
     const cursosAsignadosIds = new Set(asignacionesLectivas.map(a => a.id_curso));
@@ -52,12 +59,16 @@ export async function GET(request: Request) {
 
     // Calcular horas no lectivas declaradas
     const declaracionesNoLectivas = await prisma.cargaNoLectiva.findMany({
-      where: { id_docente, id_periodo },
-      select: { horas_semanales: true, estado: true }
+      where: { 
+        declaracion: {
+          id_docente: id_docente,
+          id_periodo: id_periodo
+        }
+      },
+      select: { horas_semanales: true }
     });
 
     const horasNoLectivas = declaracionesNoLectivas.reduce((acc, curr) => acc + curr.horas_semanales, 0);
-    const declaracionesPendientes = declaracionesNoLectivas.filter(d => d.estado !== 'aprobado').length;
 
     // Verificar si tiene disponibilidad registrada
     const disponibilidad = await prisma.disponibilidadDocente.count({
@@ -73,13 +84,13 @@ export async function GET(request: Request) {
         horasNoLectivas: horasNoLectivas,
         horasTotales: horasTotales,
         cantidadCursos: cantidadCursos,
-        minHorasLectivas: docente?.min_horas_lectivas || 0,
-        maxHorasLectivas: docente?.max_horas_lectivas || 0,
+        minHorasLectivas: 0, 
+        maxHorasLectivas: docente?.horas_maximas_semanales || 40,
       },
       alertas: {
         sinDisponibilidad: disponibilidad === 0,
-        declaracionesPendientes: declaracionesPendientes > 0,
-        faltaCargaLectiva: horasLectivasAsignadas < (docente?.min_horas_lectivas || 0)
+        declaracionesPendientes: false,
+        faltaCargaLectiva: false 
       }
     });
   } catch (error) {

@@ -6,11 +6,9 @@ import { seedAmbientes } from './seeders/ambientes.seeder';
 import { seedCursos } from './seeders/cursos.seeder';
 import { seedDocentes } from './seeders/docentes.seeder';
 import { seedUsuariosAdministrativos } from './seeders/usuarios_administrativos.seeder';
-import { seedDocenteCurso } from './seeders/docente_curso.seeder';
-import { seedCursoAmbiente } from './seeders/curso_ambiente.seeder';
 import { seedGrupos } from './seeders/grupos.seeder';
-import { seedHorarios } from './seeders/horarios.seeder';
 import { seedDisponibilidad } from './seeders/disponibilidad.seeder';
+import { seedCargaLectivaCompleta } from './seeders/carga_lectiva_completa.seeder';
 
 // Inicializar Prisma Client usando DIRECT_URL para el seed si está disponible
 // Esto evita errores de prepared statements con PgBouncer en Supabase/Vercel
@@ -37,9 +35,13 @@ async function main() {
       '"HorarioAsignado"',
       '"SeleccionTemporalHorario"',
       '"ConflictoHorario"',
+      '"CargaLectiva"',
+      '"CargaNoLectiva"',
+      '"FormatoDeclaracion"',
+      '"DeclaracionHoraria"',
       '"DocenteCurso"',
-      '"Grupo"',
       '"CursoAmbiente"',
+      '"Grupo"',
       '"DisponibilidadDocente"',
       '"ColaNotificaciones"',
       '"HistorialNotificaciones"',
@@ -81,11 +83,9 @@ async function main() {
     await seedUsuariosAdministrativos(prisma); // Opcional, crea admins y operadores
 
     // 3. Sembrar relaciones y lógica de negocio
-    await seedDocenteCurso(prisma);
-    await seedCursoAmbiente(prisma);
     await seedGrupos(prisma);
     await seedDisponibilidad(prisma);  // Disponibilidad de docentes
-    await seedHorarios(prisma);     // Usa los períodos creados en seedPeriodos
+    await seedCargaLectivaCompleta(prisma);    // Carga Lectiva COMPLETA por ciclos
 
     console.log('--- Seed completado con éxito ---');
   } catch (error) {
