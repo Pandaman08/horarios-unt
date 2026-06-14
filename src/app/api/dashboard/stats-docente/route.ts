@@ -10,9 +10,19 @@ export async function GET(request: Request) {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
-    const id_docente = session.user.id_docente;
+    let id_docente = session.user.id_docente ? Number(session.user.id_docente) : null;
+    
     if (!id_docente) {
-      return NextResponse.json({ error: 'ID de docente no encontrado' }, { status: 400 });
+      // Intentar buscar por id_usuario si no está en la sesión
+      const docenteDB = await prisma.docente.findFirst({
+        where: { id_usuario: String(session.user.id_usuario) },
+        select: { id_docente: true }
+      });
+      
+      if (!docenteDB) {
+        return NextResponse.json({ error: 'ID de docente no encontrado' }, { status: 400 });
+      }
+      id_docente = docenteDB.id_docente;
     }
 
     const { searchParams } = new URL(request.url);
@@ -41,10 +51,7 @@ export async function GET(request: Request) {
       include: { curso: true }
     });
 
-    // Sumar créditos o usar algún cálculo para horas lectivas (asumiremos 1 asignacion = 2 horas o segun el curso)
-    // Para simplificar, contaremos las asignaciones. Usualmente 1 asignacion = 1 hora o 2 horas. 
-    // Mirando como el sistema lo calcula en otros lados... usaremos la cantidad.
-    const horasLectivasAsignadas = asignacionesLectivas.length * 2; // Aproximación
+    const horasLectivasAsignadas = asignacionesLectivas.length * 2; 
 
     // Obtener cursos distintos asignados
     const cursosAsignadosIds = new Set(asignacionesLectivas.map(a => a.id_curso));
@@ -52,12 +59,16 @@ export async function GET(request: Request) {
 
     // Calcular horas no lectivas declaradas
     const declaracionesNoLectivas = await prisma.cargaNoLectiva.findMany({
-      where: { id_docente, id_periodo },
-      select: { horas_semanales: true, estado: true }
+      where: { 
+        declaracion: {
+          id_docente: id_docente,
+          id_periodo: id_periodo
+        }
+      },
+      select: { horas_semanales: true }
     });
 
     const horasNoLectivas = declaracionesNoLectivas.reduce((acc, curr) => acc + curr.horas_semanales, 0);
-    const declaracionesPendientes = declaracionesNoLectivas.filter(d => d.estado !== 'aprobado').length;
 
     // Verificar si tiene disponibilidad registrada
     const disponibilidad = await prisma.disponibilidadDocente.count({
@@ -73,13 +84,13 @@ export async function GET(request: Request) {
         horasNoLectivas: horasNoLectivas,
         horasTotales: horasTotales,
         cantidadCursos: cantidadCursos,
-        minHorasLectivas: 0, // No existe en el modelo, valor por defecto
+        minHorasLectivas: 0, 
         maxHorasLectivas: docente?.horas_maximas_semanales || 40,
       },
       alertas: {
         sinDisponibilidad: disponibilidad === 0,
-        declaracionesPendientes: declaracionesPendientes > 0,
-        faltaCargaLectiva: false // Desactivado temporalmente ya que no existe min_horas_lectivas
+        declaracionesPendientes: false,
+        faltaCargaLectiva: false 
       }
     });
   } catch (error) {
