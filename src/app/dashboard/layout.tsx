@@ -126,7 +126,7 @@ function DashboardLayoutInner({
         title: "Aprobación Carga Horaria",
         href: "/dashboard/aprobacion-carga-horaria",
         icon: CheckCircle2,
-        roles: ["administrador_sistema", "operador_horarios"],
+        roles: ["administrador_sistema"],
       },
       {
         title: "Carga Horaria",
@@ -394,9 +394,11 @@ function DashboardLayoutInner({
             </div>
           </div>
 
-          <div className="hidden md:block">
-            <PeriodoSelector />
-          </div>
+          {userRol !== 'docente' && (
+            <div className="hidden md:block">
+              <PeriodoSelector />
+            </div>
+          )}
 
           <div className="flex items-center gap-1.5 shrink-0 ml-auto">
             <FontSizeAdjuster />

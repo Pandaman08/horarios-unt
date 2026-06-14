@@ -27,7 +27,12 @@ export async function GET(request: Request) {
     }
 
     const declaraciones = await prisma.declaracionHoraria.findMany({
-      include: { docente: true, periodo: true }
+      include: { 
+        docente: true, 
+        periodo: true,
+        cargas_lectivas: { include: { curso: true } },
+        cargas_no_lectivas: true
+      }
     });
     return NextResponse.json(declaraciones);
   } catch (error) {

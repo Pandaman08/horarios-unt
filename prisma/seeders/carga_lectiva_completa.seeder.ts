@@ -154,6 +154,10 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
       if (!declaracion) {
         // Obtener datos del docente para la declaración
         const docente = docentes.find(d => d.id_docente === idDocente);
+        
+        // Determinar horas de dedicación (por defecto 40, algunos podrían tener menos si son contratados parciales)
+        const horasDedicacion = docente?.modalidad === 'contratado' ? 20 : 40;
+        
         declaracion = await prisma.declaracionHoraria.create({
           data: {
             id_docente: idDocente,
@@ -161,11 +165,30 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
             ibm: docente?.codigo_docente || 'IBM001',
             condicion: docente?.modalidad === 'nombrado' ? 'Nombrado' : 'Contratado',
             categoria: docente?.categoria || 'Auxiliar',
-            dedicacion: 'Tiempo Completo 40 h',
-            horas_dedicacion: 40,
-            estado: 'BORRADOR',
+            dedicacion: horasDedicacion === 40 ? 'Tiempo Completo 40 h' : 'Tiempo Parcial 20 h',
+            horas_dedicacion: horasDedicacion,
+            estado: 'ENVIADO', // Se envía para que el administrador lo apruebe
           }
         });
+
+        // Al crear la declaración por primera vez, asignamos carga no lectiva inicial
+        // para completar las horas de dedicación
+        const tiposNoLectivos = [
+          { tipo: 'PREPARACION_EVALUACION', horas: 10 },
+          { tipo: 'TUTORIA', horas: 5 },
+          { tipo: 'INVESTIGACION', horas: 5 },
+        ];
+
+        for (const nl of tiposNoLectivos) {
+          await prisma.cargaNoLectiva.create({
+            data: {
+              id_declaracion: declaracion.id_declaracion,
+              tipo: nl.tipo as any,
+              descripcion: `Actividades de ${nl.tipo.toLowerCase().replace('_', ' ')}`,
+              horas_semanales: nl.horas
+            }
+          });
+        }
       }
 
       // Crear carga lectiva para TEORÍA si hay horas

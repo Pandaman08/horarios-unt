@@ -12,6 +12,23 @@ import {
   AccordionItem,
   AccordionTrigger,
 } from '@/components/ui/accordion';
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+  DialogDescription,
+} from "@/components/ui/dialog";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import {
   CheckCircle2,
   XCircle,
@@ -21,7 +38,16 @@ import {
   Calendar,
   Clock,
   FileText,
+  AlertTriangle,
+  Check,
+  ChevronRight,
+  Info,
+  Search,
+  MoreHorizontal,
+  LayoutGrid,
+  Eye
 } from 'lucide-react';
+import { Input } from "@/components/ui/input";
 
 interface DeclaracionHoraria {
   id_declaracion: number;
@@ -80,15 +106,15 @@ const TIPOS_CARGA_NO_LECTIVA_LABELS: Record<string, string> = {
 const getEstadoBadge = (estado: string) => {
   switch (estado) {
     case 'BORRADOR':
-      return <Badge variant="outline" className="bg-yellow-50 text-yellow-700 border-yellow-200">Borrador</Badge>;
+      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">Borrador</Badge>;
     case 'ENVIADO':
-      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200">Enviado</Badge>;
+      return <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider animate-pulse">Pendiente</Badge>;
     case 'APROBADO':
-      return <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Aprobado</Badge>;
+      return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">Aprobado</Badge>;
     case 'RECHAZADO':
-      return <Badge variant="outline" className="bg-red-50 text-red-700 border-red-200">Rechazado</Badge>;
+      return <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">Rechazado</Badge>;
     default:
-      return <Badge variant="outline">{estado}</Badge>;
+      return <Badge variant="outline" className="px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">{estado}</Badge>;
   }
 };
 
@@ -188,8 +214,18 @@ export default function AprobacionCargaHorariaClient({ periodos }: { periodos: a
     return (cargas || []).reduce((sum, c) => sum + (c.horas_semanales || 0), 0);
   };
 
-  // Filtrar solo las declaraciones que están ENVIADAS
-  const declaracionesEnviadas = declaraciones.filter(d => d.estado === 'ENVIADO');
+  const [searchTerm, setSearchTerm] = useState("");
+  const [selectedDeclaracion, setSelectedDeclaracion] = useState<DeclaracionHoraria | null>(null);
+
+  // Filtrar solo las declaraciones que están ENVIADAS y por término de búsqueda
+  const declaracionesEnviadas = declaraciones.filter(d => {
+    const matchesEstado = d.estado === 'ENVIADO';
+    const nombres = d.docente?.nombres || '';
+    const apellidos = d.docente?.apellidos || '';
+    const ibm = d.ibm || '';
+    const matchesSearch = `${nombres} ${apellidos} ${ibm}`.toLowerCase().includes(searchTerm.toLowerCase());
+    return matchesEstado && matchesSearch;
+  });
   
   // Lógica de paginación
   const totalPages = Math.ceil(declaracionesEnviadas.length / itemsPerPage);
@@ -200,259 +236,304 @@ export default function AprobacionCargaHorariaClient({ periodos }: { periodos: a
   if (loading) return <div className="p-8">Cargando...</div>;
 
   return (
-    <div className="p-6 max-w-5xl mx-auto space-y-6">
-      <div className="flex justify-between items-center">
-        <div>
-          <h1 className="text-3xl font-bold text-slate-900">Aprobación de Carga Horaria</h1>
-          <p className="text-slate-500 mt-1">Revisa y aprueba las declaraciones de carga horaria de los docentes</p>
-        </div>
-        <div className="text-sm text-slate-500">
-          {declaracionesEnviadas.length} declaraciones pendientes
-        </div>
-      </div>
-
-      <Card>
-        <CardContent className="pt-6">
-          <Accordion>
-            {currentDeclaraciones.length === 0 ? (
-              <div className="text-center py-12 text-slate-400">
-                No hay declaraciones de carga horaria pendientes de aprobación para este periodo.
+    <div className="p-6 space-y-4 bg-[#f8fafc] min-h-screen">
+      {/* Header Unificado - Estilo según Asignación de Carga Lectiva */}
+      <Card className="shadow-sm border-slate-200 overflow-hidden">
+        <CardContent className="p-0">
+          {/* Fila Superior: Título e Info */}
+          <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-slate-100 bg-white">
+            <div className="flex items-center gap-4">
+              <div className="w-10 h-10 rounded-lg bg-blue-50 flex items-center justify-center border border-blue-100">
+                <LayoutGrid className="text-blue-600 w-5 h-5" />
               </div>
-            ) : (
-              currentDeclaraciones.map((declaracion) => {
-                const totalLectivas = getTotalLectivas(declaracion.cargas_lectivas);
-                const totalNoLectivas = getTotalNoLectivas(declaracion.cargas_no_lectivas);
-                const totalGeneral = totalLectivas + totalNoLectivas;
-
-                return (
-                  <AccordionItem
-                    key={declaracion.id_declaracion}
-                    className="border border-slate-200 rounded-lg mb-4 p-4"
-                  >
-                    <AccordionTrigger className="hover:no-underline">
-                      <div className="flex items-center justify-between w-full text-left">
-                        <div className="flex items-center gap-4">
-                          <div className="p-2 bg-blue-100 rounded-full">
-                            <User className="text-blue-600" size={24} />
-                          </div>
-                          <div>
-                            <h3 className="font-bold text-slate-800">
-                              {declaracion.docente.nombres} {declaracion.docente.apellidos}
-                            </h3>
-                            <p className="text-sm text-slate-500">
-                              IBM: {declaracion.ibm} | Categoría: {declaracion.categoria}
-                            </p>
-                          </div>
-                        </div>
-                        <div className="flex items-center gap-4">
-                          {getEstadoBadge(declaracion.estado)}
-                          <div className="text-right">
-                            <p className="text-sm font-medium text-slate-700">Total: {totalGeneral}h</p>
-                            <p className="text-xs text-slate-500">
-                              Lectivas: {totalLectivas}h | No lectivas: {totalNoLectivas}h
-                            </p>
-                          </div>
-                        </div>
-                      </div>
-                    </AccordionTrigger>
-                    <AccordionContent className="pt-4">
-                      {/* Observaciones de rechazo anterior (si hay) */}
-                      {declaracion.observaciones && declaracion.estado === 'RECHAZADO' && (
-                        <div className="mb-6 p-4 bg-red-50 border border-red-200 rounded-lg">
-                          <h4 className="font-medium text-red-700 flex items-center gap-2">
-                            <XCircle size={18} />
-                            Comentarios de rechazo anterior:
-                          </h4>
-                          <p className="text-sm text-red-600 mt-2">{declaracion.observaciones}</p>
-                        </div>
-                      )}
-
-                      {/* Datos de la declaración */}
-                      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mb-6">
-                        <div className="p-3 bg-slate-50 rounded-lg">
-                          <p className="text-sm text-slate-500">Condición</p>
-                          <p className="font-medium">{declaracion.condicion}</p>
-                        </div>
-                        <div className="p-3 bg-slate-50 rounded-lg">
-                          <p className="text-sm text-slate-500">Dedicación</p>
-                          <p className="font-medium">{declaracion.dedicacion}</p>
-                        </div>
-                        <div className="p-3 bg-slate-50 rounded-lg">
-                          <p className="text-sm text-slate-500">Horas de dedicación</p>
-                          <p className="font-medium">{declaracion.horas_dedicacion}h</p>
-                        </div>
-                      </div>
-
-                      {/* Carga Lectiva */}
-                      <div className="mb-6">
-                        <h4 className="font-medium text-slate-800 mb-3 flex items-center gap-2">
-                          <BookOpen size={18} />
-                          Carga Lectiva Asignada
-                        </h4>
-                        {(declaracion.cargas_lectivas || []).length === 0 ? (
-                          <div className="text-center py-4 text-slate-400">
-                            No hay carga lectiva asignada.
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {(declaracion.cargas_lectivas || []).map((carga) => (
-                              <div key={carga.id_carga_lectiva} className="grid grid-cols-12 gap-2 items-center p-3 bg-slate-50 rounded-lg">
-                                <div className="col-span-4">
-                                  <p className="text-sm font-medium text-slate-700">
-                                    {carga.curso.codigo} - {carga.curso.nombre}
-                                  </p>
-                                </div>
-                                <div className="col-span-2">
-                                  <p className="text-sm text-slate-600">
-                                    {carga.tipo_clase === 'teoria' ? 'Teoría' : 
-                                     carga.tipo_clase === 'practica' ? 'Práctica' : 'Laboratorio'}
-                                  </p>
-                                </div>
-                                <div className="col-span-2">
-                                  <p className="text-sm text-slate-600">
-                                    {(carga.grupos_asignados || 0) === 0 ? 'Sin grupos' : 
-                                     `${carga.grupos_asignados} grupo${(carga.grupos_asignados || 0) > 1 ? 's' : ''}`}
-                                  </p>
-                                </div>
-                                <div className="col-span-2">
-                                  <p className="text-sm text-slate-600">{carga.horas_semanales}h/sem</p>
-                                </div>
-                                <div className="col-span-2">
-                                  <p className="text-sm font-bold text-slate-800">
-                                    {(carga.grupos_asignados || 0) * carga.horas_semanales}h
-                                  </p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Carga No Lectiva */}
-                      <div className="mb-6">
-                        <h4 className="font-medium text-slate-800 mb-3 flex items-center gap-2">
-                          <ClipboardList size={18} />
-                          Carga No Lectiva
-                        </h4>
-                        {(declaracion.cargas_no_lectivas || []).length === 0 ? (
-                          <div className="text-center py-4 text-slate-400">
-                            No hay carga no lectiva.
-                          </div>
-                        ) : (
-                          <div className="space-y-2">
-                            {(declaracion.cargas_no_lectivas || []).map((carga) => (
-                              <div key={carga.id_carga_no_lectiva} className="grid grid-cols-12 gap-2 items-start p-3 bg-slate-50 rounded-lg">
-                                <div className="col-span-8">
-                                  <p className="text-sm font-medium text-slate-700">
-                                    {TIPOS_CARGA_NO_LECTIVA_LABELS[carga.tipo] || carga.tipo}
-                                  </p>
-                                  {carga.descripcion && (
-                                    <p className="text-sm text-slate-500">{carga.descripcion}</p>
-                                  )}
-                                </div>
-                                <div className="col-span-4 text-right">
-                                  <p className="text-sm font-bold text-slate-800">{carga.horas_semanales}h/sem</p>
-                                </div>
-                              </div>
-                            ))}
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Resumen final */}
-                      <div className="p-4 border-t pt-4">
-                        <div className="flex items-center justify-between">
-                          <div>
-                            <p className="text-sm text-slate-500">Total general</p>
-                            <p className={`text-xl font-bold ${totalGeneral === declaracion.horas_dedicacion ? 'text-green-600' : 'text-red-600'}`}>
-                              {totalGeneral}h
-                              {totalGeneral !== declaracion.horas_dedicacion && (
-                                <span className="text-sm font-normal text-red-500 ml-2">
-                                  (debe coincidir con {declaracion.horas_dedicacion}h de dedicación)
-                                </span>
-                              )}
-                            </p>
-                          </div>
-
-                          {/* Botones de aprobación/rechazo */}
-                          {declaracion.estado === 'ENVIADO' && (
-                            <div className="flex items-center gap-4">
-                              <div className="flex-1 max-w-xs">
-                                <label className="text-sm font-medium text-slate-700">Comentarios de rechazo (opcional)</label>
-                                <Textarea
-                                  placeholder="Ingrese comentarios para que el docente pueda corregir..."
-                                  value={rechazoComments[declaracion.id_declaracion] || ''}
-                                  onChange={(e) => setRechazoComments(prev => ({
-                                    ...prev,
-                                    [declaracion.id_declaracion]: e.target.value
-                                  }))}
-                                  className="mt-1"
-                                />
-                              </div>
-                              <div className="flex flex-col gap-2">
-                                <Button
-                                  onClick={() => handleAprobar(declaracion.id_declaracion)}
-                                  variant="default"
-                                  className="bg-green-600 hover:bg-green-700 flex items-center gap-2"
-                                >
-                                  <CheckCircle2 size={16} />
-                                  Aprobar
-                                </Button>
-                                <Button
-                                  onClick={() => handleRechazar(declaracion.id_declaracion)}
-                                  variant="destructive"
-                                  className="flex items-center gap-2"
-                                >
-                                  <XCircle size={16} />
-                                  Rechazar
-                                </Button>
-                              </div>
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </AccordionContent>
-                  </AccordionItem>
-                );
-              })
-            )}
-          </Accordion>
-          
-          {/* Controles de paginación */}
-          {totalPages > 1 && (
-            <div className="flex items-center justify-center gap-2 mt-6 pt-4 border-t border-slate-200">
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
-                disabled={currentPage === 1}
-              >
-                Anterior
-              </Button>
-              
-              <div className="flex items-center gap-1">
-                {Array.from({ length: totalPages }, (_, i) => i + 1).map(page => (
-                  <Button
-                    key={page}
-                    variant={currentPage === page ? "default" : "outline"}
-                    onClick={() => setCurrentPage(page)}
-                    className="w-10 h-10 p-0"
-                  >
-                    {page}
-                  </Button>
-                ))}
+              <div>
+                <h1 className="text-lg font-bold text-slate-900 leading-none">Aprobación de Carga Horaria</h1>
+                <p className="text-slate-500 text-xs mt-1">Gestión administrativa de declaraciones enviadas por los docentes</p>
               </div>
-              
-              <Button
-                variant="outline"
-                onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
-                disabled={currentPage === totalPages}
-              >
-                Siguiente
-              </Button>
             </div>
-          )}
+            <div className="flex items-center gap-2 bg-blue-50 text-blue-700 px-3 py-1.5 rounded-md text-xs font-semibold border border-blue-100">
+              <ClipboardList size={14} />
+              {declaracionesEnviadas.length} Pendientes
+            </div>
+          </div>
+          
+          {/* Fila Inferior: Buscador */}
+          <div className="p-3 bg-[#fcfcfc]">
+            <div className="relative max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
+              <Input
+                placeholder="Buscar por nombre o IBM..."
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+                className="pl-9 h-10 bg-white border-slate-200 focus:ring-1 focus:ring-blue-500 rounded-md text-sm shadow-sm"
+              />
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      {/* Main Table Card */}
+      <Card className="shadow-sm border-slate-200 overflow-hidden">
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader className="bg-[#fcfcfc] border-b border-slate-100">
+              <TableRow>
+                <TableHead className="text-[11px] font-bold uppercase text-slate-500 px-6 py-3">Docente</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase text-slate-500 px-6 py-3">IBM / Código</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase text-slate-500 px-6 py-3">Categoría</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase text-slate-500 px-6 py-3">Condición</TableHead>
+                <TableHead className="text-[11px] font-bold uppercase text-slate-500 px-6 py-3 text-right">Acciones</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {currentDeclaraciones.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={5} className="text-center py-20">
+                    <div className="flex flex-col items-center gap-2">
+                      <CheckCircle2 size={40} className="text-slate-200" />
+                      <p className="text-slate-400 font-medium text-sm">No hay declaraciones pendientes</p>
+                    </div>
+                  </TableCell>
+                </TableRow>
+              ) : (
+                currentDeclaraciones.map((declaracion) => {
+                  const totalLectivas = getTotalLectivas(declaracion.cargas_lectivas);
+                  const totalNoLectivas = getTotalNoLectivas(declaracion.cargas_no_lectivas);
+                  const totalGeneral = totalLectivas + totalNoLectivas;
+                  const isComplete = totalGeneral === declaracion.horas_dedicacion;
+
+                  return (
+                    <TableRow key={declaracion.id_declaracion} className="hover:bg-slate-50/50 transition-colors border-b border-slate-100 last:border-0">
+                      <TableCell className="px-6 py-4">
+                        <div className="flex items-center gap-3">
+                          <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-[10px] font-bold text-slate-600 border border-slate-200 uppercase">
+                            {declaracion.docente?.nombres?.charAt(0)}{declaracion.docente?.apellidos?.charAt(0)}
+                          </div>
+                          <div className="flex flex-col">
+                            <span className="font-bold text-slate-800 text-xs uppercase">
+                              {declaracion.docente?.apellidos}, {declaracion.docente?.nombres}
+                            </span>
+                            <span className="text-[10px] text-slate-400 font-medium">{declaracion.docente?.codigo_docente}</span>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <span className="text-xs text-slate-600 font-medium">{declaracion.ibm}</span>
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-100 text-[9px] font-bold uppercase px-2 py-0.5">
+                          {declaracion.categoria}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <Badge variant="outline" className="bg-slate-50 text-slate-600 border-slate-200 text-[9px] font-bold uppercase px-2 py-0.5">
+                          {declaracion.condicion}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="px-6 py-4">
+                        <div className="flex justify-end">
+                          <Dialog>
+                            <DialogTrigger asChild>
+                              <Button 
+                                variant="default" 
+                                size="sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase h-8 px-4 flex items-center gap-2 rounded-md transition-all shadow-sm"
+                                onClick={() => setSelectedDeclaracion(declaracion)}
+                              >
+                                <Eye size={14} />
+                                Revisar
+                              </Button>
+                            </DialogTrigger>
+                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-8">
+                            <DialogHeader>
+                              <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                                <User className="text-blue-600" size={20} />
+                                Revisión de Carga: {declaracion.docente?.nombres} {declaracion.docente?.apellidos}
+                              </DialogTitle>
+                              <DialogDescription className="text-xs text-slate-500 uppercase font-medium tracking-wider">
+                                IBM: {declaracion.ibm} | {declaracion.categoria} | {declaracion.dedicacion}
+                              </DialogDescription>
+                            </DialogHeader>
+
+                            <div className="space-y-6 mt-4">
+                              {/* Resumen de Horas */}
+                              <div className="grid grid-cols-3 gap-4">
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Carga Lectiva</p>
+                                  <p className="text-xl font-black text-blue-600">{totalLectivas}h</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">No Lectiva</p>
+                                  <p className="text-xl font-black text-indigo-600">{totalNoLectivas}h</p>
+                                </div>
+                                <div className="p-4 bg-slate-50 rounded-xl border border-slate-100 text-center">
+                                  <p className="text-[10px] font-bold text-slate-400 uppercase mb-1">Total General</p>
+                                  <p className={`text-xl font-black ${isComplete ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                    {totalGeneral} / {declaracion.horas_dedicacion}h
+                                  </p>
+                                </div>
+                              </div>
+
+                              {/* Tablas de Detalle */}
+                              <div className="space-y-4">
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                    <BookOpen size={16} className="text-blue-500" />
+                                    Carga Lectiva
+                                  </h4>
+                                  <div className="border rounded-lg overflow-hidden">
+                                    <Table>
+                                      <TableHeader className="bg-slate-50">
+                                        <TableRow>
+                                          <TableHead className="text-[10px] font-bold uppercase">Curso</TableHead>
+                                          <TableHead className="text-[10px] font-bold uppercase text-center">Tipo</TableHead>
+                                          <TableHead className="text-[10px] font-bold uppercase text-center">Grupos</TableHead>
+                                          <TableHead className="text-[10px] font-bold uppercase text-right">Total</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {(declaracion.cargas_lectivas || []).length === 0 ? (
+                                          <TableRow><TableCell colSpan={4} className="text-center text-slate-400 py-6 text-xs italic">Sin registros de carga lectiva</TableCell></TableRow>
+                                        ) : (
+                                          (declaracion.cargas_lectivas || []).map((carga) => (
+                                            <TableRow key={carga.id_carga_lectiva}>
+                                              <TableCell className="py-2 text-xs font-medium">
+                                                {carga.curso?.nombre} <span className="text-slate-400 font-normal ml-1">({carga.curso?.codigo})</span>
+                                              </TableCell>
+                                              <TableCell className="py-2 text-xs text-center capitalize">{carga.tipo_clase}</TableCell>
+                                              <TableCell className="py-2 text-xs text-center">{carga.grupos_asignados}</TableCell>
+                                              <TableCell className="py-2 text-xs text-right font-bold">{(carga.grupos_asignados || 0) * (carga.horas_semanales || 0)}h</TableCell>
+                                            </TableRow>
+                                          ))
+                                        )}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+
+                                <div>
+                                  <h4 className="text-sm font-bold text-slate-800 mb-2 flex items-center gap-2">
+                                    <ClipboardList size={16} className="text-indigo-500" />
+                                    Carga No Lectiva
+                                  </h4>
+                                  <div className="border rounded-lg overflow-hidden">
+                                    <Table>
+                                      <TableHeader className="bg-slate-50">
+                                        <TableRow>
+                                          <TableHead className="text-[10px] font-bold uppercase">Actividad</TableHead>
+                                          <TableHead className="text-[10px] font-bold uppercase text-right">Horas</TableHead>
+                                        </TableRow>
+                                      </TableHeader>
+                                      <TableBody>
+                                        {(declaracion.cargas_no_lectivas || []).length === 0 ? (
+                                          <TableRow><TableCell colSpan={2} className="text-center text-slate-400 py-6 text-xs italic">Sin registros de carga no lectiva</TableCell></TableRow>
+                                        ) : (
+                                          (declaracion.cargas_no_lectivas || []).map((carga) => (
+                                            <TableRow key={carga.id_carga_no_lectiva}>
+                                              <TableCell className="py-2 text-xs font-medium">
+                                                {TIPOS_CARGA_NO_LECTIVA_LABELS[carga.tipo] || carga.tipo}
+                                                {carga.descripcion && <p className="text-[10px] text-slate-400 font-normal italic mt-0.5">{carga.descripcion}</p>}
+                                              </TableCell>
+                                              <TableCell className="py-2 text-xs text-right font-bold">{carga.horas_semanales || 0}h</TableCell>
+                                            </TableRow>
+                                          ))
+                                        )}
+                                      </TableBody>
+                                    </Table>
+                                  </div>
+                                </div>
+                              </div>
+
+                              {/* Formulario de Aprobación */}
+                              <div className="pt-6 border-t border-slate-100 space-y-4">
+                                <div className="space-y-2">
+                                  <Label className="text-xs font-bold text-slate-700 uppercase tracking-wider flex items-center gap-2">
+                                    <AlertTriangle size={14} className="text-amber-500" />
+                                    Observaciones (Opcional si aprueba, obligatorio si rechaza)
+                                  </Label>
+                                  <Textarea
+                                    placeholder="Indique los motivos del rechazo o sugerencias de corrección..."
+                                    value={rechazoComments[declaracion.id_declaracion] || ''}
+                                    onChange={(e) => setRechazoComments(prev => ({ ...prev, [declaracion.id_declaracion]: e.target.value }))}
+                                    className="min-h-[100px] bg-slate-50/50 text-sm border-slate-200"
+                                  />
+                                </div>
+                                <div className="flex justify-end gap-3">
+                                  <Button
+                                    variant="outline"
+                                    onClick={() => handleRechazar(declaracion.id_declaracion)}
+                                    className="text-rose-600 border-rose-200 hover:bg-rose-50 h-10 px-6 text-xs font-bold uppercase"
+                                  >
+                                    Rechazar Declaración
+                                  </Button>
+                                  <Button
+                                    onClick={() => handleAprobar(declaracion.id_declaracion)}
+                                    className="bg-emerald-600 hover:bg-emerald-700 text-white h-10 px-10 text-xs font-bold uppercase shadow-md shadow-emerald-100 transition-all hover:scale-[1.02]"
+                                  >
+                                    Aprobar Carga
+                                  </Button>
+                                </div>
+                              </div>
+                            </div>
+                          </DialogContent>
+                        </Dialog>
+                      </div>
+                    </TableCell>
+                    </TableRow>
+                  );
+                })
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </Card>
+
+      {/* Pagination - Estilo según imagen */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-2 py-4">
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCurrentPage(1)}
+            disabled={currentPage === 1}
+            className="w-8 h-8 rounded-md border-slate-200"
+          >
+            <MoreHorizontal className="w-4 h-4 rotate-180" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+            disabled={currentPage === 1}
+            className="w-8 h-8 rounded-md border-slate-200"
+          >
+            <ChevronRight className="w-4 h-4 rotate-180" />
+          </Button>
+          
+          <div className="flex items-center gap-2 px-3 text-sm font-medium text-slate-600">
+            Página <span className="font-bold text-slate-900">{currentPage}</span> de <span className="font-bold text-slate-900">{totalPages}</span>
+          </div>
+
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCurrentPage(prev => Math.min(prev + 1, totalPages))}
+            disabled={currentPage === totalPages}
+            className="w-8 h-8 rounded-md border-slate-200"
+          >
+            <ChevronRight className="w-4 h-4" />
+          </Button>
+          <Button
+            variant="outline"
+            size="icon"
+            onClick={() => setCurrentPage(totalPages)}
+            disabled={currentPage === totalPages}
+            className="w-8 h-8 rounded-md border-slate-200"
+          >
+            <MoreHorizontal className="w-4 h-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 }
