@@ -129,11 +129,11 @@ export const ChatWidget = () => {
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className={cn("fixed bottom-6 right-6 z-50 flex flex-col items-end", !isOpen && "pointer-events-none")}>
       {/* Ventana de Chat (Drawer lateral simulado) */}
       <div
         className={cn(
-          "mb-4 transition-all duration-300 origin-bottom-right transform flex flex-row",
+          "mb-4 transition-all duration-300 origin-bottom-right transform flex flex-row pointer-events-auto",
           isOpen ? "scale-100 opacity-100" : "scale-0 opacity-0 pointer-events-none"
         )}
       >
@@ -242,7 +242,7 @@ export const ChatWidget = () => {
       {/* Botón para abrir chat */}
       <Button 
         size="icon" 
-        className="h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform"
+        className="h-14 w-14 rounded-full shadow-lg hover:scale-105 transition-transform pointer-events-auto"
         onClick={() => setIsOpen(!isOpen)}
       >
         <MessageSquare className="h-6 w-6" />
