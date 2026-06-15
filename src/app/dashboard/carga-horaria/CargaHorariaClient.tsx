@@ -767,7 +767,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             {[
               { key: 'formato1', label: 'Carga Horaria Asignada', sub: 'Formato 01 - Detalle' },
               { key: 'formato2', label: 'Declaración Jurada', sub: 'Formato 02 - Legal' },
-              { key: 'formato3', label: 'Sedes Descentralizadas', sub: 'Formato 03 - Sedes' }
+              { key: 'formato3', label: 'Sedes Descentralizadas', sub: 'Formato 03 - Sedes' },
+              { key: 'formato4', label: 'Horario Semanal', sub: 'Formato 04 - Horario' }
             ].map((formato) => (
               <div 
                 key={formato.key} 
