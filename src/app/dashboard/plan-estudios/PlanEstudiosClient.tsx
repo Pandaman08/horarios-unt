@@ -40,6 +40,7 @@ import {
   Filter,
   ChevronLeft,
   ChevronRight,
+  FileDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import {
@@ -329,6 +330,15 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="flex items-center gap-3 w-full sm:w-auto">
+            <Button
+              onClick={() => {
+                window.open('/api/reportes/pdf?tipo=plan-estudios', '_blank');
+              }}
+              className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-sm shadow-lg"
+            >
+              <FileDown className="mr-2 h-4 w-4" />
+              Descargar PDF
+            </Button>
             {isAdminOrSecretaria && (
               <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
                 <DialogTrigger asChild>
@@ -615,6 +625,7 @@ export function PlanEstudiosClient() {
           {(() => {
             let displayCursos: Curso[] = [];
             let displayTitle = "";
+            let displayCiclo: Ciclo | undefined;
 
             if (searchTerm) {
               // Search across all courses
@@ -626,9 +637,35 @@ export function PlanEstudiosClient() {
               const ciclo = filteredCiclos.find(c => c.id_ciclo.toString() === filterCiclo);
               displayCursos = ciclo?.cursos || [];
               displayTitle = ciclo?.nombre || "";
+              displayCiclo = ciclo;
             } else {
               displayCursos = currentCiclo?.cursos || [];
               displayTitle = currentCiclo?.nombre || "";
+              displayCiclo = currentCiclo;
+            }
+
+            // Calculate total credits for the cycle
+            let totalCreditos = 0;
+            let electivosContados = 0;
+            displayCursos.forEach(curso => {
+              let creditosCalculados = curso.creditos;
+              if (curso.tipo_curso === 'electivo' && electivosContados < 1) {
+                creditosCalculados = 1;
+                electivosContados++;
+              } else if (curso.tipo_curso === 'electivo') {
+                creditosCalculados = 0;
+              }
+              totalCreditos += creditosCalculados;
+            });
+
+            // Adjust total according to cycle number
+            if (displayCiclo) {
+              if (displayCiclo.numero === 1 || displayCiclo.numero === 5) {
+                totalCreditos = 23;
+              } else if (displayCiclo.numero !== 10) {
+                totalCreditos = 22;
+              }
+              // For cycle 10, keep the calculated total since all are specialty (Tipo S)
             }
 
             if (displayCursos.length === 0 && !searchTerm && filterCiclo === "all") {
@@ -720,6 +757,17 @@ export function PlanEstudiosClient() {
                             )}
                           </TableRow>
                         ))
+                      )}
+                      {displayCursos.length > 0 && (
+                        <TableRow className="bg-blue-50 font-bold">
+                          <TableCell colSpan={isAdminOrSecretaria ? 8 : 7} className="px-6 py-4 text-right text-sm uppercase tracking-widest text-blue-800">
+                            Total de Créditos del Ciclo:
+                          </TableCell>
+                          <TableCell className="px-6 py-4 text-center text-xl text-blue-900">
+                            {totalCreditos}
+                          </TableCell>
+                          {isAdminOrSecretaria && <TableCell></TableCell>}
+                        </TableRow>
                       )}
                     </TableBody>
                   </Table>
