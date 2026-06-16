@@ -10,10 +10,13 @@ interface Conversation {
   messages: ChatMessage[];
 }
 
-const STORAGE_KEY = 'chatbot_conversations';
-const ACTIVE_ID_KEY = 'chatbot_active_id';
+// Generar claves de localStorage específicas por usuario
+const getStorageKeys = (userId: string) => ({
+  STORAGE_KEY: `chatbot_conversations_${userId}`,
+  ACTIVE_ID_KEY: `chatbot_active_id_${userId}`
+});
 
-export const useChat = () => {
+export const useChat = (userId?: string) => {
   const [conversations, setConversations] = useState<Conversation[]>([]);
   const [activeConversationId, setActiveConversationId] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(false);
@@ -23,10 +26,15 @@ export const useChat = () => {
   const activeIdRef = useRef<string | null>(null);
   const isInitialLoad = useRef(true);
 
-  // 1. Cargar datos de localStorage al inicializar
+  // 1. Cargar datos de localStorage al inicializar (por usuario)
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !userId) {
+      setIsHydrated(true);
+      isInitialLoad.current = false;
+      return;
+    }
 
+    const { STORAGE_KEY, ACTIVE_ID_KEY } = getStorageKeys(userId);
     const savedConversations = localStorage.getItem(STORAGE_KEY);
     const savedActiveId = localStorage.getItem(ACTIVE_ID_KEY);
 
@@ -54,19 +62,20 @@ export const useChat = () => {
     
     setIsHydrated(true);
     isInitialLoad.current = false;
-  }, []);
+  }, [userId]);
 
-  // 2. Guardar datos en localStorage solo después de la hidratación y cuando hay cambios reales
+  // 2. Guardar datos en localStorage solo después de la hidratación y cuando hay cambios reales (por usuario)
   useEffect(() => {
-    if (!isHydrated) return;
+    if (!isHydrated || !userId) return;
     
+    const { STORAGE_KEY, ACTIVE_ID_KEY } = getStorageKeys(userId);
     localStorage.setItem(STORAGE_KEY, JSON.stringify(conversations));
     if (activeConversationId) {
       localStorage.setItem(ACTIVE_ID_KEY, activeConversationId);
     } else {
       localStorage.removeItem(ACTIVE_ID_KEY);
     }
-  }, [conversations, activeConversationId, isHydrated]);
+  }, [conversations, activeConversationId, isHydrated, userId]);
 
   const messages = activeConversationId 
     ? conversations.find(c => c.id === activeConversationId)?.messages || [] 
@@ -135,12 +144,14 @@ export const useChat = () => {
   }, []);
 
   const clearHistory = useCallback(() => {
+    if (!userId) return;
+    const { STORAGE_KEY, ACTIVE_ID_KEY } = getStorageKeys(userId);
     localStorage.removeItem(STORAGE_KEY);
     localStorage.removeItem(ACTIVE_ID_KEY);
     activeIdRef.current = null;
     setConversations([]);
     setActiveConversationId(null);
-  }, []);
+  }, [userId]);
 
   return {
     messages,

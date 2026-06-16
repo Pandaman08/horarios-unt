@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect, useCallback } from 'react';
 import { usePathname } from 'next/navigation';
+import { useSession } from 'next-auth/react';
 import { MessageSquare, X, Send, Mic, MicOff, Volume2, VolumeX, Square, Menu } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -13,6 +14,7 @@ import { ChatbotService } from '@/services/ai/ChatbotService';
 import { cn } from '@/lib/utils';
 
 export const ChatWidget = () => {
+  const { data: session } = useSession();
   const [isOpen, setIsOpen] = useState(false);
   const [input, setInput] = useState('');
   const [isTtsEnabled, setIsTtsEnabled] = useState(false);
@@ -29,7 +31,7 @@ export const ChatWidget = () => {
     startNewChat,
     deleteConversation,
     isHydrated
-  } = useChat();
+  } = useChat(session?.user?.id);
 
   // No renderizar nada del chat hasta que esté hidratado para evitar bugs visuales
   if (!isHydrated && isOpen) return null;
