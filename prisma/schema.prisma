@@ -52,26 +52,38 @@ model Docente {
 }
 
 model Curso {
-  id_curso               Int                        @id @default(autoincrement())
-  codigo                 String                     @unique
+  id_curso               Int                  @id @default(autoincrement())
+  codigo                 String               @unique
   nombre                 String
-  maximo_docentes        Int                        @default(1)
+  maximo_docentes        Int                  @default(1)
   creditos               Int
   plan_estudios          String?
   prerequisitos          String?
-  activo                 Boolean                    @default(true)
+  activo                 Boolean              @default(true)
   id_ciclo               Int?
-  tipo_curso             String                     @default("linea_carrera")
-  horas_teoria           Int                        @default(0)
-  horas_practica         Int                        @default(0)
-  horas_laboratorio      Int                        @default(0)
-  ciclo_rel              Ciclo?                     @relation(fields: [id_ciclo], references: [id_ciclo])
+  tipo_curso             String               @default("linea_carrera")
+  horas_teoria           Int                  @default(0)
+  horas_practica         Int                  @default(0)
+  horas_laboratorio      Int                  @default(0)
+  ciclo_rel              Ciclo?               @relation(fields: [id_ciclo], references: [id_ciclo])
   curso_ambientes        CursoAmbiente[]
   docente_cursos         DocenteCurso[]
   grupos                 Grupo[]
   horarios_asignados     HorarioAsignado[]
   selecciones_temporales SeleccionTemporalHorario[]
   cargas_lectivas        CargaLectiva[]
+  prerequisitos_rel      Prerequisito[]       @relation("CursoPrerequisitos")
+  es_prerequisito_de     Prerequisito[]       @relation("PrerequisitoDe")
+}
+
+model Prerequisito {
+  id_prerequisito        Int                  @id @default(autoincrement())
+  id_curso               Int
+  id_prerequisito_curso  Int
+  curso                  Curso                @relation("CursoPrerequisitos", fields: [id_curso], references: [id_curso])
+  prerequisito           Curso                @relation("PrerequisitoDe", fields: [id_prerequisito_curso], references: [id_curso])
+  
+  @@unique([id_curso, id_prerequisito_curso])
 }
 
 model Ciclo {
