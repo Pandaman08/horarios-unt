@@ -77,6 +77,7 @@ interface Curso {
   maximo_docentes: number;
   activo: boolean;
   id_ciclo?: number | null;
+  departamento_responsable?: string;
   prerequisitos_rel: Prerequisito[];
 }
 
@@ -123,6 +124,7 @@ export function PlanEstudiosClient() {
     horas_laboratorio: "0",
     maximo_docentes: "1",
     activo: true,
+    departamento_responsable: "",
   });
 
   useEffect(() => {
@@ -240,6 +242,7 @@ export function PlanEstudiosClient() {
       horas_laboratorio: curso.horas_laboratorio.toString(),
       maximo_docentes: curso.maximo_docentes.toString(),
       activo: curso.activo,
+      departamento_responsable: curso.departamento_responsable || "",
     });
     // Set selected prerequisitos from existing course
     setSelectedPrerequisitos(
@@ -260,6 +263,7 @@ export function PlanEstudiosClient() {
       horas_laboratorio: "0",
       maximo_docentes: "1",
       activo: true,
+      departamento_responsable: "",
     });
     setSelectedPrerequisitos([]);
     setEditingCurso(null);
@@ -456,6 +460,15 @@ export function PlanEstudiosClient() {
                           <Label htmlFor="activo" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Activo</Label>
                         </div>
                       </div>
+                    </div>
+                    <div className="space-y-2">
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
+                      <Input
+                        value={formData.departamento_responsable}
+                        onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
+                        className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                        placeholder="Ingeniería de Sistemas"
+                      />
                     </div>
 
                     <div className="space-y-2">
@@ -688,6 +701,7 @@ export function PlanEstudiosClient() {
                       <TableRow className="border-b border-border hover:bg-transparent">
                         <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 w-28">Código</TableHead>
                         <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3">Curso</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3">Departamento</TableHead>
                         <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-20">Tipo</TableHead>
                         <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-16">T</TableHead>
                         <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-16">P</TableHead>
@@ -702,7 +716,7 @@ export function PlanEstudiosClient() {
                     <TableBody className="divide-y divide-border">
                       {displayCursos.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="py-10 text-center text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                          <TableCell colSpan={isAdminOrSecretaria ? 10 : 9} className="py-10 text-center text-sm font-bold text-muted-foreground uppercase tracking-widest">
                             No hay cursos para mostrar
                           </TableCell>
                         </TableRow>
@@ -714,6 +728,9 @@ export function PlanEstudiosClient() {
                             </TableCell>
                             <TableCell className="px-6 py-3">
                               <span className="font-bold text-foreground text-sm">{curso.nombre}</span>
+                            </TableCell>
+                            <TableCell className="px-6 py-3">
+                              <span className="text-sm font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
                             </TableCell>
                             <TableCell className="px-6 py-3 text-center">
                               {getTipoBadge(curso.tipo_curso)}
@@ -760,7 +777,7 @@ export function PlanEstudiosClient() {
                       )}
                       {displayCursos.length > 0 && (
                         <TableRow className="bg-blue-50 font-bold">
-                          <TableCell colSpan={isAdminOrSecretaria ? 8 : 7} className="px-6 py-4 text-right text-sm uppercase tracking-widest text-blue-800">
+                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="px-6 py-4 text-right text-sm uppercase tracking-widest text-blue-800">
                             Total de Créditos del Ciclo:
                           </TableCell>
                           <TableCell className="px-6 py-4 text-center text-xl text-blue-900">

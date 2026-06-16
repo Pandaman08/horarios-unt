@@ -37,6 +37,7 @@ export async function PUT(
           horas_teoria: parseInt(data.horas_teoria) || 0,
           horas_practica: parseInt(data.horas_practica) || 0,
           horas_laboratorio: parseInt(data.horas_laboratorio) || 0,
+          departamento_responsable: data.departamento_responsable,
           activo: data.activo !== undefined ? data.activo : true
         }
       });

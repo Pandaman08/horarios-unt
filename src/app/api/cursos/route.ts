@@ -37,6 +37,7 @@ export async function POST(request: Request) {
         tipo_curso: data.tipo_curso || "linea_carrera",
         plan_estudios: data.plan_estudios,
         prerequisitos: data.prerequisitos,
+        departamento_responsable: data.departamento_responsable,
         activo: true
       }
     });

@@ -64,6 +64,7 @@ interface Curso {
   creditos: number;
   id_ciclo?: number;
   tipo_curso: string;
+  departamento_responsable?: string;
   ciclo_rel?: {
     id_ciclo: number;
     nombre: string;
@@ -137,6 +138,7 @@ export function CursoList() {
     tipo_curso: "linea_carrera",
     plan_estudios: "",
     prerequisitos: "",
+    departamento_responsable: "",
   });
 
   useEffect(() => {
@@ -258,6 +260,7 @@ export function CursoList() {
       tipo_curso: curso.tipo_curso || "linea_carrera",
       plan_estudios: curso.plan_estudios || "",
       prerequisitos: curso.prerequisitos || "",
+      departamento_responsable: curso.departamento_responsable || "",
     });
     setIsDialogOpen(true);
   };
@@ -272,6 +275,7 @@ export function CursoList() {
       tipo_curso: "linea_carrera",
       plan_estudios: "",
       prerequisitos: "",
+      departamento_responsable: "",
     });
     setEditingCurso(null);
   };
@@ -430,6 +434,15 @@ export function CursoList() {
                       <Input type="number" value={formData.creditos} onChange={(e) => setFormData({ ...formData, creditos: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                   </div>
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
+                    <Input
+                      value={formData.departamento_responsable}
+                      onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
+                      className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs"
+                      placeholder="Ingeniería de Sistemas"
+                    />
+                  </div>
 
                   <div className="flex justify-end gap-3 pt-4">
                     <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-xs px-6">Cancelar</Button>
@@ -491,6 +504,7 @@ export function CursoList() {
               <TableRow className="border-b border-border hover:bg-transparent">
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Departamento</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Máx. Docentes</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Créd.</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Ciclo</TableHead>
@@ -499,9 +513,9 @@ export function CursoList() {
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((curso) => (
                   <TableRow key={curso.id_curso} className="group hover:bg-muted/50 transition-colors">
@@ -515,6 +529,9 @@ export function CursoList() {
                           {curso.tipo_curso.replace("_", " ")}
                         </span>
                       </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-[10px] font-bold text-muted-foreground">{curso.departamento_responsable || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
                       <span className="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
