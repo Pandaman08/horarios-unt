@@ -29,6 +29,7 @@ import {
   Info,
   Briefcase,
   CheckCircle2,
+  GraduationCap,
 } from "lucide-react";
 
 function DashboardLayoutInner({
@@ -63,8 +64,15 @@ function DashboardLayoutInner({
         title: t("navAcademic"),
         roles: [
           "administrador_sistema",
+          "operador_horarios",
         ],
         items: [
+          {
+            title: "Plan de Estudios",
+            href: "/dashboard/plan-estudios",
+            icon: GraduationCap,
+            roles: ["administrador_sistema", "operador_horarios"],
+          },
           {
             title: t("navTeachers"),
             href: "/dashboard/catalogos?tab=docentes",
@@ -289,7 +297,7 @@ function DashboardLayoutInner({
                   {isOpen &&
                     item.items?.map((sub) => {
                       const isActive = isLinkActive(sub.href);
-                      const SubIcon = sub.icon;
+                      const SubIcon = sub.icon as React.ComponentType<{ className?: string }>;
                       return (
                         <Link
                           key={sub.title}
@@ -311,7 +319,7 @@ function DashboardLayoutInner({
             }
 
             const isActive = item.href ? isLinkActive(item.href) : false;
-            const ItemIcon = item.icon;
+            const ItemIcon = item.icon as React.ComponentType<{ className?: string }>;
             return (
               <Link
                 key={item.title}
