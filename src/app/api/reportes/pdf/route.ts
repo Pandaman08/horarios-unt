@@ -580,7 +580,8 @@ function wrapLayout(bodyHtml: string, titulo: string, landscape = false): string
 }
 
 // ─── GENERAR PLAN DE ESTUDIOS ───────────────────────────────────────────────
-function generarPlanEstudios(ciclos: any[]): string {
+function generarPlanEstudios(ciclos: any[], malla?: any): string {
+  console.log('Generando plan de estudios para malla:', malla?.nombre);
   const ciclosHtml = ciclos.map((ciclo, index) => {
     let totalCreditos = 0;
     let electivosContados = 0;
@@ -593,6 +594,8 @@ function generarPlanEstudios(ciclos: any[]): string {
         creditosCalculados = 0;
       }
       totalCreditos += creditosCalculados;
+      
+      console.log(`Curso: ${curso.codigo} - ${curso.nombre}, Creditos calculados: ${creditosCalculados}, Malla: ${curso.malla_rel?.nombre}`);
 
       let tipoLabel = 'OB';
       let tipoColor = '#22c55e';
@@ -632,14 +635,9 @@ function generarPlanEstudios(ciclos: any[]): string {
       `;
     }).join('');
 
-    // Adjust total of credits according to cycle
-            let totalFinal = totalCreditos;
-            if (ciclo.numero === 1 || ciclo.numero === 5) {
-              totalFinal = 23;
-            } else if (ciclo.numero !== 10) {
-              totalFinal = 22;
-            }
-            // For cycle 10, keep the calculated total since all are specialty (Tipo S)
+    // Use actual calculated total
+    let totalFinal = totalCreditos;
+    console.log(`Total para ciclo ${ciclo.numero}: ${totalFinal} creditos`);
 
     return `
       <div style="margin-bottom: 24px; ${index > 0 ? 'page-break-before: always;' : ''}">
@@ -680,7 +678,9 @@ function generarPlanEstudios(ciclos: any[]): string {
         <h2 style="font-size: 18px; font-weight: 800; color: #1e293b; margin: 0 0 4px 0;">FACULTAD DE INGENIERÍA</h2>
         <h3 style="font-size: 16px; font-weight: 700; color: #334155; margin: 0;">ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS</h3>
         <div style="margin-top: 16px; padding: 10px 20px; background: linear-gradient(135deg, #003366 0%, #0055a5 100%); color: white; border-radius: 8px; display: inline-block;">
-          <span style="font-size: 14px; font-weight: 700; text-transform: uppercase;">Plan de Estudios</span>
+          <span style="font-size: 14px; font-weight: 700; text-transform: uppercase;">
+                ${malla ? malla.nombre : 'Plan de Estudios'}
+              </span>
         </div>
         <p style="margin-top: 8px; font-size: 12px; color: #64748b;">Fecha de impresión: ${new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
       </div>
@@ -701,12 +701,18 @@ export async function GET(request: Request) {
 
     // ── PLAN DE ESTUDIOS ─────────────────────────────────────────────────────
     if (tipo === 'plan-estudios') {
+      const id_malla = searchParams.get('id_malla');
+      console.log('Generando PDF para malla:', id_malla);
+      
       const ciclos = await prisma.ciclo.findMany({
         where: { activo: true },
         orderBy: { numero: 'asc' },
         include: {
           cursos: {
-            where: { activo: true },
+            where: {
+              activo: true,
+              ...(id_malla ? { id_malla: parseInt(id_malla) } : {})
+            },
             orderBy: { codigo: 'asc' },
             include: {
               prerequisitos_rel: {
@@ -717,20 +723,36 @@ export async function GET(request: Request) {
                     }
                   }
                 }
-              }
+              },
+              malla_rel: true
             }
           }
         }
       });
+      
+      console.log('Ciclos obtenidos:', ciclos.map(c => ({
+        numero: c.numero, nombre: c.nombre, cursos: c.cursos.length })));
 
-      const htmlContent = generarPlanEstudios(ciclos);
+      // Get malla info for filename and title
+      let filename = 'plan-de-estudios';
+      let malla: any = null;
+      if (id_malla) {
+        malla = await prisma.mallaCurricular.findUnique({
+          where: { id_malla: parseInt(id_malla) }
+        });
+        if (malla) {
+          filename = `${malla.nombre.toLowerCase().replace(/\s+/g, '-')}-${malla.anio}`;
+        }
+      }
+
+      const htmlContent = generarPlanEstudios(ciclos, malla);
       const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
 
-      return new NextResponse(pdfBuffer, {
+      return new NextResponse(pdfBuffer as unknown as BodyInit, {
         status: 200,
         headers: {
           'Content-Type': 'application/pdf',
-          'Content-Disposition': 'attachment; filename="plan-de-estudios.pdf"',
+          'Content-Disposition': `attachment; filename="${filename}.pdf"`,
           'Content-Length': pdfBuffer.length.toString()
         }
       });

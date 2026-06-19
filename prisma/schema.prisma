@@ -51,6 +51,17 @@ model Docente {
   declaraciones_horarias    DeclaracionHoraria[]
 }
 
+model MallaCurricular {
+  id_malla     Int      @id @default(autoincrement())
+  nombre       String
+  descripcion  String?
+  anio         Int
+  activo       Boolean  @default(true)
+  cursos       Curso[]
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
+}
+
 model Curso {
   id_curso               Int                  @id @default(autoincrement())
   codigo                 String               @unique
@@ -61,12 +72,14 @@ model Curso {
   prerequisitos          String?
   activo                 Boolean              @default(true)
   id_ciclo               Int?
+  id_malla               Int?
   tipo_curso             String               @default("linea_carrera")
   horas_teoria           Int                  @default(0)
   horas_practica         Int                  @default(0)
   horas_laboratorio      Int                  @default(0)
   departamento_responsable String?
   ciclo_rel              Ciclo?               @relation(fields: [id_ciclo], references: [id_ciclo])
+  malla_rel              MallaCurricular?     @relation(fields: [id_malla], references: [id_malla])
   curso_ambientes        CursoAmbiente[]
   docente_cursos         DocenteCurso[]
   grupos                 Grupo[]

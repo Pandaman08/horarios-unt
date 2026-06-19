@@ -43,6 +43,7 @@ import {
   FileDown
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -77,6 +78,7 @@ interface Curso {
   maximo_docentes: number;
   activo: boolean;
   id_ciclo?: number | null;
+  id_malla?: number | null;
   departamento_responsable?: string;
   prerequisitos_rel: Prerequisito[];
 }
@@ -89,12 +91,25 @@ interface Ciclo {
   cursos: Curso[];
 }
 
+interface MallaCurricular {
+  id_malla: number;
+  nombre: string;
+  descripcion?: string;
+  anio: number;
+  activo: boolean;
+  cursos: Curso[];
+}
+
 export function PlanEstudiosClient() {
   const { data: session } = useSession();
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
+  const [mallas, setMallas] = useState<MallaCurricular[]>([]);
+  const [selectedMalla, setSelectedMalla] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMallaDialogOpen, setIsMallaDialogOpen] = useState(false);
   const [editingCurso, setEditingCurso] = useState<Curso | null>(null);
+  const [editingMalla, setEditingMalla] = useState<MallaCurricular | null>(null);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
@@ -117,6 +132,7 @@ export function PlanEstudiosClient() {
     codigo: "",
     nombre: "",
     id_ciclo: "",
+    id_malla: "",
     tipo_curso: "especializacion",
     creditos: "0",
     horas_teoria: "0",
@@ -127,28 +143,83 @@ export function PlanEstudiosClient() {
     departamento_responsable: "",
   });
 
+  const [mallaFormData, setMallaFormData] = useState({
+    nombre: "",
+    descripcion: "",
+    anio: new Date().getFullYear().toString(),
+  });
+
   useEffect(() => {
     fetchPlanEstudios();
+    fetchMallas();
   }, []);
 
   const fetchPlanEstudios = async () => {
     try {
-      const res = await fetch("/api/plan-estudios");
-      if (!res.ok) throw new Error("Error al cargar plan de estudios");
-      const data = await res.json();
+      console.log('[PlanEstudiosClient] Fetching plan de estudios...');
+      const res = await fetch('/api/plan-estudios');
+      console.log('[PlanEstudiosClient] Response status:', res.status);
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        console.error('[PlanEstudiosClient] Failed to parse response as JSON:', parseErr);
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      if (!res.ok) {
+        console.error('[PlanEstudiosClient] Error response:', data);
+        throw new Error(data?.error || 'Error al cargar plan de estudios');
+      }
+
+      console.log('[PlanEstudiosClient] Data received:', data);
       setCiclos(Array.isArray(data) ? data : []);
 
       // Collect all courses for prerequisitos selector
       const courses: Curso[] = [];
-      data.forEach((ciclo: Ciclo) => {
-        ciclo.cursos.forEach((curso: Curso) => courses.push(curso));
+      (Array.isArray(data) ? data : []).forEach((ciclo: Ciclo) => {
+        (ciclo.cursos || []).forEach((curso: Curso) => courses.push(curso));
       });
       setAllCursos(courses);
     } catch (error: any) {
-      console.error("Error al cargar plan de estudios:", error);
-      toast.error(error.message || "Error al cargar plan de estudios");
+      console.error('[PlanEstudiosClient] Error al cargar plan de estudios:', error);
+      toast.error(error.message || 'Error al cargar plan de estudios');
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchMallas = async () => {
+    try {
+      console.log('[PlanEstudiosClient] Fetching mallas curriculares...');
+      const res = await fetch('/api/mallas-curriculares');
+      console.log('[PlanEstudiosClient] Response status:', res.status);
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        console.error('[PlanEstudiosClient] Failed to parse mallas response as JSON:', parseErr);
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      if (!res.ok) {
+        console.error('[PlanEstudiosClient] Error response from mallas:', data);
+        throw new Error(data?.error || 'Error al cargar mallas curriculares');
+      }
+
+      console.log('[PlanEstudiosClient] Mallas data received:', data);
+      const mallasData = Array.isArray(data) ? data : [];
+      setMallas(mallasData);
+      // Set first malla as selected if available
+      if (mallasData.length > 0) {
+        setSelectedMalla(mallasData[0].id_malla.toString());
+        setFormData(prev => ({ ...prev, id_malla: mallasData[0].id_malla.toString() }));
+      }
+    } catch (error: any) {
+      console.error('[PlanEstudiosClient] Error al cargar mallas curriculares:', error);
+      toast.error(error.message || 'Error al cargar mallas curriculares');
     }
   };
 
@@ -231,10 +302,12 @@ export function PlanEstudiosClient() {
 
   const handleEdit = (curso: Curso) => {
     setEditingCurso(curso);
+    const mallaId = curso.id_malla?.toString() || (mallas.length > 0 ? mallas[0].id_malla.toString() : "");
     setFormData({
       codigo: curso.codigo,
       nombre: curso.nombre,
       id_ciclo: curso.id_ciclo?.toString() || "",
+      id_malla: curso.id_malla?.toString() || "",
       tipo_curso: curso.tipo_curso,
       creditos: curso.creditos.toString(),
       horas_teoria: curso.horas_teoria.toString(),
@@ -251,11 +324,55 @@ export function PlanEstudiosClient() {
     setIsDialogOpen(true);
   };
 
+  const handleMallaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const method = editingMalla ? "PUT" : "POST";
+    const url = editingMalla
+      ? `/api/mallas-curriculares/${editingMalla.id_malla}`
+      : "/api/mallas-curriculares";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mallaFormData),
+      });
+
+      if (res.ok) {
+        const newMalla = await res.json();
+        toast.success(editingMalla ? "Malla curricular actualizada" : "Malla curricular creada");
+        setIsMallaDialogOpen(false);
+        setEditingMalla(null);
+        resetMallaForm();
+        // Refresh mallas and select the new one
+        await fetchMallas();
+        if (!editingMalla) {
+          setSelectedMalla(newMalla.id_malla.toString());
+        }
+      } else {
+        toast.error("Error al guardar malla curricular");
+      }
+    } catch (error) {
+      toast.error("Error de conexión");
+    }
+  };
+
+  const handleEditMalla = (malla: MallaCurricular) => {
+    setEditingMalla(malla);
+    setMallaFormData({
+      nombre: malla.nombre,
+      descripcion: malla.descripcion || "",
+      anio: malla.anio.toString(),
+    });
+    setIsMallaDialogOpen(true);
+  };
+
   const resetForm = () => {
     setFormData({
       codigo: "",
       nombre: "",
       id_ciclo: "",
+      id_malla: "",
       tipo_curso: "especializacion",
       creditos: "0",
       horas_teoria: "0",
@@ -269,11 +386,25 @@ export function PlanEstudiosClient() {
     setEditingCurso(null);
   };
 
+  const resetMallaForm = () => {
+    setMallaFormData({
+      nombre: "",
+      descripcion: "",
+      anio: new Date().getFullYear().toString(),
+    });
+    setEditingMalla(null);
+  };
+
   const isAdminOrSecretaria = session?.user?.rol === "administrador" || session?.user?.rol === "secretaria" || session?.user?.rol === "administrador_sistema" || session?.user?.rol === "operador_horarios";
 
   // Filter courses for current cycle
   const filteredCiclos = ciclos.map((ciclo) => {
     let filteredCursos = ciclo.cursos;
+
+    // Filter by malla
+    if (selectedMalla !== "all") {
+      filteredCursos = filteredCursos.filter((c) => c.id_malla?.toString() === selectedMalla);
+    }
 
     // Filter by search term (name or code)
     if (searchTerm) {
@@ -336,7 +467,12 @@ export function PlanEstudiosClient() {
           <div className="flex items-center gap-3 w-full sm:w-auto">
             <Button
               onClick={() => {
-                window.open('/api/reportes/pdf?tipo=plan-estudios', '_blank');
+                const url = new URL('/api/reportes/pdf', window.location.origin);
+                url.searchParams.set('tipo', 'plan-estudios');
+                if (selectedMalla !== 'all') {
+                  url.searchParams.set('id_malla', selectedMalla);
+                }
+                window.open(url.toString(), '_blank');
               }}
               className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-sm shadow-lg"
             >
@@ -344,177 +480,290 @@ export function PlanEstudiosClient() {
               Descargar PDF
             </Button>
             {isAdminOrSecretaria && (
-              <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
-                <DialogTrigger asChild>
-                  <Button className="h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-lg shadow-primary/20 transition-all">
-                    <Plus className="mr-2 h-4 w-4" /> Nuevo Curso
-                  </Button>
-                </DialogTrigger>
-                <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
-                  <DialogHeader className="bg-primary p-6 text-primary-foreground">
-                    <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                      {editingCurso ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-                      {editingCurso ? "Editar Curso" : "Nuevo Curso"}
-                    </DialogTitle>
-                  </DialogHeader>
+              <>
+                {/* Show current malla info and edit button if malla is selected */}
+                {selectedMalla !== "all" && mallas.length > 0 && (
+                  <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-lg border border-purple-200">
+                    <span className="text-sm font-bold text-purple-800">
+                      {mallas.find(m => m.id_malla.toString() === selectedMalla)?.nombre}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8 hover:bg-purple-100 text-purple-700"
+                      onClick={() => {
+                        const malla = mallas.find(m => m.id_malla.toString() === selectedMalla);
+                        if (malla) {
+                          handleEditMalla(malla);
+                        }
+                      }}
+                    >
+                      <Edit className="h-4 w-4" />
+                    </Button>
+                  </div>
+                )}
 
-                  <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
-                        <Input
-                          value={formData.codigo}
-                          onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                          className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
-                          placeholder="1939"
-                          required
-                        />
-                      </div>
+                <Dialog open={isMallaDialogOpen} onOpenChange={(open) => { setIsMallaDialogOpen(open); if (!open) { setEditingMalla(null); resetMallaForm(); } }}>
+                  <DialogTrigger asChild>
+                    <Button className="h-10 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-lg">
+                      <Plus className="mr-2 h-4 w-4" /> Nueva Malla
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
+                    <DialogHeader className="bg-purple-600 p-6 text-white">
+                      <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                        {editingMalla ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                        {editingMalla ? "Editar Malla Curricular" : "Nueva Malla Curricular"}
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    <form onSubmit={handleMallaSubmit} className="p-6 space-y-5">
                       <div className="space-y-2">
                         <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
                         <Input
-                          value={formData.nombre}
-                          onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                          value={mallaFormData.nombre}
+                          onChange={(e) => setMallaFormData({ ...mallaFormData, nombre: e.target.value })}
                           className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
-                          placeholder="Introducción a la Ingeniería de Sistemas"
+                          placeholder="Ej: Plan de Estudios 2024"
                           required
                         />
                       </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
-                        <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
-                          <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
-                            <SelectValue placeholder="Seleccionar..." />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-border">
-                            {ciclos.map((c) => (
-                              <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="font-bold text-sm">
-                                {c.nombre}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
-                        <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
-                          <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent className="rounded-xl border-border">
-                            <SelectItem value="especializacion" className="font-bold text-sm">Especialización (S)</SelectItem>
-                            <SelectItem value="obligatorio" className="font-bold text-sm">Obligatorio (OB)</SelectItem>
-                            <SelectItem value="opcional" className="font-bold text-sm">Opcional (OP)</SelectItem>
-                            <SelectItem value="electivo" className="font-bold text-sm">Electivo (EL)</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-4 gap-4">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Créditos</Label>
+                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Año</Label>
                         <Input 
                           type="number" 
-                          min="1" 
-                          max="4" 
-                          value={formData.creditos} 
-                          onChange={(e) => {
-                            const val = e.target.value;
-                            if (val === "" || (parseInt(val) >= 1 && parseInt(val) <= 4)) {
-                              setFormData({ ...formData, creditos: val });
-                            }
-                          }} 
+                          value={mallaFormData.anio} 
+                          onChange={(e) => setMallaFormData({ ...mallaFormData, anio: e.target.value })} 
                           className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" 
+                          required
                         />
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">T</Label>
-                        <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">P</Label>
-                        <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
-                      </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">L</Label>
-                        <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
-                      </div>
-                    </div>
 
-                    <div className="grid grid-cols-2 gap-4">
                       <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
-                        <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Descripción (opcional)</Label>
+                        <Input
+                          value={mallaFormData.descripcion}
+                          onChange={(e) => setMallaFormData({ ...mallaFormData, descripcion: e.target.value })}
+                          className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                          placeholder="Descripción opcional"
+                        />
                       </div>
-                      <div className="space-y-2 flex items-center">
-                        <div className="flex items-center gap-3">
-                          <Switch
-                            id="activo"
-                            checked={formData.activo}
-                            onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)} className="h-11 rounded-xl font-bold text-sm px-6">Cancelar</Button>
+                        <Button type="submit" className="h-11 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm px-8 shadow-lg">
+                          {editingMalla ? "Actualizar" : "Crear"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
+                  <DialogTrigger asChild>
+                    <Button className="h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-lg shadow-primary/20 transition-all">
+                      <Plus className="mr-2 h-4 w-4" /> Nuevo Curso
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
+                    <DialogHeader className="bg-primary p-6 text-primary-foreground">
+                      <DialogTitle className="text-xl font-bold flex items-center gap-2">
+                        {editingCurso ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                        {editingCurso ? "Editar Curso" : "Nuevo Curso"}
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    <form onSubmit={handleSubmit} className="p-6 space-y-5">
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
+                          <Input
+                            value={formData.codigo}
+                            onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                            placeholder="1939"
+                            required
                           />
-                          <Label htmlFor="activo" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Activo</Label>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                          <Input
+                            value={formData.nombre}
+                            onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                            placeholder="Introducción a la Ingeniería de Sistemas"
+                            required
+                          />
                         </div>
                       </div>
-                    </div>
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
-                      <Input
-                        value={formData.departamento_responsable}
-                        onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
-                        className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
-                        placeholder="Ingeniería de Sistemas"
-                      />
-                    </div>
 
-                    <div className="space-y-2">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Prerequisitos</Label>
-                      <Select value={selectedPrerequisitos[0] || ""} onValueChange={(v) => setSelectedPrerequisitos([v])}>
-                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
-                          <SelectValue placeholder="Seleccionar prerequisitos..." />
-                        </SelectTrigger>
-                        <SelectContent className="rounded-xl border-border max-h-[300px]">
-                          {allCursos
-                            .filter((c) => !editingCurso || c.id_curso !== editingCurso.id_curso)
-                            .map((c) => (
-                              <SelectItem key={c.id_curso} value={c.codigo} className="font-bold text-sm">
-                                [{c.codigo}] {c.nombre}
-                              </SelectItem>
-                            ))}
-                        </SelectContent>
-                      </Select>
-                      <div className="flex flex-wrap gap-2 mt-2">
-                        {selectedPrerequisitos.map((codigo) => {
-                          const curso = allCursos.find((c) => c.codigo === codigo);
-                          return (
-                            <Badge key={codigo} variant="secondary" className="text-xs flex items-center gap-2">
-                              {curso?.nombre || codigo}
-                              <button
-                                type="button"
-                                onClick={() => setSelectedPrerequisitos(selectedPrerequisitos.filter((c) => c !== codigo))}
-                                className="ml-1 hover:text-red-500"
-                              >
-                                ×
-                              </button>
-                            </Badge>
-                          );
-                        })}
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+                          <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar..." />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {ciclos.map((c) => (
+                                <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="font-bold text-sm">
+                                  {c.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Malla Curricular</Label>
+                          <Select value={formData.id_malla} onValueChange={(v) => setFormData({ ...formData, id_malla: v })}>
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar malla" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {mallas.map((m) => (
+                                <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="font-bold text-sm">
+                                  {m.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
-                    </div>
 
-                    <div className="flex justify-end gap-3 pt-4">
-                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-sm px-6">Cancelar</Button>
-                      <Button type="submit" className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm px-8 shadow-lg shadow-primary/20 transition-all">
-                        {editingCurso ? "Actualizar" : "Crear"}
-                      </Button>
-                    </div>
-                  </form>
-                </DialogContent>
-              </Dialog>
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
+                          <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              <SelectItem value="especializacion" className="font-bold text-sm">Especialización (S)</SelectItem>
+                              <SelectItem value="obligatorio" className="font-bold text-sm">Obligatorio (OB)</SelectItem>
+                              <SelectItem value="opcional" className="font-bold text-sm">Opcional (OP)</SelectItem>
+                              <SelectItem value="electivo" className="font-bold text-sm">Electivo (EL)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-4 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Créditos</Label>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            max="4" 
+                            value={formData.creditos} 
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "" || (parseInt(val) >= 1 && parseInt(val) <= 4)) {
+                                setFormData({ ...formData, creditos: val });
+                              }
+                            }} 
+                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" 
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">T</Label>
+                          <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">P</Label>
+                          <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">L</Label>
+                          <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
+                          <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                        </div>
+                        <div className="space-y-2 flex items-center">
+                          <div className="flex items-center gap-3">
+                            <Switch
+                              id="activo"
+                              checked={formData.activo}
+                              onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                            />
+                            <Label htmlFor="activo" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Activo</Label>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
+                        <Input
+                          value={formData.departamento_responsable}
+                          onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
+                          className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                          placeholder="Ingeniería de Sistemas"
+                        />
+                      </div>
+
+                      <div className="space-y-2">
+                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Prerequisitos</Label>
+                        <div className="space-y-2">
+                          <SearchableSelect
+                            options={allCursos
+                              .filter((c) => {
+                                // Filter by selected malla
+                                const matchesMalla = formData.id_malla 
+                                  ? c.id_malla?.toString() === formData.id_malla 
+                                  : true;
+                                // Don't show current course if editing
+                                const notCurrentCourse = !editingCurso || c.id_curso !== editingCurso.id_curso;
+                                // Don't show already selected prerequisitos
+                                const notAlreadySelected = !selectedPrerequisitos.includes(c.codigo);
+                                return matchesMalla && notCurrentCourse && notAlreadySelected;
+                              })
+                              .map((c) => ({
+                                value: c.codigo,
+                                label: `[${c.codigo}] ${c.nombre}`
+                              }))}
+                            value=""
+                            onValueChange={(value) => {
+                              if (value) {
+                                setSelectedPrerequisitos([...selectedPrerequisitos, value]);
+                              }
+                            }}
+                            placeholder="Buscar y seleccionar prerequisitos..."
+                            emptyMessage="No hay cursos disponibles para esta malla curricular"
+                          />
+                          <div className="flex flex-wrap gap-2 mt-2">
+                            {selectedPrerequisitos.map((codigo) => {
+                              const curso = allCursos.find((c) => c.codigo === codigo);
+                              return (
+                                <Badge key={codigo} variant="secondary" className="text-xs flex items-center gap-2">
+                                  {curso?.nombre || codigo}
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedPrerequisitos(selectedPrerequisitos.filter((c) => c !== codigo))}
+                                    className="ml-1 hover:text-red-500"
+                                  >
+                                    ×
+                                  </button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex justify-end gap-3 pt-4">
+                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-sm px-6">Cancelar</Button>
+                        <Button type="submit" className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm px-8 shadow-lg shadow-primary/20 transition-all">
+                          {editingCurso ? "Actualizar" : "Crear"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </>
             )}
           </div>
         </div>
@@ -525,6 +774,20 @@ export function PlanEstudiosClient() {
             <Filter className="h-4 w-4 text-muted-foreground" />
             <span className="text-sm font-semibold text-muted-foreground">Filtros:</span>
           </div>
+          
+          <Select value={selectedMalla} onValueChange={setSelectedMalla}>
+            <SelectTrigger className="w-[180px] h-10 rounded-lg border-input bg-muted/50 font-semibold text-sm">
+              <SelectValue placeholder="Malla Curricular" />
+            </SelectTrigger>
+            <SelectContent className="rounded-lg border-border">
+              <SelectItem value="all">Todas las mallas</SelectItem>
+              {mallas.map((m) => (
+                <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="font-bold text-sm">
+                  {m.nombre}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
           
           <div className="relative flex-1 min-w-[200px]">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -671,15 +934,8 @@ export function PlanEstudiosClient() {
               totalCreditos += creditosCalculados;
             });
 
-            // Adjust total according to cycle number
-            if (displayCiclo) {
-              if (displayCiclo.numero === 1 || displayCiclo.numero === 5) {
-                totalCreditos = 23;
-              } else if (displayCiclo.numero !== 10) {
-                totalCreditos = 22;
-              }
-              // For cycle 10, keep the calculated total since all are specialty (Tipo S)
-            }
+            // Use actual calculated total, no forced values
+            let totalFinal = totalCreditos;
 
             if (displayCursos.length === 0 && !searchTerm && filterCiclo === "all") {
               return null;
@@ -781,7 +1037,7 @@ export function PlanEstudiosClient() {
                             Total de Créditos del Ciclo:
                           </TableCell>
                           <TableCell className="px-6 py-4 text-center text-xl text-blue-900">
-                            {totalCreditos}
+                            {totalFinal}
                           </TableCell>
                           {isAdminOrSecretaria && <TableCell></TableCell>}
                         </TableRow>

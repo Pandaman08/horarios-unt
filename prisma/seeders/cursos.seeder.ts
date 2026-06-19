@@ -1,6 +1,6 @@
 import { PrismaClient } from '@prisma/client';
 
-export async function seedCursos(prisma: PrismaClient) {
+export async function seedCursos(prisma: PrismaClient, idMalla?: number) {
   console.log('🌱 Sembrando Cursos...');
 
   // Obtener los ciclos para mapear número -> id_ciclo
@@ -136,8 +136,8 @@ export async function seedCursos(prisma: PrismaClient) {
   for (const curso of cursos) {
     await prisma.curso.upsert({
       where: { codigo: curso.codigo },
-      update: curso,
-      create: curso,
+      update: { ...curso, id_malla: idMalla },
+      create: { ...curso, id_malla: idMalla },
     });
     console.log(`✅ Curso ${curso.codigo} - ${curso.nombre} (Ciclo ${curso.id_ciclo}) asegurado.`);
   }

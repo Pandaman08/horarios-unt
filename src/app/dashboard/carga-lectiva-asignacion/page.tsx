@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
 import { 
   Search, 
@@ -26,6 +26,7 @@ import {
   SelectTrigger, 
   SelectValue 
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { 
   Table, 
   TableBody, 
@@ -64,13 +65,25 @@ interface Curso {
   id_curso: number;
   nombre: string;
   codigo: string;
-  ciclo_rel?: { numero: number };
+  maximo_docentes: number;
+  creditos: number;
+  horas_teoria: number;
+  horas_practica: number;
+  horas_laboratorio: number;
+  ciclo_rel?: { id_ciclo: number; numero: number; nombre: string };
+  malla_rel?: { id_malla: number; nombre: string; anio: number };
 }
 
 interface Grupo {
   id_grupo: number;
   id_curso: number;
   codigo_grupo: string;
+}
+
+interface MallaCurricular {
+  id_malla: number;
+  nombre: string;
+  anio: number;
 }
 
 interface CargaLectivaAsignada {
@@ -81,6 +94,60 @@ interface CargaLectivaAsignada {
   horas_semanales: number;
   grupos_asignados?: number | null;
 }
+
+// Componente SelectTrigger con efecto de texto desplazable
+const MarqueeSelectTrigger = ({ 
+  className, 
+  children, 
+  ...props 
+}: React.ComponentProps<typeof SelectTrigger>) => {
+  const containerRef = React.useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = React.useState(false);
+  const [isHovered, setIsHovered] = React.useState(false);
+
+  React.useEffect(() => {
+    const checkOverflow = () => {
+      if (containerRef.current) {
+        const span = containerRef.current.querySelector('span');
+        if (span) {
+          setIsOverflowing(span.scrollWidth > containerRef.current.clientWidth);
+        }
+      }
+    };
+    
+    checkOverflow();
+    const timer = setTimeout(checkOverflow, 100);
+    
+    return () => clearTimeout(timer);
+  }, [children]);
+
+  return (
+    <SelectTrigger 
+      className={className} 
+      {...props}
+      onMouseEnter={() => setIsHovered(true)}
+      onMouseLeave={() => setIsHovered(false)}
+    >
+      <div ref={containerRef} className="flex-1 overflow-hidden">
+        <span 
+          className={cn(
+            "whitespace-nowrap inline-block",
+            isOverflowing && "animate-marquee",
+            isOverflowing && !isHovered && "animate-active"
+          )}
+        >
+          {children}
+          {isOverflowing && (
+            <>
+              <span className="mx-4"></span>
+              {children}
+            </>
+          )}
+        </span>
+      </div>
+    </SelectTrigger>
+  );
+};
 
 export default function AsignacionCargaLectivaPage() {
   const { periodoSeleccionado, periodos } = usePeriodo();
@@ -101,8 +168,12 @@ export default function AsignacionCargaLectivaPage() {
   // Modal de Carga Lectiva
   const [editingDocente, setEditingDocente] = useState<DocenteDisp | null>(null);
   const [cursos, setCursos] = useState<Curso[]>([]);
+  const [mallas, setMallas] = useState<MallaCurricular[]>([]);
+  const [selectedMalla, setSelectedMalla] = useState<string>("all");
+  const [mallaFilaInicial, setMallaFilaInicial] = useState<string>("all");
   const [grupos, setGrupos] = useState<Grupo[]>([]);
-  const [cargasLectivas, setCargasLectivas] = useState<CargaLectivaAsignada[]>([]);
+  const [allCargasLectivas, setAllCargasLectivas] = useState<CargaLectivaAsignada[]>([]); // Todas las cargas
+  const [cargasLectivas, setCargasLectivas] = useState<CargaLectivaAsignada[]>([]); // Cargas filtradas por malla
   const [loadingModal, setLoadingModal] = useState(false);
   const [filtrarPorSemestre, setFiltrarPorSemestre] = useState(true);
 
@@ -122,6 +193,7 @@ export default function AsignacionCargaLectivaPage() {
     if (selectedPeriodo) {
       fetchDocentes();
       fetchCursos();
+      fetchMallas();
       fetchGrupos();
     }
   }, [selectedPeriodo, searchTerm, categoria, modalidad, orden]);
@@ -151,6 +223,16 @@ export default function AsignacionCargaLectivaPage() {
     }
   };
 
+  const fetchMallas = async () => {
+    try {
+      const res = await fetch("/api/mallas-curriculares");
+      const data = await res.json();
+      setMallas(data);
+    } catch (error) {
+      toast.error("Error al cargar mallas curriculares");
+    }
+  };
+
   const fetchGrupos = async () => {
     if (!selectedPeriodo) return;
     try {
@@ -162,33 +244,224 @@ export default function AsignacionCargaLectivaPage() {
     }
   };
 
+  // Cuando se abre el modal, inicializar con fila vacía al principio y todas las cargas
   const handleEditCarga = async (docente: DocenteDisp) => {
     setEditingDocente(docente);
     setLoadingModal(true);
+    setSelectedMalla("all"); // Reiniciar la selección de malla
+    setMallaFilaInicial("all"); // Reiniciar la malla de la fila inicial
     if (!selectedPeriodo) return;
 
     try {
       const res = await fetch(`/api/declaracion-horaria?idDocente=${docente.id_docente}&idPeriodo=${selectedPeriodo}`);
       const declaracion = await res.json();
       if (declaracion && declaracion.cargas_lectivas) {
-        setCargasLectivas(declaracion.cargas_lectivas.map((cl: any) => ({
-          id: cl.id_carga_lectiva,
-          id_curso: cl.id_curso,
-          id_grupo: cl.id_grupo,
-          tipo_clase: cl.tipo_clase,
-          horas_semanales: cl.horas_semanales,
-          grupos_asignados: cl.grupos_asignados
-        })));
+        // Inicializar con fila vacía al principio, luego todas las cargas
+        const todasLasCargas = [
+          { id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 }, // Fila vacía al principio
+          ...declaracion.cargas_lectivas.map((cl: any) => ({
+            id: cl.id_carga_lectiva,
+            id_curso: cl.id_curso,
+            id_grupo: cl.id_grupo,
+            tipo_clase: cl.tipo_clase,
+            horas_semanales: cl.horas_semanales,
+            grupos_asignados: cl.grupos_asignados
+          }))
+        ];
+        setAllCargasLectivas(todasLasCargas);
+        setCargasLectivas(todasLasCargas); // Inicialmente mostramos todas
       } else {
-        setCargasLectivas([]);
+        const inicial = [{ id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 }];
+        setAllCargasLectivas(inicial as CargaLectivaAsignada[]);
+        setCargasLectivas(inicial as CargaLectivaAsignada[]);
       }
     } catch (error) {
-      setCargasLectivas([]);
+      const inicial = [{ id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 }];
+      setAllCargasLectivas(inicial as CargaLectivaAsignada[]);
+      setCargasLectivas(inicial as CargaLectivaAsignada[]);
     } finally {
       setLoadingModal(false);
     }
   };
 
+  // Filtrar cargas por malla cuando cambie la selección (mantener fila vacía al principio con su estado actual)
+  useEffect(() => {
+    if (editingDocente) {
+      // Obtener todas las filas excepto la primera (vacía)
+      const filasNormales = allCargasLectivas.filter((_, index) => index !== 0);
+      
+      // Filtrar las filas normales por la malla seleccionada
+      const filtradas = filasNormales.filter(carga => {
+        const curso = cursos.find(c => c.id_curso === carga.id_curso);
+        if (selectedMalla === "all") return true;
+        return curso?.malla_rel?.id_malla?.toString() === selectedMalla;
+      });
+
+      // Añadir la fila vacía ACTUAL (preservando su estado) al principio
+      setCargasLectivas((prevCargas) => [
+        prevCargas[0] || { id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 },
+        ...filtradas
+      ]);
+    }
+  }, [selectedMalla, allCargasLectivas, cursos, editingDocente]);
+
+  // Actualizar las horas cuando se selecciona curso o tipo de clase
+  const actualizarHoras = (index: number) => {
+    const carga = cargasLectivas[index];
+    if (!carga.id_curso) return;
+    
+    const curso = cursos.find(c => c.id_curso === carga.id_curso);
+    if (curso) {
+      let horas = 0;
+      if (carga.tipo_clase === "teoria") horas = curso.horas_teoria || 0;
+      if (carga.tipo_clase === "practica") horas = curso.horas_practica || 0;
+      if (carga.tipo_clase === "laboratorio") horas = curso.horas_laboratorio || 0;
+      
+      // Actualizar la carga
+      const updatedCargas = [...cargasLectivas];
+      updatedCargas[index].horas_semanales = horas;
+      
+      // Si es la fila vacía (primera), también actualizamos allCargasLectivas
+      if (index === 0) {
+        const updatedAllCargas = [...allCargasLectivas];
+        updatedAllCargas[0] = { ...updatedCargas[0] };
+        setAllCargasLectivas(updatedAllCargas);
+      } else {
+        // Si es una fila normal, actualizamos allCargasLectivas
+        const updatedAllCargas = [...allCargasLectivas];
+        const idxEnAll = updatedAllCargas.findIndex(c => c.id === carga.id);
+        if (idxEnAll !== -1) {
+          updatedAllCargas[idxEnAll] = { ...updatedCargas[index] };
+          setAllCargasLectivas(updatedAllCargas);
+        }
+      }
+      
+      setCargasLectivas(updatedCargas);
+    }
+  };
+
+  const addCargaLectiva = (index: number) => {
+    const cargaAAgregar = cargasLectivas[index];
+    const cursoSeleccionado = cursos.find(c => c.id_curso === cargaAAgregar.id_curso);
+    
+    // Verificar que tenga un curso seleccionado
+    if (!cargaAAgregar.id_curso) {
+      toast.warning("Debes seleccionar un curso primero");
+      return;
+    }
+    
+    // Verificar que tenga un tipo de clase seleccionado válido
+    if (!cargaAAgregar.tipo_clase) {
+      toast.warning("Debes seleccionar un tipo de clase");
+      return;
+    }
+    
+    // Verificar que las horas semanales sean válidas
+    if (cargaAAgregar.horas_semanales < 0) {
+      toast.warning("Las horas semanales no pueden ser negativas");
+      return;
+    }
+    
+    if (cursoSeleccionado) {
+      // Verificar que las horas no excedan las máximas del tipo de clase
+      let maxHoras = 0;
+      if (cargaAAgregar.tipo_clase === "teoria") maxHoras = cursoSeleccionado.horas_teoria;
+      if (cargaAAgregar.tipo_clase === "practica") maxHoras = cursoSeleccionado.horas_practica;
+      if (cargaAAgregar.tipo_clase === "laboratorio") maxHoras = cursoSeleccionado.horas_laboratorio;
+      
+      if (cargaAAgregar.horas_semanales > maxHoras) {
+        toast.warning(`Las horas semanales no pueden exceder ${maxHoras} horas para este tipo de clase`);
+        return;
+      }
+      
+      // Verificar que el tipo de clase es válido para el curso
+      let tipoValido = false;
+      if (cargaAAgregar.tipo_clase === "teoria" && cursoSeleccionado.horas_teoria > 0) tipoValido = true;
+      if (cargaAAgregar.tipo_clase === "practica" && cursoSeleccionado.horas_practica > 0) tipoValido = true;
+      if (cargaAAgregar.tipo_clase === "laboratorio" && cursoSeleccionado.horas_laboratorio > 0) tipoValido = true;
+      
+      if (!tipoValido) {
+        toast.warning("El tipo de clase seleccionado no está disponible para este curso");
+        return;
+      }
+    }
+    
+    // Verificar que las horas sean válidas antes de agregar (para cursos con más de un docente)
+    let horasValidas = cargaAAgregar.horas_semanales;
+    if (cursoSeleccionado && cursoSeleccionado.maximo_docentes >= 2 && horasValidas === 0) {
+      let minHours = 0;
+      if (cargaAAgregar.tipo_clase === "teoria") minHours = cursoSeleccionado.horas_teoria > 0 ? 1 : 0;
+      if (cargaAAgregar.tipo_clase === "practica") minHours = cursoSeleccionado.horas_practica > 0 ? 1 : 0;
+      if (cargaAAgregar.tipo_clase === "laboratorio") minHours = cursoSeleccionado.horas_laboratorio > 0 ? 1 : 0;
+      horasValidas = minHours;
+    }
+    
+    const cargaFinal = { ...cargaAAgregar, horas_semanales: horasValidas };
+    
+    // Agregar la fila a las cargas normales y crear nueva fila vacía al principio
+    const updatedAllCargas = [
+      { id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 }, // Nueva fila vacía
+      { ...cargaFinal, id: Date.now() }, // La fila que se está agregando
+      ...allCargasLectivas.filter((_, idx) => idx !== 0) // Las filas normales existentes
+    ];
+    const typedCargaFinal = {
+      ...cargaFinal,
+      id: Date.now(),
+      tipo_clase: cargaFinal.tipo_clase as "teoria" | "practica" | "laboratorio"
+    };
+    const typedEmptyRow: CargaLectivaAsignada = { 
+      id_curso: 0, 
+      tipo_clase: "teoria", 
+      horas_semanales: 0, 
+      grupos_asignados: 0 
+    };
+    const typedAllCargas = allCargasLectivas.filter((_, idx) => idx !== 0);
+    const finalUpdatedAllCargas: CargaLectivaAsignada[] = [
+      typedEmptyRow,
+      typedCargaFinal,
+      ...typedAllCargas
+    ];
+    setAllCargasLectivas(finalUpdatedAllCargas);
+    
+    // También actualizar cargasLectivas para reflejar la nueva fila vacía
+    setCargasLectivas((prev) => {
+      const filasNormales = prev.filter((_, idx) => idx !== 0);
+      return [
+        { id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 }, // Nueva fila vacía
+        { ...cargaFinal, id: Date.now() }, // La fila que se está agregando
+        ...filasNormales
+      ];
+    });
+    
+    // Resetear la malla de la fila inicial
+    setMallaFilaInicial("all");
+    
+    toast.success("Curso agregado correctamente");
+  };
+
+  const removeCargaLectiva = (index: number) => {
+    // Obtener la carga que queremos eliminar
+    const cargaAEliminar = cargasLectivas[index];
+    
+    // Eliminar de allCargasLectivas
+    const updatedAllCargas = allCargasLectivas.filter(c => c.id !== cargaAEliminar.id);
+    
+    // Asegurar que siempre haya una fila vacía al principio
+    if (updatedAllCargas[0]?.id_curso) {
+      updatedAllCargas.unshift({ id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 });
+    }
+    
+    setAllCargasLectivas(updatedAllCargas);
+  };
+
+  const totalHoras = cargasLectivas
+    .filter((_, index) => index !== 0)
+    .reduce((sum, carga) => {
+      const grupos = carga.grupos_asignados || 0;
+      const horas = carga.horas_semanales || 0;
+      return sum + (grupos * horas);
+    }, 0);
+  
   const handleSave = async () => {
     if (!editingDocente || !selectedPeriodo) return;
     setLoadingModal(true);
@@ -222,8 +495,9 @@ export default function AsignacionCargaLectivaPage() {
         declaracionId = newDeclaracion.id_declaracion;
       }
 
-      // Guardar nuevas cargas
-      for (const carga of cargasLectivas) {
+      // Guardar nuevas cargas (ignorar la primera fila vacía)
+      const cargasParaGuardar = allCargasLectivas.filter((_, index) => index !== 0);
+      for (const carga of cargasParaGuardar) {
         if (carga.id_curso) {
           await fetch("/api/carga-lectiva", {
             method: "POST",
@@ -249,29 +523,49 @@ export default function AsignacionCargaLectivaPage() {
       setLoadingModal(false);
     }
   };
-
-  const addCargaLectiva = () => {
-    setCargasLectivas([...cargasLectivas, { id_curso: 0, tipo_clase: "teoria", horas_semanales: 0, grupos_asignados: 0 }]);
-  };
-
-  const removeCargaLectiva = (index: number) => {
-    setCargasLectivas(cargasLectivas.filter((_, i) => i !== index));
-  };
-
-  const totalHoras = cargasLectivas.reduce((sum, carga) => {
-    const grupos = carga.grupos_asignados || 0;
-    const horas = carga.horas_semanales || 0;
-    return sum + (grupos * horas);
-  }, 0);
   
   const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
   const esLectura = !periodoActualObj?.activo || periodoActualObj?.estado === 'finalizado';
 
-  // Filtrar cursos habilitados para el semestre
+  // Filtrar cursos habilitados para el semestre y malla
   const cursosVisibles = cursos.filter(c => {
-    if (!filtrarPorSemestre || !periodoActualObj || !c.ciclo_rel) return true;
-    const isPar = c.ciclo_rel.numero % 2 === 0;
-    return periodoActualObj.semestre === 1 ? !isPar : isPar;
+    // Verificar malla
+    const matchesMalla = selectedMalla === "all" || 
+      (c.malla_rel && c.malla_rel.id_malla.toString() === selectedMalla);
+    
+    // Verificar semestre
+    let matchesSemestre = true;
+    if (filtrarPorSemestre && periodoActualObj && c.ciclo_rel) {
+      if (periodoActualObj.semestre === 1) {
+        matchesSemestre = c.ciclo_rel.numero % 2 !== 0; // Semestre 1 = ciclos impares
+      } else {
+        matchesSemestre = c.ciclo_rel.numero % 2 === 0; // Semestre 2 = ciclos pares
+      }
+    }
+    
+    return matchesMalla && matchesSemestre;
+  });
+  
+  // Filtrar cursos específicamente para la fila inicial
+  const cursosFilaInicial = cursos.filter(c => {
+    // Determinar qué malla usar
+    const mallaAUsar = selectedMalla === "all" ? mallaFilaInicial : selectedMalla;
+    
+    // Verificar malla
+    const matchesMalla = mallaAUsar === "all" || 
+      (c.malla_rel && c.malla_rel.id_malla.toString() === mallaAUsar);
+    
+    // Verificar semestre
+    let matchesSemestre = true;
+    if (filtrarPorSemestre && periodoActualObj && c.ciclo_rel) {
+      if (periodoActualObj.semestre === 1) {
+        matchesSemestre = c.ciclo_rel.numero % 2 !== 0; // Semestre 1 = ciclos impares
+      } else {
+        matchesSemestre = c.ciclo_rel.numero % 2 === 0; // Semestre 2 = ciclos pares
+      }
+    }
+    
+    return matchesMalla && matchesSemestre;
   });
 
   return (
@@ -300,9 +594,9 @@ export default function AsignacionCargaLectivaPage() {
             />
           </div>
           <Select value={categoria} onValueChange={setCategoria}>
-            <SelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+            <MarqueeSelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
               <SelectValue placeholder="Categoría" />
-            </SelectTrigger>
+            </MarqueeSelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="todos" className="text-[10px] font-bold">Todas las categorías</SelectItem>
               <SelectItem value="PRINCIPAL" className="text-[10px] font-bold">Principal</SelectItem>
@@ -312,9 +606,9 @@ export default function AsignacionCargaLectivaPage() {
             </SelectContent>
           </Select>
           <Select value={modalidad} onValueChange={setModalidad}>
-            <SelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+            <MarqueeSelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
               <SelectValue placeholder="Modalidad" />
-            </SelectTrigger>
+            </MarqueeSelectTrigger>
             <SelectContent className="rounded-xl">
               <SelectItem value="todos" className="text-[10px] font-bold">Todas las modalidades</SelectItem>
               <SelectItem value="NOMBRADO" className="text-[10px] font-bold">Nombrado</SelectItem>
@@ -431,24 +725,33 @@ export default function AsignacionCargaLectivaPage() {
           </DialogDescription>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3">
-            <div className="flex items-center gap-2">
-              <input 
-                type="checkbox" 
-                id="filterSemestre" 
-                checked={filtrarPorSemestre} 
-                onChange={(e) => setFiltrarPorSemestre(e.target.checked)}
-                className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
-              />
-              <Label htmlFor="filterSemestre" className="text-xs font-semibold cursor-pointer">
-                Mostrar cursos habilitados para el Semestre {periodoActualObj?.semestre === 1 ? "I" : "II"}
-              </Label>
+            <div className="flex items-center gap-4">
+              <div className="flex items-center gap-2">
+                <input 
+                  type="checkbox" 
+                  id="filterSemestre" 
+                  checked={filtrarPorSemestre} 
+                  onChange={(e) => setFiltrarPorSemestre(e.target.checked)}
+                  className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
+                />
+                <Label htmlFor="filterSemestre" className="text-xs font-semibold cursor-pointer">
+                  Mostrar cursos habilitados para el Semestre {periodoActualObj?.semestre === 1 ? "I" : "II"}
+                </Label>
+              </div>
+              <Select value={selectedMalla} onValueChange={setSelectedMalla}>
+                <MarqueeSelectTrigger className="w-[180px] h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+                  <SelectValue placeholder="Malla Curricular" />
+                </MarqueeSelectTrigger>
+                <SelectContent className="rounded-xl">
+                  <SelectItem value="all" className="text-[10px] font-bold">Todas las mallas</SelectItem>
+                  {mallas.map((m) => (
+                    <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[10px] font-bold">
+                      {m.nombre}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            {!esLectura && (
-              <Button onClick={addCargaLectiva} size="sm" className="h-8 gap-2 w-full sm:w-auto">
-                <Plus className="h-3.5 w-3.5" />
-                Agregar Curso
-              </Button>
-            )}
           </div>
 
           <div className="flex-1 overflow-y-auto space-y-4 pr-2">
@@ -458,76 +761,223 @@ export default function AsignacionCargaLectivaPage() {
                 <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando...</span>
               </div>
             ) : (
-              cargasLectivas.map((carga, index) => (
-                <div key={index} className="grid grid-cols-12 gap-3 items-end p-4 bg-muted/30 rounded-lg border border-border relative">
-                  <div className="col-span-12 sm:col-span-4 lg:col-span-4 space-y-1">
+              cargasLectivas.map((carga, index) => {
+                const esFilaVacia = index === 0;
+                const curso = cursos.find(c => c.id_curso === carga.id_curso);
+                
+                return (
+                <div key={index} className="grid grid-cols-12 gap-4 items-end p-4 bg-muted/30 rounded-lg border border-border relative">
+                  {esFilaVacia && selectedMalla === "all" && (
+                    <div className={`col-span-12 sm:col-span-2 lg:col-span-2 space-y-1 ${!(esFilaVacia && selectedMalla === "all") ? "hidden" : ""}`}>
+                      <Label className="text-[10px] uppercase font-bold text-muted-foreground">Plan de Estudios</Label>
+                      <Select
+                        disabled={esLectura}
+                        value={mallaFilaInicial}
+                        onValueChange={(value) => {
+                          setMallaFilaInicial(value);
+                          // Limpiar el curso seleccionado si cambiamos de malla
+                          const nuevasCargas = [...cargasLectivas];
+                          nuevasCargas[0].id_curso = 0;
+                          nuevasCargas[0].horas_semanales = 0;
+                          setCargasLectivas(nuevasCargas);
+                          const nuevasAllCargas = [...allCargasLectivas];
+                          nuevasAllCargas[0] = { ...nuevasCargas[0] };
+                          setAllCargasLectivas(nuevasAllCargas);
+                        }}
+                      >
+                        <MarqueeSelectTrigger className="h-8 w-full min-w-0 rounded-lg border-border bg-muted/50 font-bold text-[10px]">
+                          <SelectValue placeholder="Seleccionar plan" />
+                        </MarqueeSelectTrigger>
+                        <SelectContent className="rounded-xl">
+                          <SelectItem value="all" className="text-[10px] font-bold">Todos los planes</SelectItem>
+                          {mallas.map((m) => (
+                            <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[10px] font-bold">
+                              {m.nombre}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <div className="min-h-[18px]"></div>
+                    </div>
+                  )}
+                  <div className={`space-y-1 ${esFilaVacia && selectedMalla === "all" ? "col-span-12 sm:col-span-4 lg:col-span-4" : "col-span-12 sm:col-span-6 lg:col-span-6"}`}>
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Curso</Label>
-                    <Select
-                      disabled={esLectura}
-                      value={carga.id_curso?.toString() || ""}
-                      onValueChange={(value) => {
-                        const updated = [...cargasLectivas];
-                        updated[index].id_curso = parseInt(value);
-                        updated[index].id_grupo = null; // Resetear grupo al cambiar de curso
-                        setCargasLectivas(updated);
-                      }}
-                    >
-                      <SelectTrigger className="h-8 text-[11px] font-semibold truncate w-full">
-                        <SelectValue placeholder="Seleccionar curso" />
-                      </SelectTrigger>
-                      <SelectContent className="max-w-[400px]">
-                        {cursosVisibles.map((curso) => (
-                          <SelectItem 
-                            key={curso.id_curso} 
-                            value={curso.id_curso.toString()} 
-                            className="text-[11px]"
-                          >
-                            <Popover>
-                              <PopoverTrigger asChild>
-                                <div className="flex items-center gap-1 w-full cursor-help">
-                                  <span className="font-bold shrink-0">{curso.codigo}</span>
-                                  <span className="truncate max-w-[180px]">- {curso.nombre}</span>
-                                  {curso.ciclo_rel && <span className="text-[9px] opacity-60 shrink-0">(C{curso.ciclo_rel.numero})</span>}
-                                </div>
-                              </PopoverTrigger>
-                              <PopoverContent side="right" className="w-80 p-3 text-[11px] font-semibold bg-popover shadow-xl border-primary/20 z-[100]">
-                                <div className="flex flex-col gap-1">
-                                  <div className="text-primary font-black uppercase tracking-wider text-[9px]">Nombre completo del curso</div>
-                                  <div className="text-foreground leading-tight">{curso.nombre}</div>
-                                  <div className="mt-1 pt-1 border-t border-border flex justify-between text-[9px] text-muted-foreground uppercase">
-                                    <span>Código: {curso.codigo}</span>
-                                    {curso.ciclo_rel && <span>Ciclo: {curso.ciclo_rel.numero}</span>}
-                                  </div>
-                                </div>
-                              </PopoverContent>
-                            </Popover>
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    {esFilaVacia ? (
+                      <SearchableSelect
+                        disabled={esLectura}
+                        options={cursosFilaInicial.map((curso) => ({
+                          value: curso.id_curso.toString(),
+                          label: `${curso.codigo} - ${curso.nombre}${curso.ciclo_rel ? ` (C${curso.ciclo_rel.numero})` : ''}`
+                        }))}
+                        placeholder="Buscar curso por código o nombre"
+                        value={carga.id_curso?.toString() || ""}
+                        onValueChange={(value) => {
+                          // Primero, actualizamos cargasLectivas
+                          const nuevasCargas = [...cargasLectivas];
+                          nuevasCargas[0].id_curso = value ? parseInt(value) : 0;
+                          nuevasCargas[0].id_grupo = null;
+                          
+                          // Actualizar horas y tipo de clase automáticamente
+                          if (value) {
+                            const cursoSeleccionado = cursosFilaInicial.find(c => c.id_curso.toString() === value);
+                            if (cursoSeleccionado) {
+                              // Verificar si el tipo de clase actual es válido para este curso
+                              let tipoValido = false;
+                              if (nuevasCargas[0].tipo_clase === "teoria" && cursoSeleccionado.horas_teoria > 0) tipoValido = true;
+                              if (nuevasCargas[0].tipo_clase === "practica" && cursoSeleccionado.horas_practica > 0) tipoValido = true;
+                              if (nuevasCargas[0].tipo_clase === "laboratorio" && cursoSeleccionado.horas_laboratorio > 0) tipoValido = true;
+                              
+                              // Si no es válido, buscar el primer tipo disponible
+                              if (!tipoValido) {
+                                if (cursoSeleccionado.horas_teoria > 0) nuevasCargas[0].tipo_clase = "teoria";
+                                else if (cursoSeleccionado.horas_practica > 0) nuevasCargas[0].tipo_clase = "practica";
+                                else if (cursoSeleccionado.horas_laboratorio > 0) nuevasCargas[0].tipo_clase = "laboratorio";
+                              }
+                              
+                              let horas = 0;
+                              if (nuevasCargas[0].tipo_clase === "teoria") horas = cursoSeleccionado.horas_teoria || 0;
+                              if (nuevasCargas[0].tipo_clase === "practica") horas = cursoSeleccionado.horas_practica || 0;
+                              if (nuevasCargas[0].tipo_clase === "laboratorio") horas = cursoSeleccionado.horas_laboratorio || 0;
+                              nuevasCargas[0].horas_semanales = horas;
+                            }
+                          }
+                          
+                          setCargasLectivas(nuevasCargas);
+                          
+                          // Ahora actualizamos allCargasLectivas
+                          const nuevasAllCargas = [...allCargasLectivas];
+                          nuevasAllCargas[0] = { ...nuevasCargas[0] };
+                          setAllCargasLectivas(nuevasAllCargas);
+                        }}
+                        className="h-8"
+                      />
+                    ) : (
+                      <SearchableSelect
+                        disabled={esLectura}
+                        options={cursosVisibles.map((curso) => ({
+                          value: curso.id_curso.toString(),
+                          label: `${curso.codigo} - ${curso.nombre}${curso.ciclo_rel ? ` (C${curso.ciclo_rel.numero})` : ''}`
+                        }))}
+                        placeholder="Seleccionar curso"
+                        value={carga.id_curso?.toString() || ""}
+                        onValueChange={(value) => {
+                          const updated = [...cargasLectivas];
+                          updated[index].id_curso = value ? parseInt(value) : 0;
+                          updated[index].id_grupo = null; // Resetear grupo al cambiar de curso
+                          
+                          // Actualizar horas y tipo de clase automáticamente
+                          if (value) {
+                            const cursoSeleccionado = cursosVisibles.find(c => c.id_curso.toString() === value);
+                            if (cursoSeleccionado) {
+                              // Verificar si el tipo de clase actual es válido para este curso
+                              let tipoValido = false;
+                              if (updated[index].tipo_clase === "teoria" && cursoSeleccionado.horas_teoria > 0) tipoValido = true;
+                              if (updated[index].tipo_clase === "practica" && cursoSeleccionado.horas_practica > 0) tipoValido = true;
+                              if (updated[index].tipo_clase === "laboratorio" && cursoSeleccionado.horas_laboratorio > 0) tipoValido = true;
+                              
+                              // Si no es válido, buscar el primer tipo disponible
+                              if (!tipoValido) {
+                                if (cursoSeleccionado.horas_teoria > 0) updated[index].tipo_clase = "teoria";
+                                else if (cursoSeleccionado.horas_practica > 0) updated[index].tipo_clase = "practica";
+                                else if (cursoSeleccionado.horas_laboratorio > 0) updated[index].tipo_clase = "laboratorio";
+                              }
+                              
+                              let horas = 0;
+                              if (updated[index].tipo_clase === "teoria") horas = cursoSeleccionado.horas_teoria || 0;
+                              if (updated[index].tipo_clase === "practica") horas = cursoSeleccionado.horas_practica || 0;
+                              if (updated[index].tipo_clase === "laboratorio") horas = cursoSeleccionado.horas_laboratorio || 0;
+                              updated[index].horas_semanales = horas;
+                            }
+                          }
+                          
+                          setCargasLectivas(updated);
+                          
+                          // Ahora actualizamos allCargasLectivas
+                          const updatedAllCargas = [...allCargasLectivas];
+                          const idxEnAll = updatedAllCargas.findIndex(c => c.id === carga.id);
+                          if (idxEnAll !== -1) {
+                            updatedAllCargas[idxEnAll] = { ...updated[index] };
+                            setAllCargasLectivas(updatedAllCargas);
+                          }
+                        }}
+                        className="h-8"
+                      />
+                    )}
+                    <div className="min-h-[18px]">
+                      {curso && (
+                        <div className="text-[9px] text-amber-700 font-medium">
+                          Máx. {curso.maximo_docentes || 1} docente{curso.maximo_docentes > 1 ? 's' : ''}
+                        </div>
+                      )}
+                    </div>
                   </div>
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-2 space-y-1">
+                  <div className={`col-span-6 sm:col-span-2 lg:col-span-2 space-y-1 ${esFilaVacia && selectedMalla === "all" ? "" : ""}`}>
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Tipo</Label>
                     <Select
-                      disabled={esLectura}
+                      disabled={esLectura || !carga.id_curso}
                       value={carga.tipo_clase}
                       onValueChange={(value: any) => {
                         const updated = [...cargasLectivas];
                         updated[index].tipo_clase = value;
                         setCargasLectivas(updated);
+                        
+                        // Actualizar también allCargasLectivas
+                        const updatedAllCargas = [...allCargasLectivas];
+                        if (esFilaVacia) {
+                          updatedAllCargas[0] = { ...updated[0] };
+                        } else {
+                          const idxEnAll = updatedAllCargas.findIndex(c => c.id === carga.id);
+                          if (idxEnAll !== -1) {
+                            updatedAllCargas[idxEnAll] = { ...updated[index] };
+                          }
+                        }
+                        setAllCargasLectivas(updatedAllCargas);
+                        
+                        // Actualizar horas automáticamente
+                        if (carga.id_curso) {
+                          const cursoObj = cursos.find(c => c.id_curso === carga.id_curso);
+                          if (cursoObj) {
+                            let horas = 0;
+                            if (value === "teoria") horas = cursoObj.horas_teoria || 0;
+                            if (value === "practica") horas = cursoObj.horas_practica || 0;
+                            if (value === "laboratorio") horas = cursoObj.horas_laboratorio || 0;
+                            
+                            const updatedWithHours = [...updated];
+                            updatedWithHours[index].horas_semanales = horas;
+                            setCargasLectivas(updatedWithHours);
+                            
+                            const updatedAllWithHours = [...updatedAllCargas];
+                            if (esFilaVacia) {
+                              updatedAllWithHours[0].horas_semanales = horas;
+                            } else {
+                              const idxEnAllHours = updatedAllWithHours.findIndex(c => c.id === carga.id);
+                              if (idxEnAllHours !== -1) {
+                                updatedAllWithHours[idxEnAllHours].horas_semanales = horas;
+                              }
+                            }
+                            setAllCargasLectivas(updatedAllWithHours);
+                          }
+                        }
                       }}
                     >
-                      <SelectTrigger className="h-8 text-xs">
+                      <MarqueeSelectTrigger className="h-8 text-xs">
                         <SelectValue />
-                      </SelectTrigger>
+                      </MarqueeSelectTrigger>
                       <SelectContent>
-                        <SelectItem value="teoria" className="text-xs">Teoría</SelectItem>
-                        <SelectItem value="practica" className="text-xs">Práctica</SelectItem>
-                        <SelectItem value="laboratorio" className="text-xs">Laboratorio</SelectItem>
+                        {curso && curso.horas_teoria > 0 && (
+                          <SelectItem value="teoria" className="text-xs">Teoría</SelectItem>
+                        )}
+                        {curso && curso.horas_practica > 0 && (
+                          <SelectItem value="practica" className="text-xs">Práctica</SelectItem>
+                        )}
+                        {curso && curso.horas_laboratorio > 0 && (
+                          <SelectItem value="laboratorio" className="text-xs">Laboratorio</SelectItem>
+                        )}
                       </SelectContent>
                     </Select>
+                    <div className="min-h-[18px]"></div>
                   </div>
-                  <div className="col-span-6 sm:col-span-3 lg:col-span-2 space-y-1">
+                  <div className="col-span-6 sm:col-span-2 lg:col-span-2 space-y-1">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Grupos</Label>
                     <Select
                       disabled={esLectura || !carga.id_curso}
@@ -536,11 +986,23 @@ export default function AsignacionCargaLectivaPage() {
                         const updated = [...cargasLectivas];
                         updated[index].grupos_asignados = parseInt(value);
                         setCargasLectivas(updated);
+                        
+                        // Actualizar also allCargasLectivas
+                        const updatedAllCargas = [...allCargasLectivas];
+                        if (esFilaVacia) {
+                          updatedAllCargas[0] = { ...updated[0] };
+                        } else {
+                          const idxEnAll = updatedAllCargas.findIndex(c => c.id === carga.id);
+                          if (idxEnAll !== -1) {
+                            updatedAllCargas[idxEnAll] = { ...updated[index] };
+                          }
+                        }
+                        setAllCargasLectivas(updatedAllCargas);
                       }}
                     >
-                      <SelectTrigger className="h-8 text-xs">
+                      <MarqueeSelectTrigger className="h-8 text-xs">
                         <SelectValue placeholder={carga.id_curso ? "Número de grupos" : "N/A"} />
-                      </SelectTrigger>
+                      </MarqueeSelectTrigger>
                       <SelectContent>
                         {[0, 1, 2, 3, 4].map((num) => (
                           <SelectItem key={num} value={num.toString()} className="text-xs font-bold">
@@ -549,43 +1011,86 @@ export default function AsignacionCargaLectivaPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <div className="min-h-[18px]"></div>
                   </div>
-                  <div className="col-span-4 sm:col-span-2 lg:col-span-1 space-y-1">
+                  <div className="col-span-6 sm:col-span-1 lg:col-span-1 space-y-1">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Horas</Label>
                     <Input
-                      disabled={esLectura}
+                      disabled={esLectura || (curso && curso.maximo_docentes <= 1)}
                       type="number"
                       className="h-8 text-xs text-center font-bold"
                       value={carga.horas_semanales}
                       onChange={(e) => {
+                        let newHours = parseInt(e.target.value) || 0;
+                        
+                        // Validar horas no sean menores a 0 ni mayores al curso
+                        if (newHours < 0) newHours = 0;
+                        if (curso) {
+                          // Si curso permite 2+ docentes, horas no pueden ser 0
+                          if (curso.maximo_docentes >= 2 && newHours === 0) {
+                            let minHours = 0;
+                            if (carga.tipo_clase === "teoria") minHours = curso.horas_teoria > 0 ? 1 : 0;
+                            if (carga.tipo_clase === "practica") minHours = curso.horas_practica > 0 ? 1 : 0;
+                            if (carga.tipo_clase === "laboratorio") minHours = curso.horas_laboratorio > 0 ? 1 : 0;
+                            newHours = minHours;
+                          }
+                          
+                          let maxHours = 0;
+                          if (carga.tipo_clase === "teoria") maxHours = curso.horas_teoria || 0;
+                          if (carga.tipo_clase === "practica") maxHours = curso.horas_practica || 0;
+                          if (carga.tipo_clase === "laboratorio") maxHours = curso.horas_laboratorio || 0;
+                          if (newHours > maxHours) newHours = maxHours;
+                        }
+                        
                         const updated = [...cargasLectivas];
-                        updated[index].horas_semanales = parseInt(e.target.value) || 0;
+                        updated[index].horas_semanales = newHours;
                         setCargasLectivas(updated);
+                        
+                        // Actualizar también allCargasLectivas
+                        const updatedAllCargas = [...allCargasLectivas];
+                        if (esFilaVacia) {
+                          updatedAllCargas[0] = { ...updated[0] };
+                        } else {
+                          const idxEnAll = updatedAllCargas.findIndex(c => c.id === carga.id);
+                          if (idxEnAll !== -1) {
+                            updatedAllCargas[idxEnAll] = { ...updated[index] };
+                          }
+                        }
+                        setAllCargasLectivas(updatedAllCargas);
                       }}
                     />
+                    <div className="min-h-[18px]"></div>
                   </div>
                   {/* Este campo se reemplazó por el selector de grupos, lo ocultamos */}
                   <div className="col-span-0 hidden"></div>
-                  {!esLectura && (
-                    <div className="col-span-4 sm:col-span-2 lg:col-span-1 flex justify-end">
-                      <Button
-                        variant="destructive"
-                        size="icon"
-                        className="h-8 w-8"
-                        onClick={() => removeCargaLectiva(index)}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                  <div className={`col-span-6 sm:col-span-1 lg:col-span-1 flex flex-col space-y-1 items-center ${esLectura ? "hidden" : ""}`}>
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Acción</Label>
+                    <div className="flex justify-center w-full">
+                      {esFilaVacia ? (
+                        <Button
+                          variant="default"
+                          size="icon"
+                          className="h-8 w-8 bg-primary hover:bg-primary/90 transition-all duration-200 hover:scale-110 active:scale-95"
+                          onClick={() => addCargaLectiva(index)}
+                          disabled={!carga.id_curso}
+                        >
+                          <Plus className="h-3.5 w-3.5" />
+                        </Button>
+                      ) : (
+                        <Button
+                          variant="destructive"
+                          size="icon"
+                          className="h-8 w-8 transition-all duration-200 hover:scale-110 active:scale-95"
+                          onClick={() => removeCargaLectiva(index)}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
-                  )}
+                    <div className="min-h-[18px]"></div>
+                  </div>
                 </div>
-              ))
-            )}
-            
-            {!loadingModal && cargasLectivas.length === 0 && (
-              <div className="text-center py-12 border-2 border-dashed border-border rounded-lg bg-muted/10">
-                <p className="text-xs font-semibold text-muted-foreground">No hay cursos asignados para este docente.</p>
-              </div>
+              )})
             )}
           </div>
 

@@ -143,12 +143,14 @@ export function ConfiguradorVentanas() {
       const res = await fetch(`/api/ventanas?id_periodo=${selectedPeriodo}`);
       const data = await res.json();
       
-      // Cargar ventanas normales (para la sección original)
-      setVentanas(Array.isArray(data) ? data : []);
+      // Check if data has the 'ventanas' key (as per API)
+      const ventanasData = data.ventanas || data;
       
-      // También cargar ventanas de docentes si hay
-      if (data.ventanas && Array.isArray(data.ventanas)) {
-        setVentanasDocentes(data.ventanas);
+      if (Array.isArray(ventanasData)) {
+        // Cargar ventanas normales (para la sección original)
+        // We'll separate the data (but for now, let's just set both)
+        setVentanas(ventanasData); // For the original section
+        setVentanasDocentes(ventanasData); // For the docentes section
       }
       setLoading(false);
     } catch (error) {

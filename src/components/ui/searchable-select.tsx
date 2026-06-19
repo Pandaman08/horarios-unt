@@ -1,6 +1,6 @@
 "use client";
 
-import * as React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { Check, ChevronsUpDown, Search } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
@@ -22,6 +22,7 @@ interface SearchableSelectProps {
   placeholder?: string;
   emptyMessage?: string;
   className?: string;
+  disabled?: boolean;
 }
 
 export function SearchableSelect({
@@ -31,15 +32,36 @@ export function SearchableSelect({
   placeholder = "Seleccionar...",
   emptyMessage = "No se encontraron resultados.",
   className,
+  disabled = false,
 }: SearchableSelectProps) {
-  const [open, setOpen] = React.useState(false);
-  const [search, setSearch] = React.useState("");
+  const [open, setOpen] = useState(false);
+  const [search, setSearch] = useState("");
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [isOverflowing, setIsOverflowing] = useState(false);
+  const [isHovered, setIsHovered] = useState(false);
 
   const filteredOptions = options.filter((option) =>
     option.label.toLowerCase().includes(search.toLowerCase())
   );
 
   const selectedLabel = options.find((option) => option.value === value)?.label;
+  const displayText = selectedLabel || placeholder;
+
+  useEffect(() => {
+    const checkOverflow = () => {
+      if (containerRef.current) {
+        const span = containerRef.current.querySelector('span');
+        if (span) {
+          setIsOverflowing(span.scrollWidth > containerRef.current.clientWidth);
+        }
+      }
+    };
+    
+    checkOverflow();
+    const timer = setTimeout(checkOverflow, 100);
+    
+    return () => clearTimeout(timer);
+  }, [displayText]);
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -48,11 +70,31 @@ export function SearchableSelect({
           variant="outline"
           role="combobox"
           aria-expanded={open}
-          className={cn("w-full justify-between h-11 bg-muted/50 font-medium", className)}
+          disabled={disabled}
+          className={cn("w-full justify-between bg-muted/50 font-medium", className)}
+          onMouseEnter={() => setIsHovered(true)}
+          onMouseLeave={() => setIsHovered(false)}
         >
-          <span className="truncate">
-            {selectedLabel || placeholder}
-          </span>
+          <div 
+            ref={containerRef} 
+            className="flex-1 overflow-hidden"
+          >
+            <span 
+              className={cn(
+                "whitespace-nowrap inline-block",
+                isOverflowing && "animate-marquee",
+                isOverflowing && !isHovered && "animate-active"
+              )}
+            >
+              {displayText}
+              {isOverflowing && (
+                <>
+                  <span className="mx-4"></span>
+                  {displayText}
+                </>
+              )}
+            </span>
+          </div>
           <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
         </Button>
       </PopoverTrigger>
@@ -80,7 +122,8 @@ export function SearchableSelect({
                     "relative flex cursor-pointer select-none items-center rounded-sm px-2 py-2 text-sm outline-none hover:bg-accent hover:text-accent-foreground",
                     value === option.value && "bg-accent/50 text-accent-foreground"
                   )}
-                  onClick={() => {
+                  onClick={(e) => {
+                    e.stopPropagation();
                     onValueChange(option.value);
                     setOpen(false);
                     setSearch("");
