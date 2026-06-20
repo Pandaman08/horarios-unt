@@ -2,7 +2,37 @@ import { prisma } from '@/lib/prisma';
 import { addMinutes, format } from 'date-fns';
 import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 
+const prioridadCategoria = ['jefe_practica', 'auxiliar', 'asociado', 'principal'];
+
 export class GestorVentanasAtencion {
+  static async obtenerDocentesAprobadosOrdenados(id_periodo: number) {
+    const docentes = await prisma.docente.findMany({
+      where: {
+        activo: true,
+        declaraciones_horarias: {
+          some: {
+            id_periodo,
+            estado: 'APROBADO'
+          }
+        }
+      }
+    });
+
+    return [...docentes].sort((a, b) => {
+      if (a.modalidad === 'nombrado' && b.modalidad !== 'nombrado') return -1;
+      if (b.modalidad === 'nombrado' && a.modalidad !== 'nombrado') return 1;
+
+      const catA = prioridadCategoria.indexOf(a.categoria);
+      const catB = prioridadCategoria.indexOf(b.categoria);
+      if (catA !== catB) return catB - catA;
+
+      if (a.fecha_ingreso && b.fecha_ingreso) {
+        return new Date(a.fecha_ingreso).getTime() - new Date(b.fecha_ingreso).getTime();
+      }
+      return 0;
+    });
+  }
+
   /**
    * Calcula cuántos docentes hay por cada categoría y modalidad
    */
@@ -251,88 +281,62 @@ export class GestorVentanasAtencion {
       };
     }
 
-    const ahora = new Date();
-    const horaActual = format(ahora, 'HH:mm');
-    
-    // Usar la fecha local para construir el objeto de fecha para la BD
-    const hoySoloFechaStr = format(ahora, 'yyyy-MM-dd');
-    const hoySoloFecha = new Date(hoySoloFechaStr + 'T12:00:00Z');
-
-    // Buscar si hay una ventana activa para este docente
-    const ventana = await prisma.ventanaAtencion.findFirst({
-      where: {
-        activo: true,
-        modalidad: docente.modalidad,
-        categoria: docente.categoria,
-        fecha: hoySoloFecha,
-        hora_inicio: { lte: horaActual },
-        hora_fin: { gte: horaActual }
-      }
+    const periodoActivo = await prisma.periodoAcademico.findFirst({
+      where: { activo: true },
+      orderBy: { id_periodo: 'desc' }
     });
 
-    if (ventana) {
-      // Calcular cuántos segundos faltan para el fin de la ventana
-      const [horas, minutos] = ventana.hora_fin.split(':').map(Number);
-      const finVentana = new Date(ahora);
-      finVentana.setHours(horas, minutos, 0, 0);
-      
-      const segundosRestantes = Math.max(0, Math.floor((finVentana.getTime() - ahora.getTime()) / 1000));
-
-      return { 
-        tieneAcceso: true, 
-        segundos_restantes: segundosRestantes,
-        id_ventana: ventana.id_ventana 
-      };
-    }
-
-    // Si no hay ventana actual, buscar la próxima
-    const proxima = await prisma.ventanaAtencion.findFirst({
-      where: {
-        activo: true,
-        modalidad: docente.modalidad,
-        categoria: docente.categoria,
-        OR: [
-          { fecha: { gt: hoySoloFecha } },
-          { fecha: hoySoloFecha, hora_inicio: { gt: horaActual } }
-        ]
-      },
-      orderBy: [
-        { fecha: 'asc' },
-        { hora_inicio: 'asc' }
-      ]
-    });
-
-    if (proxima) {
+    if (!periodoActivo) {
       return { 
         tieneAcceso: false, 
         soloLectura: false,
-        mensaje: `Su turno está programado para el ${format(proxima.fecha, 'dd/MM/yyyy')} a las ${proxima.hora_inicio}. (Hora del servidor: ${horaActual})` 
+        mensaje: 'No hay período activo' 
       };
     }
 
-    // Verificar si ya pasó su turno para permitir modo lectura
-    const pasada = await prisma.ventanaAtencion.findFirst({
-      where: {
-        activo: true,
-        modalidad: docente.modalidad,
-        categoria: docente.categoria,
-        OR: [
-          { fecha: { lt: hoySoloFecha } },
-          { fecha: hoySoloFecha, hora_fin: { lt: horaActual } }
-        ]
-      },
-      orderBy: [
-        { fecha: 'desc' },
-        { hora_fin: 'desc' }
-      ]
+    // Obtener y ordenar docentes (misma lógica robusta y filtro exacto)
+    const docentesOrdenados = await this.obtenerDocentesAprobadosOrdenados(periodoActivo.id_periodo);
+
+    const indexDocente = docentesOrdenados.findIndex((d: any) => d.id_docente === id_docente);
+    const ventanas = await prisma.ventanaAtencion.findMany({
+      where: { id_periodo: periodoActivo.id_periodo },
+      orderBy: { orden_prioridad: 'asc' }
     });
 
-    if (pasada) {
-      return { 
-        tieneAcceso: false, 
-        soloLectura: true,
-        mensaje: `Su ventana de atención finalizó el ${format(pasada.fecha, 'dd/MM/yyyy')} a las ${pasada.hora_fin}. El sistema está en modo solo lectura.` 
-      };
+    const ahora = new Date();
+    const hoySoloFechaStr = format(ahora, 'yyyy-MM-dd');
+    const horaActual = format(ahora, 'HH:mm');
+
+    if (indexDocente !== -1 && ventanas.length > indexDocente) {
+      const ventana = ventanas[indexDocente];
+      const fechaInicio = new Date(ventana.fecha);
+      const [horasInicio, minutosInicio] = ventana.hora_inicio.split(':').map(Number);
+      const [horasFin, minutosFin] = ventana.hora_fin.split(':').map(Number);
+      
+      fechaInicio.setHours(horasInicio, minutosInicio, 0, 0);
+      const fechaFin = new Date(fechaInicio);
+      fechaFin.setHours(horasFin, minutosFin, 0, 0);
+
+      if (ahora < fechaInicio) {
+        return { 
+          tieneAcceso: false, 
+          soloLectura: false,
+          mensaje: `Su turno está programado para el ${format(fechaInicio, 'dd/MM/yyyy')} a las ${ventana.hora_inicio}. (Hora del servidor: ${horaActual})` 
+        };
+      } else if (ahora >= fechaInicio && ahora <= fechaFin) {
+        const segundosRestantes = Math.max(0, Math.floor((fechaFin.getTime() - ahora.getTime()) / 1000));
+        return { 
+          tieneAcceso: true, 
+          segundos_restantes: segundosRestantes,
+          id_ventana: ventana.id_ventana 
+        };
+      } else {
+        return { 
+          tieneAcceso: false, 
+          soloLectura: true,
+          mensaje: `Su ventana de atención finalizó el ${format(fechaFin, 'dd/MM/yyyy')} a las ${ventana.hora_fin}. El sistema está en modo solo lectura.` 
+        };
+      }
     }
 
     return { 

@@ -5,6 +5,7 @@ import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket-client";
 import { toast } from "sonner";
 import { format, addMinutes, parse } from "date-fns";
+import { obtenerMensajeErrorValidacion } from "@/lib/horarios/mensajesValidacion";
 
 import {
   Clock,
@@ -565,10 +566,7 @@ export function MatrizDisponibilidad({
           "horario-actualizado"
         );
       } else {
-        toast.error(
-          result.error ??
-            "Error al seleccionar"
-        );
+        toast.error(obtenerMensajeErrorValidacion(result));
       }
     } catch (error) {
       toast.error(
@@ -596,65 +594,63 @@ export function MatrizDisponibilidad({
   }
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between bg-card p-5 rounded-2xl border border-border shadow-sm">
-        <div className="flex items-center gap-4">
-          <Clock className="h-5 w-5 text-primary" />
-
-          <div>
-            <p className="text-xs font-black uppercase tracking-widest text-muted-foreground">
-              Intervalo
-            </p>
-
+    <div className="space-y-3">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card px-4 py-3 rounded-xl border border-border">
+        <div className="flex flex-wrap items-center gap-3">
+          <div className="flex items-center gap-2">
+            <Clock className="h-4 w-4 text-primary shrink-0" />
+            <span className="text-[10px] font-bold uppercase text-muted-foreground">Intervalo</span>
             <Select
               value={intervalo.toString()}
-              onValueChange={(v) =>
-                setIntervalo(
-                  Number(v)
-                )
-              }
+              onValueChange={(v) => setIntervalo(Number(v))}
             >
-              <SelectTrigger className="w-[120px]">
+              <SelectTrigger className="w-[100px] h-8 text-xs">
                 <SelectValue />
               </SelectTrigger>
-
               <SelectContent>
-                <SelectItem value="15">
-                  15 min
-                </SelectItem>
-
-                <SelectItem value="30">
-                  30 min
-                </SelectItem>
-
-                <SelectItem value="60">
-                  1 hora
-                </SelectItem>
+                <SelectItem value="15">15 min</SelectItem>
+                <SelectItem value="30">30 min</SelectItem>
+                <SelectItem value="60">1 hora</SelectItem>
               </SelectContent>
             </Select>
           </div>
+          <div className="hidden sm:block h-4 w-px bg-border" />
+          <div className="flex flex-wrap items-center gap-3 text-[10px]">
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded border border-border bg-background" />
+              Libre
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-amber-400/50 border border-amber-400/60" />
+              Mi reserva
+            </span>
+            <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-200" />
+              Ocupado
+            </span>
+            <span className="flex items-center gap-1.5">
+              <Lock className="h-3 w-3 text-muted-foreground" />
+              Receso
+            </span>
+          </div>
         </div>
-
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Info className="h-4 w-4" />
-
-          Receso:
-          12:00 PM - 1:00 PM
-        </div>
+        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
+          <Info className="h-3.5 w-3.5" />
+          Receso 12:00 – 13:00
+        </p>
       </div>
 
-      <div className="overflow-x-auto bg-card rounded-2xl border border-border shadow-sm">
-        <table className="w-full border-collapse min-w-[1000px]">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+        <table className="w-full border-collapse min-w-[880px]">
           <thead>
-            <tr className="bg-primary">
-              <th className="w-24 p-4 text-primary-foreground">
+            <tr className="bg-primary/90">
+              <th className="w-16 py-2.5 px-2 text-[10px] font-bold text-primary-foreground sticky left-0 bg-primary/90 z-10">
                 Hora
               </th>
-
               {DIAS.map((dia) => (
                 <th
                   key={dia.id}
-                  className="p-4 text-primary-foreground"
+                  className="py-2.5 px-2 text-[10px] font-bold text-primary-foreground"
                 >
                   {dia.nombre}
                 </th>
@@ -665,7 +661,7 @@ export function MatrizDisponibilidad({
           <tbody>
             {timeSlots.map((hora) => (
               <tr key={hora}>
-                <td className="p-3 text-center border border-border bg-muted/20 font-bold">
+                <td className="py-2 px-2 text-center border-b border-border bg-muted/30 text-[10px] font-semibold text-muted-foreground sticky left-0 z-10">
                   {hora}
                 </td>
 
@@ -694,22 +690,11 @@ export function MatrizDisponibilidad({
                         )
                       }
                       className={cn(
-                        "relative h-16 border border-border cursor-pointer transition-all",
-
-                        !info &&
-                          "hover:bg-emerald-500/10",
-
-                        info?.estado ===
-                          "ocupado" &&
-                          !esMia &&
-                          "bg-rose-500/10 cursor-not-allowed",
-
-                        esMia &&
-                          "bg-amber-500/20",
-
-                        info?.estado ===
-                          "bloqueado" &&
-                          "bg-muted/50 cursor-not-allowed"
+                        "relative h-12 border-b border-r border-border/60 cursor-pointer transition-colors",
+                        !info && "hover:bg-emerald-500/10",
+                        info?.estado === "ocupado" && !esMia && "bg-rose-500/10 cursor-not-allowed",
+                        esMia && "bg-amber-400/35 ring-1 ring-inset ring-amber-500/40",
+                        info?.estado === "bloqueado" && "bg-muted/60 cursor-not-allowed"
                       )}
                     >
                       {isProcessing && (

@@ -50,6 +50,7 @@ async function main() {
       '"PeriodoAcademico"',
       '"Ambiente"',
       '"Curso"',
+      '"MallaCurricular"',
       '"Ciclo"',
       '"Docente"',
       '"Usuario"'
@@ -78,7 +79,23 @@ async function main() {
     await seedCiclos(prisma);
     await seedPeriodos(prisma);
     await seedAmbientes(prisma);
-    await seedCursos(prisma);      // Necesita ciclos (ya están)
+    
+    // Crear la malla curricular inicial "Plan de Estudios 2018"
+    console.log('-> Creando malla curricular inicial...');
+    const mallaInicial = await prisma.mallaCurricular.create({
+
+      data: {
+        nombre: 'Plan de Estudios 2018',
+        descripcion: 'Malla curricular oficial de la carrera de Ingeniería de Sistemas',
+        anio: 2018,
+        activo: true
+      }
+    });
+    console.log('   ✓ Malla curricular "Plan de Estudios 2018" creada con éxito.');
+    
+    // Pasar la malla inicial al seeder de cursos
+    await seedCursos(prisma, mallaInicial.id_malla);
+    
     await seedDocentes(prisma);     // Necesita usuarios (se crean internamente)
     await seedUsuariosAdministrativos(prisma); // Opcional, crea admins y operadores
 

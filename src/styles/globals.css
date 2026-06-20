@@ -68,6 +68,36 @@
   }
 }
 
+@keyframes marquee {
+  0% {
+    transform: translateX(0);
+  }
+  100% {
+    transform: translateX(-50%);
+  }
+}
+
+.marquee-container {
+  overflow: hidden;
+  position: relative;
+}
+
+.animate-marquee {
+  display: inline-block;
+  white-space: nowrap;
+  animation: marquee 15s linear infinite;
+  animation-play-state: paused;
+}
+
+.animate-marquee.animate-active {
+  animation-play-state: running;
+}
+
+.animate-marquee:hover {
+  animation-play-state: paused;
+  transform: translateX(0);
+}
+
 :root {
   --font-size-base: 16px;
   --background: oklch(0.985 0.002 247);

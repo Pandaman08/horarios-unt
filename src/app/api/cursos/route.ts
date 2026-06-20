@@ -7,6 +7,7 @@ export async function GET() {
       where: { activo: true },
       include: {
         ciclo_rel: true,
+        malla_rel: true,
         docente_cursos: {
           where: { activo: true }
         },
@@ -34,9 +35,11 @@ export async function POST(request: Request) {
         maximo_docentes: parseInt(data.maximo_docentes) || 1,
         creditos: parseInt(data.creditos) || 0,
         id_ciclo: data.id_ciclo ? parseInt(data.id_ciclo) : null,
+        id_malla: data.id_malla ? parseInt(data.id_malla) : null,
         tipo_curso: data.tipo_curso || "linea_carrera",
         plan_estudios: data.plan_estudios,
         prerequisitos: data.prerequisitos,
+        departamento_responsable: data.departamento_responsable,
         activo: true
       }
     });

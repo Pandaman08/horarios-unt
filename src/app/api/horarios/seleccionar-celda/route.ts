@@ -2,6 +2,17 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { ValidadorHorario } from '@/services/horarios/ValidadorHorario';
 import { GestorSeleccionTemporal } from '@/services/horarios/GestorSeleccionTemporal';
+import { obtenerMensajeErrorValidacion } from '@/lib/horarios/mensajesValidacion';
+
+function respuestaRechazo(validacion: Awaited<ReturnType<typeof ValidadorHorario.validarAsignacion>>) {
+  return NextResponse.json(
+    {
+      ...validacion,
+      error: obtenerMensajeErrorValidacion(validacion),
+    },
+    { status: 400 }
+  );
+}
 
 export async function POST(request: Request) {
   try {
@@ -35,7 +46,7 @@ export async function POST(request: Request) {
           await GestorSeleccionTemporal.eliminarSeleccion(cruceConmigo.detalle.id_seleccion);
         }
       } else {
-        return NextResponse.json(validacion, { status: 400 });
+        return respuestaRechazo(validacion);
       }
     }
 

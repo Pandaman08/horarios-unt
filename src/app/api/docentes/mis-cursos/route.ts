@@ -2,114 +2,124 @@ import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
-import { Prisma } from '@prisma/client';
 
-// Tipo inferido para DocenteCurso con curso y grupos
-type DocenteCursoWithGrupos = Prisma.DocenteCursoGetPayload<{
-  include: {
-    curso: {
-      include: {
-        grupos: true;
-      };
-    };
-  };
-}>;
+function calcularMinutos(
+  hInicio: string | null | undefined,
+  hFin: string | null | undefined
+): number {
+  if (!hInicio || !hFin || !hInicio.includes(':') || !hFin.includes(':')) return 0;
 
-// Tipos para asignaciones
-type HorarioAsignadoType = Prisma.HorarioAsignadoGetPayload<object>;
+  try {
+    const [h1, m1] = hInicio.split(':').map(Number);
+    const [h2, m2] = hFin.split(':').map(Number);
 
-type SeleccionTemporalType =
-  Prisma.SeleccionTemporalHorarioGetPayload<object>;
+    if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
+
+    return h2 * 60 + m2 - (h1 * 60 + m1);
+  } catch {
+    return 0;
+  }
+}
+
+function horasRequeridasDesdeCurso(tipoClase: string, curso: {
+  horas_teoria?: number | null;
+  horas_laboratorio?: number | null;
+  horas_practica?: number | null;
+}): number {
+  const tipo = tipoClase.toLowerCase();
+
+  if (tipo.includes('teoria') || tipo.includes('teoría')) {
+    return curso.horas_teoria ?? 0;
+  }
+  if (tipo.includes('laboratorio')) {
+    return curso.horas_laboratorio ?? 0;
+  }
+  if (tipo.includes('practica') || tipo.includes('práctica')) {
+    return curso.horas_practica ?? 0;
+  }
+
+  return 0;
+}
 
 export async function GET(request: Request) {
   try {
     const session = await getServerSession(authOptions);
 
     if (!session) {
-      return NextResponse.json(
-        { error: 'No autorizado' },
-        { status: 401 }
-      );
+      return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
     const { searchParams } = new URL(request.url);
-
     const id_periodo = searchParams.get('id_periodo');
     const id_docente_manual = searchParams.get('id_docente_manual') || searchParams.get('id_docente');
 
     if (!id_periodo) {
-      return NextResponse.json(
-        { error: 'Falta id_periodo' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
     }
 
     const periodoId = parseInt(id_periodo, 10);
-
     if (isNaN(periodoId)) {
-      return NextResponse.json(
-        { error: 'id_periodo debe ser un número válido' },
-        { status: 400 }
-      );
+      return NextResponse.json({ error: 'id_periodo debe ser un número válido' }, { status: 400 });
     }
 
     let docenteId: number;
 
-    // Admin u operador (o si se pasa id_docente explícitamente)
     if (
       id_docente_manual &&
       (
         session.user.rol === 'administrador_sistema' ||
         session.user.rol === 'operador_horarios' ||
-        session.user.rol === 'docente' // Permitir que el docente pase su propio ID si es necesario
+        session.user.rol === 'docente'
       )
     ) {
       const parsedDocenteId = parseInt(id_docente_manual, 10);
-
       if (isNaN(parsedDocenteId)) {
-        return NextResponse.json(
-          { error: 'id_docente debe ser un número válido' },
-          { status: 400 }
-        );
+        return NextResponse.json({ error: 'id_docente debe ser un número válido' }, { status: 400 });
       }
-
       docenteId = parsedDocenteId;
     } else {
-      // Buscar por el id_usuario de la sesión
       const docente = await prisma.docente.findFirst({
-        where: {
-          id_usuario: session.user.id_usuario,
-        },
+        where: { id_usuario: session.user.id_usuario },
       });
 
       if (!docente) {
-        // Si no se encuentra como docente por id_usuario, intentar buscar por el id_docente de la sesión
         if (session.user.id_docente) {
           docenteId = Number(session.user.id_docente);
         } else {
-          return NextResponse.json(
-            { error: 'Docente no encontrado' },
-            { status: 404 }
-          );
+          return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
         }
       } else {
         docenteId = docente.id_docente;
       }
     }
 
-    // Cursos asignados
-    const cursosAsignados = await prisma.docenteCurso.findMany({
+    type CursoItem = {
+      id_curso: number;
+      nombre: string;
+      codigo: string;
+      tipo_clase: string;
+      horas_requeridas: number;
+      grupos_asignados?: number;
+      id_grupo?: number;
+    };
+
+    const cursosMap = new Map<string, CursoItem>();
+
+    const declaracion = await prisma.declaracionHoraria.findUnique({
       where: {
-        id_docente: docenteId,
-        activo: true,
+        id_docente_id_periodo: {
+          id_docente: docenteId,
+          id_periodo: periodoId,
+        },
       },
       include: {
-        curso: {
+        cargas_lectivas: {
           include: {
-            grupos: {
-              where: {
-                id_periodo: periodoId,
-                activo: true,
+            curso: {
+              include: {
+                grupos: {
+                  where: { id_periodo: periodoId, activo: true },
+                },
               },
             },
           },
@@ -117,106 +127,98 @@ export async function GET(request: Request) {
       },
     });
 
-    // Filtrar cursos con grupos y asegurar que curso existe
-    const cursosConGrupos = cursosAsignados.filter(
-      (dc) => dc.curso && dc.curso.grupos && dc.curso.grupos.length > 0
-    );
+    if (declaracion?.estado === 'APROBADO') {
+      for (const carga of declaracion.cargas_lectivas) {
+        if (!carga.curso) continue;
 
-    // Eliminar duplicados usando una clave única (id_curso + tipo_clase normalizado)
-    const uniqueKeys = Array.from(
-      new Set(
-        cursosConGrupos.map(
-          (c) => `${c.id_curso}:${c.tipo_clase.toLowerCase().trim()}`
-        )
-      )
-    );
+        const tieneGruposEnPeriodo = carga.curso.grupos.length > 0;
+        const tieneGruposDeclarados =
+          (carga.grupos_asignados ?? 0) > 0 || carga.id_grupo != null;
 
-    const uniqueCursos = uniqueKeys
-      .map((key) => {
-        const [id, tipo] = key.split(':');
-        return cursosConGrupos.find(
-          (c) =>
-            c.id_curso === parseInt(id, 10) &&
-            c.tipo_clase.toLowerCase().trim() === tipo
-        );
-      })
-      .filter((c): c is typeof cursosConGrupos[0] => c !== undefined);
+        if (!tieneGruposEnPeriodo && !tieneGruposDeclarados) continue;
 
-    // Calcular progreso
-    const progreso = await Promise.all(
-      uniqueCursos.map(
-        async (dc) => {
-          const asignaciones = await prisma.horarioAsignado.findMany({
-            where: {
-              id_docente: docenteId,
-              id_curso: dc.id_curso,
-              tipo_clase: dc.tipo_clase,
-              id_periodo: periodoId,
-            },
-          });
+        const key = `${carga.id_curso}:${carga.tipo_clase.toLowerCase().trim()}`;
+        const horasDeclaradas = carga.horas_semanales * (carga.grupos_asignados || 1);
 
-          const temporales = await prisma.seleccionTemporalHorario.findMany({
-            where: {
-              id_docente: docenteId,
-              id_curso: dc.id_curso,
-              tipo_clase: dc.tipo_clase,
-              id_periodo: periodoId,
-              fecha_expiracion: {
-                gt: new Date(),
+        cursosMap.set(key, {
+          id_curso: carga.id_curso,
+          nombre: carga.curso.nombre,
+          codigo: carga.curso.codigo,
+          tipo_clase: carga.tipo_clase,
+          horas_requeridas: horasDeclaradas > 0
+            ? horasDeclaradas
+            : horasRequeridasDesdeCurso(carga.tipo_clase, carga.curso),
+          grupos_asignados: carga.grupos_asignados ?? undefined,
+          id_grupo: carga.id_grupo ?? undefined,
+        });
+      }
+    }
+
+    if (cursosMap.size === 0) {
+      const cursosAsignados = await prisma.docenteCurso.findMany({
+        where: { id_docente: docenteId, activo: true },
+        include: {
+          curso: {
+            include: {
+              grupos: {
+                where: { id_periodo: periodoId, activo: true },
               },
             },
-          });
+          },
+        },
+      });
 
-          let minutosTotales = 0;
+      for (const dc of cursosAsignados) {
+        if (!dc.curso || dc.curso.grupos.length === 0) continue;
 
-          const calcularMinutos = (
-            hInicio: string | null | undefined,
-            hFin: string | null | undefined
-          ): number => {
-            if (!hInicio || !hFin || !hInicio.includes(':') || !hFin.includes(':')) return 0;
+        const key = `${dc.id_curso}:${dc.tipo_clase.toLowerCase().trim()}`;
+        if (cursosMap.has(key)) continue;
 
-            try {
-              const [h1, m1] = hInicio.split(':').map(Number);
-              const [h2, m2] = hFin.split(':').map(Number);
-              
-              if (isNaN(h1) || isNaN(m1) || isNaN(h2) || isNaN(m2)) return 0;
+        cursosMap.set(key, {
+          id_curso: dc.id_curso,
+          nombre: dc.curso.nombre,
+          codigo: dc.curso.codigo,
+          tipo_clase: dc.tipo_clase,
+          horas_requeridas: horasRequeridasDesdeCurso(dc.tipo_clase, dc.curso),
+        });
+      }
+    }
 
-              return (h2 * 60 + m2) - (h1 * 60 + m1);
-            } catch (e) {
-              return 0;
-            }
-          };
+    const progreso = await Promise.all(
+      Array.from(cursosMap.values()).map(async (curso) => {
+        const asignaciones = await prisma.horarioAsignado.findMany({
+          where: {
+            id_docente: docenteId,
+            id_curso: curso.id_curso,
+            tipo_clase: curso.tipo_clase,
+            id_periodo: periodoId,
+          },
+        });
 
-          asignaciones.forEach((a) => {
-            minutosTotales += calcularMinutos(a.hora_inicio, a.hora_fin);
-          });
+        const temporales = await prisma.seleccionTemporalHorario.findMany({
+          where: {
+            id_docente: docenteId,
+            id_curso: curso.id_curso,
+            tipo_clase: curso.tipo_clase,
+            id_periodo: periodoId,
+            fecha_expiracion: { gt: new Date() },
+          },
+        });
 
-          temporales.forEach((t) => {
-            minutosTotales += calcularMinutos(t.hora_inicio, t.hora_fin);
-          });
+        let minutosTotales = 0;
+        asignaciones.forEach((a) => {
+          minutosTotales += calcularMinutos(a.hora_inicio, a.hora_fin);
+        });
+        temporales.forEach((t) => {
+          minutosTotales += calcularMinutos(t.hora_inicio, t.hora_fin);
+        });
 
-          let horasRequeridas = 0;
-          const tipo = dc.tipo_clase.toLowerCase();
-
-          if (tipo.includes('teoria') || tipo.includes('teoría')) {
-            horasRequeridas = dc.curso.horas_teoria ?? 0;
-          } else if (tipo.includes('laboratorio')) {
-            horasRequeridas = dc.curso.horas_laboratorio ?? 0;
-          } else if (tipo.includes('practica') || tipo.includes('práctica')) {
-            horasRequeridas = dc.curso.horas_practica ?? 0;
-          }
-
-          return {
-            id_curso: dc.id_curso,
-            nombre: dc.curso.nombre,
-            codigo: dc.curso.codigo,
-            tipo_clase: dc.tipo_clase,
-            horas_requeridas: horasRequeridas,
-            horas_asignadas: Math.max(0, minutosTotales / 60),
-            confirmado: asignaciones.length > 0,
-          };
-        }
-      )
+        return {
+          ...curso,
+          horas_asignadas: Math.max(0, minutosTotales / 60),
+          confirmado: asignaciones.length > 0,
+        };
+      })
     );
 
     return NextResponse.json(progreso);

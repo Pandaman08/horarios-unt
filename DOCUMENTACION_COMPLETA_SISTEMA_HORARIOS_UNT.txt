@@ -1,0 +1,530 @@
+
+===============================================================================
+                       DOCUMENTACIÓN COMPLETA DEL SISTEMA
+                   DE GESTIÓN DE HORARIOS ACADÉMICOS UNT
+===============================================================================
+
+===============================================================================
+1. INTRODUCCIÓN AL SISTEMA
+===============================================================================
+
+El Sistema de Gestión de Horarios Académicos de la UNT es una plataforma web
+desarrollada con Next.js y Postgres (Prisma ORM) que permite la gestión
+integral de:
+  - Declaración y aprobación de carga horaria docente
+  - Gestión de disponibilidad docente
+  - Asignación de horarios académicos
+  - Administración de catálogos (docentes, cursos, ambientes, etc.)
+  - Generación de reportes y formatos oficiales
+  - Notificaciones a usuarios (docentes, operadores, administradores)
+  - Chatbot de asistencia
+
+
+===============================================================================
+2. TIPOS DE USUARIOS DEL SISTEMA Y SUS FUNCIONES
+===============================================================================
+
+El sistema cuenta con 3 roles principales definidos en la base de datos:
+
+-------------------------------------------------------------------------------
+2.1 ADMINISTRADOR DE SISTEMA (rol: "administrador_sistema")
+-------------------------------------------------------------------------------
+
+FUNCIONES PRINCIPALES:
+  - Gestión completa de catálogos académicos y administrativos
+  - Gestión de usuarios del sistema
+  - Visualización y gestión de notificaciones
+  - Visualización de estadísticas del sistema
+  - Generación de reportes oficiales
+  - Reset de base de datos (para desarrollo)
+  - Gestión de periodos académicos, mallas curriculares, ciclos
+  - Gestión de ventanas de atención para selección de horarios
+  - Gestión de disponibilidad docente
+  - Asignación de carga lectiva
+  - Aprobación de declaraciones de carga horaria
+
+MÓDULOS A LOS QUE TIENE ACCESO:
+  - Dashboard principal
+  - Catálogos (docentes, cursos, ambientes, ciclos, periodos, ventanas)
+  - Plan de Estudios
+  - Disponibilidad Docente
+  - Asignación Carga Lectiva
+  - Aprobación Carga Horaria
+  - Reportes
+  - Notificaciones
+  - Usuarios
+
+
+-------------------------------------------------------------------------------
+2.2 OPERADOR DE HORARIOS (rol: "operador_horarios")
+-------------------------------------------------------------------------------
+
+FUNCIONES PRINCIPALES:
+  - Gestión de plan de estudios
+  - Gestión de ventanas de atención
+  - Gestión de disponibilidad docente
+  - Asignación de carga lectiva
+  - Aprobación de declaraciones de carga horaria
+  - Visualización y gestión de notificaciones
+  - Generación de reportes oficiales
+  - Visualización de estadísticas del sistema
+
+MÓDULOS A LOS QUE TIENE ACCESO:
+  - Dashboard principal
+  - Plan de Estudios
+  - Ventanas de Atención
+  - Disponibilidad Docente
+  - Asignación Carga Lectiva
+  - Aprobación Carga Horaria
+  - Reportes
+  - Notificaciones
+
+
+-------------------------------------------------------------------------------
+2.3 DOCENTE (rol: "docente")
+-------------------------------------------------------------------------------
+
+FUNCIONES PRINCIPALES:
+  - Declaración de carga horaria (lectiva y no lectiva)
+  - Gestión de su disponibilidad horaria
+  - Selección de horarios académicos durante las ventanas de atención
+  - Visualización de su horario final asignado
+  - Visualización y gestión de notificaciones
+  - Generación de formatos oficiales de carga horaria
+  - Visualización de sus estadísticas personales
+
+MÓDULOS A LOS QUE TIENE ACCESO:
+  - Dashboard principal (con estadísticas personales)
+  - Carga Horaria (declaración personal)
+  - Disponibilidad Docente
+  - Selección de Horarios
+  - Mi Horario (vista del horario final)
+  - Notificaciones
+
+
+===============================================================================
+3. BASES DE DATOS Y RELACIONES PRINCIPALES
+===============================================================================
+
+El sistema utiliza una base de datos Postgres con las siguientes tablas clave:
+
+-------------------------------------------------------------------------------
+3.1 TABLAS DE USUARIOS Y PERSONAL
+-------------------------------------------------------------------------------
+- Usuario: Almacena credenciales y datos básicos de todos los usuarios del sistema
+  - Relacionado 1:1 con Docente (si el usuario es docente)
+
+- Docente: Almacena información detallada de cada docente
+  - Relacionado 1:N con DeclaracionHoraria (1 docente → N declaraciones por periodo)
+  - Relacionado 1:N con DisponibilidadDocente
+  - Relacionado 1:N con HorarioAsignado
+  - Relacionado 1:N con SeleccionTemporalHorario
+  - Relacionado 1:N con HistorialNotificaciones
+  - Relacionado 1:N con ColaNotificaciones
+
+
+-------------------------------------------------------------------------------
+3.2 TABLAS ACADÉMICAS
+-------------------------------------------------------------------------------
+- PeriodoAcademico: Almacena periodos académicos (semestres, cuatrimestres)
+  - Campo "activo" indica el periodo actual en el que se trabaja
+  - Estados posibles: "planificacion", "ejecucion", "finalizado"
+
+- MallaCurricular: Almacena mallas curriculares por año
+  - Relacionado 1:N con Curso
+
+- Curso: Almacena información de cursos (código, nombre, horas, créditos)
+  - Relacionado N:1 con MallaCurricular y Ciclo
+  - Relacionado 1:N con Grupo, CargaLectiva, DocenteCurso
+
+- Ciclo: Almacena ciclos académicos (I, II, III, ..., X)
+  - Relacionado 1:N con Curso y Grupo
+
+- Grupo: Almacena grupos de cursos por periodo
+  - Relacionado N:1 con Curso, PeriodoAcademico y Ciclo
+
+- Ambiente: Almacena ambientes académicos (salones, laboratorios)
+  - Tipo: "salon", "laboratorio", "aula_virtual", etc.
+
+
+-------------------------------------------------------------------------------
+3.3 TABLAS DE DECLARACIÓN DE CARGA HORARIA
+-------------------------------------------------------------------------------
+- DeclaracionHoraria: Almacena declaraciones de carga horaria por docente y periodo
+  - Estados (enum EstadoDeclaracion):
+    - BORRADOR: Docente está editando la declaración
+    - ENVIADO: Declaración enviada para aprobación
+    - APROBADO: Declaración aprobada por operador/administrador
+    - RECHAZADO: Declaración rechazada (requiere correcciones)
+
+- CargaLectiva: Almacena la carga lectiva de una declaración
+  - Campos: tipo_clase (teoría, práctica, laboratorio), horas_semanales, grupos_asignados
+
+- CargaNoLectiva: Almacena la carga no lectiva de una declaración
+  - Tipos (enum TipoCargaNoLectiva):
+    - PREPARACION_EVALUACION: Preparación y evaluación de clases
+    - TUTORIA: Consejería y tutoría
+    - INVESTIGACION: Investigación
+    - CAPACITACION: Capacitación docente
+    - GOBIERNO: Actividades de gobierno universitario
+    - ADMINISTRACION: Actividades de administración
+    - ASESORIA: Asesoría de tesis, exámenes profesionales y experiencia profesional
+    - RESPONSABILIDAD_SOCIAL: Responsabilidad social universitaria
+    - COMITES_TECNICOS: Comités técnicos y comisiones
+    - OTRO: Otro tipo de actividad
+
+
+-------------------------------------------------------------------------------
+3.4 TABLAS DE HORARIOS Y DISPONIBILIDAD
+-------------------------------------------------------------------------------
+- VentanaAtencion: Almacena ventanas de atención para selección de horarios por docentes
+  - Campos: fecha, orden_prioridad, modalidad, categoria, hora_inicio, hora_fin
+
+- DisponibilidadDocente: Almacena la disponibilidad (o restricciones) de un docente por periodo
+  - Campo "disponible": true = disponible, false = restricción
+  - Campo "es_restriccion": indica si es una restricción explícita
+
+- HorarioAsignado: Almacena horarios finales asignados
+  - Estados: "borrador", "confirmado"
+
+- SeleccionTemporalHorario: Almacena selecciones temporales de docentes durante ventanas de atención
+  - Tiene fecha de expiración para limpiar selecciones no confirmadas
+
+
+-------------------------------------------------------------------------------
+3.5 TABLAS DE NOTIFICACIONES
+-------------------------------------------------------------------------------
+- PreferenciasNotificacionDocente: Preferencias de notificación por docente
+  - Canales: "email", "telegram", "sms", etc.
+
+- HistorialNotificaciones: Historial completo de notificaciones enviadas
+
+- ColaNotificaciones: Cola de notificaciones pendientes de envío (para envío programado)
+
+- ConfiguracionNotificaciones: Configuración global de notificaciones
+
+
+===============================================================================
+4. FLUJO GENERAL DEL SISTEMA
+===============================================================================
+
+El ciclo completo de un periodo académico sigue este flujo:
+
+-------------------------------------------------------------------------------
+4.1 FASE 1: PREPARACIÓN DEL PERIODO (Administrador/Operador)
+-------------------------------------------------------------------------------
+1. Crear/activar PeriodoAcademico en estado "planificacion"
+2. Gestionar catálogos (si es necesario):
+   - Cursos, grupos, ambientes, mallas curriculares
+   - Docentes (si hay nuevos ingresos)
+3. Crear VentanasAtencion para la selección de horarios (por modalidad/categoría)
+
+
+-------------------------------------------------------------------------------
+4.2 FASE 2: DECLARACIÓN DE CARGA HORARIA (Docente → Aprobador)
+-------------------------------------------------------------------------------
+
+Paso 2.1: El Docente declara su carga horaria
+  1. Ingresa al módulo "Carga Horaria"
+  2. Completa datos personales (IBM, condición, categoría, dedicación)
+  3. Agrega Carga Lectiva:
+     - Selecciona cursos (y grupos, si aplica)
+     - Especifica tipo de clase (teoría/práctica/laboratorio)
+     - Especifica horas semanales y grupos asignados
+  4. Agrega Carga No Lectiva:
+     - Selecciona tipo de actividad
+     - Agrega descripción y horas semanales
+  5. Verifica que la suma total de horas coincida con su dedicación
+  6. Guarda como borrador o envía para aprobación
+
+Paso 2.2: El Administrador/Operador aprueba/rechaza la declaración
+  1. Ingresa al módulo "Aprobación Carga Horaria"
+  2. Visualiza todas las declaraciones en estado ENVIADO
+  3. Revisa detalle de la declaración:
+     - Datos del docente
+     - Carga lectiva y no lectiva
+     - Total de horas vs dedicación
+  4. Acciones:
+     - APROBAR: Marca la declaración como APROBADO
+     - RECHAZAR: Marca la declaración como RECHAZADO (requiere agregar observaciones)
+
+
+-------------------------------------------------------------------------------
+4.3 FASE 3: GESTIÓN DE DISPONIBILIDAD (Docente / Administrador/Operador)
+-------------------------------------------------------------------------------
+
+- El Docente puede ingresar al módulo "Disponibilidad Docente" para:
+  1. Marcar sus horarios disponibles
+  2. Establecer restricciones (horarios en los que NO puede atender clases)
+  3. Agregar motivos para las restricciones
+
+- El Administrador/Operador también puede gestionar la disponibilidad de cualquier docente
+
+
+-------------------------------------------------------------------------------
+4.4 FASE 4: ASIGNACIÓN DE HORARIOS (Administrador/Operador / Docente)
+-------------------------------------------------------------------------------
+
+Paso 4.1: Ventanas de Atención
+  1. Se abre una VentanaAtencion para un grupo específico de docentes (por modalidad/categoría)
+  2. Los docentes reciben notificación de la apertura de la ventana
+  3. Durante la ventana, los docentes pueden seleccionar sus horarios:
+     - Seleccionan curso, grupo, ambiente, día y horario
+     - El sistema valida disponibilidad y conflictos
+     - Las selecciones se guardan como SeleccionTemporalHorario
+
+Paso 4.2: Confirmación de Selecciones
+  1. Al cerrar la ventana o cuando el docente confirma, las selecciones temporales se convierten a HorarioAsignado
+
+Paso 4.3: Asignación Manual/Automática
+  - El Administrador/Operador puede:
+    1. Realizar asignaciones manuales de horarios
+    2. Usar la asignación automática del sistema
+    3. Detectar y resolver conflictos de horarios (docentes, ambientes)
+
+
+-------------------------------------------------------------------------------
+4.5 FASE 5: EJECUCIÓN DEL PERIODO
+-------------------------------------------------------------------------------
+1. El PeriodoAcademico se marca como estado "ejecucion"
+2. Los docentes pueden visualizar su horario final en "Mi Horario"
+3. Se generan reportes oficiales
+4. Se envían notificaciones de confirmación de horarios
+
+
+-------------------------------------------------------------------------------
+4.6 FASE 6: FINALIZACIÓN DEL PERIODO
+-------------------------------------------------------------------------------
+1. El PeriodoAcademico se marca como estado "finalizado"
+2. Se generan reportes históricos
+3. Se archivan los datos del periodo
+
+
+===============================================================================
+5. MÓDULOS ESPECÍFICOS Y SU FUNCIONAMIENTO
+===============================================================================
+
+-------------------------------------------------------------------------------
+5.1 MÓDULO DE DASHBOARD
+-------------------------------------------------------------------------------
+
+- Dashboard Principal (Administrador/Operador):
+  - Muestra estadísticas generales:
+    - Cantidad de docentes, cursos, ambientes
+    - Cantidad de declaraciones de carga horaria por estado
+    - Cantidad de conflictos pendientes
+    - Estadísticas de horarios asignados
+
+- Dashboard Docente:
+  - Muestra estadísticas personalizadas:
+    - Total de horas asignadas
+    - Carga lectiva vs no lectiva
+    - Próximas ventanas de atención
+    - Notificaciones pendientes
+
+
+-------------------------------------------------------------------------------
+5.2 MÓDULO DE CATÁLOGOS (Administrador)
+-------------------------------------------------------------------------------
+
+Submódulos:
+  - Docentes: CRUD de docentes (nombre, código, modalidad, categoría, dedicación, etc.)
+  - Cursos: CRUD de cursos (código, nombre, horas, créditos, prerequisitos, ciclo, malla)
+  - Ambientes: CRUD de ambientes (código, nombre, tipo, capacidad, equipamiento)
+  - Ciclos: CRUD de ciclos académicos
+  - Periodos: CRUD de periodos académicos
+  - Ventanas: CRUD de ventanas de atención para selección de horarios
+
+
+-------------------------------------------------------------------------------
+5.3 MÓDULO DE PLAN DE ESTUDIOS (Administrador/Operador)
+-------------------------------------------------------------------------------
+- Permite gestionar mallas curriculares
+- Permite asociar cursos a mallas y ciclos
+- Permite gestionar prerequisitos de cursos
+
+
+-------------------------------------------------------------------------------
+5.4 MÓDULO DE CARGA HORARIA (Docente)
+-------------------------------------------------------------------------------
+
+Características clave:
+  - Validación en tiempo real de horas totales vs dedicación
+  - Color coding para tipos de carga no lectiva
+  - Generación de 4 formatos oficiales en PDF:
+    1. Formato 1: Carga Horaria Asignada
+    2. Formato 2: Declaración Jurada
+    3. Formato 3: Sedes Descentralizadas
+    4. Formato 4: Horario Semanal
+  - Borrador automático: se guardan cambios para continuar luego
+
+
+-------------------------------------------------------------------------------
+5.5 MÓDULO DE APROBACIÓN DE CARGA HORARIA (Administrador/Operador)
+-------------------------------------------------------------------------------
+
+Características clave:
+  - Listado de declaraciones pendientes de aprobación
+  - Filtro por docente (nombre, IBM)
+  - Vista detallada de cada declaración
+  - Botones de aprobación y rechazo directos
+  - Campo obligatorio de observaciones para rechazo
+  - Paginación para manejar grandes volúmenes de declaraciones
+
+
+-------------------------------------------------------------------------------
+5.6 MÓDULO DE DISPONIBILIDAD DOCENTE
+-------------------------------------------------------------------------------
+- Vista de matriz semanal para marcar disponibilidad/restricciones
+- Drag & drop (si aplica) para facilitar la gestión
+- Visualización clara de horarios disponibles y ocupados
+
+
+-------------------------------------------------------------------------------
+5.7 MÓDULO DE SELECCIÓN DE HORARIOS (Docente)
+-------------------------------------------------------------------------------
+- Disponible solo durante las ventanas de atención activas
+- Vista de matriz horaria por día y hora
+- Muestra disponibilidad de ambientes y docentes
+- Validación en tiempo real de conflictos
+- Confirmación de selecciones
+
+
+-------------------------------------------------------------------------------
+5.8 MÓDULO DE MI HORARIO (Docente)
+-------------------------------------------------------------------------------
+- Vista consolidada del horario final asignado
+- Muestra curso, grupo, ambiente, día y hora
+- Posibilidad de exportar a PDF o Excel
+
+
+-------------------------------------------------------------------------------
+5.9 MÓDULO DE REPORTES (Administrador/Operador)
+-------------------------------------------------------------------------------
+- Reportes en PDF y Excel
+- Reportes disponibles:
+  - Horarios completos por periodo
+  - Carga horaria por docente
+  - Utilización de ambientes
+  - Listado de conflictos resueltos y pendientes
+  - Estadísticas generales del periodo
+
+
+-------------------------------------------------------------------------------
+5.10 MÓDULO DE NOTIFICACIONES
+-------------------------------------------------------------------------------
+
+- Para Docentes:
+  - Visualizar notificaciones recibidas
+  - Gestionar preferencias de notificación (canales, activos/inactivos)
+
+- Para Administrador/Operador:
+  - Enviar notificaciones masivas o individuales
+  - Ver historial de notificaciones enviadas
+  - Gestionar cola de notificaciones pendientes
+
+Canales de notificación disponibles:
+  - Email
+  - Telegram
+  - SMS (si está configurado)
+
+
+-------------------------------------------------------------------------------
+5.11 MÓDULO DE USUARIOS (Administrador)
+-------------------------------------------------------------------------------
+- CRUD de usuarios del sistema
+- Asignación de roles
+- Generación de códigos de acceso
+- Reset de contraseñas
+
+
+-------------------------------------------------------------------------------
+5.12 CHATBOT DE ASISTENCIA
+-------------------------------------------------------------------------------
+- Disponible en todas las páginas del dashboard
+- Responde preguntas frecuentes sobre el uso del sistema
+- Integrado con IA (Groq) para responder consultas naturales
+
+
+===============================================================================
+6. TECNOLOGÍAS UTILIZADAS
+===============================================================================
+
+FRONTEND:
+  - Next.js 16 (App Router)
+  - React 19
+  - TypeScript
+  - Tailwind CSS
+  - shadcn/ui (componentes UI)
+  - Lucide React (íconos)
+  - NextAuth.js (autenticación y autorización)
+  - Sonner (notificaciones toast)
+
+BACKEND:
+  - Next.js API Routes
+  - Prisma ORM (acceso a base de datos)
+  - PostgreSQL (base de datos)
+
+OTRAS HERRAMIENTAS:
+  - Node-cron (tareas programadas)
+  - Puppeteer (generación de PDFs)
+  - ExcelJS (generación de archivos Excel)
+  - Nodemailer (envío de emails)
+  - Groq SDK (integración con chatbot)
+  - Socket.io (actualizaciones en tiempo real, si aplica)
+
+
+===============================================================================
+7. FLUJO DE DATOS DETALLADO
+===============================================================================
+
+Ejemplo práctico: Declaración y aprobación de carga horaria
+
+1. Docente inicia sesión y accede a "Carga Horaria"
+2. Sistema carga el periodo académico activo
+3. Si ya existe una declaración para ese docente y periodo, la carga; sino, crea una nueva
+4. Docente edita datos, carga lectiva y no lectiva
+5. Docente hace clic en "Guardar Borrador" → sistema actualiza DeclaracionHoraria y CargaLectiva/CargaNoLectiva en estado BORRADOR asi como los Formatos de Declaración Oficiales que son Carga Horaria Asignada, Declaracion Jurada, Sedes Descentralizadasy Horario Semanal estos en formato PDF.
+6. Docente hace clic en "Enviar para Aprobación":
+   - Sistema valida que total horas == dedicación
+   - Si OK: cambia estado a ENVIADO, registra fecha_envio
+   - Si NO OK: muestra mensaje de error
+7. Operador inicia sesión y accede a "Aprobación Carga Horaria"
+8. Sistema carga todas las declaraciones en estado ENVIADO para el periodo activo
+9. Operador selecciona una declaración para revisar
+10. Operador hace clic en "Aprobar":
+    - Sistema actualiza estado a APROBADO, registra fecha_aprobacion
+    - Envía notificación al docente
+11. O Operador hace clic en "Rechazar":
+    - Valida que haya observaciones
+    - Actualiza estado a RECHAZADO, guarda observaciones
+    - Envía notificación al docente con las observaciones
+12. Docente recibe notificación y puede revisar el estado de su declaración
+
+
+
+===============================================================================
+8. VALIDACIONES Y REGLAS DE NEGOCIO IMPORTANTES
+===============================================================================
+
+- Carga horaria total debe coincidir EXACTAMENTE con la dedicación del docente
+- No se puede enviar a aprobación una declaración que no cumpla con la regla anterior
+- Las selecciones temporales de horarios expiran después de un tiempo configurado
+- No se puede asignar un docente a dos horarios que se solapen
+- No se puede asignar un ambiente a dos clases que se solapen
+- Las ventanas de atención se respetan por orden de prioridad y categoría
+
+
+===============================================================================
+9. CONCLUSION
+===============================================================================
+
+Este sistema está diseñado para optimizar todo el proceso de gestión de horarios
+académicos en la UNT, desde la declaración de carga horaria hasta la generación
+de horarios finales y reportes oficiales, con roles claros y validaciones
+estrictas para garantizar la integridad de los datos.
+
+
+===============================================================================
+FIN DE LA DOCUMENTACIÓN
+===============================================================================
