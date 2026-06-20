@@ -42,6 +42,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
+import { gruposPorDefectoSegunTipo } from "@/lib/grupos/cargaLectivaGrupos";
 
 import { 
   Popover,
@@ -217,7 +218,7 @@ export default function AsignacionCargaLectivaPage() {
     try {
       const res = await fetch("/api/cursos");
       const data = await res.json();
-      setCursos(data);
+      setCursos(Array.isArray(data) ? data : []);
     } catch (error) {
       toast.error("Error al cargar cursos");
     }
@@ -227,7 +228,7 @@ export default function AsignacionCargaLectivaPage() {
     try {
       const res = await fetch("/api/mallas-curriculares");
       const data = await res.json();
-      setMallas(data);
+      setMallas(Array.isArray(data) ? data : []);
     } catch (error) {
       toast.error("Error al cargar mallas curriculares");
     }
@@ -919,6 +920,7 @@ export default function AsignacionCargaLectivaPage() {
                       onValueChange={(value: any) => {
                         const updated = [...cargasLectivas];
                         updated[index].tipo_clase = value;
+                        updated[index].grupos_asignados = gruposPorDefectoSegunTipo(value);
                         setCargasLectivas(updated);
                         
                         // Actualizar también allCargasLectivas
@@ -978,7 +980,9 @@ export default function AsignacionCargaLectivaPage() {
                     <div className="min-h-[18px]"></div>
                   </div>
                   <div className="col-span-6 sm:col-span-2 lg:col-span-2 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Grupos</Label>
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                      {carga.tipo_clase === "laboratorio" ? "Grupos lab." : "Grupos"}
+                    </Label>
                     <Select
                       disabled={esLectura || !carga.id_curso}
                       value={carga.grupos_asignados?.toString() || "0"}
@@ -1004,14 +1008,29 @@ export default function AsignacionCargaLectivaPage() {
                         <SelectValue placeholder={carga.id_curso ? "Número de grupos" : "N/A"} />
                       </MarqueeSelectTrigger>
                       <SelectContent>
-                        {[0, 1, 2, 3, 4].map((num) => (
+                        {(carga.tipo_clase === "laboratorio" ? [1, 2, 3, 4] : [0, 1]).map((num) => (
                           <SelectItem key={num} value={num.toString()} className="text-xs font-bold">
-                            {num === 0 ? "Sin grupos" : `${num} grupo${num > 1 ? "s" : ""}`}
+                            {num === 0
+                              ? "Sin grupos"
+                              : carga.tipo_clase === "laboratorio"
+                                ? `${num} grupo${num > 1 ? "s" : ""} de lab`
+                                : `${num} grupo${num > 1 ? "s" : ""}`}
                           </SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="min-h-[18px]"></div>
+                    <div className="min-h-[18px]">
+                      {carga.id_curso && carga.tipo_clase === "laboratorio" && (carga.grupos_asignados || 0) > 0 && (
+                        <p className="text-[9px] text-blue-700 font-medium">
+                          El docente elegirá L1–L{carga.grupos_asignados} al armar horario
+                        </p>
+                      )}
+                      {carga.id_curso && carga.tipo_clase !== "laboratorio" && (carga.grupos_asignados || 0) > 0 && (
+                        <p className="text-[9px] text-muted-foreground font-medium">
+                          Sección del curso (A, B…)
+                        </p>
+                      )}
+                    </div>
                   </div>
                   <div className="col-span-6 sm:col-span-1 lg:col-span-1 space-y-1">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Horas</Label>

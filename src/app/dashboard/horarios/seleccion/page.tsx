@@ -294,13 +294,23 @@ export default function SeleccionHorariosPage() {
   };
 
   const fetchGrupos = async () => {
-    if (!cursoSeleccionado || !idPeriodo) return;
+    if (!cursoSeleccionado || !idPeriodo || !session?.user?.id_docente) return;
     try {
-      const res = await fetch(`/api/cursos/${cursoSeleccionado.id}/grupos?periodoId=${idPeriodo}`);
+      const params = new URLSearchParams({
+        id_periodo: idPeriodo,
+        id_curso: cursoSeleccionado.id.toString(),
+        tipo_clase: cursoSeleccionado.tipo,
+      });
+      const res = await fetch(`/api/docentes/mis-grupos?${params.toString()}`);
       if (res.ok) {
         const data = await res.json();
-        setGrupos(data);
-        if (data.length > 0 && !idGrupo) setIdGrupo(data[0].id_grupo.toString());
+        const lista = data.grupos || [];
+        setGrupos(lista);
+        if (lista.length > 0) {
+          setIdGrupo(lista[0].id_grupo.toString());
+        } else {
+          setIdGrupo("");
+        }
       }
     } catch (error) {
       toast.error("Error al cargar grupos");
@@ -325,7 +335,7 @@ export default function SeleccionHorariosPage() {
     );
     
     if (misTemporales.length === 0 && !hayHorariosGenerados) {
-      toast.warning("No tiene bloques reservados (en amarillo) para confirmar.");
+      toast.warning("Primero debe seleccionar bloques en la matriz (aparecerán en amarillo) antes de confirmar.");
       return;
     }
 
@@ -496,6 +506,131 @@ export default function SeleccionHorariosPage() {
                     </span>
                   )}
                 </div>
+
+                {(!yaConfirmo || modoEdicionManual) && (
+                  <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
+                    {/* Panel lateral fijo */}
+                    <aside className="w-full lg:w-[300px] xl:w-[320px] shrink-0 lg:sticky lg:top-4 space-y-3">
+                      <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
+                        <ProgresoCursos
+                          cursos={cursosProgreso}
+                          onSelectCurso={(id, tipo) => setCursoSeleccionado({ id, tipo })}
+                          cursoSeleccionadoId={cursoSeleccionado?.id}
+                          tipoSeleccionado={cursoSeleccionado?.tipo}
+                        />
+                      </div>
+
+                      {(cursoSeleccionado && (grupos.length > 0 || ambientesFiltrados.length > 0)) && (
+                        <div className="rounded-2xl border border-border bg-card shadow-sm p-4 space-y-3">
+                          <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                            Configuración del bloque
+                          </p>
+                          {grupos.length > 0 && (
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] font-semibold text-muted-foreground">
+                                Grupo
+                                {cursoSeleccionado.tipo === "laboratorio" && grupos.length > 1 && (
+                                  <span className="text-muted-foreground font-normal"> — asigne horario a cada lab</span>
+                                )}
+                              </Label>
+                              <Select value={idGrupo} onValueChange={setIdGrupo} disabled={soloLectura}>
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue placeholder="Seleccionar grupo" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {grupos.map((g) => (
+                                    <SelectItem key={g.id_grupo} value={g.id_grupo.toString()}>
+                                      {g.codigo_grupo || `Grupo ${g.id_grupo}`}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                          {ambientesFiltrados.length > 0 && (
+                            <div className="space-y-1.5">
+                              <Label className="text-[10px] font-semibold text-muted-foreground">Ambiente</Label>
+                              <Select value={idAmbiente} onValueChange={setIdAmbiente} disabled={soloLectura}>
+                                <SelectTrigger className="h-9 text-xs">
+                                  <SelectValue placeholder="Seleccionar ambiente" />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {ambientesFiltrados.map((a) => (
+                                    <SelectItem key={a.id_ambiente} value={a.id_ambiente.toString()}>
+                                      {a.codigo} — {a.nombre}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+                            </div>
+                          )}
+                        </div>
+                      )}
+                    </aside>
+
+                    {/* Matriz principal */}
+                    <div className="flex-1 min-w-0 w-full">
+                      {cursosProgreso.length === 0 ? (
+                        <Card className="p-8 border-dashed border-amber-200 bg-amber-50/30">
+                          <div className="flex items-start gap-3">
+                            <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-amber-800">Sin cursos asignados para horarios</p>
+                              <p className="text-xs text-amber-700 mt-1">
+                                Sus cursos aparecen cuando la <strong>carga horaria está aprobada</strong> y los cursos tienen <strong>grupos creados</strong> en el período activo.
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      ) : cursoSeleccionado && idGrupo && idAmbiente && session?.user?.id_docente ? (
+                        <div className="space-y-3">
+                          <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border text-xs">
+                            <span className="font-semibold text-foreground">
+                              {cursosProgreso.find(
+                                (c) => c.id_curso === cursoSeleccionado.id && c.tipo_clase === cursoSeleccionado.tipo
+                              )?.nombre || "Curso seleccionado"}
+                            </span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground capitalize">{cursoSeleccionado.tipo}</span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">
+                              Grupo {grupos.find((g) => g.id_grupo.toString() === idGrupo)?.codigo_grupo || idGrupo}
+                            </span>
+                            <span className="text-muted-foreground">·</span>
+                            <span className="text-muted-foreground">
+                              {ambientesFiltrados.find((a) => a.id_ambiente.toString() === idAmbiente)?.codigo}
+                            </span>
+                          </div>
+                          <MatrizDisponibilidad
+                          id_periodo={parseInt(idPeriodo)}
+                          id_ambiente={parseInt(idAmbiente)}
+                          id_docente_actual={session.user.id_docente}
+                          id_curso_actual={cursoSeleccionado.id}
+                          id_grupo_actual={parseInt(idGrupo)}
+                          tipo_clase_actual={cursoSeleccionado.tipo}
+                          soloLectura={soloLectura || (yaConfirmo && !modoEdicionManual)}
+                          onSelectionChange={() => {
+                            fetchDocenteCursos();
+                            verificarHorariosGenerados();
+                          }}
+                        />
+                        </div>
+                      ) : (
+                        <Card className="p-10 border-dashed border-border bg-muted/20">
+                          <div className="text-center space-y-2 max-w-sm mx-auto">
+                            <LayoutIcon className="h-10 w-10 text-muted-foreground/30 mx-auto" />
+                            <p className="text-sm font-semibold text-foreground">
+                              Seleccione un curso de la lista
+                            </p>
+                            <p className="text-xs text-muted-foreground">
+                              Luego elija grupo y ambiente. Haga clic en la matriz para reservar bloques en amarillo.
+                            </p>
+                          </div>
+                        </Card>
+                      )}
+                    </div>
+                  </div>
+                )}
 
                 {hayHorariosGenerados && !modoEdicionManual && yaConfirmo && (
                   <div className="bg-card p-6 rounded-2xl border border-border shadow-sm mt-6">

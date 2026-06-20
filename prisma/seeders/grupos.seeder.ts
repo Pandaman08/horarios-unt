@@ -58,10 +58,10 @@ export async function seedGrupos(prisma: PrismaClient) {
 
       for (const curso of cursosDelCiclo) {
         const tieneDosGrupos = cursosConDosGrupos.has(curso.codigo);
-        const gruposACrear = tieneDosGrupos ? ['A', 'B'] : ['A'];
+        const seccionesACrear = tieneDosGrupos ? ['A', 'B'] : ['A'];
+        const labsACrear = ['L1', 'L2', 'L3', 'L4'];
 
-        for (const letraGrupo of gruposACrear) {
-          const codigoGrupo = letraGrupo;
+        for (const codigoGrupo of [...seccionesACrear, ...labsACrear]) {
           try {
             await prisma.grupo.upsert({
               where: {

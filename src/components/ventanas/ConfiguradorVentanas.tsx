@@ -12,13 +12,6 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogTrigger,
-} from "@/components/ui/dialog";
-import {
   Select,
   SelectContent,
   SelectItem,
@@ -33,14 +26,10 @@ import {
   Wand2, 
   Trash2, 
   Clock, 
-  ShieldCheck,
   Loader2,
-  CalendarCheck,
-  RefreshCw,
-  Search,
-  Plus,
   Settings2,
-  CheckCircle
+  CheckCircle,
+  RefreshCw
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
@@ -63,9 +52,11 @@ export function ConfiguradorVentanas() {
   const [ventanas, setVentanas] = useState<Ventana[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [loading, setLoading] = useState(true);
-  const [isAutoDialogOpen, setIsAutoDialogOpen] = useState(false);
-  const [stats, setStats] = useState<any>(null);
-  const [isProcessing, setIsProcessing] = useState(false);
+  const [stats, setStats] = useState<{
+    docentes_aprobados?: number;
+    docentes_pendientes?: number;
+    ventanas_activas?: number;
+  } | null>(null);
 
   // Sincronizar con el periodo global
   useEffect(() => {
@@ -74,19 +65,15 @@ export function ConfiguradorVentanas() {
     }
   }, [periodoSeleccionado]);
 
-  const [autoFormData, setAutoFormData] = useState({
-    fecha_inicio: format(new Date(), "yyyy-MM-dd"),
-    hora_inicio_jornada: "08:00",
-    hora_fin_jornada: "18:00",
-    intervalo_por_docente: "15",
-  });
+  const [fechaInicio, setFechaInicio] = useState(format(new Date(), "yyyy-MM-dd"));
+  const [horaFinJornada, setHoraFinJornada] = useState("18:00");
 
-  // Estados para generación automática de horarios
+  // Configuración de ventanas / generación
   const [isGeneratingHorarios, setIsGeneratingHorarios] = useState(false);
   const [isResettingHorarios, setIsResettingHorarios] = useState(false);
-  const [modoGeneracion, setModoGeneracion] = useState<string>("automatico");
+  const [modoGeneracion, setModoGeneracion] = useState<string>("intervalo");
   const [horaInicioGeneracion, setHoraInicioGeneracion] = useState<string>("08:00");
-  const [intervaloMinutos, setIntervaloMinutos] = useState<string>("60");
+  const [intervaloMinutos, setIntervaloMinutos] = useState<string>("15");
   const [progresoGeneracion, setProgresoGeneracion] = useState<number>(0);
   const [logsGeneracion, setLogsGeneracion] = useState<string[]>([]);
   const [intervaloActivo, setIntervaloActivo] = useState<{
@@ -107,6 +94,7 @@ export function ConfiguradorVentanas() {
   useEffect(() => {
     if (selectedPeriodo && selectedPeriodo !== "undefined" && selectedPeriodo !== "") {
       fetchVentanas();
+      fetchStats();
     }
   }, [selectedPeriodo]);
 
@@ -129,8 +117,9 @@ export function ConfiguradorVentanas() {
   }, [intervaloActivo, modoGeneracion]);
 
   const fetchStats = async () => {
+    if (!selectedPeriodo) return;
     try {
-      const statsRes = await fetch("/api/ventanas?stats=true");
+      const statsRes = await fetch(`/api/ventanas?stats=true&id_periodo=${selectedPeriodo}`);
       const statsData = await statsRes.json();
       setStats(statsData);
     } catch (error) {
@@ -160,36 +149,110 @@ export function ConfiguradorVentanas() {
     }
   };
 
-  const handleAutoSchedule = async (e: React.FormEvent) => {
-    e.preventDefault();
+  const handleGenerar = async () => {
     if (!selectedPeriodo) {
-      toast.error("Seleccione un periodo primero");
+      toast.error("Por favor selecciona un período");
       return;
     }
 
-    setIsProcessing(true);
+    setIsGeneratingHorarios(true);
+    setProgresoGeneracion(0);
+    setLogsGeneracion([]);
+    setIntervaloActivo(null);
+    setTiempoRestante(null);
+    
     try {
-      const res = await fetch("/api/ventanas", {
+      if (modoGeneracion === "intervalo") {
+        setLogsGeneracion(["📋 Generando ventanas de atención para docentes con carga aprobada..."]);
+
+        const res = await fetch("/api/ventanas", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            id_periodo: selectedPeriodo,
+            fecha_inicio: fechaInicio,
+            hora_inicio_jornada: horaInicioGeneracion,
+            hora_fin_jornada: horaFinJornada,
+            intervalo_por_docente: intervaloMinutos,
+            modo: "incremental",
+          }),
+        });
+
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || "Error al generar ventanas");
+        }
+
+        setLogsGeneracion(prev => [
+          ...prev,
+          `✅ ${data.message}`,
+          `📋 Docentes con carga aprobada: ${data.docentes_aprobados ?? stats?.docentes_aprobados ?? 0}`,
+          `⏰ Ventanas creadas en esta ejecución: ${data.ventanas_creadas ?? 0}`,
+        ]);
+        setProgresoGeneracion(100);
+        toast.success(data.message || "Ventanas generadas correctamente");
+        fetchVentanas();
+        fetchStats();
+        return;
+      }
+
+      // Modo automático: asigna horarios y crea ventanas para docentes aprobados
+      setLogsGeneracion(prev => [...prev, "📋 Ejecutando asignación automática de horarios y ventanas..."]);
+      
+      const res = await fetch("/api/horarios/asignacion-automatica", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
-          ...autoFormData,
-          id_periodo: selectedPeriodo,
-          programacion_automatica: true,
+          id_periodo: parseInt(selectedPeriodo),
+          hora_inicio: horaInicioGeneracion,
+          intervalo_minutos: parseInt(intervaloMinutos),
+          modo: "automatico",
+          regenerar_ventanas: false,
         }),
       });
 
-      if (res.ok) {
-        toast.success("Ventanas programadas exitosamente");
-        setIsAutoDialogOpen(false);
-        fetchVentanas();
-      } else {
-        toast.error("Error al programar ventanas");
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || "Error al generar horarios");
       }
-    } catch (error) {
-      toast.error("Error de conexión");
+
+      const data = await res.json();
+      
+      if (data.ventanas_creadas?.length > 0) {
+        setVentanasDocentes(data.ventanas_creadas);
+      }
+      
+      setLogsGeneracion(prev => [
+        ...prev,
+        `✅ ${data.message}`,
+        `📋 Docentes procesados: ${data.docentes_count}`,
+        `⏰ Horarios creados: ${data.horarios_creados || 0}`,
+        data.ventanas_creadas?.length > 0
+          ? `📋 Ventanas creadas: ${data.ventanas_creadas.length}`
+          : "",
+      ]);
+
+      const totalDocentes = data.docentes_count || 0;
+      for (let i = 0; i < totalDocentes; i++) {
+        const progreso = Math.round(((i + 1) / Math.max(totalDocentes, 1)) * 100);
+        await new Promise(resolve => setTimeout(resolve, 200));
+        setProgresoGeneracion(progreso);
+      }
+      
+      setLogsGeneracion(prev => [
+        ...prev,
+        "🎉 Proceso completado. Los docentes ya pueden ver sus horarios.",
+      ]);
+      setProgresoGeneracion(100);
+      toast.success("Horarios y ventanas generados correctamente");
+      fetchVentanas();
+      fetchStats();
+      
+    } catch (error: any) {
+      toast.error(error.message || "Error de conexión");
+      setLogsGeneracion(prev => [...prev, `❌ Error: ${error.message || "Error de conexión"}`]);
     } finally {
-      setIsProcessing(false);
+      setIsGeneratingHorarios(false);
     }
   };
 
@@ -247,109 +310,6 @@ export function ConfiguradorVentanas() {
     }
   };
 
-  const handleGenerarHorarios = async () => {
-    if (!selectedPeriodo) {
-      toast.error("Por favor selecciona un período");
-      return;
-    }
-
-    setIsGeneratingHorarios(true);
-    setProgresoGeneracion(0);
-    setLogsGeneracion([]);
-    setIntervaloActivo(null);
-    setTiempoRestante(null);
-    
-    try {
-      const requestBody = {
-        id_periodo: parseInt(selectedPeriodo),
-        hora_inicio: horaInicioGeneracion,
-        intervalo_minutos: parseInt(intervaloMinutos),
-        modo: modoGeneracion
-      };
-      
-      setLogsGeneracion(prev => [...prev, "📋 Llamando a la API de asignación automática..."]);
-      
-      const res = await fetch("/api/horarios/asignacion-automatica", {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || "Error al generar horarios");
-      }
-
-      const data = await res.json();
-      
-      if (data.ventanas_creadas && data.ventanas_creadas.length > 0) {
-        setVentanasDocentes(data.ventanas_creadas);
-      }
-      
-      setLogsGeneracion(prev => [
-        ...prev,
-        `✅ ${data.message}`,
-        `📋 Docentes procesados: ${data.docentes_count}`,
-        `⏰ Horarios creados: ${data.horarios_creados || 0}`,
-        `⏳ Modo: ${data.modo === "automatico" ? "Completamente automático" : "Con intervalo para cambios"}`,
-        data.ventanas_creadas && data.ventanas_creadas.length > 0 
-          ? `📋 Ventanas de tiempo creadas: ${data.ventanas_creadas.length}`
-          : '',
-      ]);
-
-      setLogsGeneracion(prev => [...prev, "", "📋 Procesando docentes por prioridad..."]);
-      
-      const totalDocentes = data.docentes_count || 10;
-      
-      for (let i = 0; i < totalDocentes; i++) {
-        const progreso = Math.round(((i + 1) / totalDocentes) * 100);
-        await new Promise(resolve => setTimeout(resolve, 300));
-        
-        setLogsGeneracion(prev => [
-          ...prev,
-          `✅ Asignando docente #${i + 1}...`,
-          `   🔍 Buscando disponibilidades y ambientes disponibles...`,
-          `   ✔ Horarios asignados correctamente!`,
-        ]);
-        
-        setProgresoGeneracion(progreso);
-      }
-      
-      setLogsGeneracion(prev => [
-        ...prev,
-        "",
-        "🎉 Generación completada exitosamente!",
-        `📋 Total docentes procesados: ${totalDocentes}`,
-        "💡 Los docentes ya pueden ver sus horarios programados!",
-      ]);
-      
-      setProgresoGeneracion(100);
-      
-      if (modoGeneracion === "intervalo" && data.fecha_fin_intervalo) {
-        const intervaloData = {
-          fecha_inicio: data.fecha_inicio,
-          fecha_fin_intervalo: data.fecha_fin_intervalo,
-          intervalo_minutos: data.intervalo_minutos,
-          modo: "intervalo",
-          id_periodo: selectedPeriodo
-        };
-        
-        localStorage.setItem('intervalo_horarios', JSON.stringify(intervaloData));
-        setIntervaloActivo(intervaloData);
-        setTiempoRestante(data.intervalo_minutos * 60);
-      }
-      
-      toast.success("Generación de horarios completada!");
-      setTimeout(() => { fetchVentanas(); }, 500);
-      
-    } catch (error: any) {
-      toast.error(error.message || "Error de conexión");
-      setLogsGeneracion(prev => [...prev, `❌ Error: ${error.message || "Error de conexión"}`]);
-    } finally {
-      setIsGeneratingHorarios(false);
-    }
-  };
-
   const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
   const esLectura = !periodoActualObj?.activo || periodoActualObj?.estado === 'finalizado';
 
@@ -391,7 +351,7 @@ export function ConfiguradorVentanas() {
 
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
         <div className="lg:col-span-3 space-y-3">
-          {/* Sección de Generación Automática de Horarios */}
+          {/* Programación de ventanas */}
           <div className="bg-card p-4 rounded-2xl border border-border shadow-sm space-y-3 animate-in fade-in duration-700">
             <div className="flex items-center gap-3">
               <div className="h-9 w-9 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm">
@@ -400,8 +360,12 @@ export function ConfiguradorVentanas() {
               <div className="flex-1">
                 <div className="flex items-center justify-between">
                   <div>
-                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Generación Automática de Horarios</h3>
-                    <p className="text-[9px] font-medium text-muted-foreground mt-0.5">Asigna horarios automáticamente según prioridades y disponibilidades</p>
+                    <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Programación de Ventanas</h3>
+                    <p className="text-[9px] font-medium text-muted-foreground mt-0.5">
+                      {modoGeneracion === "intervalo"
+                        ? "Crea turnos de atención por docente (carga aprobada). Cada docente elige su horario en su ventana."
+                        : "Asigna horarios automáticamente y crea las ventanas de atención correspondientes."}
+                    </p>
                   </div>
                   {intervaloActivo && tiempoRestante !== null && (
                     <div className={`px-2.5 py-1.5 rounded-lg border text-center ${tiempoRestante > 0 ? 'bg-amber-50 border-amber-200 text-amber-700' : 'bg-red-50 border-red-200 text-red-700'}`}>
@@ -419,20 +383,31 @@ export function ConfiguradorVentanas() {
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-2.5">
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Modo de Generación</Label>
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Modo</Label>
                 <Select value={modoGeneracion} onValueChange={setModoGeneracion} disabled={isGeneratingHorarios || esLectura}>
                   <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent className="rounded-lg border-border">
-                    <SelectItem value="automatico" className="font-bold text-[10px]">Completamente Automático</SelectItem>
-                    <SelectItem value="intervalo" className="font-bold text-[10px]">Con Intervalo para Cambios</SelectItem>
+                    <SelectItem value="intervalo" className="font-bold text-[10px]">Por ventanas (docente elige horario)</SelectItem>
+                    <SelectItem value="automatico" className="font-bold text-[10px]">Automático (sistema asigna todo)</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Hora de Inicio</Label>
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Fecha de inicio</Label>
+                <Input
+                  type="date"
+                  value={fechaInicio}
+                  onChange={(e) => setFechaInicio(e.target.value)}
+                  disabled={isGeneratingHorarios || esLectura}
+                  className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Hora inicio jornada</Label>
                 <Input 
                   type="time" 
                   value={horaInicioGeneracion} 
@@ -443,7 +418,18 @@ export function ConfiguradorVentanas() {
               </div>
 
               <div className="space-y-1.5">
-                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Intervalo (minutos)</Label>
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Hora fin jornada</Label>
+                <Input
+                  type="time"
+                  value={horaFinJornada}
+                  onChange={(e) => setHoraFinJornada(e.target.value)}
+                  disabled={isGeneratingHorarios || esLectura}
+                  className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]"
+                />
+              </div>
+
+              <div className="space-y-1.5">
+                <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-0.5">Intervalo por docente</Label>
                 <Select value={intervaloMinutos} onValueChange={setIntervaloMinutos} disabled={isGeneratingHorarios || esLectura}>
                   <SelectTrigger className="h-8 rounded-lg bg-muted/50 border-border font-bold text-[10px]">
                     <SelectValue />
@@ -491,8 +477,14 @@ export function ConfiguradorVentanas() {
 
             {!esLectura && (
               <div className="pt-1.5 border-t border-border/50 space-y-2">
+                <p className="text-[9px] text-muted-foreground">
+                  Solo se generan ventanas para docentes con carga horaria aprobada.
+                  {stats?.docentes_aprobados !== undefined && (
+                    <> Hay <strong>{stats.docentes_aprobados}</strong> docente(s) listo(s).</>
+                  )}
+                </p>
                 <Button 
-                  onClick={handleGenerarHorarios}
+                  onClick={handleGenerar}
                   disabled={isGeneratingHorarios || !selectedPeriodo}
                   className="w-full h-9 rounded-lg bg-emerald-600 hover:bg-emerald-700 text-white font-black text-[10px] shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.01] disabled:opacity-50 disabled:hover:scale-100"
                 >
@@ -500,9 +492,13 @@ export function ConfiguradorVentanas() {
                     <>
                       <Loader2 className="mr-1.5 h-3.5 w-3.5 animate-spin" /> Generando...
                     </>
+                  ) : modoGeneracion === "intervalo" ? (
+                    <>
+                      <Wand2 className="mr-1.5 h-3.5 w-3.5" /> Generar Ventanas
+                    </>
                   ) : (
                     <>
-                      <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Generar Horario Automático
+                      <CheckCircle className="mr-1.5 h-3.5 w-3.5" /> Generar Horarios y Ventanas
                     </>
                   )}
                 </Button>
@@ -691,19 +687,16 @@ export function ConfiguradorVentanas() {
         <div className="space-y-3">
           <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
             <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Docentes Pendientes</CardTitle>
+              <CardTitle className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Estado de Carga Horaria</CardTitle>
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-2.5">
               {[
-                { categoria: "Auxiliar Nombrado", cantidad: 6, color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
-                { categoria: "JP Nombrado", cantidad: 4, color: "bg-muted text-muted-foreground border-border" },
-                { categoria: "Principal Contratado", cantidad: 3, color: "bg-muted text-muted-foreground border-border" },
-                { categoria: "Asociado Contratado", cantidad: 5, color: "bg-muted text-muted-foreground border-border" },
-                { categoria: "Auxiliar Contratado", cantidad: 14, color: "bg-muted text-muted-foreground border-border" },
-                { categoria: "JP Contratado", cantidad: 6, color: "bg-muted text-muted-foreground border-border" },
+                { label: "Carga aprobada", cantidad: stats?.docentes_aprobados ?? 0, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+                { label: "Pendientes de aprobación", cantidad: stats?.docentes_pendientes ?? 0, color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+                { label: "Ventanas activas", cantidad: stats?.ventanas_activas ?? 0, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
               ].map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-[11px] font-medium">{item.categoria}</span>
+                  <span className="text-muted-foreground text-[11px] font-medium">{item.label}</span>
                   <span className={cn("px-2 py-1 rounded-full text-[10px] font-bold border", item.color)}>
                     {item.cantidad}
                   </span>

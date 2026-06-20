@@ -66,27 +66,31 @@ export async function GET() {
       let soloLectura = false;
 
       // Primero checar la ventana (siempre!)
-      const docentesOrdenados = await prisma.docente.findMany({
+      const docentes = await prisma.docente.findMany({
         where: { 
           activo: true,
-          docente_cursos: {
+          declaraciones_horarias: {
             some: {
-              activo: true,
-              curso: {
-                grupos: {
-                  some: {
-                    id_periodo: periodoActivo.id_periodo
-                  }
-                }
-              }
+              id_periodo: periodoActivo.id_periodo,
+              estado: "APROBADO"
             }
           }
-        },
-        orderBy: [
-          { modalidad: 'desc' },
-          { categoria: 'desc' },
-          { fecha_ingreso: 'asc' }
-        ]
+        }
+      });
+
+      const prioridadCategoria = ["jefe_practica", "auxiliar", "asociado", "principal"];
+      const docentesOrdenados = [...docentes].sort((a, b) => {
+        if (a.modalidad === "nombrado" && b.modalidad !== "nombrado") return -1;
+        if (b.modalidad === "nombrado" && a.modalidad !== "nombrado") return 1;
+        
+        const catA = prioridadCategoria.indexOf(a.categoria);
+        const catB = prioridadCategoria.indexOf(b.categoria);
+        if (catA !== catB) return catB - catA;
+        
+        if (a.fecha_ingreso && b.fecha_ingreso) {
+          return new Date(a.fecha_ingreso).getTime() - new Date(b.fecha_ingreso).getTime();
+        }
+        return 0;
       });
 
       const indexDocente = docentesOrdenados.findIndex((d: any) => d.id_docente === docente.id_docente);

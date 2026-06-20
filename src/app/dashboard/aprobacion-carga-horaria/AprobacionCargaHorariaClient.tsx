@@ -48,6 +48,7 @@ import {
   Eye
 } from 'lucide-react';
 import { Input } from "@/components/ui/input";
+import { toast } from "sonner";
 
 interface DeclaracionHoraria {
   id_declaracion: number;
@@ -151,32 +152,37 @@ export default function AprobacionCargaHorariaClient({ periodos }: { periodos: a
 
   const handleAprobar = async (declaracionId: number) => {
     try {
-      await fetch(`/api/declaracion-horaria/${declaracionId}`, {
+      const res = await fetch(`/api/declaracion-horaria/${declaracionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ estado: 'APROBADO' })
       });
-      alert('Declaración aprobada correctamente');
+      if (!res.ok) {
+        const error = await res.json();
+        toast.error(error.error || 'Error al aprobar la declaración');
+        return;
+      }
+      toast.success('Declaración aprobada correctamente');
+      setSelectedDeclaracion(null);
       if (periodoActivo) {
         fetchDeclaraciones(periodoActivo.id_periodo);
-        // Regresar a la página 1 si es necesario
         setCurrentPage(1);
       }
     } catch (err) {
       console.error(err);
-      alert('Error al aprobar la declaración');
+      toast.error('Error al aprobar la declaración');
     }
   };
 
   const handleRechazar = async (declaracionId: number) => {
     const comentarios = rechazoComments[declaracionId] || '';
     if (!comentarios.trim()) {
-      alert('Por favor, ingrese un comentario para el rechazo');
+      toast.warning('Por favor, ingrese un comentario para el rechazo');
       return;
     }
 
     try {
-      await fetch(`/api/declaracion-horaria/${declaracionId}`, {
+      const res = await fetch(`/api/declaracion-horaria/${declaracionId}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
@@ -184,7 +190,13 @@ export default function AprobacionCargaHorariaClient({ periodos }: { periodos: a
           observaciones: comentarios
         })
       });
-      alert('Declaración rechazada correctamente');
+      if (!res.ok) {
+        const error = await res.json();
+        toast.error(error.error || 'Error al rechazar la declaración');
+        return;
+      }
+      toast.success('Declaración rechazada correctamente');
+      setSelectedDeclaracion(null);
       if (periodoActivo) {
         fetchDeclaraciones(periodoActivo.id_periodo);
         // Regresar a la página 1 si es necesario
@@ -198,7 +210,7 @@ export default function AprobacionCargaHorariaClient({ periodos }: { periodos: a
       });
     } catch (err) {
       console.error(err);
-      alert('Error al rechazar la declaración');
+      toast.error('Error al rechazar la declaración');
     }
   };
 

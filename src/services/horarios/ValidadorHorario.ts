@@ -1,6 +1,7 @@
 import { prisma } from '@/lib/prisma';
 import { MAX_HORAS_DIARIAS } from '@/lib/constantes';
 import { emitirEvento } from '@/lib/socket-server';
+import { etiquetaTipoClase } from '@/lib/horarios/mensajesValidacion';
 
 export interface SolicitudAsignacion {
   docenteId: number;
@@ -116,7 +117,7 @@ export class ValidadorHorario {
     if (cruceAsignado) {
       conflictos.push({
         tipo: 'CRUCE_DOCENTE',
-        mensaje: `El docente ya tiene una clase asignada (${cruceAsignado.curso.nombre}) en este horario.`,
+        mensaje: `Usted ya tiene asignado "${cruceAsignado.curso.nombre}" en este mismo horario. Quite ese bloque o elija otra hora.`,
         severidad: 'ERROR',
         detalle: { id_asignacion: cruceAsignado.id_asignacion }
       });
@@ -141,7 +142,7 @@ export class ValidadorHorario {
     if (cruceTemporal) {
       conflictos.push({
         tipo: 'CRUCE_DOCENTE',
-        mensaje: `El docente tiene una selección temporal bloqueada para el curso ${cruceTemporal.curso.nombre}.`,
+        mensaje: `Ya reservó un bloque para "${cruceTemporal.curso.nombre}" en este horario. Haga clic en la celda amarilla para quitarla o elija otra hora.`,
         severidad: 'ERROR',
         detalle: { id_seleccion: cruceTemporal.id_seleccion }
       });
@@ -173,7 +174,7 @@ export class ValidadorHorario {
     if (cruceAsignado) {
       conflictos.push({
         tipo: 'CRUCE_GRUPO',
-        mensaje: `El grupo ya tiene el curso ${cruceAsignado.curso.nombre} asignado en este horario.`,
+        mensaje: `El grupo seleccionado ya tiene "${cruceAsignado.curso.nombre}" en este horario con otro docente.`,
         severidad: 'ERROR'
       });
     }
@@ -197,7 +198,7 @@ export class ValidadorHorario {
     if (cruceTemporal) {
       conflictos.push({
         tipo: 'CRUCE_GRUPO',
-        mensaje: `El grupo ya tiene una selección temporal bloqueada para el curso ${cruceTemporal.curso.nombre}.`,
+        mensaje: `El grupo seleccionado ya tiene una reserva pendiente para "${cruceTemporal.curso.nombre}" en este horario.`,
         severidad: 'ERROR'
       });
     }
@@ -227,7 +228,7 @@ export class ValidadorHorario {
     if (ocupadoAsignado) {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
-        mensaje: 'El ambiente seleccionado ya está ocupado en este horario.',
+        mensaje: 'El ambiente elegido ya está ocupado en este horario. Seleccione otro ambiente u otra hora.',
         severidad: 'ERROR'
       });
     }
@@ -250,7 +251,7 @@ export class ValidadorHorario {
     if (ocupadoTemporal) {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
-        mensaje: 'El ambiente seleccionado tiene una selección temporal pendiente en este horario.',
+        mensaje: 'El ambiente elegido tiene otra reserva pendiente en este horario. Pruebe otro ambiente u otra hora.',
         severidad: 'ERROR'
       });
     }
@@ -281,9 +282,10 @@ export class ValidadorHorario {
     minutosTotales += (this.timeToMinutes(s.horaFin) - this.timeToMinutes(s.horaInicio));
 
     if (minutosTotales > MAX_HORAS_DIARIAS * 60) {
+      const horasDia = Math.round((minutosTotales / 60) * 10) / 10;
       conflictos.push({
         tipo: 'EXCESO_HORAS_DIARIAS',
-        mensaje: `El docente superaría las ${MAX_HORAS_DIARIAS} horas diarias permitidas.`,
+        mensaje: `Con este bloque superaría las ${MAX_HORAS_DIARIAS} horas diarias permitidas (llevaría ${horasDia}h ese día). Elija otro día o quite un bloque.`,
         severidad: 'ERROR',
         detalle: { horasActuales: minutosTotales / 60 }
       });
@@ -300,7 +302,7 @@ export class ValidadorHorario {
     if (inicio < this.timeToMinutes("07:00") || fin > this.timeToMinutes("22:00")) {
       conflictos.push({
         tipo: 'FUERA_FRANJA',
-        mensaje: 'El horario solicitado está fuera de la franja permitida (07:00 - 22:00).',
+        mensaje: 'Este horario está fuera del rango permitido (07:00 a 22:00).',
         severidad: 'ERROR'
       });
     }
@@ -323,7 +325,8 @@ export class ValidadorHorario {
   // 6. Curso no asignable al docente
   private static async validarCursoAsignable(s: SolicitudAsignacion): Promise<Conflicto[]> {
     const conflictos: Conflicto[] = [];
-    const habilitado = await prisma.docenteCurso.findFirst({
+
+    const habilitadoDocenteCurso = await prisma.docenteCurso.findFirst({
       where: { 
         id_docente: s.docenteId, 
         id_curso: s.cursoId, 
@@ -332,10 +335,22 @@ export class ValidadorHorario {
       }
     });
 
-    if (!habilitado) {
+    const habilitadoDeclaracion = await prisma.cargaLectiva.findFirst({
+      where: {
+        id_curso: s.cursoId,
+        tipo_clase: s.tipoClase,
+        declaracion: {
+          id_docente: s.docenteId,
+          id_periodo: s.periodoId,
+          estado: 'APROBADO'
+        }
+      }
+    });
+
+    if (!habilitadoDocenteCurso && !habilitadoDeclaracion) {
       conflictos.push({
         tipo: 'CURSO_NO_ASIGNABLE',
-        mensaje: 'El docente no tiene asignado este curso o tipo de clase en su carga académica.',
+        mensaje: `No tiene asignado este curso en ${etiquetaTipoClase(s.tipoClase)} dentro de su carga horaria aprobada.`,
         severidad: 'ERROR'
       });
     }
@@ -354,7 +369,7 @@ export class ValidadorHorario {
     if (!ambiente || !ambiente.activo) {
       conflictos.push({
         tipo: 'AMBIENTE_NO_VALIDO',
-        mensaje: 'El ambiente seleccionado no existe o no está activo.',
+        mensaje: 'El ambiente seleccionado no está disponible. Elija otro de la lista.',
         severidad: 'ERROR'
       });
     }
@@ -371,12 +386,15 @@ export class ValidadorHorario {
     const curso = await prisma.curso.findUnique({ where: { id_curso: s.cursoId } });
     if (!curso) return conflictos;
 
-    let horasTope = 0;
+    const grupo = await prisma.grupo.findUnique({ where: { id_grupo: s.grupoId } });
+    const codigoGrupo = grupo?.codigo_grupo ?? 'seleccionado';
+    const tipoLabel = etiquetaTipoClase(s.tipoClase);
     const tipo = s.tipoClase.toLowerCase();
+
+    let horasTope = 0;
     if (tipo.includes('teoria')) horasTope = curso.horas_teoria;
     else if (tipo.includes('laboratorio')) horasTope = curso.horas_laboratorio;
-    else if (tipo.includes('practica')) horasTope = curso.horas_practica;
-    else if (tipo.includes('práctica')) horasTope = curso.horas_practica;
+    else if (tipo.includes('practica') || tipo.includes('práctica')) horasTope = curso.horas_practica;
     
     // Sumar horas ya asignadas (confirmadas)
     const asignados = await prisma.horarioAsignado.findMany({
@@ -412,9 +430,15 @@ export class ValidadorHorario {
     const minutosNueva = (this.timeToMinutes(s.horaFin) - this.timeToMinutes(s.horaInicio));
     
     if ((minutosTotales + minutosNueva) > (horasTope * 60)) {
+      const horasAsignadas = Math.round(((minutosTotales + minutosNueva) / 60) * 10) / 10;
+      const esLab = tipo.includes('laboratorio');
+      const sugerenciaLab = esLab
+        ? ' Seleccione otro grupo de laboratorio (L2, L3…) para seguir asignando.'
+        : '';
+
       conflictos.push({
         tipo: 'HORAS_COMPLETADAS',
-        mensaje: `Se excede el total de horas de ${s.tipoClase} para este curso (${horasTope}h).`,
+        mensaje: `Ya completó las ${horasTope}h semanales de ${tipoLabel} para el grupo ${codigoGrupo} (lleva ${horasAsignadas}h).${sugerenciaLab}`,
         severidad: 'ERROR',
         detalle: { horasAsignadas: (minutosTotales + minutosNueva) / 60, tope: horasTope }
       });
@@ -436,7 +460,7 @@ export class ValidadorHorario {
     if (!declaracion || declaracion.estado !== 'APROBADO') {
       conflictos.push({
         tipo: 'CARGA_NO_APROBADA',
-        mensaje: 'No se pueden generar horarios. La carga lectiva del docente aún no ha sido aprobada por el administrador.',
+        mensaje: 'Su carga horaria aún no está aprobada. Espere la aprobación del administrador para asignar horarios.',
         severidad: 'ERROR'
       });
     }

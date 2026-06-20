@@ -113,7 +113,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       try {
         const res = await fetch('/api/cursos');
         const data = await res.json();
-        setCursos(data);
+        if (Array.isArray(data)) {
+          setCursos(data);
+        } else if (data && Array.isArray(data.cursos)) {
+          setCursos(data.cursos);
+        } else {
+          setCursos([]);
+        }
       } catch (err) {
         console.error(err);
       }
@@ -155,13 +161,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         
         // Initialize with all predefined types, merging existing ones
         const cargasExistentes = data.cargas_no_lectivas || [];
-        const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map(tipo => {
+        const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => {
           const existente = cargasExistentes.find((c: any) => c.tipo === tipo.value);
           if (existente) {
             return existente;
           }
           return {
-            id_carga_no_lectiva: Date.now() + Math.random(),
+            id_carga_no_lectiva: `temp_${Date.now()}_${idx}`,
             tipo: tipo.value,
             descripcion: '',
             horas_semanales: 0
@@ -171,7 +177,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       } else {
         // If no declaration exists, initialize with all predefined types
         const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
-          id_carga_no_lectiva: Date.now() + idx,
+          id_carga_no_lectiva: `temp_${Date.now()}_${idx}`,
           tipo: tipo.value,
           descripcion: '',
           horas_semanales: 0
@@ -182,7 +188,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       console.error(err);
       // Initialize with all predefined types even on error
       const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
-        id_carga_no_lectiva: Date.now() + idx,
+        id_carga_no_lectiva: `temp_${Date.now()}_${idx}`,
         tipo: tipo.value,
         descripcion: '',
         horas_semanales: 0
@@ -342,7 +348,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     if (!cursoId) return acc;
     
     if (!acc[cursoId]) {
-      acc[cursoId] = { curso: cursos.find(c => c.id_curso === cursoId), cargas: [] };
+      acc[cursoId] = { curso: (Array.isArray(cursos) ? cursos : []).find(c => c.id_curso === cursoId), cargas: [] };
     }
     acc[cursoId].cargas.push(carga);
     return acc;
@@ -675,7 +681,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 const color = colors[index % colors.length];
                 
                 return (
-                  <TableRow key={carga.id_carga_no_lectiva} className={cn("border-slate-100", color.bg)}>
+                  <TableRow key={`no-lectiva-${carga.tipo || index}`} className={cn("border-slate-100", color.bg)}>
                     <TableCell className="px-4 py-3 w-[30%]">
                       <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
                       <p className="text-[10px] text-slate-500 leading-tight mt-0.5 line-clamp-2">{tipoInfo?.descripcion}</p>
