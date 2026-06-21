@@ -13,7 +13,9 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
         descripcion: body.descripcion,
         anio: Number(body.anio),
         activo: body.activo,
-        departamentoId: body.departamentoId
+        departamentoId: body.departamentoId,
+        facultadId: body.facultadId,
+        escuelaId: body.escuelaId
       }
     });
     console.log('[PUT /api/mallas-curriculares/:id] Malla updated');

@@ -61,6 +61,8 @@ model MallaCurricular {
   descripcion      String?
   anio             Int
   activo           Boolean             @default(true)
+  facultadId       String?
+  facultad         Facultad?            @relation(fields: [facultadId], references: [id], onDelete: SetNull)
   escuelaId        String?
   escuela          EscuelaProfesional? @relation(fields: [escuelaId], references: [id], onDelete: SetNull)
   departamentoId   String
@@ -415,6 +417,7 @@ model Facultad {
   docentes             Docente[]
   cargasLectivasSede   CargaLectiva[]          @relation("CargaLectivaSede")
   cargasNoLectivasSede CargaNoLectiva[]        @relation("CargaNoLectivaSede")
+  mallas               MallaCurricular[]
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
 }

@@ -33,7 +33,9 @@ export async function POST(request: Request) {
         nombre: body.nombre,
         descripcion: body.descripcion,
         anio: Number(body.anio),
-        departamentoId: body.departamentoId
+        departamentoId: body.departamentoId,
+        facultadId: body.facultadId,
+        escuelaId: body.escuelaId
       }
     });
     console.log('[POST /api/mallas-curriculares] Malla created with id:', malla.id_malla);

@@ -132,7 +132,7 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
         const savedDepartamentoId = localStorage.getItem('departamentoSeleccionadoId');
         if (savedDepartamentoId) {
           await actualizarDepartamentos();
-          const foundDepartamento = departamentos.find(d => d.id === savedDepartamentoId);
+          const foundDepartamento = allDepartamentos.find(d => d.id === savedDepartamentoId);
           if (foundDepartamento) {
             const foundFacultad = facultades.find(f => f.id === foundDepartamento.facultadId);
             if (foundFacultad) {
@@ -160,23 +160,34 @@ export function DepartmentProvider({ children }: { children: React.ReactNode }) 
     if (!loading) {
       loadDefaults();
     }
-  }, [facultades.length, loading]);
+  }, [facultades.length, loading, allDepartamentos]);
 
   useEffect(() => {
-    if (facultadSeleccionada && departamentos.length > 0 && !departamentoSeleccionado) {
-      const deptoSistemas = departamentos.find(d => d.nombre.includes("Ingeniería de Sistemas") || d.nombre.includes("Sistemas"));
-      if (deptoSistemas) {
-        setDepartamentoSeleccionadoState(deptoSistemas);
-        localStorage.setItem('departamentoSeleccionadoId', deptoSistemas.id);
-      } else {
-        const firstDepartamento = departamentos[0];
-        if (firstDepartamento) {
-          setDepartamentoSeleccionadoState(firstDepartamento);
-          localStorage.setItem('departamentoSeleccionadoId', firstDepartamento.id);
+    if (facultadSeleccionada && !departamentoSeleccionado) {
+      // If there are no departamentos for this facultad, don't select any departamento!
+      if (departamentos.length === 0) {
+        setDepartamentoSeleccionadoState(null);
+        localStorage.removeItem('departamentoSeleccionadoId');
+        return;
+      }
+
+      // Only auto-select Ingeniería de Sistemas if the selected facultad is not a filial or administrativa
+      if (facultadSeleccionada.tipo !== "filial" && facultadSeleccionada.tipo !== "administrativa") {
+        const deptoSistemas = departamentos.find(d => d.nombre.includes("Ingeniería de Sistemas") || d.nombre.includes("Sistemas"));
+        if (deptoSistemas) {
+          setDepartamentoSeleccionadoState(deptoSistemas);
+          localStorage.setItem('departamentoSeleccionadoId', deptoSistemas.id);
+          return;
         }
       }
+      
+      const firstDepartamento = departamentos[0];
+      if (firstDepartamento) {
+        setDepartamentoSeleccionadoState(firstDepartamento);
+        localStorage.setItem('departamentoSeleccionadoId', firstDepartamento.id);
+      }
     }
-  }, [facultadSeleccionada, departamentos]);
+  }, [facultadSeleccionada, departamentos, departamentoSeleccionado]);
 
   return (
     <DepartmentContext.Provider value={{ 

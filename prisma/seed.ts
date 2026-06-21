@@ -92,6 +92,12 @@ async function main() {
     const departamentoSistemas = await prisma.departamentoAcademico.findFirst({
       where: { nombre: { contains: 'Ingeniería de Sistemas' } }
     });
+    const facultadIngenieria = await prisma.facultad.findFirst({
+      where: { nombre: { contains: 'Ingeniería' } }
+    });
+    const escuelaSistemas = await prisma.escuelaProfesional.findFirst({
+      where: { nombre: { contains: 'Ingeniería de Sistemas' } }
+    });
     
     if (!departamentoSistemas) {
       throw new Error('Departamento de Ingeniería de Sistemas not found!');
@@ -103,10 +109,12 @@ async function main() {
         descripcion: 'Malla curricular oficial de la carrera de Ingeniería de Sistemas',
         anio: 2018,
         activo: true,
-        departamentoId: departamentoSistemas.id
+        departamentoId: departamentoSistemas.id,
+        facultadId: facultadIngenieria?.id,
+        escuelaId: escuelaSistemas?.id
       }
     });
-    console.log('   ✓ Malla curricular "Plan de Estudios 2018" creada con éxito.');
+    console.log('   ✓ Malla curricular "Plan de Estudios 2018" creada con éxito!');
     
     // Pasar la malla inicial al seeder de cursos
     await seedCursos(prisma, mallaInicial.id_malla);

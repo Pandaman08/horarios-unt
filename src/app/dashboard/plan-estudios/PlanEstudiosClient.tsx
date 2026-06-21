@@ -119,6 +119,8 @@ export function PlanEstudiosClient() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [allCursos, setAllCursos] = useState<Curso[]>([]);
   const [selectedPrerequisitos, setSelectedPrerequisitos] = useState<string[]>([]);
+  const [allFacultades, setAllFacultades] = useState<any[]>([]);
+  const [allEscuelas, setAllEscuelas] = useState<any[]>([]);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -151,21 +153,35 @@ export function PlanEstudiosClient() {
     descripcion: "",
     anio: new Date().getFullYear().toString(),
     departamentoId: "",
+    facultadId: "",
+    escuelaId: ""
   });
 
   useEffect(() => {
     fetchPlanEstudios();
     fetchMallas();
+    fetchFacultades();
+    if (facultadSeleccionada?.id) {
+      fetchEscuelas(facultadSeleccionada.id);
+    }
   }, [departamentoSeleccionado, facultadSeleccionada, selectedMalla]);
 
   const fetchPlanEstudios = async () => {
     try {
+      setLoading(true);
       console.log('[PlanEstudiosClient] Fetching plan de estudios...');
+      
+      if (!departamentoSeleccionado) {
+        console.log('[PlanEstudiosClient] No departamento selected, clearing data');
+        setCiclos([]);
+        setAllCursos([]);
+        setLoading(false);
+        return;
+      }
+      
       let url = '/api/plan-estudios';
       const params = new URLSearchParams();
-      if (departamentoSeleccionado) {
-        params.set('departamentoId', departamentoSeleccionado.id);
-      }
+      params.set('departamentoId', departamentoSeleccionado.id);
       if (selectedMalla && selectedMalla !== "all") {
         params.set('mallaId', selectedMalla);
       }
@@ -209,10 +225,17 @@ export function PlanEstudiosClient() {
   const fetchMallas = async () => {
     try {
       console.log('[PlanEstudiosClient] Fetching mallas curriculares...');
-      let url = '/api/mallas-curriculares';
-      if (departamentoSeleccionado) {
-        url += `?departamentoId=${departamentoSeleccionado.id}`;
+      
+      if (!departamentoSeleccionado) {
+        console.log('[PlanEstudiosClient] No departamento selected, clearing mallas');
+        setMallas([]);
+        setSelectedMalla("all");
+        setFormData(prev => ({ ...prev, id_malla: "" }));
+        return;
       }
+      
+      let url = '/api/mallas-curriculares';
+      url += `?departamentoId=${departamentoSeleccionado.id}`;
       const res = await fetch(url);
       console.log('[PlanEstudiosClient] Response status:', res.status);
       
@@ -243,6 +266,34 @@ export function PlanEstudiosClient() {
     } catch (error: any) {
       console.error('[PlanEstudiosClient] Error al cargar mallas curriculares:', error);
       toast.error(error.message || 'Error al cargar mallas curriculares');
+    }
+  };
+
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch('/api/facultades');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAllFacultades(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar facultades:', err);
+    }
+  };
+
+  const fetchEscuelas = async (facultadId?: string) => {
+    try {
+      let url = '/api/escuelas';
+      if (facultadId) {
+        url += `?facultadId=${facultadId}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAllEscuelas(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar escuelas:', err);
     }
   };
 
@@ -388,6 +439,8 @@ export function PlanEstudiosClient() {
       descripcion: malla.descripcion || "",
       anio: malla.anio.toString(),
       departamentoId: (malla as any).departamentoId || departamentoSeleccionado?.id || "",
+      facultadId: (malla as any).facultadId || "",
+      escuelaId: (malla as any).escuelaId || ""
     });
     setIsMallaDialogOpen(true);
   };
@@ -418,6 +471,8 @@ export function PlanEstudiosClient() {
       descripcion: "",
       anio: new Date().getFullYear().toString(),
       departamentoId: departamentoSeleccionado?.id || "",
+      facultadId: facultadSeleccionada?.id || "",
+      escuelaId: ""
     });
     setEditingMalla(null);
   };
@@ -566,6 +621,49 @@ export function PlanEstudiosClient() {
                             className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" 
                             required
                           />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                          <Select
+                            value={mallaFormData.facultadId}
+                            onValueChange={(v) => {
+                              setMallaFormData({ ...mallaFormData, facultadId: v, escuelaId: "" });
+                              fetchEscuelas(v);
+                            }}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar facultad" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {allFacultades.map((f: any) => (
+                                <SelectItem key={f.id} value={f.id} className="font-bold text-sm">
+                                  {f.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
+                          <Select
+                            value={mallaFormData.escuelaId}
+                            onValueChange={(v) => setMallaFormData({ ...mallaFormData, escuelaId: v })}
+                            disabled={!mallaFormData.facultadId}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar escuela" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {allEscuelas.map((e: any) => (
+                                <SelectItem key={e.id} value={e.id} className="font-bold text-sm">
+                                  {e.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         <div className="space-y-2">
                           <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>

@@ -8,11 +8,10 @@ export async function GET(request: Request) {
     const departamentoId = searchParams.get('departamentoId');
 
     const where: any = { activo: true };
-    if (facultadId) {
-      where.facultadId = facultadId;
-    }
     if (departamentoId) {
       where.departamentoId = departamentoId;
+    } else if (facultadId) {
+      where.facultadId = facultadId;
     }
 
     const ambientes = await prisma.ambiente.findMany({
@@ -22,6 +21,7 @@ export async function GET(request: Request) {
     });
     return NextResponse.json(ambientes);
   } catch (error) {
+    console.error('Error al obtener ambientes:', error);
     return NextResponse.json({ error: 'Error al obtener ambientes' }, { status: 500 });
   }
 }
