@@ -81,7 +81,9 @@ export async function PUT(
           grado_academico: data.grado_academico,
           especialidad: data.especialidad,
           horas_maximas_semanales: parseInt(data.horas_maximas_semanales) || 40,
-          activo: data.activo
+          activo: data.activo,
+          facultadId: data.facultadId,
+          departamentoId: data.departamentoId,
         }
       });
 

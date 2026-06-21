@@ -36,6 +36,7 @@ import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/compone
 import { MatrizDisponibilidadDocente } from "./MatrizDisponibilidadDocente";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
 import { cn } from "@/lib/utils";
 
 interface DocenteDisp {
@@ -52,6 +53,7 @@ interface DocenteDisp {
 
 export function DisponibilidadList() {
   const { periodoSeleccionado, periodos } = usePeriodo();
+  const { departamentoSeleccionado } = useDepartment();
   const [docentes, setDocentes] = useState<DocenteDisp[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -92,12 +94,15 @@ export function DisponibilidadList() {
     if (selectedPeriodo) {
       fetchDocentes();
     }
-  }, [selectedPeriodo, searchTerm, categoria, modalidad, orden]);
+  }, [selectedPeriodo, searchTerm, categoria, modalidad, orden, departamentoSeleccionado?.id]);
 
   const fetchDocentes = async () => {
     setLoading(true);
     try {
-      const url = `/api/docentes/disponibilidad/listar?periodoId=${selectedPeriodo}&search=${searchTerm}&categoria=${categoria}&modalidad=${modalidad}&orden=${orden}`;
+      let url = `/api/docentes/disponibilidad/listar?periodoId=${selectedPeriodo}&search=${searchTerm}&categoria=${categoria}&modalidad=${modalidad}&orden=${orden}`;
+      if (departamentoSeleccionado) {
+        url += `&departamentoId=${departamentoSeleccionado.id}`;
+      }
       const res = await fetch(url);
       const data = await res.json();
       setDocentes(data);

@@ -17,6 +17,16 @@ export async function seedDocentes(prisma: PrismaClient) {
     return `${base}@unitru.edu.pe`;
   }
 
+  // Obtener Departamento de Ingeniería de Sistemas and Facultad de Ingeniería
+  const departamentoSistemas = await prisma.departamentoAcademico.findFirst({
+    where: { nombre: { contains: 'Ingeniería de Sistemas' } }
+  });
+  const facultadIngenieria = await prisma.facultad.findFirst({
+    where: { codigo: 'F11' }
+  });
+  const departamentoId = departamentoSistemas?.id;
+  const facultadId = facultadIngenieria?.id;
+
   // Lista completa de docentes que enseñan en la Escuela de Ingeniería de Sistemas
   const docentesData = [
     // ==================== DOCENTES DEL DEPARTAMENTO DE INGENIERÍA DE SISTEMAS ====================
@@ -386,6 +396,8 @@ export async function seedDocentes(prisma: PrismaClient) {
         correo_electronico: correo,
         dni: dni,
         telefono: data.telefono, // se agrega el teléfono
+        departamentoId: data.especialidad?.includes('Ingeniería de Sistemas') ? departamentoId : undefined,
+        facultadId: facultadId,
       },
       create: {
         codigo_docente: codigoDocente,
@@ -400,6 +412,8 @@ export async function seedDocentes(prisma: PrismaClient) {
         correo_electronico: correo,
         dni: dni,
         telefono: data.telefono,
+        departamentoId: data.especialidad?.includes('Ingeniería de Sistemas') ? departamentoId : undefined,
+        facultadId: facultadId,
       },
     });
 

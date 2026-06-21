@@ -58,6 +58,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
+
+interface Facultad {
+  id: string;
+  nombre: string;
+  codigo: string;
+}
 
 interface Ambiente {
   id_ambiente: number;
@@ -67,11 +74,14 @@ interface Ambiente {
   capacidad: number;
   piso: string;
   pabellon: string;
+  facultadId?: string;
+  facultad?: Facultad;
 }
 
 export function AmbienteList() {
   const context = usePeriodo();
   const periodoSeleccionado = context?.periodoSeleccionado;
+  const { departamentoSeleccionado, facultadSeleccionada } = useDepartment();
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -82,6 +92,7 @@ export function AmbienteList() {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [generatingReport, setGeneratingReport] = useState<number | null>(null);
+  const [facultades, setFacultades] = useState<Facultad[]>([]);
 
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -122,15 +133,43 @@ export function AmbienteList() {
     piso: "",
     pabellon: "",
     equipamiento: "",
+    facultadId: "",
   });
+
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch("/api/facultades");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setFacultades(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar facultades:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchFacultades();
+  }, []);
 
   useEffect(() => {
     fetchAmbientes();
-  }, []);
+  }, [departamentoSeleccionado, facultadSeleccionada]);
 
   const fetchAmbientes = async () => {
     try {
-      const res = await fetch("/api/ambientes");
+      let url = "/api/ambientes";
+      const params = new URLSearchParams();
+      if (facultadSeleccionada) {
+        params.set('facultadId', facultadSeleccionada.id);
+      }
+      if (departamentoSeleccionado) {
+        params.set('departamentoId', departamentoSeleccionado.id);
+      }
+      if (params.toString()) {
+        url = `${url}?${params.toString()}`;
+      }
+      const res = await fetch(url);
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
@@ -215,6 +254,7 @@ export function AmbienteList() {
       piso: ambiente.piso || "",
       pabellon: ambiente.pabellon || "",
       equipamiento: "",
+      facultadId: ambiente.facultadId || "",
     });
     setIsDialogOpen(true);
   };
@@ -263,6 +303,7 @@ export function AmbienteList() {
       piso: "",
       pabellon: "",
       equipamiento: "",
+      facultadId: "",
     });
   };
 
@@ -358,6 +399,19 @@ export function AmbienteList() {
                     </div>
                   </div>
 
+                  <div className="space-y-1.5">
+                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad / Sede</Label>
+                    <Select value={formData.facultadId} onValueChange={(v) => setFormData({ ...formData, facultadId: v })}>
+                      <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectValue placeholder="Seleccione facultad" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border">
+                        {facultades.map((f) => (
+                          <SelectItem key={f.id} value={f.id} className="font-bold text-xs">{f.codigo} - {f.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pabellón</Label>
@@ -430,6 +484,7 @@ export function AmbienteList() {
               <TableRow className="border-b border-border hover:bg-transparent">
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Ambiente</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Facultad</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Ubicación</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Tipo</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Cap.</TableHead>
@@ -438,9 +493,9 @@ export function AmbienteList() {
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((ambiente) => (
                   <TableRow key={ambiente.id_ambiente} className="group hover:bg-muted/50 transition-colors">
@@ -454,6 +509,9 @@ export function AmbienteList() {
                         </div>
                         <span className="font-semibold text-foreground text-[11px]">{ambiente.nombre}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-[10px] font-medium text-muted-foreground">{ambiente.facultad?.codigo || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-1.5 text-muted-foreground">

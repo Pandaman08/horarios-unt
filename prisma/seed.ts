@@ -9,6 +9,7 @@ import { seedUsuariosAdministrativos } from './seeders/usuarios_administrativos.
 import { seedGrupos } from './seeders/grupos.seeder';
 import { seedDisponibilidad } from './seeders/disponibilidad.seeder';
 import { seedCargaLectivaCompleta } from './seeders/carga_lectiva_completa.seeder';
+import { seedFacultades } from './seeders/facultades.seeder';
 
 // Inicializar Prisma Client usando DIRECT_URL para el seed si está disponible
 // Esto evita errores de prepared statements con PgBouncer en Supabase/Vercel
@@ -51,6 +52,9 @@ async function main() {
       '"Ambiente"',
       '"Curso"',
       '"MallaCurricular"',
+      '"EscuelaProfesional"',
+      '"DepartamentoAcademico"',
+      '"Facultad"',
       '"Ciclo"',
       '"Docente"',
       '"Usuario"'
@@ -76,22 +80,41 @@ async function main() {
     }
 
     // 2. Sembrar datos base (sin dependencias entre sí)
+    await seedFacultades(prisma);
     await seedCiclos(prisma);
     await seedPeriodos(prisma);
     await seedAmbientes(prisma);
     
     // Crear la malla curricular inicial "Plan de Estudios 2018"
     console.log('-> Creando malla curricular inicial...');
+    
+    // Get Departamento de Ingeniería de Sistemas first
+    const departamentoSistemas = await prisma.departamentoAcademico.findFirst({
+      where: { nombre: { contains: 'Ingeniería de Sistemas' } }
+    });
+    const facultadIngenieria = await prisma.facultad.findFirst({
+      where: { nombre: { contains: 'Ingeniería' } }
+    });
+    const escuelaSistemas = await prisma.escuelaProfesional.findFirst({
+      where: { nombre: { contains: 'Ingeniería de Sistemas' } }
+    });
+    
+    if (!departamentoSistemas) {
+      throw new Error('Departamento de Ingeniería de Sistemas not found!');
+    }
+    
     const mallaInicial = await prisma.mallaCurricular.create({
-
       data: {
         nombre: 'Plan de Estudios 2018',
         descripcion: 'Malla curricular oficial de la carrera de Ingeniería de Sistemas',
         anio: 2018,
-        activo: true
+        activo: true,
+        departamentoId: departamentoSistemas.id,
+        facultadId: facultadIngenieria?.id,
+        escuelaId: escuelaSistemas?.id
       }
     });
-    console.log('   ✓ Malla curricular "Plan de Estudios 2018" creada con éxito.');
+    console.log('   ✓ Malla curricular "Plan de Estudios 2018" creada con éxito!');
     
     // Pasar la malla inicial al seeder de cursos
     await seedCursos(prisma, mallaInicial.id_malla);

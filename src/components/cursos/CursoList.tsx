@@ -55,6 +55,19 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
+
+interface Facultad {
+  id: string;
+  nombre: string;
+  codigo: string;
+}
+
+interface EscuelaProfesional {
+  id: string;
+  nombre: string;
+  facultadId: string;
+}
 
 interface Curso {
   id_curso: number;
@@ -65,6 +78,8 @@ interface Curso {
   id_ciclo?: number;
   tipo_curso: string;
   departamento_responsable?: string;
+  escuelaId?: string;
+  escuela?: EscuelaProfesional;
   ciclo_rel?: {
     id_ciclo: number;
     nombre: string;
@@ -74,6 +89,7 @@ interface Curso {
 export function CursoList() {
   const context = usePeriodo();
   const periodoSeleccionado = context?.periodoSeleccionado;
+  const { departamentoSeleccionado, facultadSeleccionada } = useDepartment();
   const [cursos, setCursos] = useState<Curso[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -86,6 +102,8 @@ export function CursoList() {
   const [generatingReport, setGeneratingReport] = useState<number | null>(null);
   const [ciclos, setCiclos] = useState<any[]>([]);
   const [semestre, setSemestre] = useState<number>(1);
+  const [facultades, setFacultades] = useState<Facultad[]>([]);
+  const [escuelas, setEscuelas] = useState<EscuelaProfesional[]>([]);
 
   // Sincronizar semestre con el periodo seleccionado
   useEffect(() => {
@@ -139,12 +157,54 @@ export function CursoList() {
     plan_estudios: "",
     prerequisitos: "",
     departamento_responsable: "",
+    facultadId: "",
+    escuelaId: "",
   });
+
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch("/api/facultades");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setFacultades(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar facultades:", error);
+    }
+  };
+
+  const fetchEscuelas = async (facultadId?: string) => {
+    try {
+      const url = facultadId 
+        ? `/api/escuelas?facultadId=${encodeURIComponent(facultadId)}` 
+        : "/api/escuelas";
+      const res = await fetch(url);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setEscuelas(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar escuelas:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCiclos();
+    fetchFacultades();
+  }, []);
 
   useEffect(() => {
     fetchCursos();
-    fetchCiclos();
-  }, []);
+  }, [departamentoSeleccionado, facultadSeleccionada]);
+
+  // Cuando la facultad cambia, actualizar las escuelas
+  useEffect(() => {
+    if (formData.facultadId) {
+      fetchEscuelas(formData.facultadId);
+    } else {
+      setEscuelas([]);
+    }
+  }, [formData.facultadId]);
 
   const fetchCiclos = async () => {
     try {
@@ -174,7 +234,13 @@ export function CursoList() {
 
   const fetchCursos = async () => {
     try {
-      const res = await fetch("/api/cursos");
+      let url = "/api/cursos";
+      if (departamentoSeleccionado) {
+        url = `/api/cursos?departamentoId=${departamentoSeleccionado.id}`;
+      } else if (facultadSeleccionada) {
+        url = `/api/cursos?facultadId=${facultadSeleccionada.id}`;
+      }
+      const res = await fetch(url);
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
@@ -250,6 +316,9 @@ export function CursoList() {
   };
 
   const handleEdit = (curso: any) => {
+    // If curso has escuela, we need to find its facultadId from the escuela
+    const facultadIdFromEscuela = curso.escuela ? curso.escuela.facultadId : (formData.facultadId || "");
+    // If needed, fetch escuelas for that facultad here, but we can set facultadId and let useEffect handle it
     setEditingCurso(curso);
     setFormData({
       codigo: curso.codigo,
@@ -261,6 +330,8 @@ export function CursoList() {
       plan_estudios: curso.plan_estudios || "",
       prerequisitos: curso.prerequisitos || "",
       departamento_responsable: curso.departamento_responsable || "",
+      facultadId: facultadIdFromEscuela,
+      escuelaId: curso.escuelaId || "",
     });
     setIsDialogOpen(true);
   };
@@ -276,6 +347,8 @@ export function CursoList() {
       plan_estudios: "",
       prerequisitos: "",
       departamento_responsable: "",
+      facultadId: "",
+      escuelaId: "",
     });
     setEditingCurso(null);
   };
@@ -426,6 +499,34 @@ export function CursoList() {
 
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                      <Select value={formData.facultadId} onValueChange={(v) => setFormData({ ...formData, facultadId: v, escuelaId: "" })}>
+                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                          <SelectValue placeholder="Seleccionar facultad" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border">
+                          {facultades.map((f) => (
+                            <SelectItem key={f.id} value={f.id} className="font-bold text-xs">{f.codigo} - {f.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
+                      <Select value={formData.escuelaId} onValueChange={(v) => setFormData({ ...formData, escuelaId: v })} disabled={!formData.facultadId}>
+                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                          <SelectValue placeholder="Seleccionar escuela" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl border-border">
+                          {escuelas.map((e) => (
+                            <SelectItem key={e.id} value={e.id} className="font-bold text-xs">{e.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
                       <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
                       <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
@@ -504,6 +605,7 @@ export function CursoList() {
               <TableRow className="border-b border-border hover:bg-transparent">
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Escuela</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Departamento</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Máx. Docentes</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Créd.</TableHead>
@@ -513,9 +615,9 @@ export function CursoList() {
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((curso) => (
                   <TableRow key={curso.id_curso} className="group hover:bg-muted/50 transition-colors">
@@ -529,6 +631,9 @@ export function CursoList() {
                           {curso.tipo_curso.replace("_", " ")}
                         </span>
                       </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-[10px] font-bold text-muted-foreground">{curso.escuela?.nombre || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <span className="text-[10px] font-bold text-muted-foreground">{curso.departamento_responsable || '-'}</span>

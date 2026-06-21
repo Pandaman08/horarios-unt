@@ -2,9 +2,22 @@ import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const departamentoId = searchParams.get('departamentoId');
+    const facultadId = searchParams.get('facultadId');
+
+    const where: any = {};
+    if (departamentoId) {
+      where.departamentoId = departamentoId;
+    }
+    if (facultadId) {
+      where.facultadId = facultadId;
+    }
+
     const docentes = await prisma.docente.findMany({
+      where,
       orderBy: { apellidos: 'asc' },
       include: {
         usuario: {
@@ -13,6 +26,8 @@ export async function GET() {
             rol: true
           }
         },
+        facultad: true,
+        departamento: true,
         docente_cursos: {
           include: {
             curso: true
@@ -73,7 +88,9 @@ export async function POST(request: Request) {
         grado_academico: data.grado_academico,
         fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
         id_usuario: usuario.id_usuario,
-        activo: true
+        activo: true,
+        facultadId: data.facultadId,
+        departamentoId: data.departamentoId,
       }
     });
 

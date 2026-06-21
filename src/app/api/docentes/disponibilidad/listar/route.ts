@@ -5,6 +5,7 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const periodoId = searchParams.get("periodoId");
+    const departamentoId = searchParams.get("departamentoId");
     const search = searchParams.get("search") || "";
     const categoria = searchParams.get("categoria") || "todos";
     const modalidad = searchParams.get("modalidad") || "todos";
@@ -17,32 +18,35 @@ export async function GET(req: NextRequest) {
     const idPeriodo = parseInt(periodoId);
 
     // Obtener docentes con su disponibilidad para el periodo
+    const where: any = {
+      activo: true,
+      AND: [
+        search ? {
+          OR: [
+            { nombres: { contains: search, mode: 'insensitive' } },
+            { apellidos: { contains: search, mode: 'insensitive' } },
+            { dni: { contains: search } },
+            { codigo_docente: { contains: search } },
+          ]
+        } : {},
+        categoria !== "todos" ? { 
+          categoria: {
+            equals: categoria,
+            mode: 'insensitive'
+          }
+        } : {},
+        modalidad !== "todos" ? { 
+          modalidad: {
+            equals: modalidad,
+            mode: 'insensitive'
+          }
+        } : {},
+        departamentoId ? { departamentoId } : {},
+      ]
+    };
+
     const docentes = await prisma.docente.findMany({
-      where: {
-        activo: true,
-        AND: [
-          search ? {
-            OR: [
-              { nombres: { contains: search, mode: 'insensitive' } },
-              { apellidos: { contains: search, mode: 'insensitive' } },
-              { dni: { contains: search } },
-              { codigo_docente: { contains: search } },
-            ]
-          } : {},
-          categoria !== "todos" ? { 
-            categoria: {
-              equals: categoria,
-              mode: 'insensitive'
-            }
-          } : {},
-          modalidad !== "todos" ? { 
-            modalidad: {
-              equals: modalidad,
-              mode: 'insensitive'
-            }
-          } : {},
-        ]
-      },
+      where,
       include: {
         disponibilidad: {
           where: { id_periodo: idPeriodo },

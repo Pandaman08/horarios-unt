@@ -698,6 +698,7 @@ export async function GET(request: Request) {
     const id_periodo = searchParams.get('id_periodo');
     const id_declaracion = searchParams.get('idDeclaracion');
     const formato = searchParams.get('formato') || 'pdf';
+    const departamentoId = searchParams.get('departamentoId');
 
     // ── PLAN DE ESTUDIOS ─────────────────────────────────────────────────────
     if (tipo === 'plan-estudios') {
@@ -1475,8 +1476,16 @@ export async function GET(request: Request) {
       if (!id || isNaN(parseInt(id))) return NextResponse.json({ error: 'Falta id de día' }, { status: 400 });
       const diaIndex = parseInt(id);
       const nombreDia = DIAS[diaIndex] ?? 'Desconocido';
+      const where: any = { id_periodo: parseInt(id_periodo), dia_semana: diaIndex };
+      if (departamentoId) {
+        where.OR = [
+          { docente: { departamentoId } },
+          { ambiente: { departamentoId } },
+          { curso: { departamentoId } }
+        ];
+      }
       const horarios = await prisma.horarioAsignado.findMany({
-        where: { id_periodo: parseInt(id_periodo), dia_semana: diaIndex },
+        where,
         include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
         orderBy: [{ hora_inicio: 'asc' }]
       });
@@ -1674,6 +1683,10 @@ export async function GET(request: Request) {
       if (tipo === 'aula' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ambiente' }, { status: 400 });
 
       let ambientesRaw: any[] = [];
+      const ambienteWhere: any = {};
+      if (departamentoId) {
+        ambienteWhere.departamentoId = departamentoId;
+      }
       if (tipo === 'aula') {
         const a = await prisma.ambiente.findUnique({
           where: { id_ambiente: parseInt(id!) },
@@ -1682,6 +1695,7 @@ export async function GET(request: Request) {
         ambientesRaw = a ? [a] : [];
       } else {
         ambientesRaw = await prisma.ambiente.findMany({
+          where: ambienteWhere,
           include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } },
           orderBy: { nombre: 'asc' }
         });
@@ -1733,8 +1747,16 @@ export async function GET(request: Request) {
 
       for (const ciclo of ciclosRaw) {
         if (!ciclo) continue;
+        const where: any = { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } };
+        if (departamentoId) {
+          where.OR = [
+            { docente: { departamentoId } },
+            { ambiente: { departamentoId } },
+            { curso: { departamentoId } }
+          ];
+        }
         const horarios = await prisma.horarioAsignado.findMany({
-          where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } },
+          where,
           include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
         });
         if (!horarios.length) continue;
@@ -1775,8 +1797,16 @@ export async function GET(request: Request) {
       const paginas: string[] = [];
 
       for (const ciclo of ciclos) {
+        const where: any = { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } };
+        if (departamentoId) {
+          where.OR = [
+            { docente: { departamentoId } },
+            { ambiente: { departamentoId } },
+            { curso: { departamentoId } }
+          ];
+        }
         const horarios = await prisma.horarioAsignado.findMany({
-          where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } },
+          where,
           include: { docente: true, curso: true, ambiente: true, grupo: true },
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }]
         });
@@ -1806,7 +1836,14 @@ export async function GET(request: Request) {
 
       // ── LISTA: DOCENTES ───────────────────────────────────────────────────────
     } else if (tipo === 'reporte_docentes_lista') {
-      const docentes = await prisma.docente.findMany({ orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] });
+      const docenteWhere: any = {};
+      if (departamentoId) {
+        docenteWhere.departamentoId = departamentoId;
+      }
+      const docentes = await prisma.docente.findMany({ 
+        where: docenteWhere, 
+        orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] 
+      });
       reportTitle = 'Catálogo de Docentes';
       htmlContent = generarCabecera('Catálogo de Docentes', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Docentes', valor: String(docentes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
@@ -1823,7 +1860,15 @@ export async function GET(request: Request) {
 
       // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
     } else if (tipo === 'reporte_cursos') {
-      const cursos = await prisma.curso.findMany({ include: { ciclo_rel: true }, orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] });
+      const cursoWhere: any = {};
+      if (departamentoId) {
+        cursoWhere.departamentoId = departamentoId;
+      }
+      const cursos = await prisma.curso.findMany({ 
+        where: cursoWhere, 
+        include: { ciclo_rel: true }, 
+        orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] 
+      });
       reportTitle = 'Catálogo de Cursos';
       htmlContent = generarCabecera('Catálogo de Cursos', `${cursos.length} asignaturas`, periodoNombre, [{ label: 'Cursos', valor: String(cursos.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
@@ -1841,7 +1886,14 @@ export async function GET(request: Request) {
 
       // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
     } else if (tipo === 'reporte_ambientes') {
-      const ambientes = await prisma.ambiente.findMany({ orderBy: { nombre: 'asc' } });
+      const ambienteWhere: any = {};
+      if (departamentoId) {
+        ambienteWhere.departamentoId = departamentoId;
+      }
+      const ambientes = await prisma.ambiente.findMany({ 
+        where: ambienteWhere, 
+        orderBy: { nombre: 'asc' } 
+      });
       reportTitle = 'Catálogo de Ambientes Académicos';
       htmlContent = generarCabecera('Catálogo de Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">

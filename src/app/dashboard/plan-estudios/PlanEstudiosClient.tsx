@@ -55,6 +55,7 @@ import {
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import { useSession } from "next-auth/react";
+import { useDepartment } from "@/contexts/DepartmentContext";
 
 // Define types based on the API response
 interface Prerequisito {
@@ -102,6 +103,7 @@ interface MallaCurricular {
 
 export function PlanEstudiosClient() {
   const { data: session } = useSession();
+  const { departamentoSeleccionado, facultadSeleccionada, allDepartamentos } = useDepartment();
   const [ciclos, setCiclos] = useState<Ciclo[]>([]);
   const [mallas, setMallas] = useState<MallaCurricular[]>([]);
   const [selectedMalla, setSelectedMalla] = useState<string>("all");
@@ -117,6 +119,8 @@ export function PlanEstudiosClient() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
   const [allCursos, setAllCursos] = useState<Curso[]>([]);
   const [selectedPrerequisitos, setSelectedPrerequisitos] = useState<string[]>([]);
+  const [allFacultades, setAllFacultades] = useState<any[]>([]);
+  const [allEscuelas, setAllEscuelas] = useState<any[]>([]);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -141,23 +145,51 @@ export function PlanEstudiosClient() {
     maximo_docentes: "1",
     activo: true,
     departamento_responsable: "",
+    departamentoId: "",
   });
 
   const [mallaFormData, setMallaFormData] = useState({
     nombre: "",
     descripcion: "",
     anio: new Date().getFullYear().toString(),
+    departamentoId: "",
+    facultadId: "",
+    escuelaId: ""
   });
 
   useEffect(() => {
     fetchPlanEstudios();
     fetchMallas();
-  }, []);
+    fetchFacultades();
+    if (facultadSeleccionada?.id) {
+      fetchEscuelas(facultadSeleccionada.id);
+    }
+  }, [departamentoSeleccionado, facultadSeleccionada, selectedMalla]);
 
   const fetchPlanEstudios = async () => {
     try {
+      setLoading(true);
       console.log('[PlanEstudiosClient] Fetching plan de estudios...');
-      const res = await fetch('/api/plan-estudios');
+      
+      if (!departamentoSeleccionado) {
+        console.log('[PlanEstudiosClient] No departamento selected, clearing data');
+        setCiclos([]);
+        setAllCursos([]);
+        setLoading(false);
+        return;
+      }
+      
+      let url = '/api/plan-estudios';
+      const params = new URLSearchParams();
+      params.set('departamentoId', departamentoSeleccionado.id);
+      if (selectedMalla && selectedMalla !== "all") {
+        params.set('mallaId', selectedMalla);
+      }
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const res = await fetch(url);
       console.log('[PlanEstudiosClient] Response status:', res.status);
       
       let data;
@@ -193,7 +225,18 @@ export function PlanEstudiosClient() {
   const fetchMallas = async () => {
     try {
       console.log('[PlanEstudiosClient] Fetching mallas curriculares...');
-      const res = await fetch('/api/mallas-curriculares');
+      
+      if (!departamentoSeleccionado) {
+        console.log('[PlanEstudiosClient] No departamento selected, clearing mallas');
+        setMallas([]);
+        setSelectedMalla("all");
+        setFormData(prev => ({ ...prev, id_malla: "" }));
+        return;
+      }
+      
+      let url = '/api/mallas-curriculares';
+      url += `?departamentoId=${departamentoSeleccionado.id}`;
+      const res = await fetch(url);
       console.log('[PlanEstudiosClient] Response status:', res.status);
       
       let data;
@@ -216,10 +259,41 @@ export function PlanEstudiosClient() {
       if (mallasData.length > 0) {
         setSelectedMalla(mallasData[0].id_malla.toString());
         setFormData(prev => ({ ...prev, id_malla: mallasData[0].id_malla.toString() }));
+      } else {
+        setSelectedMalla("all");
+        setFormData(prev => ({ ...prev, id_malla: "" }));
       }
     } catch (error: any) {
       console.error('[PlanEstudiosClient] Error al cargar mallas curriculares:', error);
       toast.error(error.message || 'Error al cargar mallas curriculares');
+    }
+  };
+
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch('/api/facultades');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAllFacultades(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar facultades:', err);
+    }
+  };
+
+  const fetchEscuelas = async (facultadId?: string) => {
+    try {
+      let url = '/api/escuelas';
+      if (facultadId) {
+        url += `?facultadId=${facultadId}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAllEscuelas(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar escuelas:', err);
     }
   };
 
@@ -300,7 +374,7 @@ export function PlanEstudiosClient() {
     }
   };
 
-  const handleEdit = (curso: Curso) => {
+  const handleEdit = (curso: any) => {
     setEditingCurso(curso);
     const mallaId = curso.id_malla?.toString() || (mallas.length > 0 ? mallas[0].id_malla.toString() : "");
     setFormData({
@@ -316,10 +390,11 @@ export function PlanEstudiosClient() {
       maximo_docentes: curso.maximo_docentes.toString(),
       activo: curso.activo,
       departamento_responsable: curso.departamento_responsable || "",
+      departamentoId: curso.departamentoId || "",
     });
     // Set selected prerequisitos from existing course
     setSelectedPrerequisitos(
-      curso.prerequisitos_rel.map((p) => p.prerequisito.codigo)
+      curso.prerequisitos_rel.map((p: any) => p.prerequisito.codigo)
     );
     setIsDialogOpen(true);
   };
@@ -363,6 +438,9 @@ export function PlanEstudiosClient() {
       nombre: malla.nombre,
       descripcion: malla.descripcion || "",
       anio: malla.anio.toString(),
+      departamentoId: (malla as any).departamentoId || departamentoSeleccionado?.id || "",
+      facultadId: (malla as any).facultadId || "",
+      escuelaId: (malla as any).escuelaId || ""
     });
     setIsMallaDialogOpen(true);
   };
@@ -381,6 +459,7 @@ export function PlanEstudiosClient() {
       maximo_docentes: "1",
       activo: true,
       departamento_responsable: "",
+      departamentoId: "",
     });
     setSelectedPrerequisitos([]);
     setEditingCurso(null);
@@ -391,6 +470,9 @@ export function PlanEstudiosClient() {
       nombre: "",
       descripcion: "",
       anio: new Date().getFullYear().toString(),
+      departamentoId: departamentoSeleccionado?.id || "",
+      facultadId: facultadSeleccionada?.id || "",
+      escuelaId: ""
     });
     setEditingMalla(null);
   };
@@ -529,15 +611,78 @@ export function PlanEstudiosClient() {
                         />
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Año</Label>
-                        <Input 
-                          type="number" 
-                          value={mallaFormData.anio} 
-                          onChange={(e) => setMallaFormData({ ...mallaFormData, anio: e.target.value })} 
-                          className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" 
-                          required
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Año</Label>
+                          <Input 
+                            type="number" 
+                            value={mallaFormData.anio} 
+                            onChange={(e) => setMallaFormData({ ...mallaFormData, anio: e.target.value })} 
+                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" 
+                            required
+                          />
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                          <Select
+                            value={mallaFormData.facultadId}
+                            onValueChange={(v) => {
+                              setMallaFormData({ ...mallaFormData, facultadId: v, escuelaId: "" });
+                              fetchEscuelas(v);
+                            }}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar facultad" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {allFacultades.map((f: any) => (
+                                <SelectItem key={f.id} value={f.id} className="font-bold text-sm">
+                                  {f.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
+                          <Select
+                            value={mallaFormData.escuelaId}
+                            onValueChange={(v) => setMallaFormData({ ...mallaFormData, escuelaId: v })}
+                            disabled={!mallaFormData.facultadId}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar escuela" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {allEscuelas.map((e: any) => (
+                                <SelectItem key={e.id} value={e.id} className="font-bold text-sm">
+                                  {e.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
+                          <Select
+                            value={mallaFormData.departamentoId}
+                            onValueChange={(v) => setMallaFormData({ ...mallaFormData, departamentoId: v })}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar departamento" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {allDepartamentos.map((d: any) => (
+                                <SelectItem key={d.id} value={d.id} className="font-bold text-sm">
+                                  {d.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
                       </div>
 
                       <div className="space-y-2">
@@ -695,14 +840,41 @@ export function PlanEstudiosClient() {
                           </div>
                         </div>
                       </div>
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
-                        <Input
-                          value={formData.departamento_responsable}
-                          onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
-                          className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
-                          placeholder="Ingeniería de Sistemas"
-                        />
+                      <div className="grid grid-cols-2 gap-4">
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
+                          <Select 
+                            value={formData.departamentoId} 
+                            onValueChange={(v) => {
+                              const selectedDepto = allDepartamentos.find(d => d.id === v);
+                              setFormData({ 
+                                ...formData, 
+                                departamentoId: v,
+                                departamento_responsable: selectedDepto?.nombre || ""
+                              });
+                            }}
+                          >
+                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                              <SelectValue placeholder="Seleccionar departamento" />
+                            </SelectTrigger>
+                            <SelectContent className="rounded-xl border-border">
+                              {allDepartamentos.map((d: any) => (
+                                <SelectItem key={d.id} value={d.id} className="font-bold text-sm">
+                                  {d.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-2">
+                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable (Texto)</Label>
+                          <Input
+                            value={formData.departamento_responsable}
+                            onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
+                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                            placeholder="Ingeniería de Sistemas"
+                          />
+                        </div>
                       </div>
 
                       <div className="space-y-2">

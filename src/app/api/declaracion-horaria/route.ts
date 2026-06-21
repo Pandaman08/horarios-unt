@@ -6,6 +6,7 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const idDocente = searchParams.get('idDocente');
     const idPeriodo = searchParams.get('idPeriodo');
+    const departamentoId = searchParams.get('departamentoId');
 
     if (idDocente && idPeriodo) {
       const declaracion = await prisma.declaracionHoraria.findUnique({
@@ -27,8 +28,12 @@ export async function GET(request: Request) {
     }
 
     if (idPeriodo) {
+      const where: any = { id_periodo: parseInt(idPeriodo) };
+      if (departamentoId) {
+        where.docente = { departamentoId };
+      }
       const declaraciones = await prisma.declaracionHoraria.findMany({
-        where: { id_periodo: parseInt(idPeriodo) },
+        where,
         include: {
           docente: true,
           periodo: true,

@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { usePeriodo } from '@/contexts/PeriodoContext';
+import { useDepartment } from '@/contexts/DepartmentContext';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -120,7 +121,8 @@ const getEstadoBadge = (estado: string) => {
 };
 
 export default function AprobacionCargaHorariaClient({ periodos }: { periodos: any[] }) {
-  const { periodoActivo } = usePeriodo()
+  const { periodoActivo } = usePeriodo();
+  const { departamentoSeleccionado } = useDepartment();
   const [declaraciones, setDeclaraciones] = useState<DeclaracionHoraria[]>([])
   const [loading, setLoading] = useState(true)
   const [rechazoComments, setRechazoComments] = useState<Record<number, string>>({})
@@ -129,14 +131,18 @@ export default function AprobacionCargaHorariaClient({ periodos }: { periodos: a
 
   useEffect(() => {
     if (periodoActivo) {
-      fetchDeclaraciones(periodoActivo.id_periodo);
+      fetchDeclaraciones(periodoActivo.id_periodo, departamentoSeleccionado?.id);
     }
-  }, [periodoActivo]);
+  }, [periodoActivo, departamentoSeleccionado?.id]);
 
-  const fetchDeclaraciones = async (idPeriodo: number) => {
+  const fetchDeclaraciones = async (idPeriodo: number, departamentoId?: string) => {
     try {
       setLoading(true);
-      const res = await fetch(`/api/declaracion-horaria?idPeriodo=${idPeriodo}`);
+      let url = `/api/declaracion-horaria?idPeriodo=${idPeriodo}`;
+      if (departamentoId) {
+        url += `&departamentoId=${departamentoId}`;
+      }
+      const res = await fetch(url);
       let data = await res.json();
       // If it's a single object (when idDocente is also present), make it an array
       if (!Array.isArray(data)) {
