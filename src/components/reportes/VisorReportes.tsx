@@ -57,17 +57,19 @@ export function VisorReportes() {
 
     setGeneratingExcel(true);
     try {
-      const response = await fetch(`/api/reportes/excel?id_periodo=${id_periodo}`);
+      let url = `/api/reportes/excel?id_periodo=${id_periodo}`;
+      if (departamentoSeleccionado) url += `&departamentoId=${departamentoSeleccionado.id}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error(`Error ${response.status}`);
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const urlObj = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = urlObj;
       a.download = `horario_institucional_${periodoSeleccionado?.codigo || 'general'}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
+      window.URL.revokeObjectURL(urlObj);
       toast.success("Excel generado correctamente");
     } catch (error: any) {
       console.error(error);
@@ -84,12 +86,14 @@ export function VisorReportes() {
   const fetchData = async () => {
     try {
       let docentesUrl = "/api/docentes";
+      let ambientesUrl = "/api/ambientes";
       if (departamentoSeleccionado) {
         docentesUrl += `?departamentoId=${departamentoSeleccionado.id}`;
+        ambientesUrl += `?departamentoId=${departamentoSeleccionado.id}`;
       }
       const [dRes, aRes, cRes] = await Promise.all([
         fetch(docentesUrl),
-        fetch("/api/ambientes"),
+        fetch(ambientesUrl),
         fetch("/api/ciclos")
       ]);
       setDocentes(await dRes.json());
@@ -109,6 +113,7 @@ export function VisorReportes() {
 
     let url = `/api/reportes/pdf?tipo=${tipo}&id_periodo=${id_periodo}`;
     if (id) url += `&id=${id}`;
+    if (departamentoSeleccionado) url += `&departamentoId=${departamentoSeleccionado.id}`;
 
     type TipoReporte =
   | 'docente'

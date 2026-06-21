@@ -164,6 +164,7 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id_periodo = searchParams.get('id_periodo');
+    const departamentoId = searchParams.get('departamentoId');
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
 
     const periodo = await prisma.periodoAcademico.findUnique({
@@ -188,9 +189,17 @@ export async function GET(request: Request) {
     const DIAS_NOMBRE = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
 
     for (const ciclo of ciclos) {
+      const where: any = { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } };
+      if (departamentoId) {
+        where.OR = [
+          { docente: { departamentoId } },
+          { ambiente: { departamentoId } },
+          { curso: { departamentoId } }
+        ];
+      }
 
       const horarios = await prisma.horarioAsignado.findMany({
-        where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } },
+        where,
         include: { docente: true, curso: true, ambiente: true, grupo: true },
         orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
       });
