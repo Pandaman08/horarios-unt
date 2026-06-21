@@ -11,7 +11,8 @@ export async function POST(request: Request) {
         id_grupo: data.id_grupo || null,
         tipo_clase: data.tipo_clase,
         horas_semanales: data.horas_semanales,
-        grupos_asignados: data.grupos_asignados || null
+        grupos_asignados: data.grupos_asignados || null,
+        sedeId: data.sedeId || null
       }
     });
     return NextResponse.json(carga);

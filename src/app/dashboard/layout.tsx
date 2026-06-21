@@ -10,6 +10,7 @@ import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageSelector } from "@/components/layout/LanguageSelector";
 import { FontSizeAdjuster } from "@/components/layout/FontSizeAdjuster";
 import { PeriodoSelector } from "@/components/layout/PeriodoSelector";
+import { DepartmentSelector } from "@/components/layout/DepartmentSelector";
 import {
   LayoutDashboard,
   Users,
@@ -30,6 +31,7 @@ import {
   Briefcase,
   CheckCircle2,
   GraduationCap,
+  Building2,
 } from "lucide-react";
 
 function DashboardLayoutInner({
@@ -101,6 +103,24 @@ function DashboardLayoutInner({
             title: t("navPeriods"),
             href: "/dashboard/catalogos?tab=periodos",
             icon: Calendar,
+            roles: ["administrador_sistema"],
+          },
+          {
+            title: "Facultades",
+            href: "/dashboard/catalogos?tab=facultades",
+            icon: Building2,
+            roles: ["administrador_sistema"],
+          },
+          {
+            title: "Departamentos Académicos",
+            href: "/dashboard/catalogos?tab=departamentos",
+            icon: Users,
+            roles: ["administrador_sistema"],
+          },
+          {
+            title: "Escuelas Profesionales",
+            href: "/dashboard/catalogos?tab=escuelas",
+            icon: GraduationCap,
             roles: ["administrador_sistema"],
           },
         ],
@@ -403,7 +423,8 @@ function DashboardLayoutInner({
           </div>
 
           {userRol !== 'docente' && (
-            <div className="hidden md:block">
+            <div className="hidden md:flex items-center gap-2">
+              <DepartmentSelector />
               <PeriodoSelector />
             </div>
           )}

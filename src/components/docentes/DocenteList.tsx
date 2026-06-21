@@ -41,6 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
 import {
   Dialog,
   DialogContent,
@@ -48,6 +49,18 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+
+interface Facultad {
+  id: string;
+  nombre: string;
+  codigo: string;
+}
+
+interface DepartamentoAcademico {
+  id: string;
+  nombre: string;
+  facultadId: string;
+}
 
 interface Docente {
   id_docente: number;
@@ -62,6 +75,10 @@ interface Docente {
   telefono: string;
   grado_academico?: string;
   fecha_ingreso?: string;
+  facultadId?: string;
+  facultad?: Facultad;
+  departamentoId?: string;
+  departamento?: DepartamentoAcademico;
   docente_cursos?: Array<{
     curso: {
       id_ciclo?: number;
@@ -72,6 +89,7 @@ interface Docente {
 export function DocenteList() {
   const context = usePeriodo();
   const periodoSeleccionado = context?.periodoSeleccionado;
+  const { departamentoSeleccionado } = useDepartment();
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDocenteDialogOpen, setIsDocenteDialogOpen] = useState(false);
@@ -114,6 +132,9 @@ export function DocenteList() {
     }
   };
 
+  const [facultades, setFacultades] = useState<Facultad[]>([]);
+  const [departamentos, setDepartamentos] = useState<DepartamentoAcademico[]>([]);
+
   const [formData, setFormData] = useState({
     nombres: "",
     apellidos: "",
@@ -125,6 +146,8 @@ export function DocenteList() {
     grado_academico: "INGENIERO",
     especialidad: "",
     fecha_ingreso: new Date().toISOString().split("T")[0],
+    facultadId: "",
+    departamentoId: "",
   });
 
   // Estados de Filtros
@@ -242,19 +265,63 @@ export function DocenteList() {
     }
   };
 
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch("/api/facultades");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setFacultades(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar facultades:", error);
+    }
+  };
+
+  const fetchDepartamentos = async (facultadId?: string) => {
+    try {
+      const url = facultadId 
+        ? `/api/departamentos?facultadId=${encodeURIComponent(facultadId)}` 
+        : "/api/departamentos";
+      const res = await fetch(url);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setDepartamentos(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar departamentos:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCiclos();
+    fetchFacultades();
+  }, []);
+
   useEffect(() => {
     fetchDocentes();
-    fetchCiclos();
-  }, []);
+  }, [departamentoSeleccionado]);
+
+  // Cuando la facultad cambia, actualizar los departamentos
+  useEffect(() => {
+    if (formData.facultadId) {
+      fetchDepartamentos(formData.facultadId);
+    } else {
+      setDepartamentos([]);
+    }
+  }, [formData.facultadId]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filtroCategoria, filtroModalidad, filtroGrado, filtroAntiguedad, filtroCiclo, semestre]);
+  }, [searchTerm, filtroCategoria, filtroModalidad, filtroGrado, filtroAntiguedad, filtroCiclo, semestre, departamentoSeleccionado]);
 
   const fetchDocentes = async () => {
     try {
-      const res = await fetch("/api/docentes");
+      let url = "/api/docentes";
+      if (departamentoSeleccionado) {
+        url = `/api/docentes?departamentoId=${departamentoSeleccionado.id}`;
+      }
+      const res = await fetch(url);
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
@@ -371,6 +438,8 @@ export function DocenteList() {
       grado_academico: "INGENIERO",
       especialidad: "",
       fecha_ingreso: new Date().toISOString().split("T")[0],
+      facultadId: "",
+      departamentoId: "",
     });
   };
 
@@ -511,6 +580,36 @@ export function DocenteList() {
 
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                      <Select value={formData.facultadId} onValueChange={(val) => {
+                        setFormData({ ...formData, facultadId: val, departamentoId: "" });
+                      }} required>
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                          <SelectValue placeholder="Seleccione facultad" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {facultades.map((facultad) => (
+                            <SelectItem key={facultad.id} value={facultad.id}>{facultad.codigo} - {facultad.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento Académico</Label>
+                      <Select value={formData.departamentoId} onValueChange={(val) => setFormData({ ...formData, departamentoId: val })} disabled={!formData.facultadId} required>
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                          <SelectValue placeholder="Seleccione departamento" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {departamentos.map((depto) => (
+                            <SelectItem key={depto.id} value={depto.id}>{depto.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
                       <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Especialidad</Label>
                       <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} />
                     </div>
@@ -627,6 +726,8 @@ export function DocenteList() {
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Cód.</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Apellidos y Nombres</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Grado</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Facultad</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Departamento</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Antigüedad</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Modalidad</TableHead>
                 <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Categoría</TableHead>
@@ -635,9 +736,9 @@ export function DocenteList() {
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((docente) => (
                   <TableRow key={docente.id_docente} className="group hover:bg-muted/50 transition-colors">
@@ -657,6 +758,12 @@ export function DocenteList() {
                         <GraduationCap className="h-3 w-3 text-muted-foreground/40" />
                         <span className="text-[10px] font-medium">{docente.grado_academico || '-'}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-[10px] font-medium text-muted-foreground">{docente.facultad?.codigo || '-'}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-[10px] font-medium text-muted-foreground">{docente.departamento?.nombre || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-2 text-muted-foreground">
@@ -688,6 +795,8 @@ export function DocenteList() {
                               grado_academico: docente.grado_academico || "INGENIERO",
                               especialidad: (docente as any).especialidad || "",
                               fecha_ingreso: docente.fecha_ingreso ? new Date(docente.fecha_ingreso).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+                              facultadId: docente.facultadId || "",
+                              departamentoId: docente.departamentoId || "",
                             });
                             setIsDocenteDialogOpen(true);
                           }}

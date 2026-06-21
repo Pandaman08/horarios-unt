@@ -40,6 +40,7 @@ import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogTitle, DialogDescription } from "@/components/ui/dialog";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
 import { cn } from "@/lib/utils";
 import { Label } from "@/components/ui/label";
 import { gruposPorDefectoSegunTipo } from "@/lib/grupos/cargaLectivaGrupos";
@@ -152,6 +153,7 @@ const MarqueeSelectTrigger = ({
 
 export default function AsignacionCargaLectivaPage() {
   const { periodoSeleccionado, periodos } = usePeriodo();
+  const { departamentoSeleccionado } = useDepartment();
   const [docentes, setDocentes] = useState<DocenteDisp[]>([]);
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [loading, setLoading] = useState(true);
@@ -197,13 +199,16 @@ export default function AsignacionCargaLectivaPage() {
       fetchMallas();
       fetchGrupos();
     }
-  }, [selectedPeriodo, searchTerm, categoria, modalidad, orden]);
+  }, [selectedPeriodo, searchTerm, categoria, modalidad, orden, departamentoSeleccionado?.id]);
 
   const fetchDocentes = async () => {
     if (!selectedPeriodo) return;
     setLoading(true);
     try {
-      const url = `/api/docentes/disponibilidad/listar?periodoId=${selectedPeriodo}&search=${searchTerm}&categoria=${categoria}&modalidad=${modalidad}&orden=${orden}`;
+      let url = `/api/docentes/disponibilidad/listar?periodoId=${selectedPeriodo}&search=${searchTerm}&categoria=${categoria}&modalidad=${modalidad}&orden=${orden}`;
+      if (departamentoSeleccionado) {
+        url += `&departamentoId=${departamentoSeleccionado.id}`;
+      }
       const res = await fetch(url);
       const data = await res.json();
       setDocentes(data);
@@ -216,7 +221,11 @@ export default function AsignacionCargaLectivaPage() {
 
   const fetchCursos = async () => {
     try {
-      const res = await fetch("/api/cursos");
+      let url = "/api/cursos";
+      if (departamentoSeleccionado) {
+        url += `?departamentoId=${departamentoSeleccionado.id}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       setCursos(Array.isArray(data) ? data : []);
     } catch (error) {

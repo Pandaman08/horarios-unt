@@ -9,7 +9,8 @@ export async function POST(request: Request) {
         id_declaracion: data.id_declaracion,
         tipo: data.tipo,
         descripcion: data.descripcion || null,
-        horas_semanales: data.horas_semanales
+        horas_semanales: data.horas_semanales,
+        sedeId: data.sedeId || null
       }
     });
     return NextResponse.json(carga);
@@ -36,7 +37,8 @@ export async function PUT(request: Request) {
           where: { id_carga_no_lectiva: carga.id_carga_no_lectiva },
           data: {
             descripcion: carga.descripcion || null,
-            horas_semanales: carga.horas_semanales
+            horas_semanales: carga.horas_semanales,
+            sedeId: carga.sedeId || null
           }
         });
       } else {
@@ -54,7 +56,8 @@ export async function PUT(request: Request) {
             where: { id_carga_no_lectiva: existing.id_carga_no_lectiva },
             data: {
               descripcion: carga.descripcion || null,
-              horas_semanales: carga.horas_semanales
+              horas_semanales: carga.horas_semanales,
+              sedeId: carga.sedeId || null
             }
           });
         } else {
@@ -64,7 +67,8 @@ export async function PUT(request: Request) {
               id_declaracion: id_declaracion,
               tipo: carga.tipo,
               descripcion: carga.descripcion || null,
-              horas_semanales: carga.horas_semanales
+              horas_semanales: carga.horas_semanales,
+              sedeId: carga.sedeId || null
             }
           });
         }

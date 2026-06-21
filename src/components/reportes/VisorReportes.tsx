@@ -10,11 +10,13 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export function VisorReportes() {
   const { data: session } = useSession();
   const { periodoSeleccionado, periodos } = usePeriodo();
+  const { departamentoSeleccionado } = useDepartment();
   const isAdmin = session?.user?.rol === 'administrador_sistema';
   const isOperador = session?.user?.rol === 'operador_horarios';
 
@@ -77,12 +79,16 @@ export function VisorReportes() {
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [departamentoSeleccionado?.id]);
 
   const fetchData = async () => {
     try {
+      let docentesUrl = "/api/docentes";
+      if (departamentoSeleccionado) {
+        docentesUrl += `?departamentoId=${departamentoSeleccionado.id}`;
+      }
       const [dRes, aRes, cRes] = await Promise.all([
-        fetch("/api/docentes"),
+        fetch(docentesUrl),
         fetch("/api/ambientes"),
         fetch("/api/ciclos")
       ]);

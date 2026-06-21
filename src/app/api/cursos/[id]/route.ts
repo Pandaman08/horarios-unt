@@ -46,6 +46,7 @@ export async function PUT(
         plan_estudios: data.plan_estudios,
         prerequisitos: data.prerequisitos,
         departamento_responsable: data.departamento_responsable,
+        escuelaId: data.escuelaId || null,
         activo: data.activo
       }
     });

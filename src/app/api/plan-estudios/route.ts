@@ -1,15 +1,38 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
     console.log('[GET /api/plan-estudios] Fetching ciclos and cursos');
+    const { searchParams } = new URL(request.url);
+    const departamentoId = searchParams.get('departamentoId');
+    const facultadId = searchParams.get('facultadId');
+    const mallaId = searchParams.get('mallaId');
+
+    // Get the Mallas first to know which to show
+    const mallas = await prisma.mallaCurricular.findMany({
+      where: {
+        activo: true,
+        ...(departamentoId ? { departamentoId } : {})
+      }
+    });
+    const availableMallaIds = mallas.map(m => m.id_malla);
+
+    // Build where clause for cursos - filter by mallaId and/or departamento's mallas
+    const cursoWhere: any = {
+      activo: true,
+      ...(mallaId
+        ? { id_malla: parseInt(mallaId) }
+        : { id_malla: { in: availableMallaIds } }
+      )
+    };
+
     const ciclos = await prisma.ciclo.findMany({
       where: { activo: true },
       orderBy: { numero: 'asc' },
       include: {
         cursos: {
-          where: { activo: true },
+          where: cursoWhere,
           orderBy: { codigo: 'asc' },
           include: {
             prerequisitos_rel: {
@@ -23,7 +46,8 @@ export async function GET() {
                 }
               }
             },
-            malla_rel: true
+            malla_rel: true,
+            departamento: true
           }
         }
       }
