@@ -7,20 +7,67 @@ datasource db {
   url      = env("DATABASE_URL")
 }
 
+enum RolUsuario {
+  docente
+  operador_horarios
+  administrador_sistema
+  director_departamento
+  decano
+}
+
 model Usuario {
-  id_usuario          Int       @id @default(autoincrement())
-  codigo              String    @unique
-  nombres             String
-  apellidos           String
-  correo_electronico  String?   @unique
-  contrasena_hash     String
-  rol                 String
-  activo              Boolean   @default(true)
-  ultimo_acceso       DateTime?
-  fecha_creacion      DateTime  @default(now())
-  fecha_actualizacion DateTime  @default(now())
-  dni                 String?   @unique
-  docente             Docente?
+  id_usuario              Int                   @id @default(autoincrement())
+  codigo                  String                @unique
+  nombres                 String
+  apellidos               String
+  correo_electronico      String?               @unique
+  contrasena_hash         String
+  rol                     RolUsuario            @default(docente)
+  activo                  Boolean               @default(true)
+  ultimo_acceso           DateTime?
+  fecha_creacion          DateTime              @default(now())
+  fecha_actualizacion     DateTime              @default(now())
+  dni                     String?               @unique
+  docente                 Docente?
+  declaracionesValidadas  DeclaracionHoraria[] @relation("ValidadoPor")
+  cladsValidados          CargaLectivaAdicional[] @relation("CladValidadoPor")
+}
+
+enum CondicionDocente {
+  ORDINARIO
+  EXTRAORDINARIO
+  CONTRATADO
+}
+
+enum CategoriaDocente {
+  PRINCIPAL
+  ASOCIADO
+  AUXILIAR
+}
+
+enum RegimenDedicacion {
+  DE
+  TC
+  TP1
+  TP2
+  TP3
+}
+
+enum TipoExtraordinario {
+  HONORIS_CAUSA
+  EMERITO
+  HONORARIO
+  INVESTIGADOR
+  VISITANTE
+}
+
+enum TipoContrato {
+  A1
+  A2
+  A3
+  B1
+  B2
+  B3
 }
 
 model Docente {
@@ -29,9 +76,17 @@ model Docente {
   codigo_docente            String                            @unique
   nombres                   String
   apellidos                 String
-  modalidad                 String
-  categoria                 String
-  dedicacion                String?
+  // New fields
+  condicion                 CondicionDocente?
+  categoriaDocente          CategoriaDocente?
+  regimenDedicacion         RegimenDedicacion?
+  tipoExtraordinario        TipoExtraordinario?
+  tipoContrato              TipoContrato?
+  esInvestigadorAcreditado  Boolean                           @default(false)
+  nivelRenacyt              String?
+  sancionActiva             Boolean                           @default(false)
+  sancionHasta              DateTime?
+  // Existing fields
   fecha_ingreso             DateTime?
   correo_electronico        String?
   telefono                  String?
@@ -53,6 +108,19 @@ model Docente {
   preferencias_notificacion PreferenciasNotificacionDocente[]
   selecciones_temporales    SeleccionTemporalHorario[]
   declaraciones_horarias    DeclaracionHoraria[]
+  cargasLectivasAdicionales CargaLectivaAdicional[]
+  integracionesSimuladas    IntegracionSimulada[]
+}
+
+model PersonalApoyo {
+  id             String                  @id @default(cuid())
+  nombre         String
+  tipo           String                  // "JEFE_PRACTICA" por ahora
+  modalidad      String                  // "TC" | "TP1" | "TP2" | "TP3"
+  departamentoId String?
+  departamento   DepartamentoAcademico?  @relation(fields: [departamentoId], references: [id], onDelete: SetNull)
+  createdAt      DateTime                @default(now())
+  updatedAt      DateTime                @updatedAt
 }
 
 model MallaCurricular {
@@ -418,21 +486,23 @@ model Facultad {
   cargasLectivasSede   CargaLectiva[]          @relation("CargaLectivaSede")
   cargasNoLectivasSede CargaNoLectiva[]        @relation("CargaNoLectivaSede")
   mallas               MallaCurricular[]
+  cargasLectivasAdicionalesSede CargaLectivaAdicional[] @relation("CargaLectivaAdicionalSede")
   createdAt            DateTime                @default(now())
   updatedAt            DateTime                @updatedAt
 }
 
 model DepartamentoAcademico {
-  id         String              @id @default(cuid())
-  nombre     String
-  facultadId String
-  facultad   Facultad            @relation(fields: [facultadId], references: [id], onDelete: Cascade)
-  docentes   Docente[]
-  mallas     MallaCurricular[]
-  cursos     Curso[]
-  ambientes  Ambiente[]
-  createdAt  DateTime            @default(now())
-  updatedAt  DateTime            @updatedAt
+  id               String              @id @default(cuid())
+  nombre           String
+  facultadId       String
+  facultad         Facultad            @relation(fields: [facultadId], references: [id], onDelete: Cascade)
+  docentes         Docente[]
+  mallas           MallaCurricular[]
+  cursos           Curso[]
+  ambientes        Ambiente[]
+  personalApoyo    PersonalApoyo[]
+  createdAt        DateTime            @default(now())
+  updatedAt        DateTime            @updatedAt
 
   @@unique([nombre, facultadId])
 }
@@ -457,6 +527,7 @@ model EscuelaProfesional {
 enum EstadoDeclaracion {
   BORRADOR
   ENVIADO
+  VALIDADO_DEPARTAMENTO
   APROBADO
   RECHAZADO
 }
@@ -471,29 +542,63 @@ enum TipoCargaNoLectiva {
   ASESORIA
   RESPONSABILIDAD_SOCIAL
   COMITES_TECNICOS
+  AUTOEVALUACION_ACREDITACION
   OTRO
 }
 
+enum DependenciaClad {
+  FILIAL
+  POSGRADO
+  SEGUNDA_ESPECIALIDAD
+  CENTRO_PRODUCCION
+  EXTENSION_UNIVERSITARIA
+}
+
+enum EstadoClad {
+  BORRADOR
+  ENVIADO
+  VALIDADO_DEPARTAMENTO
+  APROBADO
+  RECHAZADO
+}
+
+enum DiaSemana {
+  LU
+  MA
+  MI
+  JU
+  VI
+  SA
+}
+
 model DeclaracionHoraria {
-  id_declaracion      Int                  @id @default(autoincrement())
-  id_docente          Int
-  id_periodo          Int
-  ibm                 String
-  condicion           String
-  categoria           String
-  dedicacion          String
-  horas_dedicacion    Int
-  estado              EstadoDeclaracion    @default(BORRADOR)
-  fecha_creacion      DateTime             @default(now())
-  fecha_actualizacion DateTime             @default(now())
-  fecha_envio         DateTime?
-  fecha_aprobacion    DateTime?
-  observaciones       String?
-  docente             Docente              @relation(fields: [id_docente], references: [id_docente])
-  periodo             PeriodoAcademico     @relation(fields: [id_periodo], references: [id_periodo])
-  cargas_lectivas     CargaLectiva[]
-  cargas_no_lectivas  CargaNoLectiva[]
-  formatos            FormatoDeclaracion[]
+  id_declaracion              Int                  @id @default(autoincrement())
+  id_docente                  Int
+  id_periodo                  Int
+  ibm                         String
+  condicion                   String
+  categoria                   String
+  dedicacion                  String
+  horas_dedicacion            Int
+  estado                      EstadoDeclaracion    @default(BORRADOR)
+  fecha_creacion              DateTime             @default(now())
+  fecha_actualizacion         DateTime             @default(now())
+  fecha_envio                 DateTime?
+  fecha_aprobacion            DateTime?
+  observaciones               String?
+  docente                     Docente              @relation(fields: [id_docente], references: [id_docente])
+  periodo                     PeriodoAcademico     @relation(fields: [id_periodo], references: [id_periodo])
+  cargas_lectivas             CargaLectiva[]
+  cargas_no_lectivas          CargaNoLectiva[]
+  formatos                    FormatoDeclaracion[]
+  // Nuevos campos para flujo de aprobación
+  validadoPorId               Int?
+  validadoPor                 Usuario?             @relation("ValidadoPor", fields: [validadoPorId], references: [id_usuario])
+  fechaValidacionDepartamento DateTime?
+  etapaRechazo                String? // "DEPARTAMENTO" | "FACULTAD"
+  // Declaración Jurada F02-CAD
+  declaracionJuradaOpcion     String?
+  fechaFirmaJurada            DateTime?
 
   @@unique([id_docente, id_periodo])
 }
@@ -513,15 +618,73 @@ model CargaLectiva {
   declaracion      DeclaracionHoraria @relation(fields: [id_declaracion], references: [id_declaracion])
 }
 
+model CargoAcademicoAdministrativo {
+  id            String           @id @default(cuid())
+  nombre        String           @unique
+  chlm          Int              // carga lectiva mínima (reducida) que corresponde a este cargo
+  chnlpe        Int              // no lectiva de preparación/evaluación
+  chnla         Int              // no lectiva administrativa — esta es la que se autocompleta abajo
+  cargasNoLectivas CargaNoLectiva[]
+}
+
 model CargaNoLectiva {
-  id_carga_no_lectiva Int                @id @default(autoincrement())
+  id_carga_no_lectiva Int                    @id @default(autoincrement())
   id_declaracion      Int
   tipo                TipoCargaNoLectiva
   descripcion         String?
   horas_semanales     Int
   sedeId              String?
-  sede                Facultad?          @relation("CargaNoLectivaSede", fields: [sedeId], references: [id], onDelete: SetNull)
-  declaracion         DeclaracionHoraria @relation(fields: [id_declaracion], references: [id_declaracion])
+  sede                Facultad?              @relation("CargaNoLectivaSede", fields: [sedeId], references: [id], onDelete: SetNull)
+  declaracion         DeclaracionHoraria     @relation(fields: [id_declaracion], references: [id_declaracion])
+  ambiente            String?
+  horarios            HorarioActividad[]
+  cargoId             String?
+  cargo               CargoAcademicoAdministrativo? @relation(fields: [cargoId], references: [id], onDelete: SetNull)
+}
+
+model HorarioActividad {
+  id                      String                  @id @default(cuid())
+  cargaNoLectivaId         Int?
+  cargaNoLectiva         CargaNoLectiva?          @relation(fields: [cargaNoLectivaId], references: [id_carga_no_lectiva], onDelete: Cascade)
+  cargaLectivaAdicionalId  String?
+  cargaLectivaAdicional  CargaLectivaAdicional? @relation(fields: [cargaLectivaAdicionalId], references: [id], onDelete: Cascade)
+  dia                     DiaSemana
+  horaInicio              String                  // "HH:mm"
+  horaFin                 String
+  createdAt               DateTime                @default(now())
+  updatedAt               DateTime                  @updatedAt
+}
+
+model CargaLectivaAdicional {
+  id                  String                  @id @default(cuid())
+  docenteId           Int
+  docente             Docente                 @relation(fields: [docenteId], references: [id_docente])
+  dependencia         DependenciaClad
+  sedeId              String
+  sede                Facultad                @relation("CargaLectivaAdicionalSede", fields: [sedeId], references: [id])
+  curso               String
+  numeroResolucion    String?
+  fechaInicio         DateTime
+  fechaFin            DateTime
+  totalHoras          Int
+  estado              EstadoClad              @default(BORRADOR)
+  observaciones       String?
+  validadoPorId       Int?
+  validador           Usuario?                @relation("CladValidadoPor", fields: [validadoPorId], references: [id_usuario])
+  fechaValidacion     DateTime?
+  createdAt           DateTime                @default(now())
+  updatedAt           DateTime                @updatedAt
+  horarios            HorarioActividad[]
+}
+
+model IntegracionSimulada {
+  id        String   @id @default(cuid())
+  tipo      String   // "PERSONAL_ACADEMICO" | "INVESTIGACION_ETICA" | "RENACYT" | "SANCIONES"
+  docenteId Int?
+  docente   Docente? @relation(fields: [docenteId], references: [id_docente])
+  payload   String   // JSON de entrada
+  resultado String   // JSON de salida
+  fecha     DateTime @default(now())
 }
 
 model FormatoDeclaracion {

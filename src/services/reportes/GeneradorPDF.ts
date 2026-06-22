@@ -1,4 +1,4 @@
-import puppeteer from 'puppeteer';
+﻿import puppeteer from 'puppeteer';
 
 export class GeneradorPDF {
   static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {

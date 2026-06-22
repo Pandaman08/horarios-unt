@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -165,8 +165,8 @@ export async function POST(request: Request) {
           fecha: fechaInicio,
           hora_inicio: horaActual,
           hora_fin: horaFin,
-          modalidad: docente.modalidad,
-          categoria: docente.categoria,
+          modalidad: docente.condicion,
+          categoria: docente.categoriaDocente,
           cantidad_docentes: 1,
           completado: false,
           activo: true,

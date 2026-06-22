@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useState, useEffect, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -32,6 +32,8 @@ import {
   CheckCircle2,
   GraduationCap,
   Building2,
+  Database,
+  UserPlus,
 } from "lucide-react";
 
 function DashboardLayoutInner({
@@ -58,6 +60,8 @@ function DashboardLayoutInner({
           "administrador_sistema",
           "docente",
           "operador_horarios",
+          "director_departamento",
+          "decano"
         ],
       },
 
@@ -67,6 +71,8 @@ function DashboardLayoutInner({
         roles: [
           "administrador_sistema",
           "operador_horarios",
+          "director_departamento",
+          "decano"
         ],
         items: [
           {
@@ -79,31 +85,37 @@ function DashboardLayoutInner({
             title: t("navTeachers"),
             href: "/dashboard/catalogos?tab=docentes",
             icon: Users,
-            roles: ["administrador_sistema"],
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
           },
           {
             title: t("navCourses"),
             href: "/dashboard/catalogos?tab=cursos",
             icon: BookOpen,
-            roles: ["administrador_sistema"],
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
           },
           {
             title: t("navRooms"),
             href: "/dashboard/catalogos?tab=ambientes",
             icon: MapPin,
-            roles: ["administrador_sistema"],
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
           },
           {
             title: t("navCycles"),
             href: "/dashboard/catalogos?tab=ciclos",
             icon: Layers,
-            roles: ["administrador_sistema"],
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
           },
           {
             title: t("navPeriods"),
             href: "/dashboard/catalogos?tab=periodos",
             icon: Calendar,
-            roles: ["administrador_sistema"],
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
+          },
+          {
+            title: "Grupos",
+            href: "/dashboard/catalogos?tab=grupos",
+            icon: Layers,
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
           },
           {
             title: "Facultades",
@@ -121,6 +133,18 @@ function DashboardLayoutInner({
             title: "Escuelas Profesionales",
             href: "/dashboard/catalogos?tab=escuelas",
             icon: GraduationCap,
+            roles: ["administrador_sistema"],
+          },
+          {
+            title: "Personal de Apoyo",
+            href: "/dashboard/catalogos?tab=personal-apoyo",
+            icon: UserPlus,
+            roles: ["administrador_sistema"],
+          },
+          {
+            title: "Cargos Académicos",
+            href: "/dashboard/catalogos?tab=cargos-academicos-administrativos",
+            icon: Briefcase,
             roles: ["administrador_sistema"],
           },
         ],
@@ -142,6 +166,8 @@ function DashboardLayoutInner({
           "administrador_sistema",
           "operador_horarios",
           "docente",
+          "director_departamento",
+          "decano"
         ],
       },
       {
@@ -157,16 +183,40 @@ function DashboardLayoutInner({
         roles: ["administrador_sistema", "operador_horarios"],
       },
       {
+        title: "Validación Departamento",
+        href: "/dashboard/validacion-departamento",
+        icon: CheckCircle2,
+        roles: ["director_departamento"],
+      },
+      {
+        title: "Consolidación Facultad",
+        href: "/dashboard/consolidacion-facultad",
+        icon: CheckCircle2,
+        roles: ["decano"],
+      },
+      {
         title: "Carga Horaria",
         href: "/dashboard/carga-horaria",
         icon: Briefcase,
-        roles: ["docente"],
+        roles: ["docente", "director_departamento", "decano"],
+      },
+      {
+        title: "Carga Adicional",
+        href: "/dashboard/carga-adicional",
+        icon: Briefcase,
+        roles: ["docente", "director_departamento", "decano"],
+      },
+      {
+        title: "CLAD Departamento",
+        href: "/dashboard/clad-departamento",
+        icon: CheckCircle2,
+        roles: ["director_departamento"],
       },
       {
         title: t("navSchedules"),
         href: "/dashboard/horarios/seleccion",
         icon: Calendar,
-        roles: ["docente"],
+        roles: ["docente", "director_departamento", "decano"],
       },
       {
         title: t("navReports"),
@@ -185,6 +235,8 @@ function DashboardLayoutInner({
           "administrador_sistema",
           "operador_horarios",
           "docente",
+          "director_departamento",
+          "decano"
         ],
       },
       {
@@ -196,6 +248,12 @@ function DashboardLayoutInner({
             title: t("navUsers"),
             href: "/dashboard/usuarios",
             icon: ShieldCheck,
+            roles: ["administrador_sistema"],
+          },
+          {
+            title: "Simulaciones",
+            href: "/dashboard/simulaciones",
+            icon: Database,
             roles: ["administrador_sistema"],
           },
         ],

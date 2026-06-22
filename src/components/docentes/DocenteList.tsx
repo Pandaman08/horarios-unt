@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -49,6 +49,8 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { SimulacionBadge } from "@/components/ui/SimulacionBadge";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Facultad {
   id: string;
@@ -67,18 +69,26 @@ interface Docente {
   codigo_docente: string;
   nombres: string;
   apellidos: string;
-  modalidad: string;
-  categoria: string;
-  dedicacion: string;
-  antiguedad: number;
+  condicion?: string;
+  categoriaDocente?: string;
+  regimenDedicacion?: string;
+  antiguedad?: number;
   correo_electronico: string;
-  telefono: string;
+  telefono?: string;
   grado_academico?: string;
   fecha_ingreso?: string;
   facultadId?: string;
   facultad?: Facultad;
   departamentoId?: string;
   departamento?: DepartamentoAcademico;
+  dni?: string;
+  esInvestigadorAcreditado?: boolean;
+  nivelRenacyt?: string;
+  sancionActiva?: boolean;
+  sancionHasta?: string;
+  tipoContrato?: string;
+  tipoExtraordinario?: string;
+  especialidad?: string;
   docente_cursos?: Array<{
     curso: {
       id_ciclo?: number;
@@ -141,13 +151,21 @@ export function DocenteList() {
     codigo_docente: "",
     correo_electronico: "",
     telefono: "",
-    modalidad: "NOMBRADO",
-    categoria: "PRINCIPAL",
+    categoriaDocente: "PRINCIPAL",
     grado_academico: "INGENIERO",
     especialidad: "",
     fecha_ingreso: new Date().toISOString().split("T")[0],
     facultadId: "",
     departamentoId: "",
+    dni: "",
+    esInvestigadorAcreditado: false,
+    nivelRenacyt: "",
+    sancionActiva: false,
+    sancionHasta: "",
+    condicion: "",
+    regimenDedicacion: "",
+    tipoContrato: "",
+    tipoExtraordinario: "",
   });
 
   // Estados de Filtros
@@ -184,8 +202,8 @@ export function DocenteList() {
 
   const filteredDocentes = docentes.filter(d => {
     const matchesSearch = `${d.nombres} ${d.apellidos} ${d.codigo_docente}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategoria = filtroCategoria === "todos" || d.categoria?.toUpperCase() === filtroCategoria.toUpperCase();
-    const matchesModalidad = filtroModalidad === "todos" || d.modalidad?.toUpperCase() === filtroModalidad.toUpperCase();
+    const matchesCategoriaDocente = filtroCategoria === "todos" || d.categoriaDocente?.toUpperCase() === filtroCategoria.toUpperCase();
+    const matchesCondicion = filtroModalidad === "todos" || d.condicion?.toUpperCase() === filtroModalidad.toUpperCase();
     const matchesGrado = filtroGrado === "todos" || d.grado_academico === filtroGrado;
 
     // Filtrar por ciclo y semestre (solo si hay filtros activos)
@@ -224,7 +242,7 @@ export function DocenteList() {
       }
     }
 
-    return matchesSearch && matchesCategoria && matchesModalidad && matchesGrado && matchesCiclo && matchesSemestre;
+    return matchesSearch && matchesCategoriaDocente && matchesCondicion && matchesGrado && matchesCiclo && matchesSemestre;
   }).sort((a, b) => {
     if (filtroAntiguedad === "todos") return 0;
     const yearsA = calculateAntiquity(a.fecha_ingreso);
@@ -433,13 +451,21 @@ export function DocenteList() {
       codigo_docente: "",
       correo_electronico: "",
       telefono: "",
-      modalidad: "NOMBRADO",
-      categoria: "PRINCIPAL",
+      categoriaDocente: "PRINCIPAL",
       grado_academico: "INGENIERO",
       especialidad: "",
       fecha_ingreso: new Date().toISOString().split("T")[0],
       facultadId: "",
       departamentoId: "",
+      dni: "",
+      esInvestigadorAcreditado: false,
+      nivelRenacyt: "",
+      sancionActiva: false,
+      sancionHasta: "",
+      condicion: "",
+      regimenDedicacion: "",
+      tipoContrato: "",
+      tipoExtraordinario: "",
     });
   };
 
@@ -537,31 +563,76 @@ export function DocenteList() {
 
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
-                      <Select value={formData.modalidad} onValueChange={(val) => setFormData({ ...formData, modalidad: val })}>
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Condición</Label>
+                      <Select value={formData.condicion} onValueChange={(val) => setFormData({ ...formData, condicion: val })}>
                         <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
-                          <SelectValue />
+                          <SelectValue placeholder="Seleccione condición" />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          <SelectItem value="NOMBRADO">Nombrado</SelectItem>
+                          <SelectItem value="ORDINARIO">Ordinario</SelectItem>
+                          <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
                           <SelectItem value="CONTRATADO">Contratado</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
-                      <Select value={formData.categoria} onValueChange={(val) => setFormData({ ...formData, categoria: val })}>
-                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          <SelectItem value="PRINCIPAL">Principal</SelectItem>
-                          <SelectItem value="ASOCIADO">Asociado</SelectItem>
-                          <SelectItem value="AUXILIAR">Auxiliar</SelectItem>
-                          <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
+                    
+                    {formData.condicion === "ORDINARIO" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Régimen de Dedicación</Label>
+                        <Select value={formData.regimenDedicacion} onValueChange={(val) => setFormData({ ...formData, regimenDedicacion: val })}>
+                          <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                            <SelectValue placeholder="Seleccione régimen" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            <SelectItem value="DE">DE (Dedicación Exclusiva - 40h)</SelectItem>
+                            <SelectItem value="TC">TC (Tiempo Completo - 40h)</SelectItem>
+                            <SelectItem value="TP1">TP1 (Tiempo Parcial 1 - 20h)</SelectItem>
+                            <SelectItem value="TP2">TP2 (Tiempo Parcial 2 - 10h)</SelectItem>
+                            <SelectItem value="TP3">TP3 (Tiempo Parcial 3 - 8h)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[9px] text-muted-foreground">DE:40h excl | TC:40h compl | TP1:20h | TP2:10h | TP3:8h</p>
+                      </div>
+                    )}
+                    
+                    {formData.condicion === "CONTRATADO" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tipo de Contrato</Label>
+                        <Select value={formData.tipoContrato} onValueChange={(val) => setFormData({ ...formData, tipoContrato: val })}>
+                          <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                            <SelectValue placeholder="Seleccione tipo" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            <SelectItem value="A1">A1 (Doctor - 32h)</SelectItem>
+                            <SelectItem value="A2">A2 (Doctor - 16h)</SelectItem>
+                            <SelectItem value="A3">A3 (Doctor - 8h)</SelectItem>
+                            <SelectItem value="B1">B1 (Maestro - 32h)</SelectItem>
+                            <SelectItem value="B2">B2 (Maestro - 16h)</SelectItem>
+                            <SelectItem value="B3">B3 (Maestro - 8h)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                        <p className="text-[9px] text-muted-foreground">A1:32h | A2:16h | A3:8h | B1:32h | B2:16h | B3:8h</p>
+                      </div>
+                    )}
+                    
+                    {formData.condicion === "EXTRAORDINARIO" && (
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tipo Extraordinario</Label>
+                        <Select value={formData.tipoExtraordinario} onValueChange={(val) => setFormData({ ...formData, tipoExtraordinario: val })}>
+                          <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                            <SelectValue placeholder="Seleccione tipo" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            <SelectItem value="HONORIS_CAUSA">Honoris Causa</SelectItem>
+                            <SelectItem value="EMERITO">Emérito</SelectItem>
+                            <SelectItem value="HONORARIO">Honorario</SelectItem>
+                            <SelectItem value="INVESTIGADOR">Investigador</SelectItem>
+                            <SelectItem value="VISITANTE">Visitante</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
                     <div className="space-y-1.5">
                       <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Grado Académico</Label>
                       <Select value={formData.grado_academico} onValueChange={(val) => setFormData({ ...formData, grado_academico: val })}>
@@ -573,6 +644,22 @@ export function DocenteList() {
                           <SelectItem value="MAESTRO">Maestro</SelectItem>
                           <SelectItem value="INGENIERO">Ingeniero</SelectItem>
                           <SelectItem value="LICENCIADO">Licenciado</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  </div>
+                  
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
+                      <Select value={formData.categoriaDocente} onValueChange={(val) => setFormData({ ...formData, categoriaDocente: val })}>
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="PRINCIPAL">Principal</SelectItem>
+                          <SelectItem value="ASOCIADO">Asociado</SelectItem>
+                          <SelectItem value="AUXILIAR">Auxiliar</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -608,6 +695,61 @@ export function DocenteList() {
                       </Select>
                     </div>
                   </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">DNI</Label>
+                        <SimulacionBadge tipo="PERSONAL_ACADEMICO" />
+                      </div>
+                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.dni} onChange={(e) => setFormData({ ...formData, dni: e.target.value })} />
+                    </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nivel RENACYT</Label>
+                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.nivelRenacyt} onChange={(e) => setFormData({ ...formData, nivelRenacyt: e.target.value })} placeholder="Ej: V" />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Investigador Acreditado RENACYT</Label>
+                        <SimulacionBadge tipo="RENACYT" />
+                      </div>
+                      <div className="flex items-center gap-2">
+                        <Checkbox 
+                          checked={formData.esInvestigadorAcreditado} 
+                          onCheckedChange={(checked) => setFormData({ ...formData, esInvestigadorAcreditado: checked === true })} 
+                          id="investigador-acreditado"
+                        />
+                        <label htmlFor="investigador-acreditado" className="text-xs text-muted-foreground font-medium cursor-pointer">
+                          Sí
+                        </label>
+                      </div>
+                    </div>
+                    <div className="space-y-1.5">
+                      <div className="flex items-center gap-2">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Sanción Activa</Label>
+                        <SimulacionBadge tipo="SANCIONES" />
+                      </div>
+                      <div className="flex items-center gap-2 mb-2">
+                        <Checkbox 
+                          checked={formData.sancionActiva} 
+                          onCheckedChange={(checked) => setFormData({ ...formData, sancionActiva: checked === true })} 
+                          id="sancion-activa"
+                        />
+                        <label htmlFor="sancion-activa" className="text-xs text-muted-foreground font-medium cursor-pointer">
+                          Sí
+                        </label>
+                      </div>
+                      {formData.sancionActiva && (
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Sanción Hasta</Label>
+                          <Input type="date" className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.sancionHasta} onChange={(e) => setFormData({ ...formData, sancionHasta: e.target.value })} />
+                        </div>
+                      )}
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <div className="space-y-1.5">
                       <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Especialidad</Label>
@@ -650,15 +792,16 @@ export function DocenteList() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Condición</Label>
             <Select value={filtroModalidad} onValueChange={setFiltroModalidad}>
               <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todas las modalidades</SelectItem>
-                <SelectItem value="NOMBRADO" className="text-[10px] font-bold">Nombrado</SelectItem>
+                <SelectItem value="todos" className="text-[10px] font-bold">Todas las condiciones</SelectItem>
+                <SelectItem value="ORDINARIO" className="text-[10px] font-bold">Ordinario</SelectItem>
                 <SelectItem value="CONTRATADO" className="text-[10px] font-bold">Contratado</SelectItem>
+                <SelectItem value="EXTRAORDINARIO" className="text-[10px] font-bold">Extraordinario</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -772,10 +915,10 @@ export function DocenteList() {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-widest border border-border">{docente.modalidad}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-widest border border-border">{docente.condicion}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-widest border border-primary/20">{docente.categoria}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-widest border border-primary/20">{docente.categoriaDocente}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
@@ -790,13 +933,21 @@ export function DocenteList() {
                               codigo_docente: docente.codigo_docente || "",
                               correo_electronico: docente.correo_electronico || "",
                               telefono: docente.telefono || "",
-                              modalidad: docente.modalidad || "NOMBRADO",
-                              categoria: docente.categoria || "PRINCIPAL",
                               grado_academico: docente.grado_academico || "INGENIERO",
-                              especialidad: (docente as any).especialidad || "",
+                              especialidad: docente.especialidad || "",
                               fecha_ingreso: docente.fecha_ingreso ? new Date(docente.fecha_ingreso).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
                               facultadId: docente.facultadId || "",
                               departamentoId: docente.departamentoId || "",
+                              dni: docente.dni || "",
+                              esInvestigadorAcreditado: docente.esInvestigadorAcreditado || false,
+                              nivelRenacyt: docente.nivelRenacyt || "",
+                              sancionActiva: docente.sancionActiva || false,
+                              sancionHasta: docente.sancionHasta ? new Date(docente.sancionHasta).toISOString().split("T")[0] : "",
+                              condicion: docente.condicion || "ORDINARIO",
+                              categoriaDocente: docente.categoriaDocente || "PRINCIPAL",
+                              regimenDedicacion: docente.regimenDedicacion || "",
+                              tipoContrato: docente.tipoContrato || "",
+                              tipoExtraordinario: docente.tipoExtraordinario || "",
                             });
                             setIsDocenteDialogOpen(true);
                           }}

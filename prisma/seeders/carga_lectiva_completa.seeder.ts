@@ -156,15 +156,15 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
         const docente = docentes.find(d => d.id_docente === idDocente);
         
         // Determinar horas de dedicación (por defecto 40, algunos podrían tener menos si son contratados parciales)
-        const horasDedicacion = docente?.modalidad === 'contratado' ? 20 : 40;
+        const horasDedicacion = docente?.condicion === 'CONTRATADO' ? 20 : 40;
         
         declaracion = await prisma.declaracionHoraria.create({
           data: {
             id_docente: idDocente,
             id_periodo: periodo.id_periodo,
             ibm: docente?.codigo_docente || 'IBM001',
-            condicion: docente?.modalidad === 'nombrado' ? 'Nombrado' : 'Contratado',
-            categoria: docente?.categoria || 'Auxiliar',
+            condicion: docente?.condicion === 'ORDINARIO' ? 'Nombrado' : 'Contratado',
+            categoria: docente?.categoriaDocente ? docente.categoriaDocente.charAt(0).toUpperCase() + docente.categoriaDocente.slice(1).toLowerCase() : 'Auxiliar',
             dedicacion: horasDedicacion === 40 ? 'Tiempo Completo 40 h' : 'Tiempo Parcial 20 h',
             horas_dedicacion: horasDedicacion,
             estado: 'ENVIADO', // Se envía para que el administrador lo apruebe
@@ -234,6 +234,19 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
       }
 
       console.log(`✅ Asignado: ${asignacion.docente} - ${asignacion.curso} (T:${asignacion.T} P:${asignacion.P} L:${asignacion.L})`);
+    }
+  }
+
+  const declaraciones = await prisma.declaracionHoraria.findMany({
+  where: { id_periodo: periodo.id_periodo }
+  });
+  for (const dec of declaraciones) {
+    // Actualiza solo algunas (ej. las de los primeros 3 docentes)
+    if (dec.id_docente <= 3) {
+      await prisma.declaracionHoraria.update({
+        where: { id_declaracion: dec.id_declaracion },
+        data: { estado: 'APROBADO' }
+      });
     }
   }
 

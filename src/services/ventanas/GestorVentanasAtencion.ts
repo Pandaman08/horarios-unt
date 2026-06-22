@@ -1,8 +1,9 @@
-import { prisma } from '@/lib/prisma';
+﻿import { prisma } from '@/lib/prisma';
 import { addMinutes, format } from 'date-fns';
 import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 
-const prioridadCategoria = ['jefe_practica', 'auxiliar', 'asociado', 'principal'];
+const prioridadCategoria = ['AUXILIAR', 'ASOCIADO', 'PRINCIPAL'];
+const prioridadCondicion = ['ORDINARIO', 'CONTRATADO', 'EXTRAORDINARIO'];
 
 export class GestorVentanasAtencion {
   static async obtenerDocentesAprobadosOrdenados(id_periodo: number) {
@@ -19,12 +20,17 @@ export class GestorVentanasAtencion {
     });
 
     return [...docentes].sort((a, b) => {
-      if (a.modalidad === 'nombrado' && b.modalidad !== 'nombrado') return -1;
-      if (b.modalidad === 'nombrado' && a.modalidad !== 'nombrado') return 1;
+      const condA = a.condicion || 'ORDINARIO';
+      const condB = b.condicion || 'ORDINARIO';
+      const idxA = prioridadCondicion.indexOf(condA);
+      const idxB = prioridadCondicion.indexOf(condB);
+      if (idxA !== idxB) return idxA - idxB;
 
-      const catA = prioridadCategoria.indexOf(a.categoria);
-      const catB = prioridadCategoria.indexOf(b.categoria);
-      if (catA !== catB) return catB - catA;
+      const catA = a.categoriaDocente || 'AUXILIAR';
+      const catB = b.categoriaDocente || 'AUXILIAR';
+      const idxCatA = prioridadCategoria.indexOf(catA);
+      const idxCatB = prioridadCategoria.indexOf(catB);
+      if (idxCatA !== idxCatB) return idxCatB - idxCatA;
 
       if (a.fecha_ingreso && b.fecha_ingreso) {
         return new Date(a.fecha_ingreso).getTime() - new Date(b.fecha_ingreso).getTime();
@@ -34,25 +40,28 @@ export class GestorVentanasAtencion {
   }
 
   /**
-   * Calcula cuántos docentes hay por cada categoría y modalidad
+   * Calcula cuántos docentes hay por cada categoría y condición
    */
   static async obtenerEstadisticasDocentes() {
     const docentes = await prisma.docente.findMany({
       where: { activo: true },
       select: {
-        modalidad: true,
-        categoria: true
+        condicion: true,
+        categoriaDocente: true
       }
     });
 
     const stats: Record<string, Record<string, number>> = {
-      nombrado: { principal: 0, asociado: 0, auxiliar: 0, jefe_practica: 0 },
-      contratado: { principal: 0, asociado: 0, auxiliar: 0, jefe_practica: 0 }
+      ORDINARIO: { PRINCIPAL: 0, ASOCIADO: 0, AUXILIAR: 0 },
+      CONTRATADO: { PRINCIPAL: 0, ASOCIADO: 0, AUXILIAR: 0 },
+      EXTRAORDINARIO: { PRINCIPAL: 0, ASOCIADO: 0, AUXILIAR: 0 }
     };
 
-    docentes.forEach((d: { modalidad: string | number; categoria: string | number; }) => {
-      if (stats[d.modalidad] && stats[d.modalidad][d.categoria] !== undefined) {
-        stats[d.modalidad][d.categoria]++;
+    docentes.forEach((d: any) => {
+      const cond = d.condicion || 'ORDINARIO';
+      const cat = d.categoriaDocente || 'AUXILIAR';
+      if (stats[cond] && stats[cond][cat] !== undefined) {
+        stats[cond][cat]++;
       }
     });
 
@@ -84,8 +93,8 @@ export class GestorVentanasAtencion {
         }
       },
       orderBy: [
-        { modalidad: 'asc' }, 
-        { categoria: 'asc' }, 
+        { condicion: 'asc' }, 
+        { categoriaDocente: 'asc' }, 
         { fecha_ingreso: 'asc' }
       ]
     });
@@ -143,7 +152,7 @@ export class GestorVentanasAtencion {
     horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
 
     for (const grupo of gruposParaProcesar) {
-      const { modalidad, categoria, listaDocentes } = grupo;
+      const { condicion, categoriaDocente, listaDocentes } = grupo;
       const numDocentes = listaDocentes.length;
 
       const minutosNecesarios = numDocentes * intervalo_por_docente;
@@ -179,8 +188,8 @@ export class GestorVentanasAtencion {
             fecha: fechaActual,
             hora_inicio: format(horaActual, 'HH:mm'),
             hora_fin: format(horaFinVentana, 'HH:mm'),
-            modalidad,
-            categoria,
+            modalidad: condicion,
+            categoria: categoriaDocente,
             orden_prioridad: prioridadActual++,
             intervalo_minutos: intervalo_por_docente,
             cantidad_docentes: cantidadDocentesEnEstaVentana,
@@ -228,15 +237,15 @@ export class GestorVentanasAtencion {
   }
 
   private static agruparDocentesPorJerarquia(docentes: any[]) {
-    const jerarquiaModalidad = ['nombrado', 'contratado'];
-    const jerarquiaCategoria = ['principal', 'asociado', 'auxiliar', 'jefe_practica'];
+    const jerarquiaCondicion = ['ORDINARIO', 'CONTRATADO', 'EXTRAORDINARIO'];
+    const jerarquiaCategoria = ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR'];
     const grupos = [];
 
-    for (const mod of jerarquiaModalidad) {
+    for (const cond of jerarquiaCondicion) {
       for (const cat of jerarquiaCategoria) {
-        const lista = docentes.filter(d => d.modalidad === mod && d.categoria === cat);
+        const lista = docentes.filter((d: any) => (d.condicion || 'ORDINARIO') === cond && (d.categoriaDocente || 'AUXILIAR') === cat);
         if (lista.length > 0) {
-          grupos.push({ modalidad: mod, categoria: cat, listaDocentes: lista });
+          grupos.push({ condicion: cond, categoriaDocente: cat, listaDocentes: lista });
         }
       }
     }

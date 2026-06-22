@@ -1,4 +1,4 @@
-import { UsuarioList } from "@/components/usuarios/UsuarioList";
+﻿import { UsuarioList } from "@/components/usuarios/UsuarioList";
 
 export default function UsuariosPage() {
   return (

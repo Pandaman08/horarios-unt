@@ -1,14 +1,11 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-interface Params {
-  id: string;
-}
-
-export async function GET(request: Request, { params }: { params: Params }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const departamento = await prisma.departamentoAcademico.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         facultad: true,
       }
@@ -23,11 +20,12 @@ export async function GET(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function PUT(request: Request, { params }: { params: Params }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     const data = await request.json();
     const departamento = await prisma.departamentoAcademico.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         nombre: data.nombre,
         facultadId: data.facultadId,
@@ -40,10 +38,11 @@ export async function PUT(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: Params }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
+  const { id } = await params;
   try {
     // Check for related records
-    const hasDocentes = await prisma.docente.count({ where: { departamentoId: params.id } });
+    const hasDocentes = await prisma.docente.count({ where: { departamentoId: id } });
 
     if (hasDocentes > 0) {
       return NextResponse.json({ 
@@ -52,7 +51,7 @@ export async function DELETE(request: Request, { params }: { params: Params }) {
     }
 
     await prisma.departamentoAcademico.delete({
-      where: { id: params.id }
+      where: { id }
     });
     return NextResponse.json({ message: 'Departamento eliminado correctamente' });
   } catch (error) {

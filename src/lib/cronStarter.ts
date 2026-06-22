@@ -1,4 +1,4 @@
-// src/lib/cronStarter.ts
+﻿// src/lib/cronStarter.ts
 import { iniciarCronJobs } from '@/lib/programadorTareas';
 
 // Usar global para evitar múltiples instancias en desarrollo (Hot Module Replacement)

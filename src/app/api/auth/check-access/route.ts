@@ -1,8 +1,9 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { GestorVentanasAtencion } from '@/services/ventanas/GestorVentanasAtencion';
+import { RolUsuario } from '@prisma/client';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -11,13 +12,18 @@ export async function GET() {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  // Los administradores y operadores siempre tienen acceso
-  if (['administrador_sistema', 'operador_horarios'].includes(session.user.rol)) {
+  // Los administradores, operadores, directores y decanos siempre tienen acceso
+  if ([
+    RolUsuario.administrador_sistema, 
+    RolUsuario.operador_horarios, 
+    RolUsuario.director_departamento,
+    RolUsuario.decano
+  ].includes(session.user.rol)) {
     return NextResponse.json({ tieneAcceso: true });
   }
 
   // Si es docente, verificar su ventana
-  if (session.user.rol === 'docente') {
+  if (session.user.rol === RolUsuario.docente) {
     const docente = await prisma.docente.findFirst({
       where: { id_usuario: session.user.id_usuario }
     });

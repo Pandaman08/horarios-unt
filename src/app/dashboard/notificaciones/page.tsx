@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { GestorNotificaciones } from "@/components/dashboard/GestorNotificaciones";
 

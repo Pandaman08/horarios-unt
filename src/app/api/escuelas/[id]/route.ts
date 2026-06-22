@@ -1,14 +1,11 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-interface Params {
-  id: string;
-}
-
-export async function GET(request: Request, { params }: { params: Params }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const escuela = await prisma.escuelaProfesional.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         facultad: true,
       }
@@ -23,11 +20,12 @@ export async function GET(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function PUT(request: Request, { params }: { params: Params }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const data = await request.json();
     const escuela = await prisma.escuelaProfesional.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         nombre: data.nombre,
         facultadId: data.facultadId,
@@ -40,11 +38,12 @@ export async function PUT(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: Params }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     // Check for related records
-    const hasMallas = await prisma.mallaCurricular.count({ where: { escuelaId: params.id } });
-    const hasCursos = await prisma.curso.count({ where: { escuelaId: params.id } });
+    const hasMallas = await prisma.mallaCurricular.count({ where: { escuelaId: id } });
+    const hasCursos = await prisma.curso.count({ where: { escuelaId: id } });
 
     if (hasMallas > 0 || hasCursos > 0) {
       return NextResponse.json({ 
@@ -53,7 +52,7 @@ export async function DELETE(request: Request, { params }: { params: Params }) {
     }
 
     await prisma.escuelaProfesional.delete({
-      where: { id: params.id }
+      where: { id }
     });
     return NextResponse.json({ message: 'Escuela eliminada correctamente' });
   } catch (error) {

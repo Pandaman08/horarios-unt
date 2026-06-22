@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useSearchParams } from "next/navigation";
@@ -15,11 +15,13 @@ import { UsuarioList } from "@/components/usuarios/UsuarioList";
 import { FacultadList } from "@/components/facultades/FacultadList";
 import { DepartamentoList } from "@/components/departamentos/DepartamentoList";
 import { EscuelaList } from "@/components/escuelas/EscuelaList";
+import { PersonalApoyoList } from "@/components/personal-apoyo/PersonalApoyoList";
+import { CargoAcademicoAdministrativoList } from "@/components/cargos-academicos-administrativos/CargoAcademicoAdministrativoList";
 
 import { Toaster } from "@/components/ui/sonner";
 import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
-import { Database, Building2, Users, GraduationCap } from "lucide-react";
+import { Database, Building2, Users, GraduationCap, UserPlus, Briefcase } from "lucide-react";
 
 export default function CatalogosPage() {
   const { data: session } = useSession();
@@ -67,7 +69,19 @@ export default function CatalogosPage() {
               <GraduationCap className="h-3 w-3 mr-1" />
               Escuelas
             </TabsTrigger>
-            {isAdmin && <TabsTrigger value="usuarios" className="text-xs font-bold">Usuarios</TabsTrigger>}
+            <TabsTrigger value="personal-apoyo" className="text-xs font-bold">
+              <UserPlus className="h-3 w-3 mr-1" />
+              Personal de Apoyo
+            </TabsTrigger>
+            {isAdmin && (
+              <>
+                <TabsTrigger value="cargos-academicos-administrativos" className="text-xs font-bold">
+                  <Briefcase className="h-3 w-3 mr-1" />
+                  Cargos Académicos
+                </TabsTrigger>
+                <TabsTrigger value="usuarios" className="text-xs font-bold">Usuarios</TabsTrigger>
+              </>
+            )}
           </TabsList>
         </Tabs>
       </div>
@@ -84,6 +98,8 @@ export default function CatalogosPage() {
         {activeTab === "facultades" && <FacultadList />}
         {activeTab === "departamentos" && <DepartamentoList />}
         {activeTab === "escuelas" && <EscuelaList />}
+        {activeTab === "personal-apoyo" && <PersonalApoyoList />}
+        {isAdmin && activeTab === "cargos-academicos-administrativos" && <CargoAcademicoAdministrativoList />}
         {isAdmin && activeTab === "usuarios" && <UsuarioList />}
       </div>
 

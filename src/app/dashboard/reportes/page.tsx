@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { VisorReportes } from "@/components/reportes/VisorReportes";
 import { Toaster } from "@/components/ui/sonner";

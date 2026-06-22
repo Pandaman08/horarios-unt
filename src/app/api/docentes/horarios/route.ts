@@ -1,4 +1,4 @@
-import { NextResponse } from "next/server";
+﻿import { NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -23,7 +23,6 @@ export async function GET(request: Request) {
       );
     }
     
-    // VALIDAR QUE EL PERÍODO ESTÉ ACTIVO
     const periodo = await prisma.periodoAcademico.findUnique({
       where: { id_periodo: parseInt(periodoId) }
     });
@@ -36,11 +35,9 @@ export async function GET(request: Request) {
     }
     
     if (!periodo.activo) {
-      // SI EL PERÍODO NO ESTÁ ACTIVO, DEVOLVER LISTA VACÍA
       return NextResponse.json([]);
     }
 
-    // Buscar el docente por el id_usuario de la sesión
     const docente = await prisma.docente.findUnique({
       where: { id_usuario: session.user.id_usuario }
     });
@@ -52,8 +49,8 @@ export async function GET(request: Request) {
       );
     }
 
-    // Obtener horarios asignados con información completa
-    const horarios = await prisma.horarioAsignado.findMany({
+    // 1. Obtener horarios lectivos (HorarioAsignado)
+    const horariosLectivos = await prisma.horarioAsignado.findMany({
       where: {
         id_docente: docente.id_docente,
         id_periodo: parseInt(periodoId)
@@ -89,8 +86,37 @@ export async function GET(request: Request) {
       ]
     });
 
-    // Formatear respuesta
-    const horariosFormato = horarios.map((h: any) => ({
+    // 2. Obtener horarios no lectivos (HorarioActividad)
+    const horariosNoLectivos = await prisma.horarioActividad.findMany({
+      where: {
+        cargaNoLectiva: {
+          declaracion: {
+            id_docente: docente.id_docente,
+            id_periodo: parseInt(periodoId),
+            estado: 'APROBADO'
+          }
+        }
+      },
+      include: {
+        cargaNoLectiva: {
+          include: {
+            declaracion: true
+          }
+        }
+      },
+      orderBy: [
+        { dia: 'asc' },
+        { horaInicio: 'asc' }
+      ]
+    });
+
+    // Mapeo de días
+    const diaMap: Record<string, number> = {
+      'LU': 0, 'MA': 1, 'MI': 2, 'JU': 3, 'VI': 4, 'SA': 5
+    };
+
+    // Formatear horarios lectivos
+    const lectivosFormateados = horariosLectivos.map((h: any) => ({
       id_asignacion: h.id_asignacion,
       id_curso: h.id_curso,
       id_grupo: h.id_grupo,
@@ -104,10 +130,33 @@ export async function GET(request: Request) {
       dia_semana: h.dia_semana,
       hora_inicio: h.hora_inicio,
       hora_fin: h.hora_fin,
-      ciclo_nombre: h.curso.ciclo_rel?.nombre || ""
+      ciclo_nombre: h.curso.ciclo_rel?.nombre || "",
+      tipo: 'lectiva'
     }));
 
-    return NextResponse.json(horariosFormato);
+    // Formatear horarios no lectivos
+    const noLectivosFormateados = horariosNoLectivos.map((h: any) => ({
+      id_asignacion: h.id,
+      id_curso: null,
+      id_grupo: null,
+      id_ambiente: null,
+      curso_codigo: h.cargaNoLectiva?.tipo || 'No Lectiva',
+      curso_nombre: h.cargaNoLectiva?.descripcion || h.cargaNoLectiva?.tipo || 'Actividad No Lectiva',
+      grupo_codigo: '',
+      ambiente_codigo: '',
+      ambiente_nombre: '',
+      tipo_clase: h.cargaNoLectiva?.tipo || 'no_lectiva',
+      dia_semana: diaMap[h.dia] ?? 0,
+      hora_inicio: h.horaInicio,
+      hora_fin: h.horaFin,
+      ciclo_nombre: '',
+      tipo: 'no_lectiva'
+    }));
+
+    // Combinar ambos
+    const todosHorarios = [...lectivosFormateados, ...noLectivosFormateados];
+
+    return NextResponse.json(todosHorarios);
   } catch (error) {
     console.error("Error al obtener horarios:", error);
     return NextResponse.json(

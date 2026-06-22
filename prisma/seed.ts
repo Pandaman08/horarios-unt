@@ -10,6 +10,7 @@ import { seedGrupos } from './seeders/grupos.seeder';
 import { seedDisponibilidad } from './seeders/disponibilidad.seeder';
 import { seedCargaLectivaCompleta } from './seeders/carga_lectiva_completa.seeder';
 import { seedFacultades } from './seeders/facultades.seeder';
+import { seedCargosAcademicosAdministrativos } from './seeders/cargos_academicos_administrativos.seeder';
 
 // Inicializar Prisma Client usando DIRECT_URL para el seed si está disponible
 // Esto evita errores de prepared statements con PgBouncer en Supabase/Vercel
@@ -31,59 +32,72 @@ async function main() {
 
     console.log('-> Limpiando base de datos...');
     
-    // Lista de tablas en orden de dependencia para la limpieza
+    // Lista de tablas en ORDEN INVERSO de dependencia (empieza por las que dependen de otras)
     const tables = [
+      '"AuditoriaHorario"',
+      '"RestriccionInstitucional"',
+      '"DiaNoLaborable"',
+      '"ConfiguracionNotificaciones"',
+      '"HorarioActividad"',
+      '"CargaLectivaAdicional"',
+      '"FormatoDeclaracion"',
+      '"CargaNoLectiva"',
+      '"CargaLectiva"',
+      '"DeclaracionHoraria"',
+      '"IntegracionSimulada"',
+      '"PersonalApoyo"',
+      '"CargoAcademicoAdministrativo"',
       '"HorarioAsignado"',
       '"SeleccionTemporalHorario"',
       '"ConflictoHorario"',
-      '"CargaLectiva"',
-      '"CargaNoLectiva"',
-      '"FormatoDeclaracion"',
-      '"DeclaracionHoraria"',
-      '"DocenteCurso"',
-      '"CursoAmbiente"',
-      '"Grupo"',
       '"DisponibilidadDocente"',
       '"ColaNotificaciones"',
       '"HistorialNotificaciones"',
       '"PreferenciasNotificacionDocente"',
       '"VentanaAtencion"',
-      '"PeriodoAcademico"',
-      '"Ambiente"',
+      '"Grupo"',
+      '"DocenteCurso"',
+      '"CursoAmbiente"',
+      '"Prerequisito"', // IMPORTANTE: Borrar antes de Curso
       '"Curso"',
       '"MallaCurricular"',
       '"EscuelaProfesional"',
       '"DepartamentoAcademico"',
       '"Facultad"',
+      '"Ambiente"',
+      '"PeriodoAcademico"',
       '"Ciclo"',
       '"Docente"',
       '"Usuario"'
     ];
 
-    // Ejecutar todas las limpiezas en una sola sentencia SQL para minimizar el uso de prepared statements
-    // Esto es crucial para entornos con PgBouncer (Supabase, Vercel, etc.)
-    const truncateQuery = tables.map(table => `TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`).join('; ');
+    console.log('   Truncando tablas una por una...');
     
-    try {
-      await prisma.$executeRawUnsafe(truncateQuery);
-      console.log('   ✓ Limpieza completada con éxito.');
-    } catch (e) {
-      console.log('   ! Error en truncado masivo, intentando borrado individual...');
-      // Si falla el masivo, intentamos uno por uno con DELETE (menos eficiente pero más compatible)
-      for (const table of tables) {
+    for (const table of tables) {
+      try {
+        // Truncate con CASCADE y RESTART IDENTITY
+        await prisma.$executeRawUnsafe(`TRUNCATE TABLE ${table} RESTART IDENTITY CASCADE`);
+        console.log(`      ✓ ${table}`);
+      } catch (e) {
+        console.error(`      × Error al truncar ${table}:`, e);
+        // Si falla, intentamos DELETE
         try {
           await prisma.$executeRawUnsafe(`DELETE FROM ${table}`);
-        } catch (innerError) {
-          console.error(`   × No se pudo limpiar la tabla ${table}`);
+          console.log(`      ✓ Eliminado ${table} con DELETE`);
+        } catch (deleteError) {
+          console.error(`      × No se pudo limpiar ${table}`, deleteError);
         }
       }
     }
+    
+    console.log('   ✓ Limpieza completada.');
 
     // 2. Sembrar datos base (sin dependencias entre sí)
     await seedFacultades(prisma);
     await seedCiclos(prisma);
     await seedPeriodos(prisma);
     await seedAmbientes(prisma);
+    await seedCargosAcademicosAdministrativos(prisma);
     
     // Crear la malla curricular inicial "Plan de Estudios 2018"
     console.log('-> Creando malla curricular inicial...');

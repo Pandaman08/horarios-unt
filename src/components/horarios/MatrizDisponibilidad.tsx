@@ -36,6 +36,10 @@ interface CeldaInfo {
   docente_nombre?: string;
   curso_nombre?: string;
   tipo_clase?: string;
+  // New fields for actividades no lectivas
+  id_actividad?: string;
+  actividad_tipo?: string;
+  actividad_descripcion?: string;
 
   estado:
     | "disponible"
@@ -47,11 +51,14 @@ interface CeldaInfo {
   mensaje_error?: string;
 }
 
-interface ConflictoVisual {
-  tipo: string;
-  mensaje: string;
-  severidad: "ERROR" | "ADVERTENCIA";
-}
+const DIA_SEMANA_MAP: Record<string, number> = {
+  "LU": 0,
+  "MA": 1,
+  "MI": 2,
+  "JU": 3,
+  "VI": 4,
+  "SA": 5,
+};
 
 interface Props {
   id_periodo: number;
@@ -74,6 +81,11 @@ interface Props {
   onSelectionChange?: () => void;
 
   soloLectura?: boolean;
+
+  // New props for no lectiva
+  tipoVista?: 'lectiva' | 'no-lectiva';
+  actividadSeleccionadaId?: number;
+  actividadesNoLectivas?: any[];
 }
 
 const DIAS = [
@@ -85,6 +97,23 @@ const DIAS = [
   { id: 5, nombre: "Sábado" },
 ];
 
+const tipoLabel = (tipo: string) => {
+  const labels: Record<string, string> = {
+    PREPARACION_EVALUACION: "Preparación y Evaluación",
+    TUTORIA: "Tutoría",
+    INVESTIGACION: "Investigación",
+    CAPACITACION: "Capacitación",
+    GOBIERNO: "Gobierno Universitario",
+    ADMINISTRACION: "Administración",
+    ASESORIA: "Asesoría",
+    RESPONSABILIDAD_SOCIAL: "Responsabilidad Social",
+    COMITES_TECNICOS: "Comités Técnicos",
+    AUTOEVALUACION_ACREDITACION: "Autoevaluación y Acreditación",
+    OTRO: "Otro",
+  };
+  return labels[tipo] || tipo;
+};
+
 export function MatrizDisponibilidad({
   id_periodo,
   id_ambiente,
@@ -95,6 +124,9 @@ export function MatrizDisponibilidad({
   onCellClick,
   onSelectionChange,
   soloLectura: propSoloLectura,
+  tipoVista = 'lectiva',
+  actividadSeleccionadaId,
+  actividadesNoLectivas = [],
 }: Props) {
   const [disponibilidad, setDisponibilidad] =
     useState<Record<string, CeldaInfo>>(
@@ -116,7 +148,7 @@ export function MatrizDisponibilidad({
   const [
     conflictosActuales,
     setConflictosActuales,
-  ] = useState<ConflictoVisual[]>([]);
+  ] = useState<any[]>([]);
 
   const [errorCell, setErrorCell] =
     useState<string | null>(null);
@@ -344,6 +376,26 @@ export function MatrizDisponibilidad({
           }
         );
 
+        // Process actividades no lectivas
+        (data.actividades ?? []).forEach(
+          (act: any) => {
+            const diaNum = DIA_SEMANA_MAP[act.dia];
+            if (diaNum !== undefined) {
+              fillSlots(
+                diaNum,
+                act.horaInicio,
+                act.horaFin,
+                {
+                  id_actividad: act.id,
+                  actividad_tipo: act.cargaNoLectiva?.tipo,
+                  actividad_descripcion: act.cargaNoLectiva?.descripcion,
+                  estado: "ocupado",
+                }
+              );
+            }
+          }
+        );
+
         let curB = parse(
           "12:00",
           "HH:mm",
@@ -459,6 +511,100 @@ export function MatrizDisponibilidad({
       return;
     }
 
+    // --- DETERMINAR SI ES NO LECTIVA ---
+    const esNoLectiva = tipoVista === 'no-lectiva';
+
+    if (esNoLectiva) {
+      // Validar que haya una actividad seleccionada
+      if (!actividadSeleccionadaId) {
+        toast.warning("Seleccione una actividad no lectiva de la lista");
+        return;
+      }
+
+      // Validar que la actividad tenga horas pendientes
+      const actividad = actividadesNoLectivas.find(a => a.id_carga_no_lectiva === actividadSeleccionadaId);
+      if (!actividad) {
+        toast.warning("Actividad no encontrada");
+        return;
+      }
+      const horasDisponibles = actividad.horas_semanales - (actividad.horas_asignadas || 0);
+      if (horasDisponibles <= 0) {
+        toast.warning(`La actividad "${tipoLabel(actividad.tipo)}" ya completó sus horas`);
+        return;
+      }
+
+      if (!id_docente_actual) {
+        toast.warning("Seleccione docente");
+        return;
+      }
+
+      if (!id_periodo) {
+        toast.warning("Seleccione período");
+        return;
+      }
+
+      // Guardar en HorarioActividad
+      setProcessingCell(key);
+
+      try {
+        const hora_fin = format(
+          addMinutes(
+            parse(
+              hora,
+              "HH:mm",
+              new Date()
+            ),
+            intervalo
+          ),
+          "HH:mm"
+        );
+
+        const res = await fetch(
+          "/api/horarios/seleccionar-celda-no-lectiva",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              id_docente: id_docente_actual,
+              id_periodo,
+              id_carga_no_lectiva: actividadSeleccionadaId,
+              dia_semana: dia,
+              hora_inicio: hora,
+              hora_fin,
+            }),
+          }
+        );
+
+        const result = await res.json();
+
+        if (res.ok && result.success) {
+          toast.success(
+            "Horario no lectivo asignado"
+          );
+
+          fetchDisponibilidad();
+
+          onSelectionChange?.();
+
+          getSocket().emit(
+            "horario-actualizado"
+          );
+        } else {
+          toast.error(result.error || "Error al asignar horario no lectivo");
+        }
+      } catch (error) {
+        toast.error("Error de conexión");
+      } finally {
+        setProcessingCell(null);
+      }
+
+      return;
+    }
+
+    // --- CÓDIGO EXISTENTE PARA LECTIVA ---
     if (!id_docente_actual) {
       toast.warning(
         "Seleccione docente"
@@ -679,6 +825,10 @@ export function MatrizDisponibilidad({
                     processingCell ===
                     key;
 
+                  const isOcupadoPorNoLectiva = 
+                    info?.estado === "ocupado" && 
+                    info?.id_actividad !== undefined;
+
                   return (
                     <td
                       key={key}
@@ -692,7 +842,8 @@ export function MatrizDisponibilidad({
                       className={cn(
                         "relative h-12 border-b border-r border-border/60 cursor-pointer transition-colors",
                         !info && "hover:bg-emerald-500/10",
-                        info?.estado === "ocupado" && !esMia && "bg-rose-500/10 cursor-not-allowed",
+                        info?.estado === "ocupado" && !esMia && !isOcupadoPorNoLectiva && "bg-rose-500/10 cursor-not-allowed",
+                        isOcupadoPorNoLectiva && "bg-emerald-500/15 cursor-not-allowed",
                         esMia && "bg-amber-400/35 ring-1 ring-inset ring-amber-500/40",
                         info?.estado === "bloqueado" && "bg-muted/60 cursor-not-allowed"
                       )}
@@ -714,33 +865,54 @@ export function MatrizDisponibilidad({
                         info.estado !==
                           "bloqueado" && (
                           <div className="absolute inset-1 rounded-lg bg-card border border-border p-1 text-[9px] flex flex-col justify-between">
-                            <div>
-                              <p className="font-black truncate">
-                                {
-                                  info.curso_nombre
-                                }
-                              </p>
+                            {isOcupadoPorNoLectiva ? (
+                              <>
+                                <div>
+                                  <p className="font-black text-emerald-700 truncate">
+                                    {tipoLabel(info.actividad_tipo || '')}
+                                  </p>
+                                  <p className="truncate text-muted-foreground text-[8px]">
+                                    No lectiva
+                                  </p>
+                                </div>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[8px] uppercase font-bold text-emerald-600">
+                                    {info.actividad_tipo?.substring(0, 3)}
+                                  </span>
+                                  <Lock className="h-3 w-3 text-muted-foreground" />
+                                </div>
+                              </>
+                            ) : (
+                              <>
+                                <div>
+                                  <p className="font-black truncate">
+                                    {
+                                      info.curso_nombre
+                                    }
+                                  </p>
 
-                              <p className="truncate text-muted-foreground">
-                                {
-                                  info.docente_nombre
-                                }
-                              </p>
-                            </div>
+                                  <p className="truncate text-muted-foreground">
+                                    {
+                                      info.docente_nombre
+                                    }
+                                  </p>
+                                </div>
 
-                            <div className="flex items-center justify-between">
-                              <span className="text-[8px] uppercase font-bold">
-                                {
-                                  info.tipo_clase
-                                }
-                              </span>
+                                <div className="flex items-center justify-between">
+                                  <span className="text-[8px] uppercase font-bold">
+                                    {
+                                      info.tipo_clase
+                                    }
+                                  </span>
 
-                              {esMia ? (
-                                <CheckCircle2 className="h-3 w-3 text-primary" />
-                              ) : (
-                                <Lock className="h-3 w-3 text-muted-foreground" />
-                              )}
-                            </div>
+                                  {esMia ? (
+                                    <CheckCircle2 className="h-3 w-3 text-primary" />
+                                  ) : (
+                                    <Lock className="h-3 w-3 text-muted-foreground" />
+                                  )}
+                                </div>
+                              </>
+                            )}
                           </div>
                         )}
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import React, { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
@@ -685,12 +685,12 @@ export default function AsignacionCargaLectivaPage() {
                   </TableCell>
                   <TableCell className="px-4 py-2">
                     <Badge variant="outline" className="rounded-md bg-primary/5 text-primary border-primary/20 text-[8px] font-bold uppercase tracking-widest">
-                      {docente.categoria}
+                      {docente.categoriaDocente}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-4 py-2">
                     <Badge variant="outline" className="rounded-md bg-muted text-muted-foreground border-border text-[8px] font-bold uppercase tracking-widest">
-                      {docente.modalidad}
+                      {docente.condicion}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-4 py-2">

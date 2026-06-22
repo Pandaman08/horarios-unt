@@ -1,4 +1,4 @@
-export const DIAS_SEMANA = [
+﻿export const DIAS_SEMANA = [
   { id: 0, nombre: 'Lunes' },
   { id: 1, nombre: 'Martes' },
   { id: 2, nombre: 'Miércoles' },

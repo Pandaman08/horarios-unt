@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -166,7 +166,14 @@ export function GrupoList() {
       });
 
       if (res.ok) {
+        const data = await res.json();
         toast.success(editingGrupo ? "Grupo actualizado" : "Grupo creado");
+        
+        // Show warning if present
+        if (data.warning) {
+          toast.warning(data.warning, { duration: 6000 });
+        }
+        
         setIsDialogOpen(false);
         setEditingGrupo(null);
         resetForm();

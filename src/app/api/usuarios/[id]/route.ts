@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
@@ -27,8 +27,21 @@ export async function PUT(
         }
       });
 
-      // 2. Si es docente, actualizar o crear registro de Docente
-      if (data.rol === 'docente') {
+      // 2. Si se proporcionó id_docente, actualizar la asociación
+      if (data.id_docente) {
+        // Primero, desasignar cualquier docente anterior del usuario
+        await tx.docente.updateMany({
+          where: { id_usuario: idNumber },
+          data: { id_usuario: null }
+        });
+
+        // Ahora asociar el nuevo docente
+        await tx.docente.update({
+          where: { id_docente: parseInt(data.id_docente) },
+          data: { id_usuario: idNumber }
+        });
+      } else if (data.rol === 'docente') {
+        // Si no hay id_docente pero el rol es docente, usar la logica antigua con nuevos campos
         await tx.docente.upsert({
           where: { id_usuario: idNumber },
           update: {
@@ -36,8 +49,8 @@ export async function PUT(
             nombres: data.nombres,
             apellidos: data.apellidos,
             correo_electronico: data.correo_electronico,
-            categoria: data.categoria,
-            modalidad: data.modalidad,
+            categoriaDocente: data.categoria ? data.categoria.toUpperCase() : undefined,
+            condicion: data.modalidad ? data.modalidad.toUpperCase() : undefined,
             especialidad: data.especialidad,
             grado_academico: data.grado_academico,
             fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
@@ -50,8 +63,8 @@ export async function PUT(
             nombres: data.nombres,
             apellidos: data.apellidos,
             correo_electronico: data.correo_electronico,
-            categoria: data.categoria || 'auxiliar',
-            modalidad: data.modalidad || 'contratado',
+            categoriaDocente: (data.categoria || 'auxiliar').toUpperCase(),
+            condicion: (data.modalidad || 'contratado').toUpperCase(),
             especialidad: data.especialidad || '',
             grado_academico: data.grado_academico || '',
             fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,

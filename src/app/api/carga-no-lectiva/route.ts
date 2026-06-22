@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function POST(request: Request) {
@@ -10,7 +10,9 @@ export async function POST(request: Request) {
         tipo: data.tipo,
         descripcion: data.descripcion || null,
         horas_semanales: data.horas_semanales,
-        sedeId: data.sedeId || null
+        sedeId: data.sedeId || null,
+        ambiente: data.ambiente || null,
+        cargoId: data.cargoId || null
       }
     });
     return NextResponse.json(carga);
@@ -31,14 +33,18 @@ export async function PUT(request: Request) {
 
     // Upsert each carga no lectiva
     for (const carga of cargas) {
+      let cargaCreadaOActualizada;
+
       if (carga.id_carga_no_lectiva && typeof carga.id_carga_no_lectiva === 'number') {
         // Update existing
-        await prisma.cargaNoLectiva.update({
+        cargaCreadaOActualizada = await prisma.cargaNoLectiva.update({
           where: { id_carga_no_lectiva: carga.id_carga_no_lectiva },
           data: {
             descripcion: carga.descripcion || null,
             horas_semanales: carga.horas_semanales,
-            sedeId: carga.sedeId || null
+            sedeId: carga.sedeId || null,
+            ambiente: carga.ambiente || null,
+            cargoId: carga.cargoId || null
           }
         });
       } else {
@@ -52,23 +58,47 @@ export async function PUT(request: Request) {
 
         if (existing) {
           // Update existing
-          await prisma.cargaNoLectiva.update({
+          cargaCreadaOActualizada = await prisma.cargaNoLectiva.update({
             where: { id_carga_no_lectiva: existing.id_carga_no_lectiva },
             data: {
               descripcion: carga.descripcion || null,
               horas_semanales: carga.horas_semanales,
-              sedeId: carga.sedeId || null
+              sedeId: carga.sedeId || null,
+              ambiente: carga.ambiente || null,
+              cargoId: carga.cargoId || null
             }
           });
         } else {
           // Create new
-          await prisma.cargaNoLectiva.create({
+          cargaCreadaOActualizada = await prisma.cargaNoLectiva.create({
             data: {
               id_declaracion: id_declaracion,
               tipo: carga.tipo,
               descripcion: carga.descripcion || null,
               horas_semanales: carga.horas_semanales,
-              sedeId: carga.sedeId || null
+              sedeId: carga.sedeId || null,
+              ambiente: carga.ambiente || null,
+              cargoId: carga.cargoId || null
+            }
+          });
+        }
+      }
+
+      // Now handle horarios
+      if (cargaCreadaOActualizada && carga.horarios) {
+        // Delete old ones
+        await prisma.horarioActividad.deleteMany({
+          where: { cargaNoLectivaId: cargaCreadaOActualizada.id_carga_no_lectiva }
+        });
+
+        // Create new ones
+        for (const horario of carga.horarios) {
+          await prisma.horarioActividad.create({
+            data: {
+              cargaNoLectivaId: cargaCreadaOActualizada.id_carga_no_lectiva,
+              dia: horario.dia,
+              horaInicio: horario.horaInicio,
+              horaFin: horario.horaFin
             }
           });
         }

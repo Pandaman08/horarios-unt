@@ -1,4 +1,4 @@
-import { getServerSession } from "next-auth";
+﻿import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { PlanEstudiosClient } from "./PlanEstudiosClient";
 import { redirect } from "next/navigation";

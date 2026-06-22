@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 import { Prisma } from '@prisma/client';
@@ -66,15 +66,15 @@ export async function PUT(
         });
       }
 
+      // Process enum fields: convert empty string to null
+      const processEnum = (value: string | null | undefined) => value && value.trim() !== "" ? value : null;
+
       // 3. Actualizar el Docente
       const docente = await tx.docente.update({
         where: { id_docente: id },
         data: {
           nombres: data.nombres,
           apellidos: data.apellidos,
-          modalidad: data.modalidad,
-          categoria: data.categoria,
-          dedicacion: data.dedicacion,
           fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
           correo_electronico: data.correo_electronico,
           telefono: data.telefono,
@@ -84,6 +84,17 @@ export async function PUT(
           activo: data.activo,
           facultadId: data.facultadId,
           departamentoId: data.departamentoId,
+          // New fields
+          condicion: processEnum(data.condicion),
+          categoriaDocente: data.categoriaDocente,
+          regimenDedicacion: data.condicion === 'ORDINARIO' ? processEnum(data.regimenDedicacion) : null,
+          tipoContrato: data.condicion === 'CONTRATADO' ? processEnum(data.tipoContrato) : null,
+          tipoExtraordinario: data.condicion === 'EXTRAORDINARIO' ? processEnum(data.tipoExtraordinario) : null,
+          esInvestigadorAcreditado: data.esInvestigadorAcreditado || false,
+          nivelRenacyt: data.nivelRenacyt || null,
+          sancionActiva: data.sancionActiva || false,
+          sancionHasta: data.sancionHasta ? new Date(data.sancionHasta) : null,
+          dni: data.dni
         }
       });
 
