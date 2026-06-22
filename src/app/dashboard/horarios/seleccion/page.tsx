@@ -5,8 +5,9 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { MatrizDisponibilidad } from "@/components/horarios/MatrizDisponibilidad";
 import { ProgresoCursos } from "@/components/horarios/ProgresoCursos";
+import { ProgresoNoLectiva } from "@/components/horarios/ProgresoNoLectiva";
 import { MiHorarioDocenteView } from "@/components/horarios/MiHorarioDocenteView";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import {
   Select,
   SelectContent,
@@ -16,24 +17,19 @@ import {
 } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
 import { Button } from "@/components/ui/button";
+import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
 import { toast } from "sonner";
 import { ProteccionVentana } from "@/components/auth/ProteccionVentana";
 import { getSocket } from "@/lib/socket-client";
 import { 
   User, 
   CheckCircle, 
-  XCircle, 
-  Users, 
-  Monitor, 
-  ChevronRight,
   Info,
   Clock,
   Layout as LayoutIcon,
-  Settings2,
   Calendar
 } from "lucide-react";
 import { cn } from "@/lib/utils";
-
 import {
   Dialog,
   DialogContent,
@@ -65,17 +61,20 @@ export default function SeleccionHorariosPage() {
   const [hayHorariosGenerados, setHayHorariosGenerados] = useState(false);
   const [horariosGenerados, setHorariosGenerados] = useState<any[]>([]);
   const [mensajeIntervalo, setMensajeIntervalo] = useState<string>("");
+  // New state for no lectiva
+  const [activeTab, setActiveTab] = useState<"lectiva" | "no-lectiva">("lectiva");
+  const [actividadesNoLectivas, setActividadesNoLectivas] = useState<any[]>([]);
+  const [actividadSeleccionada, setActividadSeleccionada] = useState<number | null>(null);
   
   // Timer simple - solo para visualización
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const segundosRestantesRef = useRef<number>(0);
-
-  // Redirección por rol: Esta vista es para docentes, decano y director de departamento
+  
+  // Redirección por rol
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
     } else if (status === "authenticated" && !["docente", "decano", "director_departamento"].includes(session?.user?.rol)) {
-      // Si es admin u operador, mandarlo a su flujo de atención
       if (["administrador_sistema", "operador_horarios"].includes(session.user.rol)) {
         router.push("/dashboard/horarios/asignacion");
       } else {
@@ -84,25 +83,21 @@ export default function SeleccionHorariosPage() {
     }
   }, [session, status, router]);
 
-  // Cargar datos iniciales - SOLO UNA VEZ
   useEffect(() => {
     fetchInitialData();
   }, []);
 
-  // Cuando tenemos session y período - SOLO UNA VEZ
   useEffect(() => {
     if (session?.user && idPeriodo && idPeriodo !== "undefined") {
       fetchDocenteCursos();
+      fetchActividadesNoLectivas();
       verificarHorariosGenerados();
-      
-      // Llamamos a checkAccess SOLO UNA VEZ al principio
       if (!timerIntervalRef.current) {
         checkAccessOnce();
       }
     }
   }, [session, idPeriodo]);
 
-  // Limpiar timer al desmontar
   useEffect(() => {
     return () => {
       if (timerIntervalRef.current) {
@@ -119,18 +114,14 @@ export default function SeleccionHorariosPage() {
       if (data.soloLectura !== undefined) {
         setSoloLectura(!!data.soloLectura);
       }
-      
       if (data.mensaje) {
         setMensajeIntervalo(data.mensaje);
       }
       
-      // Si el endpoint devuelve segundos_restantes, configuramos el timer
       let segundosRestantes = null;
-      
       if (data.segundos_restantes !== undefined && data.segundos_restantes !== null) {
         segundosRestantes = data.segundos_restantes;
       } else {
-        // Si no, intentamos leer desde localStorage como respaldo
         const intervaloStr = localStorage.getItem('intervalo_horarios');
         if (intervaloStr) {
           const intervaloData = JSON.parse(intervaloStr);
@@ -140,19 +131,14 @@ export default function SeleccionHorariosPage() {
         }
       }
       
-      // Configurar timer visual
       if (segundosRestantes !== null && segundosRestantes > 0) {
         segundosRestantesRef.current = segundosRestantes;
-        
-        // Mostrar tiempo inicial
         const min = Math.floor(segundosRestantes / 60);
         const seg = Math.floor(segundosRestantes % 60);
         setTiempoRestante(`${min}:${seg.toString().padStart(2, '0')}`);
         
-        // Timer simple - solo visual
         timerIntervalRef.current = setInterval(() => {
           segundosRestantesRef.current -= 1;
-          
           if (segundosRestantesRef.current <= 0) {
             setTiempoRestante("¡Tiempo agotado!");
             setSoloLectura(true);
@@ -176,17 +162,10 @@ export default function SeleccionHorariosPage() {
 
   const fetchInitialData = async () => {
     try {
-      const [pRes] = await Promise.all([
-        fetch("/api/periodos"),
-      ]);
+      const [pRes] = await Promise.all([fetch("/api/periodos")]);
       const pData = await pRes.json();
-      
-      // FILTRAR SOLO LOS PERÍODOS ACTIVOS
       const periodosActivos = pData.filter((p: any) => p.activo === true);
-      
       setPeriodos(periodosActivos);
-      
-      // Seleccionar el PRIMER período ACTIVO (el más reciente)
       if (periodosActivos.length > 0 && !idPeriodo) {
         setIdPeriodo(periodosActivos[0].id_periodo.toString());
       }
@@ -198,35 +177,25 @@ export default function SeleccionHorariosPage() {
   const verificarHorariosGenerados = async () => {
     if (!session?.user?.id_docente || !idPeriodo) return;
     try {
-      // Primero: Obtener horarios confirmados
       const resConfirmados = await fetch(`/api/docentes/horarios?periodoId=${idPeriodo}`);
       let horariosConfirmados: any[] = [];
-      
       if (resConfirmados.ok) {
         horariosConfirmados = await resConfirmados.json();
       }
       
-      // Segundo: Obtener horarios temporales (selecciones) del docente actual
       const resTemporales = await fetch(`/api/horarios/disponibilidad-matriz?id_periodo=${idPeriodo}&id_docente=${session.user.id_docente}`);
       let horariosTemporales: any[] = [];
-      
       if (resTemporales.ok) {
         const dataTemp = await resTemporales.json();
         horariosTemporales = dataTemp.temporales || [];
       }
       
-      // Combinar ambos
       const todosHorarios = [...horariosConfirmados, ...horariosTemporales];
       setHorariosGenerados(todosHorarios);
-      
-      // Solo marcar como "hay horarios generados" si el docente ACTUAL tiene horarios
       setHayHorariosGenerados(todosHorarios.length > 0);
       
-      // Verificar si hay horarios confirmados o temporales
       const hayConfirmados = horariosConfirmados.length > 0;
       const hayTemporales = horariosTemporales.length > 0;
-      
-      // El docente ya confirmó si tiene horarios confirmados y NO tiene temporales pendientes
       setYaConfirmo(hayConfirmados && !hayTemporales);
     } catch (error) {
       console.error("Error al verificar horarios generados", error);
@@ -236,16 +205,9 @@ export default function SeleccionHorariosPage() {
   const fetchAmbientesCurso = async () => {
     if (!cursoSeleccionado) return;
     try {
-      // OBTENER TODOS LOS AMBIENTES ACTIVOS
       const res = await fetch("/api/ambientes");
       const todosAmbientes = await res.json();
-      
-      // Filtrar solo ambientes activos
       let filtrados = todosAmbientes.filter((a: any) => a.activo === true);
-      
-      // Ahora, si quisiéramos filtrar por tipo de ambiente, lo haríamos aquí
-      // Pero según tu petición: MOSTRAR TODAS LAS AULAS DISPONIBLES
-      
       setAmbientesFiltrados(filtrados);
       if (filtrados.length > 0) {
         setIdAmbiente(prev => {
@@ -254,7 +216,7 @@ export default function SeleccionHorariosPage() {
         });
       } else {
         setIdAmbiente("");
-        toast.warning(`No hay ambientes disponibles.`);
+        toast.warning("No hay ambientes disponibles.");
       }
     } catch (error) {
       toast.error("Error al cargar ambientes");
@@ -272,16 +234,13 @@ export default function SeleccionHorariosPage() {
       if (res.ok) {
         const data = await res.json();
         setCursosProgreso(Array.isArray(data) ? data : []);
-        
         const algunConfirmado = Array.isArray(data) && data.some((c: any) => c.confirmado);
         setYaConfirmo(algunConfirmado);
-
         if (Array.isArray(data) && data.length > 0 && !cursoSeleccionado) {
           setCursoSeleccionado({ id: data[0].id_curso, tipo: data[0].tipo_clase });
         }
       } else {
         setCursosProgreso([]);
-        // Si el error es 404 o 400, no mostrar toast ruidoso, solo vaciar
         if (res.status !== 404 && res.status !== 400) {
           const errorData = await res.json().catch(() => ({}));
           toast.error(errorData.error || "Error al cargar cursos");
@@ -290,6 +249,22 @@ export default function SeleccionHorariosPage() {
     } catch (error) {
       toast.error("Error al cargar cursos del docente");
       setCursosProgreso([]);
+    }
+  };
+
+  const fetchActividadesNoLectivas = async () => {
+    if (!idPeriodo || !session?.user?.id_docente) return;
+    try {
+      const res = await fetch(`/api/docentes/mis-actividades-no-lectivas?id_periodo=${idPeriodo}`);
+      if (res.ok) {
+        const data = await res.json();
+        setActividadesNoLectivas(data);
+      } else {
+        setActividadesNoLectivas([]);
+      }
+    } catch (err) {
+      console.error(err);
+      setActividadesNoLectivas([]);
     }
   };
 
@@ -330,18 +305,17 @@ export default function SeleccionHorariosPage() {
     const resCheck = await fetch(`/api/horarios/disponibilidad-matriz?id_periodo=${idPeriodo}&id_docente=${session.user.id_docente}`);
     const dataCheck = await resCheck.json();
     const misTemporales = dataCheck.temporales.filter(
-      (t: any) =>
-        t.id_docente === Number(session.user.id_docente ?? 0)
+      (t: any) => t.id_docente === Number(session.user.id_docente ?? 0)
     );
     
     if (misTemporales.length === 0 && !hayHorariosGenerados) {
-      toast.warning("Primero debe seleccionar bloques en la matriz (aparecerán en amarillo) antes de confirmar.");
+      toast.warning("Primero debe seleccionar bloques en la matriz antes de confirmar.");
       return;
     }
 
     const incompletos = cursosProgreso.filter(c => c.horas_asignadas < c.horas_requeridas);
     if (incompletos.length > 0 && !hayHorariosGenerados) {
-      if (!confirm(`Tiene ${incompletos.length} cursos con carga horaria incompleta. ¿Desea confirmar el horario de todas formas?`)) {
+      if (!confirm(`Tiene ${incompletos.length} cursos con carga horaria incompleta. ¿Desea confirmar de todas formas?`)) {
         return;
       }
     }
@@ -351,9 +325,7 @@ export default function SeleccionHorariosPage() {
       const res = await fetch("/api/horarios/confirmar-seleccion", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          id_periodo: parseInt(idPeriodo)
-        })
+        body: JSON.stringify({ id_periodo: parseInt(idPeriodo) })
       });
 
       if (res.ok) {
@@ -434,82 +406,93 @@ export default function SeleccionHorariosPage() {
           <div className="max-w-[1600px] mx-auto p-6 space-y-6">
             
             <div className="p-6 bg-card rounded-2xl border border-border shadow-sm flex flex-col md:flex-row items-center justify-between gap-6 animate-in fade-in slide-in-from-top-4 duration-500">
-                  <div className="flex items-center gap-6">
-                    <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center ring-4 ring-primary/30 shadow-sm">
-                      <User className="h-8 w-8 text-primary" />
-                    </div>
-                    <div>
-                      <h2 className="text-2xl font-bold text-foreground tracking-tight leading-none mb-2">
-                        {session?.user?.name}
-                      </h2>
-                      <div className="flex items-center gap-2 mt-2">
-                        <span className="inline-flex items-center bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                          Docente UNT
-                        </span>
-                        {yaConfirmo && (
-                          <span className="inline-flex items-center bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                            Horario Confirmado
-                          </span>
-                        )}
-                        {modoEdicionManual && (
-                          <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
-                            Modo Edición
-                          </span>
-                        )}
-                      </div>
-                    </div>
-                  </div>
-                  {!yaConfirmo && (
-                    <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
-                      <Dialog>
-                        <DialogTrigger asChild>
-                          <Button 
-                            disabled={loadingConfirm || soloLectura}
-                            className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
-                          >
-                            <CheckCircle className="mr-2 h-4 w-4" /> 
-                            {soloLectura ? "Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Horario")}
-                          </Button>
-                        </DialogTrigger>
-                        <DialogContent className="bg-card rounded-2xl border-border shadow-2xl sm:max-w-[450px] p-8">
-                          <DialogHeader className="space-y-4">
-                            <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-950/50 rounded-2xl flex items-center justify-center mb-2">
-                              <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
-                            </div>
-                            <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">¿Confirmar Horario?</DialogTitle>
-                            <DialogDescription className="text-muted-foreground font-medium text-base leading-relaxed">
-                              Al confirmar, tu horario se volverá <span className="font-bold text-emerald-600 dark:text-emerald-400">definitivo</span>.
-                            </DialogDescription>
-                          </DialogHeader>
-                          <DialogFooter className="gap-3 sm:justify-end mt-8">
-                            <DialogClose asChild>
-                              <Button type="button" variant="ghost" className="rounded-xl font-bold text-muted-foreground hover:bg-muted">
-                                Revisar de nuevo
-                              </Button>
-                            </DialogClose>
-                            <DialogClose asChild>
-                              <Button 
-                                onClick={confirmarTodo}
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-8"
-                              >
-                                Sí, confirmar ahora
-                              </Button>
-                            </DialogClose>
-                          </DialogFooter>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  )}
-                  {yaConfirmo && (
-                    <span className="inline-flex items-center bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 font-bold text-xs px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800">
-                      <CheckCircle className="mr-2 h-4 w-4" /> Horario Confirmado
-                    </span>
-                  )}
+              <div className="flex items-center gap-6">
+                <div className="h-16 w-16 bg-primary/10 rounded-2xl flex items-center justify-center ring-4 ring-primary/30 shadow-sm">
+                  <User className="h-8 w-8 text-primary" />
                 </div>
+                <div>
+                  <h2 className="text-2xl font-bold text-foreground tracking-tight leading-none mb-2">
+                    {session?.user?.name}
+                  </h2>
+                  <div className="flex items-center gap-2 mt-2">
+                    <span className="inline-flex items-center bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                      Docente UNT
+                    </span>
+                    {yaConfirmo && (
+                      <span className="inline-flex items-center bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800">
+                        Horario Confirmado
+                      </span>
+                    )}
+                    {modoEdicionManual && (
+                      <span className="inline-flex items-center bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-amber-200 dark:border-amber-800">
+                        Modo Edición
+                      </span>
+                    )}
+                  </div>
+                </div>
+              </div>
+              {!yaConfirmo && (
+                <div className="flex flex-wrap items-center justify-end gap-3 shrink-0">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button 
+                        disabled={loadingConfirm || soloLectura}
+                        className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
+                      >
+                        <CheckCircle className="mr-2 h-4 w-4" /> 
+                        {soloLectura ? "Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Horario")}
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent className="bg-card rounded-2xl border-border shadow-2xl sm:max-w-[450px] p-8">
+                      <DialogHeader className="space-y-4">
+                        <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-950/50 rounded-2xl flex items-center justify-center mb-2">
+                          <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                        <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">¿Confirmar Horario?</DialogTitle>
+                        <DialogDescription className="text-muted-foreground font-medium text-base leading-relaxed">
+                          Al confirmar, tu horario se volverá <span className="font-bold text-emerald-600 dark:text-emerald-400">definitivo</span>.
+                        </DialogDescription>
+                      </DialogHeader>
+                      <DialogFooter className="gap-3 sm:justify-end mt-8">
+                        <DialogClose asChild>
+                          <Button type="button" variant="ghost" className="rounded-xl font-bold text-muted-foreground hover:bg-muted">
+                            Revisar de nuevo
+                          </Button>
+                        </DialogClose>
+                        <DialogClose asChild>
+                          <Button 
+                            onClick={confirmarTodo}
+                            className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-8"
+                          >
+                            Sí, confirmar ahora
+                          </Button>
+                        </DialogClose>
+                      </DialogFooter>
+                    </DialogContent>
+                  </Dialog>
+                </div>
+              )}
+              {yaConfirmo && (
+                <span className="inline-flex items-center bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 font-bold text-xs px-4 py-2 rounded-xl border border-indigo-200 dark:border-indigo-800">
+                  <CheckCircle className="mr-2 h-4 w-4" /> Horario Confirmado
+                </span>
+              )}
+            </div>
 
-                {(!yaConfirmo || modoEdicionManual) && (
+            {(!yaConfirmo || modoEdicionManual) && (
+              <Tabs value={activeTab} onValueChange={(v) => setActiveTab(v as "lectiva" | "no-lectiva")}>
+                <TabsList className="w-full mb-4 bg-muted/50">
+                  <TabsTrigger value="lectiva" className="flex-1 text-xs font-bold">
+                    Carga Lectiva
+                  </TabsTrigger>
+                  <TabsTrigger value="no-lectiva" className="flex-1 text-xs font-bold">
+                    Carga No Lectiva
+                  </TabsTrigger>
+                </TabsList>
+                
+                {/* Tab: Carga Lectiva */}
+                <TabsContent value="lectiva">
                   <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
-                    {/* Panel lateral fijo */}
                     <aside className="w-full lg:w-[300px] xl:w-[320px] shrink-0 lg:sticky lg:top-4 space-y-3">
                       <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
                         <ProgresoCursos
@@ -568,7 +551,6 @@ export default function SeleccionHorariosPage() {
                       )}
                     </aside>
 
-                    {/* Matriz principal */}
                     <div className="flex-1 min-w-0 w-full">
                       {cursosProgreso.length === 0 ? (
                         <Card className="p-8 border-dashed border-amber-200 bg-amber-50/30">
@@ -602,18 +584,18 @@ export default function SeleccionHorariosPage() {
                             </span>
                           </div>
                           <MatrizDisponibilidad
-                          id_periodo={parseInt(idPeriodo)}
-                          id_ambiente={parseInt(idAmbiente)}
-                          id_docente_actual={session.user.id_docente}
-                          id_curso_actual={cursoSeleccionado.id}
-                          id_grupo_actual={parseInt(idGrupo)}
-                          tipo_clase_actual={cursoSeleccionado.tipo}
-                          soloLectura={soloLectura || (yaConfirmo && !modoEdicionManual)}
-                          onSelectionChange={() => {
-                            fetchDocenteCursos();
-                            verificarHorariosGenerados();
-                          }}
-                        />
+                            id_periodo={parseInt(idPeriodo)}
+                            id_ambiente={parseInt(idAmbiente)}
+                            id_docente_actual={session.user.id_docente}
+                            id_curso_actual={cursoSeleccionado.id}
+                            id_grupo_actual={parseInt(idGrupo)}
+                            tipo_clase_actual={cursoSeleccionado.tipo}
+                            soloLectura={soloLectura || (yaConfirmo && !modoEdicionManual)}
+                            onSelectionChange={() => {
+                              fetchDocenteCursos();
+                              verificarHorariosGenerados();
+                            }}
+                          />
                         </div>
                       ) : (
                         <Card className="p-10 border-dashed border-border bg-muted/20">
@@ -623,20 +605,85 @@ export default function SeleccionHorariosPage() {
                               Seleccione un curso de la lista
                             </p>
                             <p className="text-xs text-muted-foreground">
-                              Luego elija grupo y ambiente. Haga clic en la matriz para reservar bloques en amarillo.
+                              Luego elija grupo y ambiente. Haga clic en la matriz para reservar bloques.
                             </p>
                           </div>
                         </Card>
                       )}
                     </div>
                   </div>
-                )}
+                </TabsContent>
+                
+                {/* Tab: Carga No Lectiva */}
+                <TabsContent value="no-lectiva">
+                  <div className="flex flex-col lg:flex-row gap-4 lg:gap-5 items-start">
+                    <aside className="w-full lg:w-[300px] xl:w-[320px] shrink-0 lg:sticky lg:top-4 space-y-3">
+                      <div className="rounded-2xl border border-border bg-card shadow-sm p-4">
+                        <ProgresoNoLectiva
+                          actividades={actividadesNoLectivas}
+                          onSelectActividad={(id) => setActividadSeleccionada(id)}
+                          actividadSeleccionadaId={actividadSeleccionada || undefined}
+                        />
+                      </div>
+                    </aside>
 
-                {hayHorariosGenerados && !modoEdicionManual && yaConfirmo && (
-                  <div className="bg-card p-6 rounded-2xl border border-border shadow-sm mt-6">
-                    <MiHorarioDocenteView />
+                    <div className="flex-1 min-w-0 w-full">
+                      {actividadesNoLectivas.length === 0 ? (
+                        <Card className="p-8 border-dashed border-amber-200 bg-amber-50/30">
+                          <div className="flex items-start gap-3">
+                            <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
+                            <div>
+                              <p className="text-sm font-bold text-amber-800">Sin actividades no lectivas</p>
+                              <p className="text-xs text-amber-700 mt-1">
+                                Debe declarar actividades no lectivas en su carga horaria y esperar la aprobación.
+                              </p>
+                            </div>
+                          </div>
+                        </Card>
+                      ) : (
+                        <div className="space-y-3">
+                          {actividadSeleccionada ? (
+                            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-emerald-50 dark:bg-emerald-950/30 border border-emerald-200 dark:border-emerald-800 text-xs">
+                              <span className="font-semibold text-emerald-700 dark:text-emerald-400">
+                                Seleccionado: {actividadesNoLectivas.find(a => a.id_carga_no_lectiva === actividadSeleccionada)?.tipo || "Actividad"}
+                              </span>
+                              <span className="text-muted-foreground">·</span>
+                              <span className="text-muted-foreground">
+                                Haz clic en un bloque libre para asignarlo
+                              </span>
+                            </div>
+                          ) : (
+                            <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border text-xs">
+                              <span className="font-semibold text-muted-foreground">
+                                Seleccione una actividad del panel lateral
+                              </span>
+                            </div>
+                          )}
+                          <MatrizDisponibilidad
+                            id_periodo={parseInt(idPeriodo)}
+                            id_docente_actual={session.user.id_docente}
+                            soloLectura={soloLectura || (yaConfirmo && !modoEdicionManual)}
+                            tipoVista="no-lectiva"
+                            actividadSeleccionadaId={actividadSeleccionada || undefined}
+                            actividadesNoLectivas={actividadesNoLectivas}
+                            onSelectionChange={() => {
+                              fetchActividadesNoLectivas();
+                              verificarHorariosGenerados();
+                            }}
+                          />
+                        </div>
+                      )}
+                    </div>
                   </div>
-                )}
+                </TabsContent>
+              </Tabs>
+            )}
+
+            {hayHorariosGenerados && !modoEdicionManual && yaConfirmo && (
+              <div className="bg-card p-6 rounded-2xl border border-border shadow-sm mt-6">
+                <MiHorarioDocenteView />
+              </div>
+            )}
           </div>
         </main>
       </div>

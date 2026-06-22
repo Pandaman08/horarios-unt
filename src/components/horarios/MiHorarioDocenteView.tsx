@@ -31,8 +31,7 @@ const RANGOS_HORARIOS = [
   "19:00 - 20:00",
 ];
 
-// Colores usando solo clases de Tailwind con variante dark explícita
-// (colores fijos de paleta, no variables CSS — funcionan bien en Tailwind v4)
+// Colores para carga lectiva
 const CURSO_COLORES = [
   { bg: "bg-blue-500/10",   border: "border-l-blue-400",   text: "text-blue-600 dark:text-blue-400"   },
   { bg: "bg-purple-500/10", border: "border-l-purple-400", text: "text-purple-600 dark:text-purple-400" },
@@ -44,16 +43,19 @@ const CURSO_COLORES = [
   { bg: "bg-rose-500/10",   border: "border-l-rose-400",   text: "text-rose-600 dark:text-rose-400"   },
 ];
 
+// Colores para carga no lectiva (verde/ámbar)
+const NO_LECTIVA_COLOR = { bg: "bg-emerald-500/20", border: "border-l-emerald-500", text: "text-emerald-700 dark:text-emerald-400" };
+
 const getColorPorCurso = (cursoNombre: string, cursosUnicos: string[]) => {
   const index = cursosUnicos.indexOf(cursoNombre);
   return CURSO_COLORES[index % CURSO_COLORES.length];
 };
 
-interface HorarioAsignado {
+interface HorarioItem {
   id_asignacion: number;
-  id_curso: number;
-  id_grupo: number;
-  id_ambiente: number;
+  id_curso: number | null;
+  id_grupo: number | null;
+  id_ambiente: number | null;
   curso_codigo: string;
   curso_nombre: string;
   grupo_codigo: string;
@@ -64,13 +66,14 @@ interface HorarioAsignado {
   hora_inicio: string;
   hora_fin: string;
   ciclo_nombre: string;
+  tipo: 'lectiva' | 'no_lectiva';
 }
 
 export function MiHorarioDocenteView() {
   const { data: session } = useSession();
   const { periodoSeleccionado, periodos } = usePeriodo();
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
-  const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
+  const [horarios, setHorarios] = useState<HorarioItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -132,7 +135,23 @@ export function MiHorarioDocenteView() {
       (h) => h.dia_semana === diaIndex && h.hora_inicio <= hora && h.hora_fin > hora
     );
 
-  const cursosUnicos = Array.from(new Set(horarios.map((h) => h.curso_nombre)));
+  // Nombres únicos para la leyenda (solo lectivos)
+  const cursosUnicos = Array.from(
+    new Set(
+      horarios
+        .filter(h => h.tipo === 'lectiva')
+        .map((h) => h.curso_nombre)
+    )
+  );
+  // Actividades no lectivas únicas
+  const noLectivasUnicas = Array.from(
+    new Set(
+      horarios
+        .filter(h => h.tipo === 'no_lectiva')
+        .map((h) => h.curso_nombre)
+    )
+  );
+
   const totalHoras = horarios.length;
   const periodoActualObj = periodos.find(
     (p) => p.id_periodo.toString() === selectedPeriodo
@@ -157,7 +176,7 @@ export function MiHorarioDocenteView() {
             <h1 className="text-2xl font-bold text-foreground">Mi Horario</h1>
           </div>
           <p className="text-sm text-muted-foreground">
-            Visualiza los horarios asignados a tus cursos por periodo académico.
+            Visualiza los horarios asignados a tus cursos y actividades no lectivas por periodo académico.
           </p>
         </div>
 
@@ -180,7 +199,6 @@ export function MiHorarioDocenteView() {
           </Select>
         </div>
 
-        {/* Aviso sin horarios */}
         <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5">
           <div className="flex items-start gap-3">
             <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
@@ -246,7 +264,7 @@ export function MiHorarioDocenteView() {
         </div>
         <p className="text-sm text-muted-foreground">
           Horarios asignados en el período seleccionado. Total:{" "}
-          <strong className="text-foreground">{totalHoras} horas</strong>
+          <strong className="text-foreground">{totalHoras} bloques</strong>
         </p>
       </div>
 
@@ -290,19 +308,32 @@ export function MiHorarioDocenteView() {
                             className="relative min-h-[20px] border border-border rounded-lg bg-background p-1"
                           >
                             {horariosEnCelda.map((horario) => {
-                              const colores = getColorPorCurso(horario.curso_nombre, cursosUnicos);
+                              // Determinar colores según tipo
+                              let bg, border, text;
+                              if (horario.tipo === 'no_lectiva') {
+                                bg = NO_LECTIVA_COLOR.bg;
+                                border = NO_LECTIVA_COLOR.border;
+                                text = NO_LECTIVA_COLOR.text;
+                              } else {
+                                const colores = getColorPorCurso(horario.curso_nombre, cursosUnicos);
+                                bg = colores.bg;
+                                border = colores.border;
+                                text = colores.text;
+                              }
                               return (
                                 <div
                                   key={horario.id_asignacion}
                                   className={cn(
                                     "mb-0.5 p-1 rounded border-l-2 text-[10px]",
-                                    colores.bg,
-                                    colores.border,
-                                    colores.text
+                                    bg,
+                                    border,
+                                    text
                                   )}
                                 >
-                                  <div className="font-bold">{horario.ambiente_codigo}</div>
-                                  <div className="opacity-70">{horario.ciclo_nombre}</div>
+                                  <div className="font-bold">
+                                    {horario.tipo === 'no_lectiva' ? '📋' : ''} {horario.ambiente_codigo || horario.curso_codigo}
+                                  </div>
+                                  <div className="opacity-70">{horario.tipo === 'no_lectiva' ? horario.curso_nombre : horario.ciclo_nombre}</div>
                                 </div>
                               );
                             })}
@@ -319,7 +350,7 @@ export function MiHorarioDocenteView() {
           {/* Leyenda */}
           <div className="bg-card border border-border rounded-2xl p-5">
             <p className="text-sm font-bold text-card-foreground mb-3">
-              Leyenda de Cursos
+              Leyenda
             </p>
             <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
               {cursosUnicos.map((cursoNombre) => {
@@ -337,6 +368,12 @@ export function MiHorarioDocenteView() {
                   </div>
                 );
               })}
+              {noLectivasUnicas.length > 0 && (
+                <div className="flex items-center gap-2">
+                  <div className="w-4 h-4 rounded border-l-2 bg-emerald-500/20 border-l-emerald-500" />
+                  <span className="text-xs text-card-foreground">Actividades No Lectivas</span>
+                </div>
+              )}
             </div>
           </div>
         </>
@@ -352,7 +389,7 @@ export function MiHorarioDocenteView() {
             <table className="w-full text-sm">
               <thead className="bg-muted border-b border-border">
                 <tr>
-                  {["Curso", "Día", "Hora", "Grupo", "Ambiente", "Tipo"].map((h) => (
+                  {["Tipo", "Curso / Actividad", "Día", "Hora", "Grupo", "Ambiente"].map((h) => (
                     <th
                       key={h}
                       className="px-4 py-3 text-left font-semibold text-muted-foreground text-xs uppercase tracking-wide"
@@ -374,12 +411,23 @@ export function MiHorarioDocenteView() {
                       key={h.id_asignacion}
                       className={cn(
                         "border-b border-border last:border-0 transition-colors hover:bg-muted/50",
-                        idx % 2 !== 0 && "bg-muted/30"
+                        idx % 2 !== 0 && "bg-muted/30",
+                        h.tipo === 'no_lectiva' && "bg-emerald-50/30 dark:bg-emerald-950/20"
                       )}
                     >
                       <td className="px-4 py-3">
+                        <Badge variant="outline" className={cn(
+                          "text-[10px] font-bold px-2 py-0.5",
+                          h.tipo === 'lectiva' 
+                            ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400" 
+                            : "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400"
+                        )}>
+                          {h.tipo === 'lectiva' ? 'Lectiva' : 'No Lectiva'}
+                        </Badge>
+                      </td>
+                      <td className="px-4 py-3">
                         <p className="font-semibold text-card-foreground">
-                          {h.curso_codigo}
+                          {h.tipo === 'lectiva' ? h.curso_codigo : '📋 ' + h.curso_codigo}
                         </p>
                         <p className="text-xs text-muted-foreground line-clamp-1">
                           {h.curso_nombre}
@@ -392,15 +440,10 @@ export function MiHorarioDocenteView() {
                         {h.hora_inicio} - {h.hora_fin}
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
-                        {h.grupo_codigo}
+                        {h.grupo_codigo || '—'}
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
-                        {h.ambiente_codigo}
-                      </td>
-                      <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-border bg-muted text-muted-foreground">
-                          {h.tipo_clase}
-                        </span>
+                        {h.ambiente_codigo || '—'}
                       </td>
                     </tr>
                   ))}

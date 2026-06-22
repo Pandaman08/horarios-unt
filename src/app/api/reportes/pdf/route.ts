@@ -394,9 +394,10 @@ function generarLeyenda(horarios: any[], colorMap: Map<string, { color: any; ind
   `;
 }
 
-// ─── GENERAR REPORTE ESTILO UNT (COMO REPORTE GENERAL) ─────────────────────
+// ─── GENERAR REPORTE ESTILO UNT (CON LECTIVA Y NO LECTIVA) ─────────────
 function generarReporteUNT(options: {
   horarios: any[];
+  horariosNoLectivos?: any[];
   titulo: string;
   subtitulo: string;
   periodo: any;
@@ -405,12 +406,13 @@ function generarReporteUNT(options: {
   docenteNombre?: string;
   paginaIndex?: number;
 }): string {
-  const { horarios, titulo, subtitulo, periodo, cicloNumero, ambiente, docenteNombre, paginaIndex = 0 } = options;
+  const { horarios, horariosNoLectivos = [], titulo, subtitulo, periodo, cicloNumero, ambiente, docenteNombre, paginaIndex = 0 } = options;
   const isDocente = !!docenteNombre;
   const etiquetaPrimera = ambiente ? 'AMBIENTE' : 'CICLO';
   const valorPrimera = ambiente ?? cicloNumero ?? '—';
   const colorMap = buildColorMap(horarios);
 
+  // ── Construir lista de cursos lectivos ──
   const cursosMap = new Map<string, any>();
   horarios.forEach((h: any) => {
     const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
@@ -429,8 +431,36 @@ function generarReporteUNT(options: {
   });
   const listaCursos = Array.from(cursosMap.values());
 
+  // ── Construir lista de actividades no lectivas ──
+  const noLectivasMap = new Map<string, any>();
+  horariosNoLectivos.forEach((h: any) => {
+    const key = h.id || `${h.cargaNoLectivaId}-${h.dia}-${h.horaInicio}`;
+    if (!noLectivasMap.has(key)) {
+      const tipo = h.cargaNoLectiva?.tipo || 'Actividad';
+      const descripcion = h.cargaNoLectiva?.descripcion || '';
+      const horas = (() => {
+        const inicio = h.horaInicio?.split(':')?.map(Number) || [0,0];
+        const fin = h.horaFin?.split(':')?.map(Number) || [0,0];
+        return Math.round(((fin[0] + fin[1]/60) - (inicio[0] + inicio[1]/60)) * 100) / 100;
+      })();
+      const dia = h.dia || '—';
+      const aula = '—';
+      noLectivasMap.set(key, {
+        tipo,
+        descripcion,
+        horas,
+        dia,
+        aula,
+        horaInicio: h.horaInicio,
+        horaFin: h.horaFin,
+      });
+    }
+  });
+  const listaNoLectivas = Array.from(noLectivasMap.values());
+
   const numColsTable = isDocente ? 8 : 9;
 
+  // ── Tabla de cursos lectivos ──
   const filasCursosHtml = listaCursos.map((c, i) => {
     const color = colorPorCurso(i);
     const celdas = [
@@ -452,6 +482,7 @@ function generarReporteUNT(options: {
     `<tr><td style="border:1px solid #cbd5e1; height:10px;" colspan="${numColsTable}"></td></tr>`
   ).join('');
 
+  // ── Matriz de horarios (lectivos) ──
   const filasMatriz = HORAS.map(hora => {
     if (hora === '13:00') return `
       <tr style="background:#f1f5f9; height:12px;">
@@ -487,10 +518,80 @@ function generarReporteUNT(options: {
     </tr>`;
   }).join('');
 
+  // ── Tabla de actividades no lectivas ──
+  const filasNoLectivasHtml = listaNoLectivas.map((item, i) => {
+    const color = colorPorCurso(i + listaCursos.length);
+    return `
+      <tr style="background:${color.bg};">
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; padding:1px;">${i + 1}</td>
+        ${isDocente ? '' : `<td style="border:1px solid #cbd5e1; font-size:8px; padding:1px 3px;">—</td>`}
+        <td style="border:1px solid #cbd5e1; font-size:8px; padding:1px 3px; color:${color.text}; font-weight:700;">${item.tipo}</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">—</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">—</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">—</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">—</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">${item.horas}</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px;">—</td>
+      </tr>
+    `;
+  }).join('');
+
+  const filasVaciasNoLectivas = Array(Math.max(0, 6 - listaNoLectivas.length)).fill(0).map(() =>
+    `<tr><td style="border:1px solid #cbd5e1; height:10px;" colspan="${numColsTable}"></td></tr>`
+  ).join('');
+
+  // ── Tabla de horarios no lectivos (matriz) ──
+  const filasMatrizNoLectivas = HORAS.map(hora => {
+    if (hora === '13:00') return `
+      <tr style="background:#f1f5f9; height:12px;">
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
+        <td colspan="6" style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; letter-spacing:5px;">ALMUERZO</td>
+        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
+      </tr>`;
+    const horaNum = parseInt(hora.split(':')[0]);
+    const horaLabel = `${horaNum}-${horaNum + 1}`;
+    const diaMap: Record<string, number> = { 'LU': 0, 'MA': 1, 'MI': 2, 'JU': 3, 'VI': 4, 'SA': 5 };
+    const celdas = [0, 1, 2, 3, 4, 5].map(dia => {
+      const clase = horariosNoLectivos.find((h: any) => {
+        if (h.dia !== Object.keys(diaMap).find(k => diaMap[k] === dia)) return false;
+        if (!h.horaInicio || !h.horaFin) return false;
+        return horaAMinutos(h.horaInicio) === horaAMinutos(hora);
+      });
+      if (clase) {
+        const tipo = clase.cargaNoLectiva?.tipo || 'Actividad';
+        const idx = listaNoLectivas.findIndex(item => item.tipo === tipo && item.horaInicio === clase.horaInicio);
+        const color = colorPorCurso(idx + listaCursos.length);
+        return `<td style="border:1px solid #cbd5e1; background:${color.bg}; text-align:center; padding:1px; vertical-align:middle;">
+          <div style="font-weight:800; font-size:10px; color:${color.text};">${idx + 1}</div>
+          <div style="font-size:8px; color:${color.text}; opacity:.8;">(${tipo})</div>
+        </td>`;
+      }
+      return `<td style="border:1px solid #cbd5e1;"></td>`;
+    }).join('');
+    return `<tr style="height:39px;">
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
+      ${celdas}
+      <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; background:#f8fafc;">${horaLabel}</td>
+    </tr>`;
+  }).join('');
+
   const tableHeaders = [
     `<th style="border:1px solid #1e4d80; font-size:8px; width:22px; padding:2px;">Nº</th>`,
     isDocente ? '' : `<th style="border:1px solid #1e4d80; font-size:8px; padding:2px;">PROFESOR</th>`,
     `<th style="border:1px solid #1e4d80; font-size:8px; padding:2px;">ASIGNATURA</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">T</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">P</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">L</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">G</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:35px;">HRS</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:90px;">DEPTO.</th>`,
+  ].filter(Boolean).join('');
+
+  // ── Cabecera para no lectivas ──
+  const tableHeadersNoLectivas = [
+    `<th style="border:1px solid #1e4d80; font-size:8px; width:22px; padding:2px;">Nº</th>`,
+    isDocente ? '' : `<th style="border:1px solid #1e4d80; font-size:8px; padding:2px;">PROFESOR</th>`,
+    `<th style="border:1px solid #1e4d80; font-size:8px; padding:2px;">ACTIVIDAD</th>`,
     `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">T</th>`,
     `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">P</th>`,
     `<th style="border:1px solid #1e4d80; font-size:8px; width:16px;">L</th>`,
@@ -555,6 +656,56 @@ function generarReporteUNT(options: {
         </thead>
         <tbody>${filasMatriz}</tbody>
       </table>
+
+      <!-- SECCIÓN NO LECTIVA -->
+      <div style="margin-top:30px; page-break-after:avoid;">
+        <div style="background:#003366; color:white; padding:4px 12px; border-radius:4px; margin-bottom:8px;">
+          <div style="font-size:12px; font-weight:800; text-transform:uppercase;">ACTIVIDADES NO LECTIVAS</div>
+        </div>
+        <div style="display:flex; gap:10px; margin-bottom:8px; align-items:stretch;">
+          <div style="width:280px; border:2px solid #003366; border-radius:6px; padding:8px; display:flex; flex-direction:column; justify-content:space-between;">
+            <div style="text-align:center; margin-bottom:6px;">
+              <div style="font-weight:900; font-size:11px;">UNIVERSIDAD NACIONAL DE TRUJILLO</div>
+              <div style="font-weight:800; font-size:10px;">FACULTAD DE INGENIERÍA TRUJILLO</div>
+            </div>
+            <div>
+              <div style="font-size:9.5px; border-bottom:1px solid #ddd; padding-bottom:1px;"><strong>ESCUELA:</strong> INGENIERÍA DE SISTEMAS</div>
+              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
+                <div><strong>ACTIVIDADES NO LECTIVAS</strong></div>
+              </div>
+              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
+                <div><strong>AÑO:</strong> ${periodo?.anio ?? 2026}</div>
+                <div><strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}</div>
+              </div>
+            </div>
+            <div style="text-align:right; font-size:8.5px; font-weight:800; margin-top:6px; background:#f8fafc; padding:4px; border:1px solid #cbd5e1; border-radius:3px;">
+              <div>Inicio: ${periodo?.fecha_inicio_clases?.toLocaleDateString('es-PE') ?? '—'}</div>
+              <div>Término: ${periodo?.fecha_fin_clases?.toLocaleDateString('es-PE') ?? '—'}</div>
+            </div>
+          </div>
+          <div style="flex:1;">
+            <table style="width:100%; border-collapse:collapse; border:2px solid #003366; border-radius:8px; overflow:hidden;">
+              <thead>
+                <tr style="background:#003366; color:white;">
+                  ${tableHeadersNoLectivas}
+                </tr>
+              </thead>
+              <tbody>${filasNoLectivasHtml}${filasVaciasNoLectivas}</tbody>
+            </table>
+          </div>
+        </div>
+        <table style="width:100%; border-collapse:collapse; border:2px solid #003366; border-radius:6px; overflow:hidden; table-layout:fixed;">
+          <thead>
+            <tr style="background:#003366; color:white; height:20px;">
+              <th style="border:1px solid #1e4d80; font-size:8px; width:55px;">HORA</th>
+              ${DIAS.map(d => `<th style="border:1px solid #1e4d80; font-size:8px;">${d.toUpperCase()}</th>`).join('')}
+              <th style="border:1px solid #1e4d80; font-size:8px; width:55px;">HORA</th>
+            </tr>
+          </thead>
+          <tbody>${filasMatrizNoLectivas}</tbody>
+        </table>
+      </div>
+
       <div style="margin-top:4px; font-size:7px; color:#64748b; text-align:right; font-style:italic;">
         Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT
       </div>
@@ -1787,6 +1938,25 @@ export async function GET(request: Request) {
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
 
+      // ── OBTENER HORARIOS NO LECTIVOS ──
+      const horariosNoLectivos = await prisma.horarioActividad.findMany({
+        where: {
+          cargaNoLectiva: {
+            declaracion: {
+              id_docente: docente.id_docente,
+              id_periodo: parseInt(id_periodo),
+              estado: 'APROBADO'
+            }
+          }
+        },
+        include: {
+          cargaNoLectiva: true
+        },
+        orderBy: [
+          { dia: 'asc' },
+          { horaInicio: 'asc' }
+        ]
+      });
 
       isLandscape = true;
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
@@ -1797,6 +1967,7 @@ export async function GET(request: Request) {
         @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
         </style></head><body>${generarReporteUNT({
         horarios: docente.horarios_asignados ?? [],
+        horariosNoLectivos: horariosNoLectivos,
         titulo: reportTitle,
         subtitulo: docente.codigo_docente ?? '',
         periodo: periodo,

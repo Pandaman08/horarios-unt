@@ -58,11 +58,11 @@ export async function PUT(
     // Only check horas de dedicacion if we're explicitly setting the state to ENVIADO or APROBADO
     if (nuevoEstado === 'ENVIADO' || nuevoEstado === 'APROBADO') {
       const totalLectivas = declaracionActual.cargas_lectivas.reduce(
-        (sum, c) => sum + c.horas_semanales * (c.grupos_asignados || 1),
+        (sum: number, c: { horas_semanales: number; grupos_asignados?: number | null }) => sum + c.horas_semanales * (c.grupos_asignados || 1),
         0
       );
       const totalNoLectivas = declaracionActual.cargas_no_lectivas.reduce(
-        (sum, c) => sum + c.horas_semanales,
+        (sum: number, c: { horas_semanales: number }) => sum + c.horas_semanales,
         0
       );
       const totalGeneral = totalLectivas + totalNoLectivas;

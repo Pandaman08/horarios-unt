@@ -238,8 +238,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           const existente = cargasExistentes.find((c: any) => c.tipo === tipo.value);
           if (existente) {
             return {
-              ...existente,
-              horarios: existente.horarios || []
+              ...existente
             };
           }
           return {
@@ -248,7 +247,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             descripcion: '',
             horas_semanales: 0,
             ambiente: '',
-            horarios: [],
             cargoId: null
           };
         });
@@ -272,7 +270,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           descripcion: '',
           horas_semanales: 0,
           ambiente: '',
-          horarios: [],
           cargoId: null
         }));
         setCargasNoLectivas(cargasInicializadas);
@@ -297,7 +294,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         descripcion: '',
         horas_semanales: 0,
         ambiente: '',
-        horarios: [],
         cargoId: null
       }));
       setCargasNoLectivas(cargasInicializadas);
@@ -375,13 +371,16 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         }
       }
 
-      // Save cargas no lectivas using upsert
+      // Save cargas no lectivas using upsert (without horarios)
       await fetch('/api/carga-no-lectiva', {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           id_declaracion: declaracionId,
-          cargas: cargasNoLectivas
+          cargas: cargasNoLectivas.map(c => {
+            const { horarios, ...rest } = c;
+            return rest;
+          })
         })
       });
 
@@ -920,97 +919,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                         />
                       </div>
 
-                      {/* Horarios */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Horario Semanal
-                          </Label>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-[10px] font-bold"
-                            onClick={() => {
-                              const newCargas = [...cargasNoLectivas];
-                              const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                              newCargas[idx].horarios = [
-                                ...(newCargas[idx].horarios || []),
-                                { id: Date.now(), dia: 'LU', horaInicio: '08:00', horaFin: '10:00' }
-                              ];
-                              setCargasNoLectivas(newCargas);
-                            }}
-                          >
-                            <Plus size={12} className="mr-1" /> Agregar Horario
-                          </Button>
-                        </div>
 
-                        <div className="space-y-2">
-                          {(carga.horarios || []).map((horario: any, hIndex: number) => (
-                            <div key={horario.id} className="flex items-center gap-2 bg-background/50 p-2 rounded-lg border border-border">
-                              <Select
-                                value={horario.dia}
-                                onValueChange={val => {
-                                  const newCargas = [...cargasNoLectivas];
-                                  const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                  newCargas[idx].horarios[hIndex].dia = val;
-                                  setCargasNoLectivas(newCargas);
-                                }}
-                              >
-                                <SelectTrigger className="h-7 w-24 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {DIAS_SEMANA.map(dia => (
-                                    <SelectItem key={dia.value} value={dia.value} className="text-xs">
-                                      {dia.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  type="time"
-                                  value={horario.horaInicio}
-                                  onChange={e => {
-                                    const newCargas = [...cargasNoLectivas];
-                                    const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                    newCargas[idx].horarios[hIndex].horaInicio = e.target.value;
-                                    setCargasNoLectivas(newCargas);
-                                  }}
-                                  className="h-7 w-24 text-xs"
-                                />
-                                <span className="text-xs text-muted-foreground">-</span>
-                                <Input
-                                  type="time"
-                                  value={horario.horaFin}
-                                  onChange={e => {
-                                    const newCargas = [...cargasNoLectivas];
-                                    const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                    newCargas[idx].horarios[hIndex].horaFin = e.target.value;
-                                    setCargasNoLectivas(newCargas);
-                                  }}
-                                  className="h-7 w-24 text-xs"
-                                />
-                              </div>
-
-                              <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
-                                onClick={() => {
-                                  const newCargas = [...cargasNoLectivas];
-                                  const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                  newCargas[idx].horarios = newCargas[idx].horarios.filter((_: any, i: number) => i !== hIndex);
-                                  setCargasNoLectivas(newCargas);
-                                }}
-                              >
-                                <Trash2 size={14} />
-                              </Button>
-                            </div>
-                          ))}
-                        </div>
-                      </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 w-32 text-right align-top pt-3">
                       <div className="flex items-center justify-end gap-2">

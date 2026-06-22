@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(request: Request) {
@@ -17,14 +17,7 @@ export async function GET(request: Request) {
 
     const esModoIntervalo = ventanas > 0;
 
-    // Lógica para filtrar horarios:
-    // 1. En modo INTERVALO:
-    //    - Mostrar TODOS los horarios CONFIRMADOS (de cualquier docente)
-    //    - Mostrar los horarios temporales SOLO del docente actual
-    // 2. En modo AUTOMÁTICO:
-    //    - Mostrar todos los horarios con filtro de ambiente
-    
-    // Primero: OBTENER TODOS LOS HORARIOS CONFIRMADOS (estos no cambian y deben estar visibles para todos)
+    // Primero: OBTENER TODOS LOS HORARIOS CONFIRMADOS (lectiva)
     const whereConfirmados: any = { 
       id_periodo: parseInt(id_periodo), 
       OR: [
@@ -60,7 +53,7 @@ export async function GET(request: Request) {
       }
     }
 
-    // Obtener horarios CONFIRMADOS (estos son visibles para todos)
+    // Obtener horarios CONFIRMADOS (carga lectiva)
     const asignaciones = await prisma.horarioAsignado.findMany({
       where: whereConfirmados,
       include: {
@@ -71,7 +64,7 @@ export async function GET(request: Request) {
       }
     });
 
-    // Obtener horarios TEMPORALES (solo del docente actual en modo intervalo)
+    // Obtener horarios TEMPORALES (carga lectiva)
     const temporales = await prisma.seleccionTemporalHorario.findMany({
       where: whereTemporales,
       include: {
@@ -82,9 +75,30 @@ export async function GET(request: Request) {
       }
     });
 
+    // Obtener horarios de actividades NO LECTIVAS
+    const whereActividades: any = {};
+    
+    const declaraciones = await prisma.declaracionHoraria.findMany({
+      where: { id_periodo: parseInt(id_periodo) },
+      select: { id_declaracion: true }
+    });
+    const declaracionIds = declaraciones.map(d => d.id_declaracion);
+    
+    whereActividades.cargaNoLectiva = {
+      id_declaracion: { in: declaracionIds }
+    };
+    
+    const actividades = await prisma.horarioActividad.findMany({
+      where: whereActividades,
+      include: {
+        cargaNoLectiva: true
+      }
+    });
+
     return NextResponse.json({
       asignaciones,
-      temporales
+      temporales,
+      actividades
     });
   } catch (error) {
     console.error('Error al obtener disponibilidad:', error);
