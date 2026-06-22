@@ -237,6 +237,19 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
     }
   }
 
+  const declaraciones = await prisma.declaracionHoraria.findMany({
+  where: { id_periodo: periodo.id_periodo }
+  });
+  for (const dec of declaraciones) {
+    // Actualiza solo algunas (ej. las de los primeros 3 docentes)
+    if (dec.id_docente <= 3) {
+      await prisma.declaracionHoraria.update({
+        where: { id_declaracion: dec.id_declaracion },
+        data: { estado: 'APROBADO' }
+      });
+    }
+  }
+
   console.log(`\n🎉 Total de ${totalAsignaciones} cargas lectivas sembradas!`);
   return totalAsignaciones;
 }

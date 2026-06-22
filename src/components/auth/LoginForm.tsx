@@ -20,11 +20,13 @@ export function LoginForm() {
   const [loading, setLoading] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
 
-  const fillLogin = async (role: 'admin' | 'operador' | 'docente') => {
+  const fillLogin = async (role: 'admin' | 'operador' | 'docente' | 'decano' | 'director_departamento') => {
     const creds = {
       admin: { email: 'admin@unitru.edu.pe', pass: '00000000' },
       operador: { email: 'dvalerianorodriguez@unitru.edu.pe', pass: '80000001' },
       docente: { email: 'eagredagamboa@unitru.edu.pe', pass: '18161457' },
+      decano: { email: 'ireyeslopez@unitru.edu.pe', pass: '17898446' },
+      director_departamento: { email: 'lboychavil@unitru.edu.pe', pass: '18842081' },
     };
 
     setEmail(creds[role].email);
@@ -103,34 +105,54 @@ export function LoginForm() {
         <p className="text-muted-foreground font-medium">Inicia sesión para gestionar tus horarios académicos.</p>
       </div>
 
-      <div className="bg-muted/50 rounded-2xl p-2 mb-8 flex gap-2 border border-border">
-        <button
-          onClick={() => fillLogin('admin')}
-          className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
-        >
-          <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
-            <ShieldCheck className="h-5 w-5 text-primary" />
-          </div>
-          <span className="text-[10px] font-black text-muted-foreground group-hover:text-primary tracking-wider uppercase">ADMIN</span>
-        </button>
-        <button
-          onClick={() => fillLogin('operador')}
-          className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
-        >
-          <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
-            <Headphones className="h-5 w-5 text-blue-600 dark:text-blue-400" />
-          </div>
-          <span className="text-[10px] font-black text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 tracking-wider uppercase">OPERADOR</span>
-        </button>
-        <button
-          onClick={() => fillLogin('docente')}
-          className="flex-1 flex flex-col items-center py-3 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
-        >
-          <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
-            <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
-          </div>
-          <span className="text-[10px] font-black text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 tracking-wider uppercase">DOCENTE</span>
-        </button>
+      <div className="bg-muted/50 rounded-2xl p-2 mb-8 border border-border">
+        <div className="flex gap-2 overflow-x-auto pb-2">
+          <button
+            onClick={() => fillLogin('admin')}
+            className="flex-shrink-0 min-w-[100px] flex flex-col items-center py-3 px-2 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
+          >
+            <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+              <ShieldCheck className="h-5 w-5 text-primary" />
+            </div>
+            <span className="text-[10px] font-black text-muted-foreground group-hover:text-primary tracking-wider uppercase">ADMIN</span>
+          </button>
+          <button
+            onClick={() => fillLogin('operador')}
+            className="flex-shrink-0 min-w-[100px] flex flex-col items-center py-3 px-2 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
+          >
+            <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+              <Headphones className="h-5 w-5 text-blue-600 dark:text-blue-400" />
+            </div>
+            <span className="text-[10px] font-black text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 tracking-wider uppercase">OPERADOR</span>
+          </button>
+          <button
+            onClick={() => fillLogin('docente')}
+            className="flex-shrink-0 min-w-[100px] flex flex-col items-center py-3 px-2 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
+          >
+            <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+              <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
+            </div>
+            <span className="text-[10px] font-black text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 tracking-wider uppercase">DOCENTE</span>
+          </button>
+          <button
+            onClick={() => fillLogin('decano')}
+            className="flex-shrink-0 min-w-[100px] flex flex-col items-center py-3 px-2 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
+          >
+            <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+              <ShieldCheck className="h-5 w-5 text-rose-600 dark:text-rose-400" />
+            </div>
+            <span className="text-[10px] font-black text-muted-foreground group-hover:text-rose-600 dark:group-hover:text-rose-400 tracking-wider uppercase">DECANO</span>
+          </button>
+          <button
+            onClick={() => fillLogin('director_departamento')}
+            className="flex-shrink-0 min-w-[100px] flex flex-col items-center py-3 px-2 rounded-xl hover:bg-card hover:shadow-sm transition-all group relative"
+          >
+            <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
+              <ShieldCheck className="h-5 w-5 text-violet-600 dark:text-violet-400" />
+            </div>
+            <span className="text-[10px] font-black text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 tracking-wider uppercase">JEFE DEPARTAMENTO</span>
+          </button>
+        </div>
       </div>
 
       <form onSubmit={handleSubmit} className="space-y-6">
@@ -202,6 +224,14 @@ export function LoginForm() {
       </form>
 
       <div className="mt-12 text-center">
+        <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
+          <p className="text-[10px] text-primary font-black uppercase tracking-widest">
+            Modo demo — SSO institucional simulado
+          </p>
+        </div>
+      </div>
+
+      <div className="mt-4 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-full border border-border">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
           <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
+import { RolUsuario } from '@prisma/client';
 
 export async function POST(request: Request) {
   try {
@@ -9,7 +10,7 @@ export async function POST(request: Request) {
     // Por simplicidad, buscamos el primer administrador o comparamos con una variable de entorno
     // En un sistema real, usaríamos la sesión del usuario logueado
     const admin = await prisma.usuario.findFirst({
-      where: { rol: 'admin', activo: true }
+      where: { rol: RolUsuario.administrador_sistema, activo: true }
     });
 
     if (!admin) {

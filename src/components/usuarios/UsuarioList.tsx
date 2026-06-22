@@ -53,6 +53,20 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Pagination } from "@/components/ui/pagination";
 
+interface Docente {
+  id_docente: number;
+  nombres: string;
+  apellidos: string;
+  departamentoId?: number | null;
+  facultadId?: number | null;
+  departamento?: {
+    nombre: string;
+  } | null;
+  facultad?: {
+    nombre: string;
+  } | null;
+}
+
 interface Usuario {
   id_usuario: number;
   codigo: string;
@@ -62,17 +76,13 @@ interface Usuario {
   rol: string;
   activo: boolean;
   ultimo_acceso: string | null;
-  docente?: {
-    categoria: string;
-    modalidad: string;
-    especialidad: string;
-    grado_academico: string;
-    fecha_ingreso: string;
-  } | null;
+  docente?: Docente | null;
 }
 
 export function UsuarioList() {
   const [usuarios, setUsuarios] = useState<Usuario[]>([]);
+  const [docentes, setDocentes] = useState<Docente[]>([]);
+  const [docentesSinUsuario, setDocentesSinUsuario] = useState<Docente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingUsuario, setEditingUsuario] = useState<Usuario | null>(null);
@@ -90,6 +100,7 @@ export function UsuarioList() {
     correo_electronico: "",
     contrasena: "",
     rol: "operador",
+    id_docente: "", // Nuevo campo: id_docente (string porque Select usa string)
     // Campos académicos para docente
     categoria: "auxiliar",
     modalidad: "contratado",
@@ -97,6 +108,36 @@ export function UsuarioList() {
     grado_academico: "",
     fecha_ingreso: "",
   });
+
+  // Función para auto-llenar datos cuando se selecciona un docente
+  const handleDocenteSelect = (docenteId: string) => {
+    if (!docenteId) {
+      resetForm();
+      return;
+    }
+    const docenteSeleccionado = docentes.find(d => d.id_docente === parseInt(docenteId)) 
+                            || docentesSinUsuario.find(d => d.id_docente === parseInt(docenteId));
+    if (docenteSeleccionado) {
+      setFormData({
+        ...formData,
+        id_docente: docenteId,
+        dni: docenteSeleccionado.dni || "",
+        nombres: docenteSeleccionado.nombres,
+        apellidos: docenteSeleccionado.apellidos,
+        correo_electronico: docenteSeleccionado.correo_electronico || "",
+        codigo: docenteSeleccionado.codigo_docente,
+        categoria: ((docenteSeleccionado as any).categoria || "auxiliar").toLowerCase(),
+        modalidad: ((docenteSeleccionado as any).modalidad || "contratado").toLowerCase(),
+        especialidad: (docenteSeleccionado as any).especialidad || "",
+        grado_academico: (docenteSeleccionado as any).grado_academico || "",
+        fecha_ingreso: (docenteSeleccionado as any).fecha_ingreso 
+          ? new Date((docenteSeleccionado as any).fecha_ingreso).toISOString().split('T')[0] 
+          : "",
+        // Establecer rol por defecto a docente si se selecciona un docente
+        rol: formData.rol !== 'admin' ? "docente" : formData.rol
+      });
+    }
+  };
 
   useEffect(() => {
     if (formData.dni) {
@@ -144,6 +185,7 @@ export function UsuarioList() {
 
   useEffect(() => {
     fetchUsuarios();
+    fetchDocentes();
   }, []);
 
   const fetchUsuarios = async () => {
@@ -160,12 +202,53 @@ export function UsuarioList() {
     }
   };
 
+  const fetchDocentes = async () => {
+    try {
+      const res = await fetch("/api/docentes");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setDocentes(data);
+        // Filtrar docentes sin usuario
+        setDocentesSinUsuario(data.filter((d: any) => !d.id_usuario));
+      }
+    } catch (error) {
+      toast.error("Error al cargar docentes");
+    }
+  };
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     const method = editingUsuario ? "PUT" : "POST";
     const url = editingUsuario 
       ? `/api/usuarios/${editingUsuario.id_usuario}` 
       : "/api/usuarios";
+
+    // Validaciones para roles jerárquicos
+    if (['director_departamento', 'decano', 'docente'].includes(formData.rol)) {
+      if (!formData.id_docente) {
+        toast.error("Debe seleccionar un docente asociado para este rol");
+        return;
+      }
+    }
+
+    const selectedDocente = formData.id_docente 
+      ? (docentes.find(d => d.id_docente === parseInt(formData.id_docente)) 
+        || docentesSinUsuario.find(d => d.id_docente === parseInt(formData.id_docente)))
+      : null;
+
+    if (formData.rol === 'director_departamento') {
+      if (!selectedDocente?.departamentoId) {
+        toast.error("El docente seleccionado debe tener un departamento asignado");
+        return;
+      }
+    }
+
+    if (formData.rol === 'decano') {
+      if (!selectedDocente?.facultadId) {
+        toast.error("El docente seleccionado debe tener una facultad asignada");
+        return;
+      }
+    }
 
     // Convertir nombres y apellidos a mayúsculas y usar DNI como código
     const datosParaEnviar = {
@@ -224,6 +307,7 @@ export function UsuarioList() {
       correo_electronico: "",
       contrasena: "",
       rol: "operador",
+      id_docente: "",
       categoria: "auxiliar",
       modalidad: "contratado",
       especialidad: "",
@@ -312,9 +396,58 @@ export function UsuarioList() {
                         <SelectItem value="admin" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Admin</SelectItem>
                         <SelectItem value="operador" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Operador</SelectItem>
                         <SelectItem value="docente" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Docente</SelectItem>
+                        <SelectItem value="director_departamento" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Director de Departamento</SelectItem>
+                        <SelectItem value="decano" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Decano</SelectItem>
                       </SelectContent>
                     </Select>
                   </div>
+
+                  {['docente', 'director_departamento', 'decano', 'admin'].includes(formData.rol) && (
+                    <div className="space-y-1">
+                      <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">
+                        Docente Asociado
+                        {['docente', 'director_departamento', 'decano'].includes(formData.rol) && (
+                          <span className="text-destructive ml-1">*</span>
+                        )}
+                      </Label>
+                      <Select 
+                        value={formData.id_docente} 
+                        onValueChange={(v) => {
+                          if (!editingUsuario) {
+                            handleDocenteSelect(v);
+                          } else {
+                            setFormData({ ...formData, id_docente: v });
+                          }
+                        }}
+                      >
+                        <SelectTrigger className="h-8 rounded-md border-border font-semibold text-[12px] bg-card focus:ring-primary/10 transition-all">
+                          <SelectValue placeholder="Seleccionar docente" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-md border-border shadow-md max-h-80">
+                          {editingUsuario 
+                            ? docentes.map((docente) => (
+                                <SelectItem 
+                                  key={docente.id_docente} 
+                                  value={docente.id_docente.toString()} 
+                                  className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary"
+                                >
+                                  {docente.nombres} {docente.apellidos} ({docente.departamento?.nombre || 'Sin departamento'})
+                                </SelectItem>
+                              ))
+                            : docentesSinUsuario.map((docente) => (
+                                <SelectItem 
+                                  key={docente.id_docente} 
+                                  value={docente.id_docente.toString()} 
+                                  className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary"
+                                >
+                                  {docente.nombres} {docente.apellidos} ({docente.departamento?.nombre || 'Sin departamento'})
+                                </SelectItem>
+                              ))
+                          }
+                        </SelectContent>
+                      </Select>
+                    </div>
+                  )}
 
                   <div className="space-y-1">
                     <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Nombres</Label>
@@ -380,32 +513,60 @@ export function UsuarioList() {
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         <div className="space-y-1">
                           <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Categoría</Label>
-                          <Select value={formData.categoria} onValueChange={(v) => setFormData({ ...formData, categoria: v })}>
-                            <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-md border-border">
-                              <SelectItem value="principal" className="font-semibold">Principal</SelectItem>
-                              <SelectItem value="asociado" className="font-semibold">Asociado</SelectItem>
-                              <SelectItem value="auxiliar" className="font-semibold">Auxiliar</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {formData.id_docente ? (
+                            <Input 
+                              className="h-8 rounded-md border-border bg-muted/30 font-semibold text-[12px] text-muted-foreground cursor-not-allowed" 
+                              value={formData.categoria.charAt(0).toUpperCase() + formData.categoria.slice(1)} 
+                              disabled 
+                            />
+                          ) : (
+                            <Select value={formData.categoria} onValueChange={(v) => setFormData({ ...formData, categoria: v })}>
+                              <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
+                              <SelectContent className="rounded-md border-border">
+                                <SelectItem value="principal" className="font-semibold">Principal</SelectItem>
+                                <SelectItem value="asociado" className="font-semibold">Asociado</SelectItem>
+                                <SelectItem value="auxiliar" className="font-semibold">Auxiliar</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Modalidad</Label>
-                          <Select value={formData.modalidad} onValueChange={(v) => setFormData({ ...formData, modalidad: v })}>
-                            <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
-                            <SelectContent className="rounded-md border-border">
-                              <SelectItem value="nombrado" className="font-semibold">Nombrado</SelectItem>
-                              <SelectItem value="contratado" className="font-semibold">Contratado</SelectItem>
-                            </SelectContent>
-                          </Select>
+                          {formData.id_docente ? (
+                            <Input 
+                              className="h-8 rounded-md border-border bg-muted/30 font-semibold text-[12px] text-muted-foreground cursor-not-allowed" 
+                              value={formData.modalidad.charAt(0).toUpperCase() + formData.modalidad.slice(1)} 
+                              disabled 
+                            />
+                          ) : (
+                            <Select value={formData.modalidad} onValueChange={(v) => setFormData({ ...formData, modalidad: v })}>
+                              <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
+                              <SelectContent className="rounded-md border-border">
+                                <SelectItem value="nombrado" className="font-semibold">Nombrado</SelectItem>
+                                <SelectItem value="contratado" className="font-semibold">Contratado</SelectItem>
+                              </SelectContent>
+                            </Select>
+                          )}
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Grado</Label>
-                          <Input className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" value={formData.grado_academico} onChange={(e) => setFormData({ ...formData, grado_academico: e.target.value })} placeholder="Grado académico" />
+                          <Input 
+                            className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" 
+                            value={formData.grado_academico} 
+                            onChange={(e) => setFormData({ ...formData, grado_academico: e.target.value })} 
+                            placeholder="Grado académico" 
+                            disabled={!!formData.id_docente} 
+                          />
                         </div>
                         <div className="space-y-1">
                           <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Especialidad</Label>
-                          <Input className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} placeholder="Especialidad" />
+                          <Input 
+                            className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" 
+                            value={formData.especialidad} 
+                            onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} 
+                            placeholder="Especialidad" 
+                            disabled={!!formData.id_docente} 
+                          />
                         </div>
                         <div className="space-y-1 md:col-span-2">
                           <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Fecha Ingreso</Label>
@@ -414,6 +575,7 @@ export function UsuarioList() {
                             className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" 
                             value={formData.fecha_ingreso} 
                             onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} 
+                            disabled={!!formData.id_docente} 
                           />
                         </div>
                       </div>
@@ -443,6 +605,7 @@ export function UsuarioList() {
                 <TableHead className="w-[120px] text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Código</TableHead>
                 <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Usuario</TableHead>
                 <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Rol</TableHead>
+                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Docente Asociado</TableHead>
                 <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Estado</TableHead>
                 <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Último Acceso</TableHead>
                 <TableHead className="w-[150px] text-right text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Acciones</TableHead>
@@ -451,7 +614,7 @@ export function UsuarioList() {
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-20 text-center">
+                  <TableCell colSpan={7} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="h-10 w-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
                       <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest">Sincronizando Usuarios...</p>
@@ -460,7 +623,7 @@ export function UsuarioList() {
                 </TableRow>
               ) : currentItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="py-20 text-center">
+                  <TableCell colSpan={7} className="py-20 text-center">
                     <div className="flex flex-col items-center gap-2 opacity-30">
                       <Search className="h-12 w-12 text-muted-foreground" />
                       <p className="text-[15px] font-bold text-muted-foreground">No se encontraron registros</p>
@@ -491,10 +654,24 @@ export function UsuarioList() {
                         "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm",
                         usuario.rol === 'admin' ? "bg-destructive/10 text-destructive border border-destructive/20" : 
                         usuario.rol === 'operador' ? "bg-primary/10 text-primary border border-primary/20" : 
+                        usuario.rol === 'director_departamento' ? "bg-blue-500/10 text-blue-600 border border-blue-500/20" :
+                        usuario.rol === 'decano' ? "bg-purple-500/10 text-purple-600 border border-purple-500/20" :
                         "bg-emerald-500/10 text-emerald-600 border border-emerald-500/20"
                       )}>
-                        {usuario.rol}
+                        {usuario.rol === 'director_departamento' ? 'Director de Departamento' :
+                         usuario.rol === 'decano' ? 'Decano' :
+                         usuario.rol}
                       </span>
+                    </TableCell>
+                    <TableCell className="px-6 py-4">
+                      {usuario.docente ? (
+                        <div className="text-[12px] text-foreground">
+                          <p className="font-semibold">{usuario.docente.nombres} {usuario.docente.apellidos}</p>
+                          <p className="text-[10px] text-muted-foreground">{usuario.docente.departamento?.nombre || 'Sin departamento'}</p>
+                        </div>
+                      ) : (
+                        <span className="text-[11px] text-muted-foreground">Sin docente</span>
+                      )}
                     </TableCell>
                     <TableCell className="px-6 py-4">
                       <div className="flex items-center gap-2.5">
@@ -545,11 +722,12 @@ export function UsuarioList() {
                               correo_electronico: usuario.correo_electronico,
                               contrasena: "",
                               rol: usuario.rol,
-                              categoria: usuario.docente?.categoria || "auxiliar",
-                              modalidad: usuario.docente?.modalidad || "contratado",
-                              especialidad: usuario.docente?.especialidad || "",
-                              grado_academico: usuario.docente?.grado_academico || "",
-                              fecha_ingreso: usuario.docente?.fecha_ingreso ? new Date(usuario.docente.fecha_ingreso).toISOString().split('T')[0] : "",
+                              id_docente: usuario.docente?.id_docente ? usuario.docente.id_docente.toString() : "",
+                              categoria: ((usuario.docente as any)?.categoria || "auxiliar").toLowerCase(),
+                              modalidad: ((usuario.docente as any)?.modalidad || "contratado").toLowerCase(),
+                              especialidad: (usuario.docente as any)?.especialidad || "",
+                              grado_academico: (usuario.docente as any)?.grado_academico || "",
+                              fecha_ingreso: (usuario.docente as any)?.fecha_ingreso ? new Date((usuario.docente as any).fecha_ingreso).toISOString().split('T')[0] : "",
                             });
                             setIsDialogOpen(true);
                           }} 

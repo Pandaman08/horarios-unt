@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { calcularDeclaracionJurada } from '@/lib/declaracion-jurada';
 
 export async function PUT(
   request: Request,
@@ -13,6 +14,7 @@ export async function PUT(
     const declaracionActual = await prisma.declaracionHoraria.findUnique({
       where: { id_declaracion: idNum },
       include: {
+        docente: true,
         cargas_lectivas: true,
         cargas_no_lectivas: true
       }
@@ -26,7 +28,8 @@ export async function PUT(
     const horasDedicacion = data.horas_dedicacion ?? declaracionActual.horas_dedicacion;
     const nuevoEstado = data.estado ?? declaracionActual.estado;
 
-    if (data.dedicacion !== undefined || data.horas_dedicacion !== undefined) {
+    // Only check horas de dedicacion if we're explicitly setting the state to ENVIADO or APROBADO
+    if ((data.dedicacion !== undefined || data.horas_dedicacion !== undefined) && (nuevoEstado === 'ENVIADO' || nuevoEstado === 'APROBADO')) {
       const horasDedicacionEsperadas = dedicacion.includes('40')
         ? 40
         : dedicacion.includes('20')
@@ -41,6 +44,7 @@ export async function PUT(
       }
     }
 
+    // Only enforce total hour check if we're explicitly setting state to ENVIADO or APROBADO
     if (nuevoEstado === 'ENVIADO' || nuevoEstado === 'APROBADO') {
       const totalLectivas = declaracionActual.cargas_lectivas.reduce(
         (sum, c) => sum + c.horas_semanales * (c.grupos_asignados || 1),
@@ -60,6 +64,13 @@ export async function PUT(
       }
     }
 
+    // If we're saving a draft or editing a rejected declaracion, don't enforce the hour check
+    // Also, if the declaracion was rejected, allow editing without changing the state back to BORRADOR automatically?
+    // Let's also make sure that if the current state is RECHAZADO, and we're not setting a new state, we can still edit!
+    if (declaracionActual.estado === 'RECHAZADO' && nuevoEstado === declaracionActual.estado) {
+      // Allow editing without checks here
+    }
+
     const updateData: Record<string, unknown> = {
       fecha_actualizacion: new Date()
     };
@@ -69,9 +80,21 @@ export async function PUT(
     if (data.categoria !== undefined) updateData.categoria = data.categoria;
     if (data.dedicacion !== undefined) updateData.dedicacion = data.dedicacion;
     if (data.horas_dedicacion !== undefined) updateData.horas_dedicacion = data.horas_dedicacion;
-    if (data.estado !== undefined) updateData.estado = data.estado;
+    
+    // If current state is RECHAZADO and we're not explicitly setting a state, set it to BORRADOR
+    if (declaracionActual.estado === 'RECHAZADO' && data.estado === undefined) {
+      updateData.estado = 'BORRADOR';
+    } else if (data.estado !== undefined) {
+      updateData.estado = data.estado;
+    }
+    
     if (data.observaciones !== undefined) updateData.observaciones = data.observaciones;
-    if (nuevoEstado === 'ENVIADO') updateData.fecha_envio = new Date();
+    if (nuevoEstado === 'ENVIADO') {
+      updateData.fecha_envio = new Date();
+      const declaracionJurada = calcularDeclaracionJurada(declaracionActual.docente);
+      updateData.declaracionJuradaOpcion = declaracionJurada;
+      updateData.fechaFirmaJurada = new Date();
+    }
     if (nuevoEstado === 'APROBADO') updateData.fecha_aprobacion = new Date();
 
     const declaracion = await prisma.declaracionHoraria.update({

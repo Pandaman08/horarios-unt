@@ -28,17 +28,27 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
+    const capacidadMaxima = parseInt(data.capacidad_maxima) || 40;
+    const cantidadMatriculados = parseInt(data.cantidad_matriculados) || 0;
+    
     const grupo = await prisma.grupo.create({
       data: {
         id_curso: parseInt(data.id_curso),
         id_periodo: parseInt(data.id_periodo),
         codigo_grupo: data.codigo_grupo,
-        capacidad_maxima: parseInt(data.capacidad_maxima) || 40,
-        cantidad_matriculados: parseInt(data.cantidad_matriculados) || 0,
+        capacidad_maxima: capacidadMaxima,
+        cantidad_matriculados: cantidadMatriculados,
         activo: true
       }
     });
-    return NextResponse.json(grupo);
+
+    // Check for warning condition
+    let warning = null;
+    if (capacidadMaxima < 8 || capacidadMaxima > 60) {
+      warning = "Fuera del rango permitido (8-60 alumnos), Disposición Complementaria Segunda del Reglamento CAD";
+    }
+
+    return NextResponse.json({ grupo, warning });
   } catch (error) {
     return NextResponse.json({ error: 'Error al crear grupo' }, { status: 500 });
   }

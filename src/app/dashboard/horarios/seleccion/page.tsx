@@ -70,11 +70,11 @@ export default function SeleccionHorariosPage() {
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
   const segundosRestantesRef = useRef<number>(0);
 
-  // Redirección por rol: Esta vista es exclusiva para docentes
+  // Redirección por rol: Esta vista es para docentes, decano y director de departamento
   useEffect(() => {
     if (status === "unauthenticated") {
       router.push("/auth/login");
-    } else if (status === "authenticated" && session?.user?.rol !== "docente") {
+    } else if (status === "authenticated" && !["docente", "decano", "director_departamento"].includes(session?.user?.rol)) {
       // Si es admin u operador, mandarlo a su flujo de atención
       if (["administrador_sistema", "operador_horarios"].includes(session.user.rol)) {
         router.push("/dashboard/horarios/asignacion");

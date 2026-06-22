@@ -35,6 +35,7 @@ import {
   Briefcase
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { SimulacionBadge } from '@/components/ui/SimulacionBadge';
 
 const DEDICACIONES = [
   { label: 'Tiempo Completo 40 h', horas: 40 },
@@ -89,7 +90,30 @@ const TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS = [
     value: 'COMITES_TECNICOS',
     label: 'Comités Técnicos y Comisiones',
     descripcion: 'Participación en comités técnicos y comisiones'
+  },
+  {
+    value: 'AUTOEVALUACION_ACREDITACION',
+    label: 'Autoevaluación y Acreditación',
+    descripcion: 'Actividades de autoevaluación y preparación para acreditación'
   }
+];
+
+const TIPOS_QUE_REQUIEREN_DOCUMENTO = new Set([
+  'INVESTIGACION',
+  'CAPACITACION',
+  'ASESORIA',
+  'RESPONSABILIDAD_SOCIAL',
+  'COMITES_TECNICOS',
+  'AUTOEVALUACION_ACREDITACION'
+]);
+
+const DIAS_SEMANA = [
+  { value: 'LU', label: 'Lunes' },
+  { value: 'MA', label: 'Martes' },
+  { value: 'MI', label: 'Miércoles' },
+  { value: 'JU', label: 'Jueves' },
+  { value: 'VI', label: 'Viernes' },
+  { value: 'SA', label: 'Sábado' }
 ];
 
 export default function CargaHorariaClient({ initialDocente }: { initialDocente: any }) {
@@ -107,6 +131,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [cargasNoLectivas, setCargasNoLectivas] = useState<any[]>([]);
   const [cursos, setCursos] = useState<any[]>([]);
   const [grupos, setGrupos] = useState<any[]>([]);
+  const [cargosAcademicos, setCargosAcademicos] = useState<any[]>([]);
 
   useEffect(() => {
     const fetchCursos = async () => {
@@ -125,6 +150,21 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       }
     };
     fetchCursos();
+  }, []);
+
+  useEffect(() => {
+    const fetchCargos = async () => {
+      try {
+        const res = await fetch('/api/cargos-academicos-administrativos');
+        const data = await res.json();
+        if (Array.isArray(data)) {
+          setCargosAcademicos(data);
+        }
+      } catch (err) {
+        console.error(err);
+      }
+    };
+    fetchCargos();
   }, []);
 
   useEffect(() => {
@@ -164,34 +204,108 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => {
           const existente = cargasExistentes.find((c: any) => c.tipo === tipo.value);
           if (existente) {
-            return existente;
+            return {
+              ...existente,
+              horarios: existente.horarios || []
+            };
           }
           return {
             id_carga_no_lectiva: `temp_${Date.now()}_${idx}`,
             tipo: tipo.value,
             descripcion: '',
-            horas_semanales: 0
+            horas_semanales: 0,
+            ambiente: '',
+            horarios: [],
+            cargoId: null
           };
         });
         setCargasNoLectivas(cargasInicializadas);
       } else {
-        // If no declaration exists, initialize with all predefined types
+        // If no declaration exists, initialize formData from initialDocente
+        // First, map the new fields (condicion, categoriaDocente, regimenDedicacion) to the old form field names
+        let condicion = initialDocente.condicion || initialDocente.modalidad || '';
+        let categoria = initialDocente.categoriaDocente || initialDocente.categoria || '';
+        
+        // Map regimenDedicacion to the old dedicacion labels
+        let dedicacion = '';
+        let horasDedicacion = 0;
+        if (initialDocente.regimenDedicacion) {
+          if (initialDocente.regimenDedicacion === 'DE' || initialDocente.regimenDedicacion === 'TC') {
+            dedicacion = 'Tiempo Completo 40 h';
+            horasDedicacion = 40;
+          } else if (initialDocente.regimenDedicacion === 'TP1') {
+            dedicacion = 'Tiempo Parcial 20 h';
+            horasDedicacion = 20;
+          } else if (initialDocente.regimenDedicacion === 'TP2') {
+            dedicacion = 'Tiempo Parcial 20 h';
+            horasDedicacion = 20;
+          } else if (initialDocente.regimenDedicacion === 'TP3') {
+            dedicacion = 'Tiempo Parcial 20 h';
+            horasDedicacion = 20;
+          }
+        }
+        
+        setFormData({
+          ibm: initialDocente.codigo_docente || '',
+          condicion: condicion,
+          categoria: categoria,
+          dedicacion: dedicacion,
+          horas_dedicacion: horasDedicacion
+        });
+        
+        // Initialize with all predefined types
         const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
           id_carga_no_lectiva: `temp_${Date.now()}_${idx}`,
           tipo: tipo.value,
           descripcion: '',
-          horas_semanales: 0
+          horas_semanales: 0,
+          ambiente: '',
+          horarios: [],
+          cargoId: null
         }));
         setCargasNoLectivas(cargasInicializadas);
       }
     } catch (err) {
       console.error(err);
+      // Initialize formData from initialDocente even on error
+      let condicion = initialDocente.condicion || initialDocente.modalidad || '';
+      let categoria = initialDocente.categoriaDocente || initialDocente.categoria || '';
+      
+      let dedicacion = '';
+      let horasDedicacion = 0;
+      if (initialDocente.regimenDedicacion) {
+        if (initialDocente.regimenDedicacion === 'DE' || initialDocente.regimenDedicacion === 'TC') {
+          dedicacion = 'Tiempo Completo 40 h';
+          horasDedicacion = 40;
+        } else if (initialDocente.regimenDedicacion === 'TP1') {
+          dedicacion = 'Tiempo Parcial 20 h';
+          horasDedicacion = 20;
+        } else if (initialDocente.regimenDedicacion === 'TP2') {
+          dedicacion = 'Tiempo Parcial 20 h';
+          horasDedicacion = 20;
+        } else if (initialDocente.regimenDedicacion === 'TP3') {
+          dedicacion = 'Tiempo Parcial 20 h';
+          horasDedicacion = 20;
+        }
+      }
+      
+      setFormData({
+        ibm: initialDocente.codigo_docente || '',
+        condicion: condicion,
+        categoria: categoria,
+        dedicacion: dedicacion,
+        horas_dedicacion: horasDedicacion
+      });
+      
       // Initialize with all predefined types even on error
       const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
         id_carga_no_lectiva: `temp_${Date.now()}_${idx}`,
         tipo: tipo.value,
         descripcion: '',
-        horas_semanales: 0
+        horas_semanales: 0,
+        ambiente: '',
+        horarios: [],
+        cargoId: null
       }));
       setCargasNoLectivas(cargasInicializadas);
     } finally {
@@ -206,6 +320,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     if (formData.horas_dedicacion > 0 && totalGeneral > formData.horas_dedicacion) {
       toast.error(`Error: El total de horas (${totalGeneral}h) excede las horas de dedicación (${formData.horas_dedicacion}h)`);
       return;
+    }
+
+    // Check if number of cargas lectivas exceeds recommended limit
+    let warningShown = false;
+    if (cargasLectivas.filter(c => c.id_curso).length > 10) {
+      toast.warning('Supera el máximo recomendado de 10 cursos por declaración', { duration: 6000 });
+      warningShown = true;
     }
 
     try {
@@ -226,10 +347,12 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         declaracionId = newDeclaracion.id_declaracion;
         setDeclaracion(newDeclaracion);
       } else {
+        // Don't send estado when saving a draft, let the server handle it (especially for rejected declarations)
+        const { estado, ...formDataWithoutEstado } = formData;
         await fetch(`/api/declaracion-horaria/${declaracionId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(formDataWithoutEstado)
         });
       }
 
@@ -240,7 +363,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         if (carga.id_carga_lectiva && typeof carga.id_carga_lectiva === 'number') {
           // TODO: Update existing carga
         } else {
-          await fetch('/api/carga-lectiva', {
+          const res = await fetch('/api/carga-lectiva', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -252,6 +375,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               grupos_asignados: carga.grupos_asignados || null
             })
           });
+          const data = await res.json();
+          if (data.warning && !warningShown) {
+            toast.warning(data.warning, { duration: 6000 });
+            warningShown = true;
+          }
         }
       }
 
@@ -303,6 +431,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     if (totalGeneral !== formData.horas_dedicacion) {
       toast.error(`Error: Para enviar la declaración, el total de horas (${totalGeneral}h) debe ser exactamente igual a las horas de dedicación asignadas (${formData.horas_dedicacion}h).`);
       return;
+    }
+
+    // Check if number of cargas lectivas exceeds recommended limit
+    if (cargasLectivas.filter(c => c.id_curso).length > 10) {
+      toast.warning('Supera el máximo recomendado de 10 cursos por declaración', { duration: 6000 });
     }
 
     try {
@@ -668,6 +801,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             <TableBody>
               {cargasNoLectivas.map((carga, index) => {
                 const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
+                const requiereDocumento = TIPOS_QUE_REQUIEREN_DOCUMENTO.has(carga.tipo);
                 const colors = [
                   { bg: 'bg-rose-50/40 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-100 dark:border-rose-900/50' },
                   { bg: 'bg-amber-50/40 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/50' },
@@ -682,24 +816,195 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 
                 return (
                   <TableRow key={`no-lectiva-${carga.tipo || index}`} className={cn("border-border", color.bg)}>
-                    <TableCell className="px-4 py-3 w-[30%]">
-                      <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
+                    <TableCell className="px-4 py-3">
+                      <div className="flex items-center gap-2">
+                        <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
+                        {carga.tipo === 'INVESTIGACION' && (
+                          <SimulacionBadge tipo="INVESTIGACION_ETICA" />
+                        )}
+                      </div>
                       <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{tipoInfo?.descripcion}</p>
                     </TableCell>
-                    <TableCell className="px-4 py-3">
-                      <Input
-                        placeholder="Describa brevemente la actividad..."
-                        value={carga.descripcion || ''}
-                        className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none"
-                        onChange={e => {
-                          const newCargas = [...cargasNoLectivas];
-                          const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                          newCargas[idx].descripcion = e.target.value;
-                          setCargasNoLectivas(newCargas);
-                        }}
-                      />
+                    <TableCell className="px-4 py-3 space-y-3">
+                      {/* Descripción / Documento */}
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                          {requiereDocumento ? 'N° de Resolución/Constancia/Código de Proyecto' : 'Descripción de Actividades'}
+                        </Label>
+                        <Input
+                          placeholder={requiereDocumento ? 'Ingrese el documento de sustento...' : 'Describa brevemente la actividad...'}
+                          value={carga.descripcion || ''}
+                          className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none"
+                          onChange={e => {
+                            const newCargas = [...cargasNoLectivas];
+                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                            newCargas[idx].descripcion = e.target.value;
+                            setCargasNoLectivas(newCargas);
+                          }}
+                        />
+                      </div>
+
+                      {/* Cargo (if applicable) */}
+                      {(carga.tipo === 'GOBIERNO' || carga.tipo === 'ADMINISTRACION') && (
+                        <div className="space-y-2">
+                          <div className="space-y-1">
+                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                              Cargo Académico/Administrativo
+                            </Label>
+                            <Select
+                              value={carga.cargoId || ''}
+                              onValueChange={val => {
+                                const newCargas = [...cargasNoLectivas];
+                                const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                                const cargo = cargosAcademicos.find(c => c.id === val);
+                                if (cargo) {
+                                  newCargas[idx].cargoId = val;
+                                  newCargas[idx].horas_semanales = cargo.chnla;
+                                } else {
+                                  newCargas[idx].cargoId = null;
+                                }
+                                setCargasNoLectivas(newCargas);
+                              }}
+                            >
+                              <SelectTrigger className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none">
+                                <SelectValue placeholder="Seleccione un cargo..." />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {cargosAcademicos.map(cargo => (
+                                  <SelectItem key={cargo.id} value={cargo.id} className="text-xs">
+                                    {cargo.nombre}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          </div>
+                          {carga.cargoId && (() => {
+                            const cargo = cargosAcademicos.find(c => c.id === carga.cargoId);
+                            return cargo ? (
+                              <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg">
+                                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
+                                  Información del Cargo
+                                </p>
+                                <p className="text-[10px] text-amber-700 dark:text-amber-300 mt-1">
+                                  Carga lectiva mínima sugerida: {cargo.chlm}h · Preparación y evaluación sugerida: {cargo.chnlpe}h
+                                </p>
+                              </div>
+                            ) : null;
+                          })()}
+                        </div>
+                      )}
+
+                      {/* Ambiente */}
+                      <div className="space-y-1">
+                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                          Ambiente/Aula (opcional)
+                        </Label>
+                        <Input
+                          placeholder="Ej: Aula 101, Laboratorio 3..."
+                          value={carga.ambiente || ''}
+                          className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none"
+                          onChange={e => {
+                            const newCargas = [...cargasNoLectivas];
+                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                            newCargas[idx].ambiente = e.target.value;
+                            setCargasNoLectivas(newCargas);
+                          }}
+                        />
+                      </div>
+
+                      {/* Horarios */}
+                      <div className="space-y-2">
+                        <div className="flex items-center justify-between">
+                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                            Horario Semanal
+                          </Label>
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 px-2 text-[10px] font-bold"
+                            onClick={() => {
+                              const newCargas = [...cargasNoLectivas];
+                              const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                              newCargas[idx].horarios = [
+                                ...(newCargas[idx].horarios || []),
+                                { id: Date.now(), dia: 'LU', horaInicio: '08:00', horaFin: '10:00' }
+                              ];
+                              setCargasNoLectivas(newCargas);
+                            }}
+                          >
+                            <Plus size={12} className="mr-1" /> Agregar Horario
+                          </Button>
+                        </div>
+
+                        <div className="space-y-2">
+                          {(carga.horarios || []).map((horario: any, hIndex: number) => (
+                            <div key={horario.id} className="flex items-center gap-2 bg-background/50 p-2 rounded-lg border border-border">
+                              <Select
+                                value={horario.dia}
+                                onValueChange={val => {
+                                  const newCargas = [...cargasNoLectivas];
+                                  const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                                  newCargas[idx].horarios[hIndex].dia = val;
+                                  setCargasNoLectivas(newCargas);
+                                }}
+                              >
+                                <SelectTrigger className="h-7 w-24 text-xs">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  {DIAS_SEMANA.map(dia => (
+                                    <SelectItem key={dia.value} value={dia.value} className="text-xs">
+                                      {dia.label}
+                                    </SelectItem>
+                                  ))}
+                                </SelectContent>
+                              </Select>
+
+                              <div className="flex items-center gap-1">
+                                <Input
+                                  type="time"
+                                  value={horario.horaInicio}
+                                  onChange={e => {
+                                    const newCargas = [...cargasNoLectivas];
+                                    const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                                    newCargas[idx].horarios[hIndex].horaInicio = e.target.value;
+                                    setCargasNoLectivas(newCargas);
+                                  }}
+                                  className="h-7 w-24 text-xs"
+                                />
+                                <span className="text-xs text-muted-foreground">-</span>
+                                <Input
+                                  type="time"
+                                  value={horario.horaFin}
+                                  onChange={e => {
+                                    const newCargas = [...cargasNoLectivas];
+                                    const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                                    newCargas[idx].horarios[hIndex].horaFin = e.target.value;
+                                    setCargasNoLectivas(newCargas);
+                                  }}
+                                  className="h-7 w-24 text-xs"
+                                />
+                              </div>
+
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
+                                onClick={() => {
+                                  const newCargas = [...cargasNoLectivas];
+                                  const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
+                                  newCargas[idx].horarios = newCargas[idx].horarios.filter((_: any, i: number) => i !== hIndex);
+                                  setCargasNoLectivas(newCargas);
+                                }}
+                              >
+                                <Trash2 size={14} />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
                     </TableCell>
-                    <TableCell className="px-4 py-3 w-32 text-right">
+                    <TableCell className="px-4 py-3 w-32 text-right align-top pt-3">
                       <div className="flex items-center justify-end gap-2">
                         <Input
                           type="number"

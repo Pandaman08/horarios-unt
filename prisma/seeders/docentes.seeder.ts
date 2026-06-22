@@ -1,9 +1,9 @@
 // prisma/seeders/05_docentes.seeder.ts
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, CondicionDocente, CategoriaDocente, RegimenDedicacion, TipoContrato } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export async function seedDocentes(prisma: PrismaClient) {
-  console.log('🌱 Sembrando Docentes (con teléfonos reales del Excel)...');
+  console.log('🌱 Sembrando Docentes (con datos completos según Reglamento)...');
 
   // Función para generar correo institucional
   function generarCorreo(nombres: string, apellidos: string): string {
@@ -17,17 +17,74 @@ export async function seedDocentes(prisma: PrismaClient) {
     return `${base}@unitru.edu.pe`;
   }
 
-  // Obtener Departamento de Ingeniería de Sistemas and Facultad de Ingeniería
-  const departamentoSistemas = await prisma.departamentoAcademico.findFirst({
-    where: { nombre: { contains: 'Ingeniería de Sistemas' } }
-  });
-  const facultadIngenieria = await prisma.facultad.findFirst({
-    where: { codigo: 'F11' }
-  });
-  const departamentoId = departamentoSistemas?.id;
-  const facultadId = facultadIngenieria?.id;
+  // Obtener o crear mapeo de facultades y departamentos
+  const facultades = await prisma.facultad.findMany();
+  const departamentos = await prisma.departamentoAcademico.findMany();
 
-  // Lista completa de docentes que enseñan en la Escuela de Ingeniería de Sistemas
+  // Mapear nombre de facultad a ID
+  const facultadMap = new Map<string, string>();
+  for (const fac of facultades) {
+    facultadMap.set(fac.nombre, fac.id);
+  }
+
+  // Mapear nombre de departamento a ID
+  const departamentoMap = new Map<string, string>();
+  for (const dep of departamentos) {
+    departamentoMap.set(dep.nombre, dep.id);
+  }
+
+  // Función para obtener facultad y departamento según especialidad
+  function getUbicacionPorEspecialidad(especialidad: string): { facultadId: string | null, departamentoId: string | null } {
+    const especialidadLower = especialidad.toLowerCase();
+
+    // Mapeo de especialidad -> facultad (nombre exacto o parcial)
+    if (especialidadLower.includes('sistemas') || especialidadLower.includes('informática')) {
+      const facId = facultadMap.get('Facultad de Ingeniería') || null;
+      const depId = departamentoMap.get('Ingeniería de Sistemas') || null;
+      return { facultadId: facId, departamentoId: depId };
+    }
+    if (especialidadLower.includes('psicológica') || especialidadLower.includes('psicología')) {
+      const facId = facultadMap.get('Facultad de Educación y Ciencias de la Comunicación') || null;
+      const depId = departamentoMap.get('Ciencias Psicológicas') || null;
+      return { facultadId: facId, departamentoId: depId };
+    }
+    if (especialidadLower.includes('matemática')) {
+      const facId = facultadMap.get('Facultad de Ciencias Físicas y Matemáticas') || null;
+      const depId = departamentoMap.get('Matemáticas') || null;
+      return { facultadId: facId, departamentoId: depId };
+    }
+    if (especialidadLower.includes('estadística')) {
+      const facId = facultadMap.get('Facultad de Ciencias Físicas y Matemáticas') || null;
+      const depId = departamentoMap.get('Estadística') || null;
+      return { facultadId: facId, departamentoId: depId };
+    }
+    if (especialidadLower.includes('física')) {
+      const facId = facultadMap.get('Facultad de Ciencias Físicas y Matemáticas') || null;
+      const depId = departamentoMap.get('Física') || null;
+      return { facultadId: facId, departamentoId: depId };
+    }
+    if (especialidadLower.includes('administración') || especialidadLower.includes('economía')) {
+      const facId = facultadMap.get('Facultad de Ciencias Económicas') || null;
+      const depId = especialidadLower.includes('administración') ? departamentoMap.get('Administración') : departamentoMap.get('Economía');
+      return { facultadId: facId, departamentoId: depId || null };
+    }
+    if (especialidadLower.includes('lengua') || especialidadLower.includes('literatura') || especialidadLower.includes('comunicación')) {
+      const facId = facultadMap.get('Facultad de Educación y Ciencias de la Comunicación') || null;
+      const depId = especialidadLower.includes('lengua') ? departamentoMap.get('Lengua Nacional y Literatura') : departamentoMap.get('Comunicación Social');
+      return { facultadId: facId, departamentoId: depId || null };
+    }
+    if (especialidadLower.includes('metalúrgica') || especialidadLower.includes('minas')) {
+      const facId = facultadMap.get('Facultad de Ingeniería') || null;
+      const depId = departamentoMap.get('Ingeniería de Minas') || null;
+      return { facultadId: facId, departamentoId: depId };
+    }
+    // Por defecto, asignar a Ingeniería (F11) si no se encuentra
+    const facId = facultadMap.get('Facultad de Ingeniería') || null;
+    const depId = departamentoMap.get('Ingeniería de Sistemas') || null;
+    return { facultadId: facId, departamentoId: depId };
+  }
+
+  // Lista completa de docentes (datos reales)
   const docentesData = [
     // ==================== DOCENTES DEL DEPARTAMENTO DE INGENIERÍA DE SISTEMAS ====================
     {
@@ -73,9 +130,8 @@ export async function seedDocentes(prisma: PrismaClient) {
       categoria: 'principal',
       grado: 'DOCTOR',
       especialidad: 'Ingeniería de Sistemas',
+      esJefeDepartamento: true,
     },
-
-
     {
       nombres: 'José Alberto',
       apellidos: 'Gómez Ávila',
@@ -197,7 +253,6 @@ export async function seedDocentes(prisma: PrismaClient) {
       grado: 'MAGISTER',
       especialidad: 'Ingeniería de Sistemas',
     },
-
     {
       nombres: 'Zoraida Yanet',
       apellidos: 'Vidal Melgarejo',
@@ -210,8 +265,7 @@ export async function seedDocentes(prisma: PrismaClient) {
       especialidad: 'Ingeniería de Sistemas',
     },
 
-    // ==================== DOCENTES DE OTROS DEPARTAMENTOS QUE ENSEÑAN EN SISTEMAS ====================
-    // (con sus teléfonos si se encontraron en el Excel)
+    // ==================== DOCENTES DE OTROS DEPARTAMENTOS ====================
     {
       nombres: 'Paul',
       apellidos: 'Cotrina Castellanos',
@@ -232,7 +286,7 @@ export async function seedDocentes(prisma: PrismaClient) {
       modalidad: 'nombrado',
       categoria: 'asociado',
       grado: null,
-      especialidad: 'CC. Psicológicas',
+      especialidad: 'Ciencias Psicológicas',
     },
     {
       nombres: 'Jose Luis',
@@ -343,22 +397,90 @@ export async function seedDocentes(prisma: PrismaClient) {
       categoria: 'auxiliar',
       grado: null,
       especialidad: 'Psicología',
-    }
+    },
+    {
+      nombres: 'Iván Alberto',
+      apellidos: 'Reyes López',
+      dni: '17898446', // Confirmado en el directorio de la UNT[reference:0]
+      telefono: '949639858', // Del directorio institucional[reference:1]
+      fecha_ingreso: new Date('1985-02-01'), // Según CTI Vitae[reference:2]
+      modalidad: 'nombrado',
+      categoria: 'principal',
+      grado: 'DOCTOR',
+      especialidad: 'Ingeniería Metalúrgica', // Docente del Departamento de Minas y Metalurgia[reference:3]
+      esDecano: true, // 👈 Nuevo flag
+    },
   ];
 
   let contadorDniDefault = 1;
   for (const data of docentesData) {
-    const primerNombre = data.nombres.split(' ')[0];
-    const inicial = primerNombre.charAt(0).toLowerCase();
+    // Generar DNI si no tiene
     let dni = data.dni;
     if (!dni) {
       dni = `9${String(contadorDniDefault++).padStart(7, '0')}`;
     }
-    const codigoDocente = `${inicial}${dni}`; // formato: inicial + DNI
+
+    const primerNombre = data.nombres.split(' ')[0];
+    const inicial = primerNombre.charAt(0).toLowerCase();
+    const codigoDocente = `${inicial}${dni}`;
     const correo = generarCorreo(data.nombres, data.apellidos);
     const contrasenaHash = await bcrypt.hash(dni, 10);
     const nombresMayusculas = data.nombres.toUpperCase();
     const apellidosMayusculas = data.apellidos.toUpperCase();
+
+    // Determinar facultad y departamento según especialidad
+    const { facultadId, departamentoId } = getUbicacionPorEspecialidad(data.especialidad);
+
+    // Mapear modalidad -> condicion
+    const esNombrado = data.modalidad.toLowerCase() === 'nombrado';
+    const condicion = esNombrado ? CondicionDocente.ORDINARIO : CondicionDocente.CONTRATADO;
+
+    // Mapear categoria -> categoriaDocente
+    let categoriaDocente: CategoriaDocente | undefined;
+    const catLower = data.categoria.toLowerCase();
+    if (catLower === 'principal') categoriaDocente = CategoriaDocente.PRINCIPAL;
+    else if (catLower === 'asociado') categoriaDocente = CategoriaDocente.ASOCIADO;
+    else if (catLower === 'auxiliar') categoriaDocente = CategoriaDocente.AUXILIAR;
+
+    // Asignar régimen de dedicación según modalidad y categoría
+    let regimenDedicacion: RegimenDedicacion | undefined;
+    if (esNombrado) {
+      // Si es Principal y tiene más de 20 años de servicio -> DE (Dedicación Exclusiva)
+      const antiguedad = new Date().getFullYear() - data.fecha_ingreso.getFullYear();
+      if (data.categoria.toLowerCase() === 'principal' && antiguedad >= 20) {
+        regimenDedicacion = RegimenDedicacion.DE;
+      } else if (data.categoria.toLowerCase() === 'principal' || data.categoria.toLowerCase() === 'asociado') {
+        regimenDedicacion = RegimenDedicacion.TC; // Tiempo Completo
+      } else {
+        regimenDedicacion = RegimenDedicacion.TP1; // Tiempo Parcial 20h
+      }
+    } else {
+      regimenDedicacion = RegimenDedicacion.TP1;
+    }
+
+    // Asignar tipo de contrato solo si es CONTRATADO
+    let tipoContrato: TipoContrato | undefined;
+    if (condicion === CondicionDocente.CONTRATADO) {
+      // Según el grado académico: Doctor -> A1, Magister -> B1, otro -> B2
+      const grado = data.grado?.toLowerCase() || '';
+      if (grado.includes('doctor')) tipoContrato = TipoContrato.A1;
+      else if (grado.includes('magister') || grado.includes('maestro')) tipoContrato = TipoContrato.B1;
+      else tipoContrato = TipoContrato.B2;
+    }
+
+    // Asignar esInvestigadorAcreditado (RENACYT simulado)
+    // Para docentes principales con grado de Doctor, es probable que sean investigadores
+    const esInvestigadorAcreditado = data.categoria.toLowerCase() === 'principal' && 
+                                     data.grado?.toLowerCase().includes('doctor') && 
+                                     Math.random() > 0.3; // 70% de los principales doctores son investigadores
+
+    // Nivel RENACYT (simulado) solo para investigadores
+    const nivelesRenacyt = ['I', 'II', 'III', 'IV', 'V'];
+    const nivelRenacyt = esInvestigadorAcreditado ? nivelesRenacyt[Math.floor(Math.random() * nivelesRenacyt.length)] : null;
+
+    // Sanciones (todas inactivas por defecto)
+    const sancionActiva = false;
+    const sancionHasta = null;
 
     // Crear o actualizar usuario
     const usuario = await prisma.usuario.upsert({
@@ -381,7 +503,7 @@ export async function seedDocentes(prisma: PrismaClient) {
       },
     });
 
-    // Crear o actualizar docente (con teléfono si existe)
+    // Crear o actualizar docente
     await prisma.docente.upsert({
       where: { codigo_docente: codigoDocente },
       update: {
@@ -395,9 +517,17 @@ export async function seedDocentes(prisma: PrismaClient) {
         especialidad: data.especialidad,
         correo_electronico: correo,
         dni: dni,
-        telefono: data.telefono, // se agrega el teléfono
-        departamentoId: data.especialidad?.includes('Ingeniería de Sistemas') ? departamentoId : undefined,
+        telefono: data.telefono,
+        departamentoId: departamentoId,
         facultadId: facultadId,
+        condicion: condicion,
+        categoriaDocente: categoriaDocente,
+        regimenDedicacion: regimenDedicacion,
+        tipoContrato: tipoContrato,
+        esInvestigadorAcreditado: esInvestigadorAcreditado,
+        nivelRenacyt: nivelRenacyt,
+        sancionActiva: sancionActiva,
+        sancionHasta: sancionHasta,
       },
       create: {
         codigo_docente: codigoDocente,
@@ -412,15 +542,64 @@ export async function seedDocentes(prisma: PrismaClient) {
         correo_electronico: correo,
         dni: dni,
         telefono: data.telefono,
-        departamentoId: data.especialidad?.includes('Ingeniería de Sistemas') ? departamentoId : undefined,
+        departamentoId: departamentoId,
         facultadId: facultadId,
+        condicion: condicion,
+        categoriaDocente: categoriaDocente,
+        regimenDedicacion: regimenDedicacion,
+        tipoContrato: tipoContrato,
+        esInvestigadorAcreditado: esInvestigadorAcreditado,
+        nivelRenacyt: nivelRenacyt,
+        sancionActiva: sancionActiva,
+        sancionHasta: sancionHasta,
       },
     });
 
-    console.log(`✅ Docente: ${data.nombres} ${data.apellidos} (${codigoDocente}) - Tel: ${data.telefono || 'N/A'}`);
+    console.log(`✅ Docente: ${data.nombres} ${data.apellidos} (${codigoDocente}) - ${condicion} - ${categoriaDocente || 'N/A'} - ${regimenDedicacion || 'N/A'} - Tel: ${data.telefono || 'N/A'}`);
+  }
+  // ==================== ASIGNACIÓN DE ROLES JERÁRQUICOS ====================
+  console.log('\n👔 Asignando roles jerárquicos...');
+
+  // Buscar a Luis Boy Chavil (Jefe de Departamento)
+  const jefeDepto = await prisma.docente.findFirst({
+    where: { 
+      nombres: 'LUIS ENRIQUE',
+      apellidos: 'BOY CHAVIL'
+    },
+    include: { usuario: true }
+  });
+
+  if (jefeDepto?.usuario) {
+    await prisma.usuario.update({
+      where: { id_usuario: jefeDepto.usuario.id_usuario },
+      data: { rol: 'director_departamento' }
+    });
+    console.log(`✅ ${jefeDepto.nombres} ${jefeDepto.apellidos} → director_departamento`);
+  } else {
+    console.warn('⚠️ No se encontró a Luis Boy Chavil para asignar rol de director_departamento');
+  }
+
+  // Buscar a Iván Reyes López (Decano)
+  const decano = await prisma.docente.findFirst({
+    where: { 
+      nombres: 'IVÁN ALBERTO',
+      apellidos: 'REYES LÓPEZ'
+    },
+    include: { usuario: true }
+  });
+
+  if (decano?.usuario) {
+    await prisma.usuario.update({
+      where: { id_usuario: decano.usuario.id_usuario },
+      data: { rol: 'decano' }
+    });
+    console.log(`✅ ${decano.nombres} ${decano.apellidos} → decano`);
+  } else {
+    console.warn('⚠️ No se encontró a Iván Reyes López para asignar rol de decano');
   }
 
   const totalDocentes = await prisma.docente.count();
   console.log(`✅ ${totalDocentes} docentes sembrados.\n`);
   return totalDocentes;
+  
 }

@@ -7,7 +7,12 @@ export async function GET() {
     const usuarios = await prisma.usuario.findMany({
       orderBy: { id_usuario: 'desc' },
       include: {
-        docente: true
+        docente: {
+          include: {
+            departamento: true,
+            facultad: true
+          }
+        }
       }
     });
     return NextResponse.json(usuarios);
@@ -36,23 +41,12 @@ export async function POST(request: Request) {
         }
       });
 
-      // 2. Si el rol es docente, crear registro en tabla Docente
-      if (data.rol === 'docente') {
-        await tx.docente.create({
-          data: {
-            id_usuario: usuario.id_usuario,
-            codigo_docente: `${data.nombres.charAt(0).toLowerCase()}${data.dni}`,
-            nombres: data.nombres,
-            apellidos: data.apellidos,
-            dni: data.dni,
-            correo_electronico: data.correo_electronico,
-            categoria: data.categoria || 'auxiliar',
-            modalidad: data.modalidad || 'contratado',
-            especialidad: data.especialidad || '',
-            grado_academico: data.grado_academico || '',
-            fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
-            activo: true
-          }
+      // 2. Si se proporcionó id_docente, asociar el docente existente a este usuario
+      if (data.id_docente) {
+        // Ahora asociar el docente seleccionado
+        await tx.docente.update({
+          where: { id_docente: parseInt(data.id_docente) },
+          data: { id_usuario: usuario.id_usuario }
         });
       }
 
@@ -64,6 +58,7 @@ export async function POST(request: Request) {
     if (error.code === 'P2002') {
       return NextResponse.json({ error: 'El código o correo ya existe' }, { status: 400 });
     }
-    return NextResponse.json({ error: 'Error al crear usuario' }, { status: 500 });
+    console.error(error);
+    return NextResponse.json({ error: 'Error al crear usuario: ' + error.message }, { status: 500 });
   }
 }

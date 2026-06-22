@@ -27,8 +27,21 @@ export async function PUT(
         }
       });
 
-      // 2. Si es docente, actualizar o crear registro de Docente
-      if (data.rol === 'docente') {
+      // 2. Si se proporcionó id_docente, actualizar la asociación
+      if (data.id_docente) {
+        // Primero, desasignar cualquier docente anterior del usuario
+        await tx.docente.updateMany({
+          where: { id_usuario: idNumber },
+          data: { id_usuario: null }
+        });
+
+        // Ahora asociar el nuevo docente
+        await tx.docente.update({
+          where: { id_docente: parseInt(data.id_docente) },
+          data: { id_usuario: idNumber }
+        });
+      } else if (data.rol === 'docente') {
+        // Si no hay id_docente pero el rol es docente, usar la logica antigua
         await tx.docente.upsert({
           where: { id_usuario: idNumber },
           update: {

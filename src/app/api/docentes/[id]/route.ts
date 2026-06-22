@@ -66,6 +66,9 @@ export async function PUT(
         });
       }
 
+      // Process enum fields: convert empty string to null
+      const processEnum = (value: string | null | undefined) => value && value.trim() !== "" ? value : null;
+
       // 3. Actualizar el Docente
       const docente = await tx.docente.update({
         where: { id_docente: id },
@@ -84,6 +87,17 @@ export async function PUT(
           activo: data.activo,
           facultadId: data.facultadId,
           departamentoId: data.departamentoId,
+          // New fields
+          condicion: processEnum(data.condicion),
+          categoriaDocente: data.categoria,
+          regimenDedicacion: data.condicion === 'ORDINARIO' ? processEnum(data.regimenDedicacion) : null,
+          tipoContrato: data.condicion === 'CONTRATADO' ? processEnum(data.tipoContrato) : null,
+          tipoExtraordinario: data.condicion === 'EXTRAORDINARIO' ? processEnum(data.tipoExtraordinario) : null,
+          esInvestigadorAcreditado: data.esInvestigadorAcreditado || false,
+          nivelRenacyt: data.nivelRenacyt || null,
+          sancionActiva: data.sancionActiva || false,
+          sancionHasta: data.sancionHasta ? new Date(data.sancionHasta) : null,
+          dni: data.dni
         }
       });
 

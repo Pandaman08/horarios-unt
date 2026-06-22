@@ -5,6 +5,7 @@ import { prisma } from "@/lib/prisma";
 import bcrypt from "bcryptjs";
 import { z } from "zod";
 import { iniciarCronOnce } from "@/lib/cronStarter";
+import { RolUsuario } from "@prisma/client";
 
 // Esquema de validación para login
 const loginSchema = z.object({
@@ -15,7 +16,7 @@ const loginSchema = z.object({
 // Extender tipos de NextAuth para incluir rol
 declare module "next-auth" {
   interface User {
-    rol: string;
+    rol: RolUsuario;
     id_usuario: number;
     id_docente?: number;
   }
@@ -24,7 +25,7 @@ declare module "next-auth" {
       id: string;
       email: string;
       name: string;
-      rol: string;
+      rol: RolUsuario;
       id_usuario: number;
       id_docente?: number;
     };

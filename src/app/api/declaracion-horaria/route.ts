@@ -20,7 +20,7 @@ export async function GET(request: Request) {
           docente: true,
           periodo: true,
           cargas_lectivas: { include: { curso: true, grupo: true } },
-          cargas_no_lectivas: true,
+          cargas_no_lectivas: { include: { horarios: true, cargo: true } },
           formatos: true
         }
       });
@@ -38,7 +38,7 @@ export async function GET(request: Request) {
           docente: true,
           periodo: true,
           cargas_lectivas: { include: { curso: true } },
-          cargas_no_lectivas: true
+          cargas_no_lectivas: { include: { horarios: true, cargo: true } }
         }
       });
       return NextResponse.json(declaraciones);
@@ -49,7 +49,7 @@ export async function GET(request: Request) {
         docente: true, 
         periodo: true,
         cargas_lectivas: { include: { curso: true } },
-        cargas_no_lectivas: true
+        cargas_no_lectivas: { include: { horarios: true, cargo: true } }
       }
     });
     return NextResponse.json(declaraciones);
@@ -62,10 +62,25 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const data = await request.json();
+    const docenteId = parseInt(data.id_docente);
+    
+    // Check if docente has active sanction
+    const docente = await prisma.docente.findUnique({
+      where: { id_docente: docenteId }
+    });
+    
+    const today = new Date();
+    if (docente?.sancionActiva && docente.sancionHasta && new Date(docente.sancionHasta) > today) {
+      const fechaSancion = new Date(docente.sancionHasta).toLocaleDateString('es-ES');
+      return NextResponse.json({ 
+        error: `No se puede asignar carga académica: docente sancionado hasta ${fechaSancion} (Art. 13.3 del Reglamento CAD)` 
+      }, { status: 400 });
+    }
+
     const declaracion = await prisma.declaracionHoraria.upsert({
       where: {
         id_docente_id_periodo: {
-          id_docente: parseInt(data.id_docente),
+          id_docente: docenteId,
           id_periodo: parseInt(data.id_periodo)
         }
       },
@@ -78,7 +93,7 @@ export async function POST(request: Request) {
         estado: data.estado || 'BORRADOR'
       },
       create: {
-        id_docente: parseInt(data.id_docente),
+        id_docente: docenteId,
         id_periodo: parseInt(data.id_periodo),
         ibm: data.ibm,
         condicion: data.condicion,
@@ -91,7 +106,7 @@ export async function POST(request: Request) {
         docente: true,
         periodo: true,
         cargas_lectivas: { include: { curso: true, grupo: true } },
-        cargas_no_lectivas: true,
+        cargas_no_lectivas: { include: { horarios: true, cargo: true } },
         formatos: true
       }
     });

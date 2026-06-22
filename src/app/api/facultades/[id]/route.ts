@@ -1,14 +1,11 @@
 import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-interface Params {
-  id: string;
-}
-
-export async function GET(request: Request, { params }: { params: Params }) {
+export async function GET(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const facultad = await prisma.facultad.findUnique({
-      where: { id: params.id },
+      where: { id },
       include: {
         departamentos: true,
         escuelas: true,
@@ -24,11 +21,12 @@ export async function GET(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function PUT(request: Request, { params }: { params: Params }) {
+export async function PUT(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     const data = await request.json();
     const facultad = await prisma.facultad.update({
-      where: { id: params.id },
+      where: { id },
       data: {
         nombre: data.nombre,
         codigo: data.codigo,
@@ -42,15 +40,16 @@ export async function PUT(request: Request, { params }: { params: Params }) {
   }
 }
 
-export async function DELETE(request: Request, { params }: { params: Params }) {
+export async function DELETE(request: Request, { params }: { params: Promise<{ id: string }> }) {
   try {
+    const { id } = await params;
     // Check for related records
-    const hasDocentes = await prisma.docente.count({ where: { facultadId: params.id } });
-    const hasAmbientes = await prisma.ambiente.count({ where: { facultadId: params.id } });
-    const hasDepartamentos = await prisma.departamentoAcademico.count({ where: { facultadId: params.id } });
-    const hasEscuelas = await prisma.escuelaProfesional.count({ where: { facultadId: params.id } });
-    const hasCargaLectiva = await prisma.cargaLectiva.count({ where: { sedeId: params.id } });
-    const hasCargaNoLectiva = await prisma.cargaNoLectiva.count({ where: { sedeId: params.id } });
+    const hasDocentes = await prisma.docente.count({ where: { facultadId: id } });
+    const hasAmbientes = await prisma.ambiente.count({ where: { facultadId: id } });
+    const hasDepartamentos = await prisma.departamentoAcademico.count({ where: { facultadId: id } });
+    const hasEscuelas = await prisma.escuelaProfesional.count({ where: { facultadId: id } });
+    const hasCargaLectiva = await prisma.cargaLectiva.count({ where: { sedeId: id } });
+    const hasCargaNoLectiva = await prisma.cargaNoLectiva.count({ where: { sedeId: id } });
 
     if (hasDocentes > 0 || hasAmbientes > 0 || hasDepartamentos > 0 || hasEscuelas > 0 || hasCargaLectiva > 0 || hasCargaNoLectiva > 0) {
       return NextResponse.json({ 
@@ -59,7 +58,7 @@ export async function DELETE(request: Request, { params }: { params: Params }) {
     }
 
     await prisma.facultad.delete({
-      where: { id: params.id }
+      where: { id }
     });
     return NextResponse.json({ message: 'Facultad eliminada correctamente' });
   } catch (error) {

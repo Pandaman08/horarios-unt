@@ -759,6 +759,137 @@ export async function GET(request: Request) {
       });
     }
 
+    // Handle CLAD (Carga Lectiva Adicional)
+    const cladId = searchParams.get('cladId');
+    if (cladId && formato === 'clad') {
+      const clad = await prisma.cargaLectivaAdicional.findUnique({
+        where: { id: cladId },
+        include: { docente: true, sede: true, horarios: true, validador: true }
+      });
+
+      if (!clad) {
+        return NextResponse.json({ error: 'CLAD no encontrado' }, { status: 404 });
+      }
+
+      const DEPENDENCIAS_LABEL = {
+        FILIAL: 'Filial',
+        POSGRADO: 'Posgrado',
+        'SEGUNDA_ESPECIALIDAD': 'Segunda Especialidad',
+        'CENTRO_PRODUCCION': 'Centro de Producción',
+        'EXTENSION_UNIVERSITARIA': 'Extensión Universitaria'
+      };
+
+      const DIAS_LABEL = {
+        LU: 'Lunes', MA: 'Martes', MI: 'Miércoles', JU: 'Jueves', VI: 'Viernes', SA: 'Sábado'
+      };
+
+      const htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>CARGA LECTIVA ADICIONAL (CLAD)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 25px; }
+    .header h1 { font-size: 16px; font-weight: 800; text-transform: uppercase; color: #003366; }
+    .docente-info { border: 2px solid #003366; padding: 15px; margin-bottom: 20px; border-radius: 6px; }
+    .docente-info .row { display: flex; gap: 20px; margin-bottom: 10px; }
+    .docente-info .label { font-weight: 700; color: #003366; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    table td, table th { border: 1px solid #003366; padding: 8px; text-align: center; font-size: 11px; }
+    table th { background-color: #003366; color: white; font-weight: 700; }
+    .firmas { margin-top: 60px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
+    .firma-line { border-top: 1px solid #003366; margin-top: 50px; padding-top: 5px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
+    <h2 style="font-size: 14px; margin-top: 5px; color: #1e4d80;">FACULTAD DE INGENIERÍA</h2>
+    <h2 style="font-size: 15px; margin-top: 8px; font-weight: 800; color: #003366;">CARGA LECTIVA ADICIONAL (CLAD)</h2>
+  </div>
+
+  <div class="docente-info">
+    <div class="row">
+      <div><span class="label">DOCENTE:</span> ${clad.docente.nombres} ${clad.docente.apellidos}</div>
+      <div><span class="label">DNI:</span> ${clad.docente.dni || '—'}</div>
+      <div><span class="label">DPTO. ACADÉMICO:</span> ${clad.docente.departamentoId ? 'Ingeniería de Sistemas' : '—'}</div>
+    </div>
+    <div class="row">
+      <div><span class="label">FACULTAD:</span> ${clad.sede.nombre}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>CURSO</th>
+        <th>DEPENDENCIA</th>
+        <th>N° RESOLUCIÓN</th>
+        <th>FECHA INICIO</th>
+        <th>FECHA FIN</th>
+        <th>TOTAL HORAS</th>
+        <th>HORARIO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${clad.curso}</td>
+        <td>${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || clad.dependencia}</td>
+        <td>${clad.numeroResolucion || '—'}</td>
+        <td>${new Date(clad.fechaInicio).toLocaleDateString('es-PE')}</td>
+        <td>${new Date(clad.fechaFin).toLocaleDateString('es-PE')}</td>
+        <td>${clad.totalHoras}</td>
+        <td>
+          ${clad.horarios.map(h => `${DIAS_LABEL[h.dia as keyof typeof DIAS_LABEL]}: ${h.horaInicio} - ${h.horaFin}`).join('<br/>')}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  ${clad.observaciones ? `<div style="margin-bottom: 20px;"><strong>Observaciones:</strong> ${clad.observaciones}</div>` : ''}
+
+  <div class="firmas">
+    <div>
+      <div class="firma-line">Profesor</div>
+      <div style="margin-top: 3px; font-size: 10px;">${clad.docente.nombres} ${clad.docente.apellidos}</div>
+    </div>
+    <div>
+      <div class="firma-line">Director de Departamento</div>
+      <div style="margin-top: 3px; font-size: 10px;">${clad.validador ? `${clad.validador.nombres} ${clad.validador.apellidos}` : '—'}</div>
+    </div>
+    <div>
+      <div class="firma-line">Decano</div>
+      <div style="margin-top: 3px; font-size: 10px;">—</div>
+    </div>
+    <div>
+      <div class="firma-line">Director de ${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || 'Unidad Académica'}</div>
+      <div style="margin-top: 3px; font-size: 10px;">—</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; text-align: right; font-size: 10px; color: #666;">
+    Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT
+  </div>
+</body>
+</html>`;
+
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
+      const filename = `clad-${clad.docente.apellidos}-${new Date().toISOString().slice(0, 10)}`;
+
+      return new NextResponse(pdfBuffer as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}.pdf"`,
+          'Content-Length': pdfBuffer.length.toString()
+        }
+      });
+    }
+
     // Handle new carga horaria declaración formats
     if (id_declaracion && (formato === 'formato1' || formato === 'formato2' || formato === 'formato3' || formato === 'formato4')) {
       const declaracion = await prisma.declaracionHoraria.findUnique({
