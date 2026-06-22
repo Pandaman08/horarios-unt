@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { format } from 'date-fns';
 
@@ -44,8 +44,8 @@ export async function GET(request: Request) {
           }
         },
         OR: ventanasActivas.map((v: any) => ({
-          modalidad: v.modalidad,
-          categoria: v.categoria
+          condicion: v.modalidad,
+          categoriaDocente: v.categoria
         }))
       },
       include: {
@@ -57,8 +57,8 @@ export async function GET(request: Request) {
         }
       },
       orderBy: [
-          { modalidad: 'asc' },
-          { categoria: 'asc' },
+          { condicion: 'asc' },
+          { categoriaDocente: 'asc' },
           { fecha_ingreso: 'asc' }
         ]
     });

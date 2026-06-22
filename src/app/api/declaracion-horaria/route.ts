@@ -1,5 +1,16 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { 
+  mapCondicionToTexto, 
+  mapCategoriaDocenteToTexto, 
+  mapRegimenDedicacionToTexto 
+} from '@/lib/docenteMappers';
+import { 
+  REGIMEN_DEDICACION, 
+  TIPO_CONTRATO, 
+  type RegimenDedicacion as RegimenDedicacionType, 
+  type TipoContrato as TipoContratoType 
+} from '@/lib/constants/regimenHoras';
 
 export async function GET(request: Request) {
   try {
@@ -77,6 +88,21 @@ export async function POST(request: Request) {
       }, { status: 400 });
     }
 
+    // Generate snapshot data from docente's new fields
+    const condicionTexto = mapCondicionToTexto(docente?.condicion);
+    const categoriaTexto = mapCategoriaDocenteToTexto(docente?.categoriaDocente);
+    const dedicacionTexto = mapRegimenDedicacionToTexto(docente?.regimenDedicacion);
+    
+    // Calculate horas_dedicacion
+    let horasDedicacion = 0;
+    if (docente) {
+      if (docente.condicion === 'CONTRATADO' && docente.tipoContrato) {
+        horasDedicacion = TIPO_CONTRATO[docente.tipoContrato as TipoContratoType]?.totalHoras || 0;
+      } else if (docente.regimenDedicacion) {
+        horasDedicacion = REGIMEN_DEDICACION[docente.regimenDedicacion as RegimenDedicacionType]?.totalHoras || 0;
+      }
+    }
+
     const declaracion = await prisma.declaracionHoraria.upsert({
       where: {
         id_docente_id_periodo: {
@@ -85,21 +111,21 @@ export async function POST(request: Request) {
         }
       },
       update: {
-        ibm: data.ibm,
-        condicion: data.condicion,
-        categoria: data.categoria,
-        dedicacion: data.dedicacion,
-        horas_dedicacion: parseFloat(data.horas_dedicacion),
+        ibm: data.ibm || docente?.codigo_docente,
+        condicion: condicionTexto,
+        categoria: categoriaTexto,
+        dedicacion: dedicacionTexto,
+        horas_dedicacion: horasDedicacion,
         estado: data.estado || 'BORRADOR'
       },
       create: {
         id_docente: docenteId,
         id_periodo: parseInt(data.id_periodo),
-        ibm: data.ibm,
-        condicion: data.condicion,
-        categoria: data.categoria,
-        dedicacion: data.dedicacion,
-        horas_dedicacion: parseFloat(data.horas_dedicacion),
+        ibm: data.ibm || docente?.codigo_docente,
+        condicion: condicionTexto,
+        categoria: categoriaTexto,
+        dedicacion: dedicacionTexto,
+        horas_dedicacion: horasDedicacion,
         estado: data.estado || 'BORRADOR'
       },
       include: {

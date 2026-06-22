@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ThemeProvider } from "next-themes";
 import { SessionProvider } from "@/components/auth/SessionProvider";

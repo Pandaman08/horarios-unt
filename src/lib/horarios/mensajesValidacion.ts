@@ -1,4 +1,4 @@
-type ConflictoRespuesta = {
+﻿type ConflictoRespuesta = {
   mensaje: string;
   severidad?: 'ERROR' | 'ADVERTENCIA';
   tipo?: string;

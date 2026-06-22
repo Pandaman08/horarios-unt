@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+﻿import { prisma } from '@/lib/prisma';
 import { ServicioCorreo } from './ServicioCorreo';
 import { ServicioTelegram } from './ServicioTelegram';
 import type { HorarioAsignado, Docente, Curso, Grupo, Ambiente, PeriodoAcademico } from '@prisma/client';
@@ -171,8 +171,8 @@ export class ServicioNotificador {
     const docentes = await prisma.docente.findMany({
       where: { 
         id_docente: ids_docentes_especificos ? { in: ids_docentes_especificos } : undefined,
-        modalidad: ids_docentes_especificos ? undefined : ventana.modalidad, 
-        categoria: ids_docentes_especificos ? undefined : ventana.categoria,
+        condicion: ids_docentes_especificos ? undefined : ventana.modalidad, 
+        categoriaDocente: ids_docentes_especificos ? undefined : ventana.categoria,
         activo: true 
       }
     });

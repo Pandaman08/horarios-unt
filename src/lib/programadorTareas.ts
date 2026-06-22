@@ -1,4 +1,4 @@
-import cron from 'node-cron';
+﻿import cron from 'node-cron';
 import { GestorSeleccionTemporal } from '@/services/horarios/GestorSeleccionTemporal';
 import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 import { ServicioTelegram } from '@/services/notificaciones/ServicioTelegram';

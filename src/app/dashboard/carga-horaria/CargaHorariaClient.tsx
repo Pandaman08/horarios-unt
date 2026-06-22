@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect } from 'react';
 import { usePeriodo } from '@/contexts/PeriodoContext';
@@ -36,14 +36,37 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SimulacionBadge } from '@/components/ui/SimulacionBadge';
+import { 
+  mapCondicionToTexto, 
+  mapCategoriaDocenteToTexto, 
+  mapRegimenDedicacionToTexto 
+} from '@/lib/docenteMappers';
+import { 
+  REGIMEN_DEDICACION, 
+  TIPO_CONTRATO, 
+  type RegimenDedicacion as RegimenDedicacionType, 
+  type TipoContrato as TipoContratoType 
+} from '@/lib/constants/regimenHoras';
 
-const DEDICACIONES = [
-  { label: 'Tiempo Completo 40 h', horas: 40 },
-  { label: 'Tiempo Parcial 20 h', horas: 20 }
+const CONDICION_OPCIONES = [
+  { value: 'ORDINARIO', label: 'Ordinario (Nombrado)' },
+  { value: 'CONTRATADO', label: 'Contratado' },
+  { value: 'EXTRAORDINARIO', label: 'Extraordinario' }
 ];
 
-const CONDICIONES = ['Nombrado', 'Principal', 'Auxiliar', 'Jefe de Práctica', 'Profesor', 'Alumno'];
-const CATEGORIAS = ['Asociado', 'Principal', 'Auxiliar', 'Titular'];
+const CATEGORIA_OPCIONES = [
+  { value: 'PRINCIPAL', label: 'Principal' },
+  { value: 'ASOCIADO', label: 'Asociado' },
+  { value: 'AUXILIAR', label: 'Auxiliar' }
+];
+
+const REGIMEN_OPCIONES = [
+  { value: 'DE', label: 'Dedicación Exclusiva - 40h' },
+  { value: 'TC', label: 'Tiempo Completo - 40h' },
+  { value: 'TP1', label: 'Tiempo Parcial 1 - 20h' },
+  { value: 'TP2', label: 'Tiempo Parcial 2 - 10h' },
+  { value: 'TP3', label: 'Tiempo Parcial 3 - 8h' }
+];
 
 const TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS = [
   {
@@ -174,6 +197,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
   }, [periodoActivo, initialDocente]);
 
+  const getHorasDedicacion = (docente: any): number => {
+    if (docente.condicion === 'CONTRATADO' && docente.tipoContrato) {
+      return TIPO_CONTRATO[docente.tipoContrato as TipoContratoType]?.totalHoras || 0;
+    } else if (docente.regimenDedicacion) {
+      return REGIMEN_DEDICACION[docente.regimenDedicacion as RegimenDedicacionType]?.totalHoras || 0;
+    }
+    return 0;
+  };
+
   const fetchGrupos = async (idPeriodo: number) => {
     try {
       const res = await fetch(`/api/grupos?idPeriodo=${idPeriodo}`);
@@ -190,12 +222,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       const data = await res.json();
       if (data) {
         setDeclaracion(data);
+        // Always use initialDocente's enums for formData
         setFormData({
-          ibm: data.ibm,
-          condicion: data.condicion,
-          categoria: data.categoria,
-          dedicacion: data.dedicacion,
-          horas_dedicacion: data.horas_dedicacion
+          ibm: data.ibm || initialDocente.codigo_docente || '',
+          condicion: initialDocente.condicion,
+          categoria: initialDocente.categoriaDocente,
+          dedicacion: initialDocente.regimenDedicacion,
+          horas_dedicacion: getHorasDedicacion(initialDocente)
         });
         setCargasLectivas(data.cargas_lectivas || []);
         
@@ -222,34 +255,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         setCargasNoLectivas(cargasInicializadas);
       } else {
         // If no declaration exists, initialize formData from initialDocente
-        // First, map the new fields (condicion, categoriaDocente, regimenDedicacion) to the old form field names
-        let condicion = initialDocente.condicion || initialDocente.modalidad || '';
-        let categoria = initialDocente.categoriaDocente || initialDocente.categoria || '';
-        
-        // Map regimenDedicacion to the old dedicacion labels
-        let dedicacion = '';
-        let horasDedicacion = 0;
-        if (initialDocente.regimenDedicacion) {
-          if (initialDocente.regimenDedicacion === 'DE' || initialDocente.regimenDedicacion === 'TC') {
-            dedicacion = 'Tiempo Completo 40 h';
-            horasDedicacion = 40;
-          } else if (initialDocente.regimenDedicacion === 'TP1') {
-            dedicacion = 'Tiempo Parcial 20 h';
-            horasDedicacion = 20;
-          } else if (initialDocente.regimenDedicacion === 'TP2') {
-            dedicacion = 'Tiempo Parcial 20 h';
-            horasDedicacion = 20;
-          } else if (initialDocente.regimenDedicacion === 'TP3') {
-            dedicacion = 'Tiempo Parcial 20 h';
-            horasDedicacion = 20;
-          }
-        }
+        const horasDedicacion = getHorasDedicacion(initialDocente);
         
         setFormData({
           ibm: initialDocente.codigo_docente || '',
-          condicion: condicion,
-          categoria: categoria,
-          dedicacion: dedicacion,
+          condicion: initialDocente.condicion,
+          categoria: initialDocente.categoriaDocente,
+          dedicacion: initialDocente.regimenDedicacion,
           horas_dedicacion: horasDedicacion
         });
         
@@ -268,32 +280,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     } catch (err) {
       console.error(err);
       // Initialize formData from initialDocente even on error
-      let condicion = initialDocente.condicion || initialDocente.modalidad || '';
-      let categoria = initialDocente.categoriaDocente || initialDocente.categoria || '';
-      
-      let dedicacion = '';
-      let horasDedicacion = 0;
-      if (initialDocente.regimenDedicacion) {
-        if (initialDocente.regimenDedicacion === 'DE' || initialDocente.regimenDedicacion === 'TC') {
-          dedicacion = 'Tiempo Completo 40 h';
-          horasDedicacion = 40;
-        } else if (initialDocente.regimenDedicacion === 'TP1') {
-          dedicacion = 'Tiempo Parcial 20 h';
-          horasDedicacion = 20;
-        } else if (initialDocente.regimenDedicacion === 'TP2') {
-          dedicacion = 'Tiempo Parcial 20 h';
-          horasDedicacion = 20;
-        } else if (initialDocente.regimenDedicacion === 'TP3') {
-          dedicacion = 'Tiempo Parcial 20 h';
-          horasDedicacion = 20;
-        }
-      }
+      const horasDedicacion = getHorasDedicacion(initialDocente);
       
       setFormData({
         ibm: initialDocente.codigo_docente || '',
-        condicion: condicion,
-        categoria: categoria,
-        dedicacion: dedicacion,
+        condicion: initialDocente.condicion,
+        categoria: initialDocente.categoriaDocente,
+        dedicacion: initialDocente.regimenDedicacion,
         horas_dedicacion: horasDedicacion
       });
       
@@ -347,12 +340,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         declaracionId = newDeclaracion.id_declaracion;
         setDeclaracion(newDeclaracion);
       } else {
-        // Don't send estado when saving a draft, let the server handle it (especially for rejected declarations)
-        const { estado, ...formDataWithoutEstado } = formData;
+        // Directly send formData, it doesn't include estado
         await fetch(`/api/declaracion-horaria/${declaracionId}`, {
           method: 'PUT',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(formDataWithoutEstado)
+          body: JSON.stringify(formData)
         });
       }
 
@@ -581,7 +573,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 </div>
                 <div className="space-y-1">
                   <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Departamento Académico</p>
-                  <p className="text-sm font-medium text-foreground">{initialDocente.especialidad || 'Ingeniería de Sistemas'}</p>
+                  <p className="text-sm font-medium text-foreground">{initialDocente.departamento?.nombre || initialDocente.especialidad || 'Ingeniería de Sistemas'}</p>
                 </div>
               </div>
             )}
@@ -590,50 +582,66 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">IBM / Código</Label>
-                  <Input
-                    value={formData.ibm}
-                    onChange={e => setFormData({ ...formData, ibm: e.target.value })}
-                    className="h-10 bg-background border-border focus:bg-background transition-all text-sm"
-                  />
+                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
+                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{formData.ibm}</div>
+                  ) : (
+                    <Input
+                      value={formData.ibm}
+                      onChange={e => setFormData({ ...formData, ibm: e.target.value })}
+                      className="h-10 bg-background border-border focus:bg-background transition-all text-sm"
+                    />
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">Condición</Label>
-                  <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })}>
-                    <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                      <SelectValue placeholder="Seleccionar condición" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CONDICIONES.map(c => <SelectItem key={c} value={c} className="text-sm">{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
+                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCondicionToTexto(initialDocente.condicion)}</div>
+                  ) : (
+                    <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })}>
+                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
+                        <SelectValue placeholder="Seleccionar condición" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CONDICION_OPCIONES.map(c => <SelectItem key={c.value} value={c.value} className="text-sm">{c.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">Categoría</Label>
-                  <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })}>
-                    <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                      <SelectValue placeholder="Seleccionar categoría" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {CATEGORIAS.map(c => <SelectItem key={c} value={c} className="text-sm">{c}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
+                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCategoriaDocenteToTexto(initialDocente.categoriaDocente)}</div>
+                  ) : (
+                    <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })}>
+                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
+                        <SelectValue placeholder="Seleccionar categoría" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {CATEGORIA_OPCIONES.map(c => <SelectItem key={c.value} value={c.value} className="text-sm">{c.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">Dedicación Horaria</Label>
-                  <Select
-                    value={formData.dedicacion}
-                    onValueChange={v => {
-                      const ded = DEDICACIONES.find(d => d.label === v);
-                      setFormData({ ...formData, dedicacion: v, horas_dedicacion: ded?.horas || 0 });
-                    }}
-                  >
-                    <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                      <SelectValue placeholder="Seleccionar dedicación" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      {DEDICACIONES.map(d => <SelectItem key={d.label} value={d.label} className="text-sm">{d.label}</SelectItem>)}
-                    </SelectContent>
-                  </Select>
+                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
+                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapRegimenDedicacionToTexto(initialDocente.regimenDedicacion)}</div>
+                  ) : (
+                    <Select
+                      value={formData.dedicacion}
+                      onValueChange={v => {
+                        const newHoras = REGIMEN_DEDICACION[v as RegimenDedicacionType]?.totalHoras || 0;
+                        setFormData({ ...formData, dedicacion: v, horas_dedicacion: newHoras });
+                      }}
+                    >
+                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
+                        <SelectValue placeholder="Seleccionar dedicación" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {REGIMEN_OPCIONES.map(d => <SelectItem key={d.value} value={d.value} className="text-sm">{d.label}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  )}
                 </div>
               </div>
             </div>

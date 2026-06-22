@@ -76,10 +76,6 @@ model Docente {
   codigo_docente            String                            @unique
   nombres                   String
   apellidos                 String
-  // Deprecated fields - keep for migration
-  modalidad                 String
-  categoria                 String
-  dedicacion                String?
   // New fields
   condicion                 CondicionDocente?
   categoriaDocente          CategoriaDocente?

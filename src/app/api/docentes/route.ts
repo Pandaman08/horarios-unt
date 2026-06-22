@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
 
@@ -72,8 +72,6 @@ export async function POST(request: Request) {
         apellidos: data.apellidos,
         correo_electronico: data.correo_electronico,
         telefono: data.telefono,
-        categoria: data.categoria,
-        modalidad: data.modalidad,
         especialidad: data.especialidad,
         grado_academico: data.grado_academico,
         fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
@@ -82,7 +80,7 @@ export async function POST(request: Request) {
         departamentoId: data.departamentoId,
         // New fields
         condicion: processEnum(data.condicion),
-        categoriaDocente: data.categoria,
+        categoriaDocente: data.categoriaDocente,
         regimenDedicacion: data.condicion === 'ORDINARIO' ? processEnum(data.regimenDedicacion) : null,
         tipoContrato: data.condicion === 'CONTRATADO' ? processEnum(data.tipoContrato) : null,
         tipoExtraordinario: data.condicion === 'EXTRAORDINARIO' ? processEnum(data.tipoExtraordinario) : null,

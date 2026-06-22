@@ -1,6 +1,17 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { calcularDeclaracionJurada } from '@/lib/declaracion-jurada';
+import { 
+  mapCondicionToTexto, 
+  mapCategoriaDocenteToTexto, 
+  mapRegimenDedicacionToTexto 
+} from '@/lib/docenteMappers';
+import { 
+  REGIMEN_DEDICACION, 
+  TIPO_CONTRATO, 
+  type RegimenDedicacion as RegimenDedicacionType, 
+  type TipoContrato as TipoContratoType 
+} from '@/lib/constants/regimenHoras';
 
 export async function PUT(
   request: Request,
@@ -24,27 +35,27 @@ export async function PUT(
       return NextResponse.json({ error: 'Declaración no encontrada' }, { status: 404 });
     }
 
-    const dedicacion = data.dedicacion ?? declaracionActual.dedicacion;
-    const horasDedicacion = data.horas_dedicacion ?? declaracionActual.horas_dedicacion;
-    const nuevoEstado = data.estado ?? declaracionActual.estado;
-
-    // Only check horas de dedicacion if we're explicitly setting the state to ENVIADO or APROBADO
-    if ((data.dedicacion !== undefined || data.horas_dedicacion !== undefined) && (nuevoEstado === 'ENVIADO' || nuevoEstado === 'APROBADO')) {
-      const horasDedicacionEsperadas = dedicacion.includes('40')
-        ? 40
-        : dedicacion.includes('20')
-          ? 20
-          : horasDedicacion;
-
-      if (horasDedicacion !== horasDedicacionEsperadas) {
-        return NextResponse.json(
-          { error: `Las horas de dedicación deben ser exactamente ${horasDedicacionEsperadas} para la modalidad seleccionada.` },
-          { status: 400 }
-        );
+    // Get the docente to generate snapshot data
+    const docente = declaracionActual.docente;
+    
+    // Generate snapshot data from docente's new fields
+    const condicionTexto = mapCondicionToTexto(docente?.condicion);
+    const categoriaTexto = mapCategoriaDocenteToTexto(docente?.categoriaDocente);
+    const dedicacionTexto = mapRegimenDedicacionToTexto(docente?.regimenDedicacion);
+    
+    // Calculate horas_dedicacion
+    let horasDedicacionCalculada = 0;
+    if (docente) {
+      if (docente.condicion === 'CONTRATADO' && docente.tipoContrato) {
+        horasDedicacionCalculada = TIPO_CONTRATO[docente.tipoContrato as TipoContratoType]?.totalHoras || 0;
+      } else if (docente.regimenDedicacion) {
+        horasDedicacionCalculada = REGIMEN_DEDICACION[docente.regimenDedicacion as RegimenDedicacionType]?.totalHoras || 0;
       }
     }
 
-    // Only enforce total hour check if we're explicitly setting state to ENVIADO or APROBADO
+    const nuevoEstado = data.estado ?? declaracionActual.estado;
+
+    // Only check horas de dedicacion if we're explicitly setting the state to ENVIADO or APROBADO
     if (nuevoEstado === 'ENVIADO' || nuevoEstado === 'APROBADO') {
       const totalLectivas = declaracionActual.cargas_lectivas.reduce(
         (sum, c) => sum + c.horas_semanales * (c.grupos_asignados || 1),
@@ -56,9 +67,9 @@ export async function PUT(
       );
       const totalGeneral = totalLectivas + totalNoLectivas;
 
-      if (totalGeneral !== horasDedicacion) {
+      if (totalGeneral !== horasDedicacionCalculada) {
         return NextResponse.json(
-          { error: `La suma total de horas (${totalGeneral}h) debe ser exactamente igual a las horas de dedicación (${horasDedicacion}h).` },
+          { error: `La suma total de horas (${totalGeneral}h) debe ser exactamente igual a las horas de dedicación (${horasDedicacionCalculada}h).` },
           { status: 400 }
         );
       }
@@ -72,14 +83,15 @@ export async function PUT(
     }
 
     const updateData: Record<string, unknown> = {
-      fecha_actualizacion: new Date()
+      fecha_actualizacion: new Date(),
+      // Always update the snapshot fields from the docente's current data
+      condicion: condicionTexto,
+      categoria: categoriaTexto,
+      dedicacion: dedicacionTexto,
+      horas_dedicacion: horasDedicacionCalculada
     };
 
     if (data.ibm !== undefined) updateData.ibm = data.ibm;
-    if (data.condicion !== undefined) updateData.condicion = data.condicion;
-    if (data.categoria !== undefined) updateData.categoria = data.categoria;
-    if (data.dedicacion !== undefined) updateData.dedicacion = data.dedicacion;
-    if (data.horas_dedicacion !== undefined) updateData.horas_dedicacion = data.horas_dedicacion;
     
     // If current state is RECHAZADO and we're not explicitly setting a state, set it to BORRADOR
     if (declaracionActual.estado === 'RECHAZADO' && data.estado === undefined) {
@@ -91,7 +103,7 @@ export async function PUT(
     if (data.observaciones !== undefined) updateData.observaciones = data.observaciones;
     if (nuevoEstado === 'ENVIADO') {
       updateData.fecha_envio = new Date();
-      const declaracionJurada = calcularDeclaracionJurada(declaracionActual.docente);
+      const declaracionJurada = calcularDeclaracionJurada(docente);
       updateData.declaracionJuradaOpcion = declaracionJurada;
       updateData.fechaFirmaJurada = new Date();
     }

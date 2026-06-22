@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -69,9 +69,9 @@ interface Docente {
   codigo_docente: string;
   nombres: string;
   apellidos: string;
-  modalidad: string;
-  categoria: string;
-  dedicacion?: string;
+  condicion?: string;
+  categoriaDocente?: string;
+  regimenDedicacion?: string;
   antiguedad?: number;
   correo_electronico: string;
   telefono?: string;
@@ -86,9 +86,6 @@ interface Docente {
   nivelRenacyt?: string;
   sancionActiva?: boolean;
   sancionHasta?: string;
-  condicion?: string;
-  categoriaDocente?: string;
-  regimenDedicacion?: string;
   tipoContrato?: string;
   tipoExtraordinario?: string;
   especialidad?: string;
@@ -154,8 +151,7 @@ export function DocenteList() {
     codigo_docente: "",
     correo_electronico: "",
     telefono: "",
-    modalidad: "NOMBRADO",
-    categoria: "PRINCIPAL",
+    categoriaDocente: "PRINCIPAL",
     grado_academico: "INGENIERO",
     especialidad: "",
     fecha_ingreso: new Date().toISOString().split("T")[0],
@@ -206,8 +202,8 @@ export function DocenteList() {
 
   const filteredDocentes = docentes.filter(d => {
     const matchesSearch = `${d.nombres} ${d.apellidos} ${d.codigo_docente}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategoria = filtroCategoria === "todos" || d.categoria?.toUpperCase() === filtroCategoria.toUpperCase();
-    const matchesModalidad = filtroModalidad === "todos" || d.modalidad?.toUpperCase() === filtroModalidad.toUpperCase();
+    const matchesCategoriaDocente = filtroCategoria === "todos" || d.categoriaDocente?.toUpperCase() === filtroCategoria.toUpperCase();
+    const matchesCondicion = filtroModalidad === "todos" || d.condicion?.toUpperCase() === filtroModalidad.toUpperCase();
     const matchesGrado = filtroGrado === "todos" || d.grado_academico === filtroGrado;
 
     // Filtrar por ciclo y semestre (solo si hay filtros activos)
@@ -246,7 +242,7 @@ export function DocenteList() {
       }
     }
 
-    return matchesSearch && matchesCategoria && matchesModalidad && matchesGrado && matchesCiclo && matchesSemestre;
+    return matchesSearch && matchesCategoriaDocente && matchesCondicion && matchesGrado && matchesCiclo && matchesSemestre;
   }).sort((a, b) => {
     if (filtroAntiguedad === "todos") return 0;
     const yearsA = calculateAntiquity(a.fecha_ingreso);
@@ -455,8 +451,7 @@ export function DocenteList() {
       codigo_docente: "",
       correo_electronico: "",
       telefono: "",
-      modalidad: "NOMBRADO",
-      categoria: "PRINCIPAL",
+      categoriaDocente: "PRINCIPAL",
       grado_academico: "INGENIERO",
       especialidad: "",
       fecha_ingreso: new Date().toISOString().split("T")[0],
@@ -654,23 +649,10 @@ export function DocenteList() {
                     </div>
                   </div>
                   
-                  {/* Keep Modalidad as deprecated */}
                   <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/50 ml-1">Modalidad (Deprecated)</Label>
-                      <Select value={formData.modalidad} onValueChange={(val) => setFormData({ ...formData, modalidad: val })}>
-                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/20 font-bold text-[11px] opacity-70">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          <SelectItem value="NOMBRADO">Nombrado</SelectItem>
-                          <SelectItem value="CONTRATADO">Contratado</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
                       <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
-                      <Select value={formData.categoria} onValueChange={(val) => setFormData({ ...formData, categoria: val })}>
+                      <Select value={formData.categoriaDocente} onValueChange={(val) => setFormData({ ...formData, categoriaDocente: val })}>
                         <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
                           <SelectValue />
                         </SelectTrigger>
@@ -678,7 +660,6 @@ export function DocenteList() {
                           <SelectItem value="PRINCIPAL">Principal</SelectItem>
                           <SelectItem value="ASOCIADO">Asociado</SelectItem>
                           <SelectItem value="AUXILIAR">Auxiliar</SelectItem>
-                          <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
@@ -811,15 +792,16 @@ export function DocenteList() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Condición</Label>
             <Select value={filtroModalidad} onValueChange={setFiltroModalidad}>
               <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todas las modalidades</SelectItem>
-                <SelectItem value="NOMBRADO" className="text-[10px] font-bold">Nombrado</SelectItem>
+                <SelectItem value="todos" className="text-[10px] font-bold">Todas las condiciones</SelectItem>
+                <SelectItem value="ORDINARIO" className="text-[10px] font-bold">Ordinario</SelectItem>
                 <SelectItem value="CONTRATADO" className="text-[10px] font-bold">Contratado</SelectItem>
+                <SelectItem value="EXTRAORDINARIO" className="text-[10px] font-bold">Extraordinario</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -933,10 +915,10 @@ export function DocenteList() {
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-widest border border-border">{docente.modalidad}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-widest border border-border">{docente.condicion}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-widest border border-primary/20">{docente.categoria}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-widest border border-primary/20">{docente.categoriaDocente}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
@@ -951,8 +933,6 @@ export function DocenteList() {
                               codigo_docente: docente.codigo_docente || "",
                               correo_electronico: docente.correo_electronico || "",
                               telefono: docente.telefono || "",
-                              modalidad: docente.modalidad || "NOMBRADO",
-                              categoria: docente.categoria || "PRINCIPAL",
                               grado_academico: docente.grado_academico || "INGENIERO",
                               especialidad: docente.especialidad || "",
                               fecha_ingreso: docente.fecha_ingreso ? new Date(docente.fecha_ingreso).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
@@ -963,7 +943,8 @@ export function DocenteList() {
                               nivelRenacyt: docente.nivelRenacyt || "",
                               sancionActiva: docente.sancionActiva || false,
                               sancionHasta: docente.sancionHasta ? new Date(docente.sancionHasta).toISOString().split("T")[0] : "",
-                              condicion: docente.condicion || "",
+                              condicion: docente.condicion || "ORDINARIO",
+                              categoriaDocente: docente.categoriaDocente || "PRINCIPAL",
                               regimenDedicacion: docente.regimenDedicacion || "",
                               tipoContrato: docente.tipoContrato || "",
                               tipoExtraordinario: docente.tipoExtraordinario || "",

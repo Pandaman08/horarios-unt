@@ -1,4 +1,4 @@
-export type GrupoBasico = {
+﻿export type GrupoBasico = {
   id_grupo: number;
   codigo_grupo: string;
 };

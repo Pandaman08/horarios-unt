@@ -1,4 +1,4 @@
-export type Locale = "es" | "en" | "pt" | "fr" | "zh";
+﻿export type Locale = "es" | "en" | "pt" | "fr" | "zh";
 
 export const LOCALES: { code: Locale; label: string; flag: string }[] = [
   { code: "es", label: "Español", flag: "🇪🇸" },

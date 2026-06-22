@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -102,14 +102,13 @@ export function UsuarioList() {
     rol: "operador",
     id_docente: "", // Nuevo campo: id_docente (string porque Select usa string)
     // Campos académicos para docente
-    categoria: "auxiliar",
-    modalidad: "contratado",
+    categoriaDocente: "AUXILIAR",
+    condicion: "CONTRATADO",
     especialidad: "",
     grado_academico: "",
     fecha_ingreso: "",
   });
 
-  // Función para auto-llenar datos cuando se selecciona un docente
   const handleDocenteSelect = (docenteId: string) => {
     if (!docenteId) {
       resetForm();
@@ -126,8 +125,8 @@ export function UsuarioList() {
         apellidos: docenteSeleccionado.apellidos,
         correo_electronico: docenteSeleccionado.correo_electronico || "",
         codigo: docenteSeleccionado.codigo_docente,
-        categoria: ((docenteSeleccionado as any).categoria || "auxiliar").toLowerCase(),
-        modalidad: ((docenteSeleccionado as any).modalidad || "contratado").toLowerCase(),
+        categoriaDocente: ((docenteSeleccionado as any).categoriaDocente || "AUXILIAR"),
+        condicion: ((docenteSeleccionado as any).condicion || "CONTRATADO"),
         especialidad: (docenteSeleccionado as any).especialidad || "",
         grado_academico: (docenteSeleccionado as any).grado_academico || "",
         fecha_ingreso: (docenteSeleccionado as any).fecha_ingreso 
@@ -308,8 +307,8 @@ export function UsuarioList() {
       contrasena: "",
       rol: "operador",
       id_docente: "",
-      categoria: "auxiliar",
-      modalidad: "contratado",
+      categoriaDocente: "AUXILIAR",
+      condicion: "CONTRATADO",
       especialidad: "",
       grado_academico: "",
       fecha_ingreso: "",
@@ -516,34 +515,35 @@ export function UsuarioList() {
                           {formData.id_docente ? (
                             <Input 
                               className="h-8 rounded-md border-border bg-muted/30 font-semibold text-[12px] text-muted-foreground cursor-not-allowed" 
-                              value={formData.categoria.charAt(0).toUpperCase() + formData.categoria.slice(1)} 
+                              value={formData.categoriaDocente} 
                               disabled 
                             />
                           ) : (
-                            <Select value={formData.categoria} onValueChange={(v) => setFormData({ ...formData, categoria: v })}>
+                            <Select value={formData.categoriaDocente} onValueChange={(v) => setFormData({ ...formData, categoriaDocente: v })}>
                               <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
                               <SelectContent className="rounded-md border-border">
-                                <SelectItem value="principal" className="font-semibold">Principal</SelectItem>
-                                <SelectItem value="asociado" className="font-semibold">Asociado</SelectItem>
-                                <SelectItem value="auxiliar" className="font-semibold">Auxiliar</SelectItem>
+                                <SelectItem value="PRINCIPAL" className="font-semibold">Principal</SelectItem>
+                                <SelectItem value="ASOCIADO" className="font-semibold">Asociado</SelectItem>
+                                <SelectItem value="AUXILIAR" className="font-semibold">Auxiliar</SelectItem>
                               </SelectContent>
                             </Select>
                           )}
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Modalidad</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Condición</Label>
                           {formData.id_docente ? (
                             <Input 
                               className="h-8 rounded-md border-border bg-muted/30 font-semibold text-[12px] text-muted-foreground cursor-not-allowed" 
-                              value={formData.modalidad.charAt(0).toUpperCase() + formData.modalidad.slice(1)} 
+                              value={formData.condicion} 
                               disabled 
                             />
                           ) : (
-                            <Select value={formData.modalidad} onValueChange={(v) => setFormData({ ...formData, modalidad: v })}>
+                            <Select value={formData.condicion} onValueChange={(v) => setFormData({ ...formData, condicion: v })}>
                               <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
                               <SelectContent className="rounded-md border-border">
-                                <SelectItem value="nombrado" className="font-semibold">Nombrado</SelectItem>
-                                <SelectItem value="contratado" className="font-semibold">Contratado</SelectItem>
+                                <SelectItem value="ORDINARIO" className="font-semibold">Ordinario</SelectItem>
+                                <SelectItem value="CONTRATADO" className="font-semibold">Contratado</SelectItem>
+                                <SelectItem value="EXTRAORDINARIO" className="font-semibold">Extraordinario</SelectItem>
                               </SelectContent>
                             </Select>
                           )}
@@ -723,8 +723,8 @@ export function UsuarioList() {
                               contrasena: "",
                               rol: usuario.rol,
                               id_docente: usuario.docente?.id_docente ? usuario.docente.id_docente.toString() : "",
-                              categoria: ((usuario.docente as any)?.categoria || "auxiliar").toLowerCase(),
-                              modalidad: ((usuario.docente as any)?.modalidad || "contratado").toLowerCase(),
+                              categoriaDocente: ((usuario.docente as any)?.categoriaDocente || "AUXILIAR"),
+                              condicion: ((usuario.docente as any)?.condicion || "CONTRATADO"),
                               especialidad: (usuario.docente as any)?.especialidad || "",
                               grado_academico: (usuario.docente as any)?.grado_academico || "",
                               fecha_ingreso: (usuario.docente as any)?.fecha_ingreso ? new Date((usuario.docente as any).fecha_ingreso).toISOString().split('T')[0] : "",

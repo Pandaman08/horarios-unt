@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+﻿import { prisma } from '@/lib/prisma';
 import { MAX_HORAS_DIARIAS } from '@/lib/constantes';
 import { emitirEvento } from '@/lib/socket-server';
 import { etiquetaTipoClase } from '@/lib/horarios/mensajesValidacion';

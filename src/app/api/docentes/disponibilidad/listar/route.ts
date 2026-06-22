@@ -1,4 +1,4 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
@@ -7,8 +7,8 @@ export async function GET(req: NextRequest) {
     const periodoId = searchParams.get("periodoId");
     const departamentoId = searchParams.get("departamentoId");
     const search = searchParams.get("search") || "";
-    const categoria = searchParams.get("categoria") || "todos";
-    const modalidad = searchParams.get("modalidad") || "todos";
+    const categoriaDocente = searchParams.get("categoriaDocente") || "todos";
+    const condicion = searchParams.get("condicion") || "todos";
     const orden = searchParams.get("orden") || "antiguedad_desc";
 
     if (!periodoId) {
@@ -29,16 +29,14 @@ export async function GET(req: NextRequest) {
             { codigo_docente: { contains: search } },
           ]
         } : {},
-        categoria !== "todos" ? { 
-          categoria: {
-            equals: categoria,
-            mode: 'insensitive'
+        categoriaDocente !== "todos" ? { 
+          categoriaDocente: {
+            equals: categoriaDocente,
           }
         } : {},
-        modalidad !== "todos" ? { 
-          modalidad: {
-            equals: modalidad,
-            mode: 'insensitive'
+        condicion !== "todos" ? { 
+          condicion: {
+            equals: condicion,
           }
         } : {},
         departamentoId ? { departamentoId } : {},
@@ -73,8 +71,8 @@ export async function GET(req: NextRequest) {
         nombres: d.nombres,
         apellidos: d.apellidos,
         dni: d.dni,
-        categoria: d.categoria,
-        modalidad: d.modalidad,
+        categoriaDocente: d.categoriaDocente,
+        condicion: d.condicion,
         antiguedad: d.fecha_ingreso ? antiguedad : null,
         tiene_disponibilidad: d.disponibilidad.length > 0
       };

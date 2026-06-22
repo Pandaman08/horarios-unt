@@ -1,4 +1,4 @@
-import { prisma } from '../prisma';
+﻿import { prisma } from '../prisma';
 import { getForcedResult } from '@/app/api/simulaciones/forzar/route';
 
 export async function consultarSanciones(dni: string) {

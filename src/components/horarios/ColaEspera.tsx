@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -91,7 +91,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                       <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter font-mono">{docente.codigo_docente}</span>
                       <span className="w-0.5 h-0.5 rounded-full bg-border" />
                       <span className="text-[9px] font-bold text-primary uppercase tracking-tighter bg-primary/10 px-1.5 py-0.5 rounded">
-                        {docente.categoria.replace("_", " ")}
+                        {docente.categoriaDocente?.replace("_", " ")}
                       </span>
                     </div>
                   </div>

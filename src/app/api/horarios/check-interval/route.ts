@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
@@ -78,13 +78,17 @@ export async function GET() {
         }
       });
 
-      const prioridadCategoria = ["jefe_practica", "auxiliar", "asociado", "principal"];
+      const prioridadCategoria = ["AUXILIAR", "ASOCIADO", "PRINCIPAL"];
+      const prioridadCondicion = ["ORDINARIO", "CONTRATADO", "EXTRAORDINARIO"];
       const docentesOrdenados = [...docentes].sort((a, b) => {
-        if (a.modalidad === "nombrado" && b.modalidad !== "nombrado") return -1;
-        if (b.modalidad === "nombrado" && a.modalidad !== "nombrado") return 1;
+        const condA = (a as any).condicion || "ORDINARIO";
+        const condB = (b as any).condicion || "ORDINARIO";
+        const idxA = prioridadCondicion.indexOf(condA);
+        const idxB = prioridadCondicion.indexOf(condB);
+        if (idxA !== idxB) return idxA - idxB;
         
-        const catA = prioridadCategoria.indexOf(a.categoria);
-        const catB = prioridadCategoria.indexOf(b.categoria);
+        const catA = prioridadCategoria.indexOf((a as any).categoriaDocente || "AUXILIAR");
+        const catB = prioridadCategoria.indexOf((b as any).categoriaDocente || "AUXILIAR");
         if (catA !== catB) return catB - catA;
         
         if (a.fecha_ingreso && b.fecha_ingreso) {
