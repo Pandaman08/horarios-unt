@@ -32,9 +32,11 @@ import { Button } from "@/components/ui/button";
 interface CeldaInfo {
   id_asignacion?: number;
   id_seleccion?: number;
+  id_carga_no_lectiva?: number;
   id_docente?: number;
   docente_nombre?: string;
   curso_nombre?: string;
+  ambiente_nombre?: string;
   tipo_clase?: string;
 
   estado:
@@ -42,10 +44,117 @@ interface CeldaInfo {
     | "ocupado"
     | "seleccionado_mio"
     | "bloqueado"
+    | "bloqueado_lectivo"
     | "error";
 
   mensaje_error?: string;
 }
+
+const DIAS_CODIGO = ["LU", "MA", "MI", "JU", "VI", "SA"];
+
+const aplicarActividadesNoLectivas = (
+  map: Record<string, CeldaInfo>,
+  actividades: Array<any> | undefined,
+  actividadSeleccionadaId: number | undefined,
+  idDocente?: number
+): Record<string, CeldaInfo> => {
+  const next = { ...map };
+
+  for (const key of Object.keys(next)) {
+    const celda = next[key];
+    if (!celda?.id_carga_no_lectiva) continue;
+
+    if (celda.id_asignacion || celda.id_seleccion) {
+      const { id_carga_no_lectiva: _id, curso_nombre: _curso, estado: _estado, id_docente: _doc, ...rest } = celda;
+      next[key] = rest as CeldaInfo;
+    } else {
+      delete next[key];
+    }
+  }
+
+  (actividades ?? []).forEach((carga: any) => {
+    const esSeleccionada = actividadSeleccionadaId === carga.id_carga_no_lectiva;
+
+    (carga.horarios || []).forEach((h: any) => {
+      let current = parse(h.horaInicio, "HH:mm", new Date());
+      const end = parse(h.horaFin, "HH:mm", new Date());
+
+      while (current < end) {
+        const slotHora = format(current, "HH:mm");
+        const diaIndex = DIAS_CODIGO.indexOf(h.dia);
+        const key = `${diaIndex}-${slotHora}`;
+
+        if (next[key] && (next[key].id_asignacion || next[key].id_seleccion || next[key].estado === "bloqueado_lectivo")) {
+          // keep lective assignment / guide blocks
+        } else {
+          next[key] = {
+            ...next[key],
+            id_carga_no_lectiva: carga.id_carga_no_lectiva,
+            curso_nombre: carga.descripcion || carga.tipo || "No lectiva",
+            id_docente: esSeleccionada ? idDocente : undefined,
+            estado: esSeleccionada ? "seleccionado_mio" : "ocupado",
+          } as CeldaInfo;
+        }
+
+        current = addMinutes(current, 15);
+      }
+    });
+  });
+
+  return next;
+};
+
+/** Pinta horarios lectivos del docente como guía bloqueada (fuente: /api/docentes/horarios). */
+const aplicarHorariosLectivosDocente = (
+  map: Record<string, CeldaInfo>,
+  horarios: Array<any> | undefined,
+  tipoVista?: string,
+  idDocente?: number
+): Record<string, CeldaInfo> => {
+  if (tipoVista !== "no-lectiva" || !horarios?.length) return map;
+
+  const next = { ...map };
+
+  horarios.forEach((h) => {
+    if (h.is_no_lectiva) return;
+
+    let current = parse(h.hora_inicio, "HH:mm", new Date());
+    const end = parse(h.hora_fin, "HH:mm", new Date());
+
+    while (current < end) {
+      const slotHora = format(current, "HH:mm");
+      const key = `${h.dia_semana}-${slotHora}`;
+
+      next[key] = {
+        id_asignacion: h.id_asignacion,
+        id_docente: idDocente,
+        curso_nombre: h.curso_nombre || h.curso_codigo || "Carga lectiva",
+        ambiente_nombre: h.ambiente_codigo || h.ambiente_nombre,
+        tipo_clase: h.tipo_clase,
+        estado: "bloqueado_lectivo",
+      };
+
+      current = addMinutes(current, 15);
+    }
+  });
+
+  return next;
+};
+
+const aplicarCapasCargaHoraria = (
+  map: Record<string, CeldaInfo>,
+  horariosLectivos: Array<any> | undefined,
+  actividades: Array<any> | undefined,
+  actividadSeleccionadaId: number | undefined,
+  tipoVista?: string,
+  idDocente?: number
+) =>
+  aplicarActividadesNoLectivas(
+    aplicarHorariosLectivosDocente(map, horariosLectivos, tipoVista, idDocente),
+    actividades,
+    actividadSeleccionadaId,
+    idDocente
+  );
 
 interface ConflictoVisual {
   tipo: string;
@@ -71,6 +180,8 @@ interface Props {
   actividadSeleccionadaId?: number;
 
   actividadesNoLectivas?: Array<any>;
+
+  horariosLectivosDocente?: Array<any>;
 
   onCellClick?: (
     dia: number,
@@ -101,6 +212,7 @@ export function MatrizDisponibilidad({
   tipoVista,
   actividadSeleccionadaId,
   actividadesNoLectivas,
+  horariosLectivosDocente,
   onCellClick,
   onSelectionChange,
   soloLectura: propSoloLectura,
@@ -176,47 +288,31 @@ export function MatrizDisponibilidad({
     return cleanup;
   }, [id_periodo, id_ambiente]);
 
-  // Re-map actividades no lectivas cuando cambian para mostrar cambios inmediatos
+  // Re-map carga lectiva (guía) y carga no lectiva cuando cambian los datos
   useEffect(() => {
-    if (!actividadesNoLectivas) return;
+    if (!actividadesNoLectivas && !horariosLectivosDocente?.length) return;
 
     try {
-      const map = { ...disponibilidad };
-
-      (actividadesNoLectivas || []).forEach((carga: any) => {
-        const esSeleccionada = actividadSeleccionadaId === carga.id_carga_no_lectiva;
-
-        (carga.horarios || []).forEach((h: any) => {
-          let current = parse(h.horaInicio, 'HH:mm', new Date());
-          const end = parse(h.horaFin, 'HH:mm', new Date());
-
-          while (current < end) {
-            const slotHora = format(current, 'HH:mm');
-            const diaIndex = ['LU','MA','MI','JU','VI','SA'].indexOf(h.dia);
-            const key = `${diaIndex}-${slotHora}`;
-
-            if (map[key] && (map[key].id_asignacion || map[key].id_seleccion)) {
-              // keep lective/temporal assignment
-            } else {
-              map[key] = {
-                ...map[key],
-                id_carga_no_lectiva: carga.id_carga_no_lectiva,
-                curso_nombre: carga.descripcion || carga.tipo || 'No lectiva',
-                id_docente: esSeleccionada ? id_docente_actual : undefined,
-                estado: esSeleccionada ? 'seleccionado_mio' : 'ocupado',
-              } as CeldaInfo;
-            }
-
-            current = addMinutes(current, 15);
-          }
-        });
-      });
-
-      setDisponibilidad(map);
+      setDisponibilidad((prev) =>
+        aplicarCapasCargaHoraria(
+          prev,
+          horariosLectivosDocente,
+          actividadesNoLectivas,
+          actividadSeleccionadaId,
+          tipoVista,
+          id_docente_actual
+        )
+      );
     } catch (err) {
-      console.warn('Error remapeando actividadesNoLectivas', err);
+      console.warn("Error remapeando capas de carga horaria", err);
     }
-  }, [actividadesNoLectivas, actividadSeleccionadaId]);
+  }, [
+    actividadesNoLectivas,
+    horariosLectivosDocente,
+    actividadSeleccionadaId,
+    id_docente_actual,
+    tipoVista,
+  ]);
 
   const checkAccess = async () => {
     try {
@@ -337,6 +433,9 @@ export function MatrizDisponibilidad({
 
         (data.asignaciones ?? []).forEach(
           (asig: any) => {
+            const esMia =
+              Number(asig.id_docente) === Number(id_docente_actual);
+
             fillSlots(
               asig.dia_semana,
               asig.hora_inicio,
@@ -353,10 +452,17 @@ export function MatrizDisponibilidad({
                 curso_nombre:
                   asig.curso.nombre,
 
+                ambiente_nombre:
+                  asig.ambiente?.codigo ||
+                  asig.ambiente?.nombre,
+
                 tipo_clase:
                   asig.tipo_clase,
 
-                estado: "ocupado",
+                estado:
+                  tipoVista === "no-lectiva" && esMia
+                    ? "bloqueado_lectivo"
+                    : "ocupado",
               }
             );
           }
@@ -365,8 +471,7 @@ export function MatrizDisponibilidad({
         (data.temporales ?? []).forEach(
           (temp: any) => {
             const esMia =
-              temp.id_docente ===
-              id_docente_actual;
+              Number(temp.id_docente) === Number(id_docente_actual);
 
             fillSlots(
               temp.dia_semana,
@@ -384,12 +489,19 @@ export function MatrizDisponibilidad({
                 curso_nombre:
                   temp.curso.nombre,
 
+                ambiente_nombre:
+                  temp.ambiente?.codigo ||
+                  temp.ambiente?.nombre,
+
                 tipo_clase:
                   temp.tipo_clase,
 
-                estado: esMia
-                  ? "seleccionado_mio"
-                  : "ocupado",
+                estado:
+                  tipoVista === "no-lectiva" && esMia
+                    ? "bloqueado_lectivo"
+                    : esMia
+                      ? "seleccionado_mio"
+                      : "ocupado",
               }
             );
           }
@@ -426,45 +538,16 @@ export function MatrizDisponibilidad({
           curB = addMinutes(curB, 15);
         }
 
-        setDisponibilidad(map);
-
-        // Si recibimos actividades no lectivas desde el consumer, marcar sus bloques
-        try {
-          (actividadesNoLectivas ?? []).forEach((carga: any) => {
-            const esSeleccionada = actividadSeleccionadaId === carga.id_carga_no_lectiva;
-
-            (carga.horarios || []).forEach((h: any) => {
-              let current = parse(h.horaInicio, 'HH:mm', new Date());
-              const end = parse(h.horaFin, 'HH:mm', new Date());
-
-              while (current < end) {
-                const slotHora = format(current, 'HH:mm');
-                const diaIndex = ['LU','MA','MI','JU','VI','SA'].indexOf(h.dia);
-                const key = `${diaIndex}-${slotHora}`;
-
-                // Do not overwrite if a lective asignacion or temporal already occupies it
-                if (map[key] && (map[key].id_asignacion || map[key].id_seleccion)) {
-                  // keep existing lectiva/temporal
-                } else {
-                  map[key] = {
-                    ...map[key],
-                    id_carga_no_lectiva: carga.id_carga_no_lectiva,
-                    curso_nombre: carga.descripcion || carga.tipo || 'No lectiva',
-                    id_docente: esSeleccionada ? id_docente_actual : undefined,
-                    estado: esSeleccionada ? 'seleccionado_mio' : 'ocupado',
-                  } as CeldaInfo;
-                }
-
-                current = addMinutes(current, 15);
-              }
-            });
-          });
-
-          setDisponibilidad({ ...map });
-        } catch (err) {
-          // Ignore mapping errors from malformed horarios
-          console.warn('Error mapping actividadesNoLectivas', err);
-        }
+        setDisponibilidad(
+          aplicarCapasCargaHoraria(
+            map,
+            horariosLectivosDocente,
+            actividadesNoLectivas,
+            actividadSeleccionadaId,
+            tipoVista,
+            id_docente_actual
+          )
+        );
       } catch (error) {
         console.error(error);
 
@@ -498,6 +581,7 @@ export function MatrizDisponibilidad({
       id_docente_actual;
 
     if (
+      tipoVista !== "no-lectiva" &&
       esMia &&
       (celda?.id_seleccion ||
         celda?.id_asignacion)
@@ -535,10 +619,22 @@ export function MatrizDisponibilidad({
     }
 
     if (
-      celda?.estado ===
-        "bloqueado" ||
+      onCellClick &&
+      celda?.id_carga_no_lectiva &&
+      actividadSeleccionadaId === celda.id_carga_no_lectiva
+    ) {
+      onCellClick(dia, hora);
+      return;
+    }
+
+    if (
+      celda?.estado === "bloqueado" ||
+      celda?.estado === "bloqueado_lectivo" ||
       celda?.estado === "ocupado"
     ) {
+      if (celda?.estado === "bloqueado_lectivo" && onCellClick) {
+        toast.info("Este bloque está reservado por su carga lectiva");
+      }
       return;
     }
 
@@ -709,14 +805,33 @@ export function MatrizDisponibilidad({
               <span className="w-3 h-3 rounded border border-border bg-background" />
               Libre
             </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-amber-400/50 border border-amber-400/60" />
-              Mi reserva
-            </span>
-            <span className="flex items-center gap-1.5">
-              <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-200" />
-              Ocupado
-            </span>
+            {tipoVista === "no-lectiva" ? (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-amber-400/50 border border-amber-400/60" />
+                  Mi carga no lectiva
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-blue-500/20 border border-blue-400/50" />
+                  Carga lectiva (bloqueado)
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-200" />
+                  Ocupado
+                </span>
+              </>
+            ) : (
+              <>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-amber-400/50 border border-amber-400/60" />
+                  Mi reserva
+                </span>
+                <span className="flex items-center gap-1.5">
+                  <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-200" />
+                  Ocupado
+                </span>
+              </>
+            )}
             <span className="flex items-center gap-1.5">
               <Lock className="h-3 w-3 text-muted-foreground" />
               Receso
@@ -725,7 +840,9 @@ export function MatrizDisponibilidad({
         </div>
         <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
           <Info className="h-3.5 w-3.5" />
-          Receso 12:00 – 13:00
+          {tipoVista === "no-lectiva"
+            ? "Use la matriz para ubicar su carga no lectiva sin cruzar horarios lectivos"
+            : "Receso 12:00 – 13:00"}
         </p>
       </div>
 
@@ -782,7 +899,8 @@ export function MatrizDisponibilidad({
                         "relative h-12 border-b border-r border-border/60 cursor-pointer transition-colors",
                         !info && "hover:bg-emerald-500/10",
                         info?.estado === "ocupado" && !esMia && "bg-rose-500/10 cursor-not-allowed",
-                        esMia && "bg-amber-400/35 ring-1 ring-inset ring-amber-500/40",
+                        esMia && info?.estado !== "bloqueado_lectivo" && "bg-amber-400/35 ring-1 ring-inset ring-amber-500/40",
+                        info?.estado === "bloqueado_lectivo" && "bg-blue-500/15 cursor-not-allowed ring-1 ring-inset ring-blue-400/40",
                         info?.estado === "bloqueado" && "bg-muted/60 cursor-not-allowed"
                       )}
                     >
@@ -800,8 +918,28 @@ export function MatrizDisponibilidad({
                         )}
 
                       {info &&
-                        info.estado !==
-                          "bloqueado" && (
+                        info.estado === "bloqueado_lectivo" && (
+                          <div className="absolute inset-1 rounded-lg bg-blue-500/10 border border-blue-300/40 dark:border-blue-700/50 p-1 text-[9px] flex flex-col justify-between">
+                            <div>
+                              <p className="font-black truncate text-blue-800 dark:text-blue-300">
+                                {info.curso_nombre}
+                              </p>
+                              <p className="truncate text-blue-700/80 dark:text-blue-400/80">
+                                {info.ambiente_nombre || "Sin ambiente"}
+                              </p>
+                            </div>
+                            <div className="flex items-center justify-between">
+                              <span className="text-[8px] uppercase font-bold text-blue-700 dark:text-blue-400">
+                                {info.tipo_clase}
+                              </span>
+                              <Lock className="h-3 w-3 text-blue-500" />
+                            </div>
+                          </div>
+                        )}
+
+                      {info &&
+                        info.estado !== "bloqueado" &&
+                        info.estado !== "bloqueado_lectivo" && (
                           <div className="absolute inset-1 rounded-lg bg-card border border-border p-1 text-[9px] flex flex-col justify-between">
                             <div>
                               <p className="font-black truncate">

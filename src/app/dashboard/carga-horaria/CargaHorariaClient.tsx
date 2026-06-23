@@ -155,6 +155,18 @@ const DIAS_SEMANA = [
   { value: 'SA', label: 'Sábado' }
 ];
 
+const horarioContieneSlot = (
+  horario: { dia: string; horaInicio: string; horaFin: string },
+  diaCodigo: string,
+  hora: string
+) => {
+  if (horario.dia !== diaCodigo) return false;
+  const inicio = parse(horario.horaInicio, 'HH:mm', new Date());
+  const fin = parse(horario.horaFin, 'HH:mm', new Date());
+  const slot = parse(hora, 'HH:mm', new Date());
+  return slot >= inicio && slot < fin;
+};
+
 export default function CargaHorariaClient({ initialDocente }: { initialDocente: any }) {
   const { periodoActivo } = usePeriodo();
   const router = useRouter();
@@ -533,6 +545,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     [initialDocente]
   );
 
+  const horariosLectivosSoloLectiva = useMemo(
+    () => horariosLectivos.filter((h) => !h.is_no_lectiva),
+    [horariosLectivos]
+  );
+
   const totalLectivas = trabajoLectivo;
   const totalNoLectivas = cargasNoLectivas.reduce((sum, c) => sum + getHorasNoLectivas(c), 0);
   const totalGeneral = totalLectivas + totalNoLectivas;
@@ -714,7 +731,9 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     const existentes = carga.horarios || [];
 
     // Si ya está asignado, quitar (deseleccionar)
-    const yaAsignadoIdx = existentes.findIndex((h: any) => h.dia === diaCodigo && h.horaInicio === hora);
+    const yaAsignadoIdx = existentes.findIndex((h: any) =>
+      horarioContieneSlot(h, diaCodigo, hora)
+    );
     if (yaAsignadoIdx !== -1) {
       const newCargas = [...cargasNoLectivas];
       const nuevosHorarios = [...(newCargas[idx].horarios || [])];
@@ -755,16 +774,29 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
 
     // Evitar conflicto con otras actividades
-    const conflicto = cargasNoLectivas.some(c => c.id_carga_no_lectiva !== carga.id_carga_no_lectiva && (c.horarios || []).some((h: any) => h.dia === diaCodigo && h.horaInicio === hora));
+    const conflicto = cargasNoLectivas.some(
+      (c) =>
+        c.id_carga_no_lectiva !== carga.id_carga_no_lectiva &&
+        (c.horarios || []).some((h: any) => horarioContieneSlot(h, diaCodigo, hora))
+    );
     if (conflicto) {
       toast.error('El bloque está ocupado por otra actividad no lectiva');
       return;
     }
 
     // Evitar conflicto con horarios lectivos confirmados
-    const lectivoConflicto = horariosLectivos.some((hl: any) => hl.dia_semana === dia && hl.hora_inicio === hora);
+    const lectivoConflicto = horariosLectivos
+      .filter((hl) => !hl.is_no_lectiva)
+      .some((hl) => {
+        if (hl.dia_semana !== dia) return false;
+        return horarioContieneSlot(
+          { dia: diaCodigo, horaInicio: hl.hora_inicio, horaFin: hl.hora_fin },
+          diaCodigo,
+          hora
+        );
+      });
     if (lectivoConflicto) {
-      toast.error('El bloque está ocupado por horario lectivo confirmado');
+      toast.error('El bloque coincide con su horario lectivo confirmado');
       return;
     }
 
@@ -1162,23 +1194,30 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               </div>
             </details>
 
-            {/* Shared matrix for no-lectiva */}
-            {actividadNoLectivaSeleccionada && (
-              <div className="mb-4">
-                <div className="border rounded-lg p-2 bg-muted/10">
-                  <MatrizDisponibilidad
-                    id_periodo={periodoActivo?.id_periodo || 0}
-                    id_docente_actual={initialDocente?.id_docente}
-                    soloLectura={!puedeEditarNoLectiva}
-                    tipoVista="no-lectiva"
-                    actividadSeleccionadaId={actividadNoLectivaSeleccionada as any}
-                    actividadesNoLectivas={cargasNoLectivas}
-                    onCellClick={handleNoLectivaCellClick}
-                    onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
-                    />
-                </div>
+            {/* Matriz: carga lectiva bloqueada + carga no lectiva asignada */}
+            <div className="rounded-lg border border-border bg-muted/10 overflow-hidden min-w-0">
+              <div className="px-3 py-2 border-b border-border bg-card/80">
+                <p className="text-[11px] font-bold text-foreground">Matriz de horarios</p>
+                <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                  {actividadNoLectivaSeleccionada
+                    ? 'Azul = carga lectiva (bloqueada). Ámbar = su actividad no lectiva seleccionada. Clic en celdas libres para asignar.'
+                    : 'Azul = carga lectiva. Gris/ámbar = carga no lectiva ya asignada. Seleccione una actividad abajo para agregar o quitar bloques.'}
+                </p>
               </div>
-            )}
+              <div className="w-full min-w-0 overflow-x-auto p-2 sm:p-3">
+                <MatrizDisponibilidad
+                  id_periodo={periodoActivo?.id_periodo || 0}
+                  id_docente_actual={initialDocente?.id_docente}
+                  soloLectura={!puedeEditarNoLectiva}
+                  tipoVista="no-lectiva"
+                  actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
+                  actividadesNoLectivas={cargasNoLectivas}
+                  horariosLectivosDocente={horariosLectivosSoloLectiva}
+                  onCellClick={handleNoLectivaCellClick}
+                  onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                />
+              </div>
+            </div>
 
           <Table>
             <TableHeader className="bg-muted/30">
@@ -1357,7 +1396,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                               </Button>
                               <div className="text-xs text-muted-foreground">
                                 {actividadPermitida
-                                  ? 'Seleccione la actividad y luego haga clic en los bloques libres de la matriz compartida.'
+                                  ? 'Los bloques azules son su carga lectiva (no se puede asignar no lectiva ahí). Haga clic en celdas libres para asignar.'
                                   : 'Esta actividad no aplica para su régimen horario.'}
                               </div>
                             </>
