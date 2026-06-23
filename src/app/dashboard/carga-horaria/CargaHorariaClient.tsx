@@ -1052,7 +1052,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 const color = colors[index % colors.length];
                 
                 return (
-                  <TableRow key={`no-lectiva-${carga.tipo || index}`} className={cn("border-border", color.bg)}>
+                  <TableRow key={carga.id_carga_no_lectiva ?? `no-lectiva-${carga.tipo}-${index}`} className={cn("border-border", color.bg)}>
                     <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
@@ -1185,8 +1185,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                             <div className="text-sm text-muted-foreground">
                               {carga.horarios?.length > 0 ? (
                                 <div className="space-y-1">
-                                  {carga.horarios.map((h: any, i: number) => (
-                                    <div key={i} className="text-xs">
+                                  {carga.horarios.map((h: any) => (
+                                    <div key={`${carga.id_carga_no_lectiva ?? carga.tipo}-${h.dia}-${h.horaInicio}-${h.horaFin}`} className="text-xs">
                                       {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][['LU','MA','MI','JU','VI','SA'].indexOf(h.dia)]}: {h.horaInicio} - {h.horaFin}
                                     </div>
                                   ))}
