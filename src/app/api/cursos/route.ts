@@ -9,12 +9,29 @@ export async function GET(request: Request) {
 
     const where: any = { activo: true };
     if (departamentoId) {
-      where.departamentoId = departamentoId;
-    }
-    if (facultadId) {
+      const depto = await prisma.departamentoAcademico.findUnique({
+        where: { id: departamentoId },
+        select: { id: true, nombre: true, facultadId: true },
+      });
+      if (depto) {
+        where.OR = [
+          { departamentoId },
+          {
+            departamento_responsable: {
+              contains: depto.nombre,
+              mode: 'insensitive',
+            },
+          },
+          { escuela: { facultadId: depto.facultadId } },
+          { departamento: { facultadId: depto.facultadId } },
+        ];
+      } else {
+        where.departamentoId = departamentoId;
+      }
+    } else if (facultadId) {
       where.OR = [
         { departamento: { facultadId } },
-        { escuela: { facultadId } }
+        { escuela: { facultadId } },
       ];
     }
 

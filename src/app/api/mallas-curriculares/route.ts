@@ -7,9 +7,20 @@ export async function GET(request: Request) {
     const { searchParams } = new URL(request.url);
     const departamentoId = searchParams.get('departamentoId');
 
-    const where: any = { activo: true };
+    const where: { activo: boolean; OR?: object[]; departamentoId?: string } = { activo: true };
     if (departamentoId) {
-      where.departamentoId = departamentoId;
+      const depto = await prisma.departamentoAcademico.findUnique({
+        where: { id: departamentoId },
+        select: { facultadId: true },
+      });
+      if (depto?.facultadId) {
+        where.OR = [
+          { departamentoId },
+          { departamento: { facultadId: depto.facultadId } },
+        ];
+      } else {
+        where.departamentoId = departamentoId;
+      }
     }
 
     const mallas = await prisma.mallaCurricular.findMany({

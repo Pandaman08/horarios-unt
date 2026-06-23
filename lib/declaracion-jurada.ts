@@ -91,3 +91,67 @@ export function calcularDeclaracionJurada(docente: Docente): string {
   
   return DECLARACIONES_JURADAS[8].texto;
 }
+
+type DocenteJurada = Pick<
+  Docente,
+  | 'id_docente'
+  | 'condicion'
+  | 'categoriaDocente'
+  | 'regimenDedicacion'
+  | 'tipoContrato'
+  | 'esInvestigadorAcreditado'
+  | 'tipoExtraordinario'
+>;
+
+const ESTADOS_CON_JURADA = ['ENVIADO', 'VALIDADO_DEPARTAMENTO', 'APROBADO', 'RECHAZADO'] as const;
+
+function esCodigoLegacyOpcion(valor: string): boolean {
+  return /^OPCION_\d+$/i.test(valor.trim());
+}
+
+/** Convierte códigos legacy (OPCION_1 … OPCION_9) al texto legal completo. */
+export function textoDesdeCodigoOpcion(codigo: string): string | null {
+  const match = codigo.trim().match(/^OPCION_(\d+)$/i);
+  if (!match) return null;
+  const idx = Number.parseInt(match[1], 10) - 1;
+  if (idx >= 0 && idx < DECLARACIONES_JURADAS.length) {
+    return DECLARACIONES_JURADAS[idx].texto;
+  }
+  return null;
+}
+
+function esTextoJuradaCompleto(valor: string): boolean {
+  const t = valor.trim();
+  return t.startsWith('Soy docente') || t.length > 80;
+}
+
+/** Texto de declaración jurada: usa el guardado al enviar o lo calcula del perfil docente. */
+export function resolverDeclaracionJurada(
+  declaracion: { declaracionJuradaOpcion?: string | null; estado?: string },
+  docente?: DocenteJurada | null
+): string | null {
+  const guardado = declaracion.declaracionJuradaOpcion?.trim();
+
+  if (guardado) {
+    if (esCodigoLegacyOpcion(guardado)) {
+      const desdeCodigo = textoDesdeCodigoOpcion(guardado);
+      if (desdeCodigo) return desdeCodigo;
+    } else if (esTextoJuradaCompleto(guardado)) {
+      return guardado;
+    }
+  }
+
+  if (
+    docente &&
+    declaracion.estado &&
+    ESTADOS_CON_JURADA.includes(declaracion.estado as (typeof ESTADOS_CON_JURADA)[number])
+  ) {
+    return calcularDeclaracionJurada(docente as Docente);
+  }
+
+  if (guardado && esCodigoLegacyOpcion(guardado)) {
+    return textoDesdeCodigoOpcion(guardado);
+  }
+
+  return guardado || null;
+}

@@ -552,7 +552,7 @@ function DashboardLayoutInner({
 
 
 
-        <main className="flex-1 p-4 overflow-x-hidden overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-4 min-w-0 overflow-x-hidden overflow-y-auto">
           <div className="w-full max-w-full">{children}</div>
         </main>
       </div>

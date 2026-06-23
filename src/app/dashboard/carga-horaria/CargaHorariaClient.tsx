@@ -1,6 +1,6 @@
 ﻿'use client';
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { usePeriodo } from '@/contexts/PeriodoContext';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent } from '@/components/ui/card';
@@ -50,6 +50,19 @@ import {
   type TipoContrato as TipoContratoType 
 } from '@/lib/constants/regimenHoras';
 import { MatrizDisponibilidad } from '@/components/horarios/MatrizDisponibilidad';
+import {
+  actividadPermitidaParaRegimen,
+  ETIQUETAS_ART_12_4,
+  getClaveRegimenHoras,
+  getEtiquetaLimiteActividad,
+  getMaxHorasActividadNoLectiva,
+  getTrabajoLectivoSemanal,
+  horasDesdeHorarios,
+  LIMITES_ART_12_4,
+  minutosDesdeHorarios,
+  SIGLAS_REGIMEN,
+  type ClaveRegimenHoras,
+} from '@/lib/carga-no-lectiva/reglasHoras';
 
 const CONDICION_OPCIONES = [
   { value: 'ORDINARIO', label: 'Ordinario (Nombrado)' },
@@ -503,28 +516,24 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   };
 
   const getHorasNoLectivas = (carga: any) => {
-    const minutos = (carga.horarios || []).reduce((s: number, h: any) => {
-      try {
-        const start = parse(h.horaInicio, 'HH:mm', new Date());
-        const end = parse(h.horaFin, 'HH:mm', new Date());
-        return s + Math.max(0, (end.getTime() - start.getTime()) / 60000);
-      } catch (e) {
-        return s;
-      }
-    }, 0);
-
+    const minutos = minutosDesdeHorarios(carga.horarios || []);
     if (minutos > 0) {
       return Math.round((minutos / 60) * 100) / 100;
     }
-
     return carga.horas_semanales || 0;
   };
 
-  const totalLectivas = cargasLectivas.reduce((sum, c) => {
-    const grupos = c.grupos_asignados || 0;
-    const horas = c.horas_semanales || 0;
-    return sum + (grupos * horas);
-  }, 0);
+  const trabajoLectivo = useMemo(
+    () => getTrabajoLectivoSemanal(cargasLectivas),
+    [cargasLectivas]
+  );
+
+  const claveRegimenDocente = useMemo(
+    () => getClaveRegimenHoras(initialDocente),
+    [initialDocente]
+  );
+
+  const totalLectivas = trabajoLectivo;
   const totalNoLectivas = cargasNoLectivas.reduce((sum, c) => sum + getHorasNoLectivas(c), 0);
   const totalGeneral = totalLectivas + totalNoLectivas;
 
@@ -540,6 +549,69 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   }, {} as Record<number, { curso: any; cargas: any[] }>);
   
   const cursosArray = Object.values(cargasPorCurso) as Array<{ curso: any; cargas: any[] }>;
+
+  const cargaLectivaAsignada = useMemo(() => {
+    const seen = new Set<number>();
+    const rows: Array<{
+      id_curso: number;
+      codigo: string;
+      nombre: string;
+      tipo: string;
+      escuela: string;
+      ciclo: string;
+      ht: number;
+      hp: number;
+      hl: number;
+      total: number;
+    }> = [];
+
+    for (const carga of cargasLectivas) {
+      if (!carga.id_curso || seen.has(carga.id_curso)) continue;
+      seen.add(carga.id_curso);
+
+      const curso =
+        carga.curso ||
+        (Array.isArray(cursos) ? cursos : []).find((c) => c.id_curso === carga.id_curso);
+      if (!curso) continue;
+
+      const ht = curso.horas_teoria || 0;
+      const hp = curso.horas_practica || 0;
+      const hl = curso.horas_laboratorio || 0;
+      const escuelaNombre =
+        curso.escuela?.nombre ||
+        curso.departamento_responsable ||
+        curso.departamento?.nombre ||
+        '—';
+
+      rows.push({
+        id_curso: carga.id_curso,
+        codigo: curso.codigo,
+        nombre: curso.nombre,
+        tipo: curso.tipo_curso || 'linea_carrera',
+        escuela: escuelaNombre.replace(/^Ingeniería de /i, ''),
+        ciclo: curso.ciclo_rel?.nombre || '—',
+        ht,
+        hp,
+        hl,
+        total: ht + hp + hl,
+      });
+    }
+
+    return rows;
+  }, [cargasLectivas, cursos]);
+
+  const totalCargaLectivaAsignada = cargaLectivaAsignada.reduce((sum, row) => sum + row.total, 0);
+
+  const getTipoCursoBadge = (tipo: string) => {
+    const labels: Record<string, string> = {
+      obligatorio: 'OB',
+      especializacion: 'ES',
+      electivo: 'EL',
+      opcional: 'OP',
+      linea_carrera: 'LC',
+    };
+    return labels[tipo] || tipo.slice(0, 2).toUpperCase();
+  };
 
   // Verificar si el estado de la declaración permite editar no lectiva
   const puedeEditarNoLectiva = declaracion && (
@@ -656,19 +728,29 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
 
     // Calcular minutos asignados actuales
-    const minutosAsignados = (existentes || []).reduce((s: number, h: any) => {
-      try {
-        const start = parse(h.horaInicio, 'HH:mm', new Date());
-        const end = parse(h.horaFin, 'HH:mm', new Date());
-        return s + Math.max(0, (end.getTime() - start.getTime()) / 60000);
-      } catch (e) {
-        return s;
-      }
-    }, 0);
+    const minutosAsignados = minutosDesdeHorarios(existentes);
 
-    const bloqueMinutos = 60; // actualmente se añade 60 min por bloque
-    if (carga.horas_semanales && (minutosAsignados + bloqueMinutos) > (carga.horas_semanales * 60)) {
-      toast.error('No puede asignar más bloques: excede las horas semanales declaradas para esta actividad');
+    const bloqueMinutos = 60;
+    const maxHorasActividad = getMaxHorasActividadNoLectiva(
+      carga.tipo,
+      initialDocente,
+      trabajoLectivo
+    );
+
+    if (maxHorasActividad !== null && maxHorasActividad === 0) {
+      toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
+      return;
+    }
+
+    if (
+      maxHorasActividad !== null &&
+      minutosAsignados + bloqueMinutos > maxHorasActividad * 60
+    ) {
+      const detalle =
+        carga.tipo === 'PREPARACION_EVALUACION'
+          ? ` (máx. 50% del trabajo lectivo: ${trabajoLectivo}h → ${maxHorasActividad}h)`
+          : ' (Art. 12.4)';
+      toast.error(`No puede asignar más bloques: el máximo para esta actividad es ${maxHorasActividad}h${detalle}`);
       return;
     }
 
@@ -947,48 +1029,64 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         </Card>
       </div>
 
-      {/* Horarios Lectivos Confirmados (Solo Lectura) */}
+      {/* Carga Lectiva Asignada (Solo Lectura) */}
       <Card className="p-4 shadow-sm border-border overflow-hidden">
         <div className="px-4 py-3 border-b border-border bg-muted/30 flex justify-between items-center">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <Calendar size={16} className="text-emerald-500 dark:text-emerald-400" />
-            Horarios Lectivos Confirmados
+            <BookOpen size={16} className="text-blue-500 dark:text-blue-400" />
+            Carga Lectiva Asignada
           </h3>
-          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50">
-            {horariosLectivos.length} bloques
+          <Badge variant="secondary" className="bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 border-blue-200 dark:border-blue-900/50 font-bold uppercase tracking-wide">
+            Total: {totalCargaLectivaAsignada}h
           </Badge>
         </div>
-        <CardContent className="p-4">
-          {horariosLectivos.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              <p>No hay horarios lectivos confirmados aún.</p>
+        <CardContent className="p-0">
+          {cargaLectivaAsignada.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground px-4">
+              <p>No hay carga lectiva asignada aún.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Curso</TableHead>
-                    <TableHead>Día</TableHead>
-                    <TableHead>Hora</TableHead>
-                    <TableHead>Ambiente</TableHead>
-                    <TableHead>Tipo</TableHead>
+                <TableHeader className="bg-muted/30">
+                  <TableRow className="hover:bg-transparent">
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Código</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Curso</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">Tipo</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Escuela</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">Ciclo</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HT</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HP</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HL</TableHead>
+                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {horariosLectivos.map((h: any, idx: number) => (
-                    <TableRow key={h.id_asignacion ?? `horario-${idx}`}>
-                      <TableCell className="font-medium">{h.curso_nombre}</TableCell>
-                      <TableCell>{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana]}</TableCell>
-                      <TableCell>{h.hora_inicio} - {h.hora_fin}</TableCell>
-                      <TableCell>{h.ambiente_nombre || h.ambiente_codigo || '—'}</TableCell>
-                      <TableCell>
-                        <Badge variant="outline" className="text-[10px]">
-                          {h.tipo_clase}
+                  {cargaLectivaAsignada.map((row) => (
+                    <TableRow key={row.id_curso} className="hover:bg-muted/20">
+                      <TableCell className="px-4 py-3 text-xs font-medium text-foreground">{row.codigo}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs font-medium text-foreground">{row.nombre}</TableCell>
+                      <TableCell className="px-4 py-3 text-center">
+                        <Badge variant="outline" className="text-[10px] font-bold px-2 py-0">
+                          {getTipoCursoBadge(row.tipo)}
                         </Badge>
                       </TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-foreground">{row.escuela}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-center font-medium text-foreground">{row.ciclo}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-center text-foreground">{row.ht}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-center text-foreground">{row.hp}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-center text-foreground">{row.hl}</TableCell>
+                      <TableCell className="px-4 py-3 text-xs text-right font-bold text-foreground">{row.total}h</TableCell>
                     </TableRow>
                   ))}
+                  <TableRow className="bg-blue-50/60 dark:bg-blue-950/20 hover:bg-blue-50/60 dark:hover:bg-blue-950/20 border-t border-border">
+                    <TableCell colSpan={8} className="px-4 py-3 text-xs font-bold uppercase text-foreground tracking-wide">
+                      Total Carga Lectiva
+                    </TableCell>
+                    <TableCell className="px-4 py-3 text-sm text-right font-black text-blue-600 dark:text-blue-400">
+                      {totalCargaLectivaAsignada}h
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>
@@ -1008,7 +1106,62 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           </Badge>
         </div>
         <CardContent className="p-0">
-          <div className="p-4">
+          <div className="p-4 space-y-4">
+            <details className="rounded-lg border border-border bg-muted/20 p-3">
+              <summary className="text-[11px] font-bold text-foreground cursor-pointer select-none">
+                Límites máximos Art. 12.4 — su régimen: {claveRegimenDocente ?? 'No definido'}
+                {claveRegimenDocente && (
+                  <span className="font-normal text-muted-foreground ml-1">
+                    ({SIGLAS_REGIMEN[claveRegimenDocente]})
+                  </span>
+                )}
+              </summary>
+              <div className="mt-3 overflow-x-auto">
+                <p className="text-[10px] text-muted-foreground mb-2">
+                  Preparación y Evaluación: máx. 50% del trabajo lectivo (redondeo a la baja).
+                  «—» o 0 = no puede asignar horas a esa actividad.
+                </p>
+                <table className="w-full min-w-[640px] text-[10px] border-collapse">
+                  <thead>
+                    <tr className="bg-muted/50">
+                      <th className="border border-border px-2 py-1 text-left font-bold">Actividad</th>
+                      {(['DE', 'TC', 'TP1', 'TP2', 'TP3', 'A1B1', 'A2B2'] as ClaveRegimenHoras[]).map((k) => (
+                        <th key={k} className={cn(
+                          "border border-border px-1 py-1 font-bold text-center",
+                          k === claveRegimenDocente && "bg-primary/15 text-primary"
+                        )}>
+                          {k === 'A1B1' ? 'A1/B1' : k === 'A2B2' ? 'A2/B2' : k}
+                        </th>
+                      ))}
+                    </tr>
+                  </thead>
+                  <tbody>
+                    {Object.entries(LIMITES_ART_12_4).map(([tipo, limites]) => (
+                      <tr key={tipo}>
+                        <td className="border border-border px-2 py-1 font-medium">{ETIQUETAS_ART_12_4[tipo]}</td>
+                        {(['DE', 'TC', 'TP1', 'TP2', 'TP3', 'A1B1', 'A2B2'] as ClaveRegimenHoras[]).map((k) => (
+                          <td
+                            key={k}
+                            className={cn(
+                              "border border-border px-1 py-1 text-center",
+                              k === claveRegimenDocente && "bg-primary/10 font-bold"
+                            )}
+                          >
+                            {limites[k] === 0 ? '—' : limites[k]}
+                          </td>
+                        ))}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+                <div className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-1 text-[9px] text-muted-foreground">
+                  {(Object.entries(SIGLAS_REGIMEN) as [ClaveRegimenHoras, string][]).map(([k, v]) => (
+                    <p key={k}><span className="font-bold text-foreground">{k === 'A1B1' ? 'A1/B1' : k === 'A2B2' ? 'A2/B2' : k === 'A3B3' ? 'A3/B3' : k}:</span> {v}</p>
+                  ))}
+                </div>
+              </div>
+            </details>
+
             {/* Shared matrix for no-lectiva */}
             {actividadNoLectivaSeleccionada && (
               <div className="mb-4">
@@ -1039,6 +1192,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               {cargasNoLectivas.map((carga, index) => {
                 const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
                 const requiereDocumento = TIPOS_QUE_REQUIEREN_DOCUMENTO.has(carga.tipo);
+                const etiquetaLimite = getEtiquetaLimiteActividad(carga.tipo, initialDocente, trabajoLectivo);
+                const actividadPermitida = actividadPermitidaParaRegimen(carga.tipo, initialDocente, trabajoLectivo);
                 const colors = [
                   { bg: 'bg-rose-50/40 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-100 dark:border-rose-900/50' },
                   { bg: 'bg-amber-50/40 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/50' },
@@ -1061,6 +1216,16 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                         )}
                       </div>
                       <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{tipoInfo?.descripcion}</p>
+                      {etiquetaLimite && (
+                        <p className={cn(
+                          "text-[10px] font-bold mt-1",
+                          etiquetaLimite.includes('No permitida')
+                            ? "text-rose-600 dark:text-rose-400"
+                            : "text-indigo-600 dark:text-indigo-400"
+                        )}>
+                          {etiquetaLimite}
+                        </p>
+                      )}
                     </TableCell>
                     <TableCell className="px-4 py-3 space-y-3">
                       {/* Descripción / Documento */}
@@ -1175,11 +1340,26 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                               <Button
                                 size="sm"
                                 variant={actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'destructive' : 'outline'}
-                                onClick={() => setActividadNoLectivaSeleccionada(actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? null : carga.id_carga_no_lectiva)}
+                                disabled={!actividadPermitida}
+                                onClick={() => {
+                                  if (!actividadPermitida) {
+                                    toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
+                                    return;
+                                  }
+                                  setActividadNoLectivaSeleccionada(
+                                    actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
+                                      ? null
+                                      : carga.id_carga_no_lectiva
+                                  );
+                                }}
                               >
                                 {actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'Cerrar matriz' : 'Seleccionar actividad'}
                               </Button>
-                              <div className="text-xs text-muted-foreground">Seleccione la actividad y luego haga clic en los bloques libres de la matriz compartida.</div>
+                              <div className="text-xs text-muted-foreground">
+                                {actividadPermitida
+                                  ? 'Seleccione la actividad y luego haga clic en los bloques libres de la matriz compartida.'
+                                  : 'Esta actividad no aplica para su régimen horario.'}
+                              </div>
                             </>
                           ) : (
                             <div className="text-sm text-muted-foreground">
@@ -1205,19 +1385,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                         <Input
                           type="number"
                           className={cn("bg-background border-border h-8 w-16 text-center font-black text-sm shadow-none", color.text)}
-                          value={(() => {
-                            const minutos = (carga.horarios || []).reduce((s: number, h: any) => {
-                              try {
-                                const start = parse(h.horaInicio, 'HH:mm', new Date());
-                                const end = parse(h.horaFin, 'HH:mm', new Date());
-                                return s + Math.max(0, (end.getTime() - start.getTime()) / 60000);
-                              } catch (e) {
-                                return s;
-                              }
-                            }, 0);
-
-                            return Math.round(minutos / 60);
-                          })()}
+                          value={horasDesdeHorarios(carga.horarios || [])}
                           disabled={true}
                         />
                         <span className={cn("text-xs font-bold", color.text)}>h</span>

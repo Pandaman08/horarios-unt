@@ -3,6 +3,7 @@
 import { useState, useMemo } from "react";
 import { cn } from "@/lib/utils";
 import { format, addMinutes, parse } from "date-fns";
+import { toast } from "sonner";
 import { 
   CheckCircle2, 
   Loader2,
@@ -31,6 +32,8 @@ interface Props {
   onCancel: () => void;
   docenteNombre: string;
   isReadOnly?: boolean;
+  horasMaximas?: number;
+  etiquetaRegimen?: string;
 }
 
 const DIAS = [
@@ -47,7 +50,9 @@ export function MatrizDisponibilidadDocente({
   onSave,
   onCancel,
   docenteNombre,
-  isReadOnly = false
+  isReadOnly = false,
+  horasMaximas = 0,
+  etiquetaRegimen = "",
 }: Props) {
   const [loading, setLoading] = useState(false);
   const [showConfirm, setShowConfirm] = useState(false);
@@ -74,9 +79,23 @@ export function MatrizDisponibilidadDocente({
     return slots;
   }, []);
 
+  const totalDisponibles = useMemo(
+    () => Object.values(matriz).filter(Boolean).length,
+    [matriz]
+  );
+
   const handleToggle = (dia: number, hora: string) => {
     if (isReadOnly) return;
     const key = `${dia}-${hora}`;
+    const currentlyAvailable = !!matriz[key];
+
+    if (!currentlyAvailable && horasMaximas > 0 && totalDisponibles >= horasMaximas) {
+      toast.warning(
+        `Máximo ${horasMaximas}h semanales${etiquetaRegimen ? ` (${etiquetaRegimen})` : ""}`
+      );
+      return;
+    }
+
     setMatriz(prev => {
       const newState = { ...prev };
       if (newState[key]) {
@@ -109,13 +128,17 @@ export function MatrizDisponibilidadDocente({
           });
         });
       });
+
+      if (horasMaximas > 0 && totalDisponibles > horasMaximas) {
+        toast.error(`La disponibilidad (${totalDisponibles}h) excede el máximo de ${horasMaximas}h semanales.`);
+        return;
+      }
+
       await onSave(dataToSave);
     } finally {
       setLoading(false);
     }
   };
-
-  const totalDisponibles = Object.values(matriz).filter(Boolean).length;
 
   return (
     <div className="flex flex-col bg-card rounded-lg">
@@ -137,10 +160,24 @@ export function MatrizDisponibilidadDocente({
 
       <div className="p-2 overflow-auto max-h-[65vh]">
         <div className="bg-background rounded-md border border-border shadow-sm overflow-hidden">
-          <div className="px-2 py-1.5 border-b border-border bg-muted/40 flex items-center justify-between">
-            <span className="text-[7px] font-bold text-muted-foreground uppercase tracking-wider">
-              Total disponibles: <span className="text-primary font-black">{totalDisponibles}</span>h
-            </span>
+          <div className="px-2 py-1.5 border-b border-border bg-muted/40 flex items-center justify-between gap-2">
+            <div className="flex flex-col gap-0.5">
+              <span className="text-[7px] font-bold text-muted-foreground uppercase tracking-wider">
+                Total disponibles:{" "}
+                <span className={cn(
+                  "font-black",
+                  horasMaximas > 0 && totalDisponibles > horasMaximas ? "text-destructive" : "text-primary"
+                )}>
+                  {totalDisponibles}
+                </span>
+                {horasMaximas > 0 && (
+                  <span className="text-muted-foreground"> / {horasMaximas}h máx.</span>
+                )}
+              </span>
+              {etiquetaRegimen && (
+                <span className="text-[6.5px] text-muted-foreground font-medium">{etiquetaRegimen}</span>
+              )}
+            </div>
             <div className="flex items-center gap-1.5 text-[6.5px] text-muted-foreground">
               <span className="w-2 h-2 rounded-full bg-primary"></span> Disponible
             </div>

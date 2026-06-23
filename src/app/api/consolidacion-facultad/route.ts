@@ -8,6 +8,9 @@ export async function GET(request: Request) {
   if (!session) {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
+  if (!['decano', 'administrador_sistema', 'operador_horarios'].includes(session.user.rol)) {
+    return NextResponse.json({ error: 'No autorizado' }, { status: 403 });
+  }
 
   const { searchParams } = new URL(request.url);
   const idPeriodo = parseInt(searchParams.get('idPeriodo') || '0');

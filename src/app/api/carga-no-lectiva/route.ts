@@ -1,5 +1,10 @@
 ﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import {
+  getMaxHorasActividadNoLectiva,
+  getTrabajoLectivoSemanal,
+  horasDesdeHorarios,
+} from '@/lib/carga-no-lectiva/reglasHoras';
 
 interface HorarioPayload {
   horaInicio?: string;
@@ -7,19 +12,7 @@ interface HorarioPayload {
 }
 
 const calcularHorasSemanales = (horarios: HorarioPayload[]): number => {
-  const minutos = (horarios || []).reduce((sum: number, horario: HorarioPayload) => {
-    const inicio = horario?.horaInicio;
-    const fin = horario?.horaFin;
-    if (typeof inicio !== 'string' || typeof fin !== 'string') return sum;
-    const [hi, mi] = inicio.split(':').map(Number);
-    const [hf, mf] = fin.split(':').map(Number);
-    if ([hi, mi, hf, mf].some(n => Number.isNaN(n))) return sum;
-    const fechaInicio = new Date(0, 0, 0, hi, mi);
-    const fechaFin = new Date(0, 0, 0, hf, mf);
-    return sum + Math.max(0, (fechaFin.getTime() - fechaInicio.getTime()) / 60000);
-  }, 0);
-
-  return Math.round(minutos / 60);
+  return horasDesdeHorarios(horarios);
 };
 
 export async function POST(request: Request) {
@@ -52,6 +45,24 @@ export async function PUT(request: Request) {
       return NextResponse.json({ error: 'Faltan datos' }, { status: 400 });
     }
 
+    const declaracion = await prisma.declaracionHoraria.findUnique({
+      where: { id_declaracion },
+      include: {
+        docente: {
+          select: { condicion: true, regimenDedicacion: true, tipoContrato: true },
+        },
+        cargas_lectivas: {
+          select: { horas_semanales: true, grupos_asignados: true },
+        },
+      },
+    });
+
+    if (!declaracion) {
+      return NextResponse.json({ error: 'Declaración no encontrada' }, { status: 404 });
+    }
+
+    const trabajoLectivo = getTrabajoLectivoSemanal(declaracion.cargas_lectivas);
+
     // Upsert each carga no lectiva
     for (const carga of cargas) {
       let cargaCreadaOActualizada;
@@ -61,6 +72,30 @@ export async function PUT(request: Request) {
         horasSemanales = calcularHorasSemanales(carga.horarios);
       } else if (typeof carga.horas_semanales === 'number') {
         horasSemanales = carga.horas_semanales;
+      }
+
+      const maxHoras = getMaxHorasActividadNoLectiva(
+        carga.tipo,
+        declaracion.docente,
+        trabajoLectivo
+      );
+      if (maxHoras !== null) {
+        if (maxHoras === 0 && horasSemanales > 0) {
+          return NextResponse.json(
+            {
+              error: `La actividad ${carga.tipo} no está permitida para el régimen del docente (Art. 12.4)`,
+            },
+            { status: 400 }
+          );
+        }
+        if (horasSemanales > maxHoras) {
+          return NextResponse.json(
+            {
+              error: `La actividad ${carga.tipo} excede el máximo permitido (${maxHoras}h semanales)`,
+            },
+            { status: 400 }
+          );
+        }
       }
 
       if (carga.id_carga_no_lectiva && typeof carga.id_carga_no_lectiva === 'number') {

@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import React, { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { 
   Search, 
   Calendar, 
@@ -237,7 +236,11 @@ export default function AsignacionCargaLectivaPage() {
 
   const fetchMallas = async () => {
     try {
-      const res = await fetch("/api/mallas-curriculares");
+      let url = "/api/mallas-curriculares";
+      if (departamentoSeleccionado) {
+        url += `?departamentoId=${departamentoSeleccionado.id}`;
+      }
+      const res = await fetch(url);
       const data = await res.json();
       setMallas(Array.isArray(data) ? data : []);
     } catch (error) {
@@ -260,8 +263,8 @@ export default function AsignacionCargaLectivaPage() {
   const handleEditCarga = async (docente: DocenteDisp) => {
     setEditingDocente(docente);
     setLoadingModal(true);
-    setSelectedMalla("all"); // Reiniciar la selección de malla
-    setMallaFilaInicial("all"); // Reiniciar la malla de la fila inicial
+    setSelectedMalla("all");
+    setMallaFilaInicial("all");
     if (!selectedPeriodo) return;
 
     try {
@@ -435,6 +438,12 @@ export default function AsignacionCargaLectivaPage() {
     ];
     setAllCargasLectivas(finalUpdatedAllCargas);
     
+    // Si el filtro de malla ocultaría el curso recién agregado, mostrar todas las filas
+    const mallaCurso = cursoSeleccionado?.malla_rel?.id_malla?.toString();
+    if (selectedMalla !== "all" && mallaCurso && mallaCurso !== selectedMalla) {
+      setSelectedMalla("all");
+    }
+    
     // También actualizar cargasLectivas para reflejar la nueva fila vacía
     setCargasLectivas((prev) => {
       const filasNormales = prev.filter((_, idx) => idx !== 0);
@@ -539,46 +548,33 @@ export default function AsignacionCargaLectivaPage() {
   const periodoActualObj = periodos.find(p => p.id_periodo.toString() === selectedPeriodo);
   const esLectura = !periodoActualObj?.activo || periodoActualObj?.estado === 'finalizado';
 
-  // Filtrar cursos habilitados para el semestre y malla
-  const cursosVisibles = cursos.filter(c => {
-    // Verificar malla
-    const matchesMalla = selectedMalla === "all" || 
-      (c.malla_rel && c.malla_rel.id_malla.toString() === selectedMalla);
-    
-    // Verificar semestre
-    let matchesSemestre = true;
-    if (filtrarPorSemestre && periodoActualObj && c.ciclo_rel) {
-      if (periodoActualObj.semestre === 1) {
-        matchesSemestre = c.ciclo_rel.numero % 2 !== 0; // Semestre 1 = ciclos impares
-      } else {
-        matchesSemestre = c.ciclo_rel.numero % 2 === 0; // Semestre 2 = ciclos pares
+  const filtrarCursosPorMallaYSemestre = (mallaId: string) => {
+    return cursos.filter(c => {
+      const matchesMalla =
+        mallaId === "all" ||
+        (c.malla_rel && c.malla_rel.id_malla.toString() === mallaId);
+
+      let matchesSemestre = true;
+      if (filtrarPorSemestre && periodoActualObj && c.ciclo_rel) {
+        if (periodoActualObj.semestre === 1) {
+          matchesSemestre = c.ciclo_rel.numero % 2 !== 0;
+        } else {
+          matchesSemestre = c.ciclo_rel.numero % 2 === 0;
+        }
       }
-    }
-    
-    return matchesMalla && matchesSemestre;
-  });
-  
-  // Filtrar cursos específicamente para la fila inicial
-  const cursosFilaInicial = cursos.filter(c => {
-    // Determinar qué malla usar
-    const mallaAUsar = selectedMalla === "all" ? mallaFilaInicial : selectedMalla;
-    
-    // Verificar malla
-    const matchesMalla = mallaAUsar === "all" || 
-      (c.malla_rel && c.malla_rel.id_malla.toString() === mallaAUsar);
-    
-    // Verificar semestre
-    let matchesSemestre = true;
-    if (filtrarPorSemestre && periodoActualObj && c.ciclo_rel) {
-      if (periodoActualObj.semestre === 1) {
-        matchesSemestre = c.ciclo_rel.numero % 2 !== 0; // Semestre 1 = ciclos impares
-      } else {
-        matchesSemestre = c.ciclo_rel.numero % 2 === 0; // Semestre 2 = ciclos pares
-      }
-    }
-    
-    return matchesMalla && matchesSemestre;
-  });
+
+      return matchesMalla && matchesSemestre;
+    });
+  };
+
+  const formatCursoLabel = (curso: Curso, includeMalla = false) => {
+    const ciclo = curso.ciclo_rel ? ` (C${curso.ciclo_rel.numero})` : "";
+    const malla = includeMalla && curso.malla_rel?.nombre ? ` · ${curso.malla_rel.nombre}` : "";
+    return `${curso.codigo} - ${curso.nombre}${ciclo}${malla}`;
+  };
+
+  const cursosParaNuevaFila = filtrarCursosPorMallaYSemestre(mallaFilaInicial);
+  const cursosParaEditarFila = filtrarCursosPorMallaYSemestre("all");
 
   return (
     <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-4 animate-in fade-in duration-500">
@@ -727,7 +723,7 @@ export default function AsignacionCargaLectivaPage() {
       </div>
 
       <Dialog open={!!editingDocente} onOpenChange={(open) => !open && setEditingDocente(null)}>
-        <DialogContent className="max-w-[95vw] md:max-w-[85vw] lg:max-w-[900px] max-h-[90vh] flex flex-col p-6 rounded-xl overflow-hidden">
+        <DialogContent className="max-w-[95vw] md:max-w-[90vw] lg:max-w-[980px] max-h-[90vh] flex flex-col p-6 rounded-xl overflow-hidden">
           <DialogTitle className="flex items-center gap-2 text-xl font-black">
             <BookOpen className="h-5 w-5 text-primary" />
             Asignación de Carga Lectiva
@@ -737,7 +733,7 @@ export default function AsignacionCargaLectivaPage() {
           </DialogDescription>
           
           <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between mb-2 gap-3">
-            <div className="flex items-center gap-4">
+            <div className="flex flex-wrap items-center gap-4">
               <div className="flex items-center gap-2">
                 <input 
                   type="checkbox" 
@@ -747,22 +743,25 @@ export default function AsignacionCargaLectivaPage() {
                   className="h-4 w-4 rounded border-gray-300 text-primary focus:ring-primary"
                 />
                 <Label htmlFor="filterSemestre" className="text-xs font-semibold cursor-pointer">
-                  Mostrar cursos habilitados para el Semestre {periodoActualObj?.semestre === 1 ? "I" : "II"}
+                  Cursos del Semestre {periodoActualObj?.semestre === 1 ? "I" : "II"}
                 </Label>
               </div>
-              <Select value={selectedMalla} onValueChange={setSelectedMalla}>
-                <MarqueeSelectTrigger className="w-[180px] h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
-                  <SelectValue placeholder="Malla Curricular" />
-                </MarqueeSelectTrigger>
-                <SelectContent className="rounded-xl">
-                  <SelectItem value="all" className="text-[10px] font-bold">Todas las mallas</SelectItem>
-                  {mallas.map((m) => (
-                    <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[10px] font-bold">
-                      {m.nombre}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-0.5">
+                <Select value={selectedMalla} onValueChange={setSelectedMalla}>
+                  <MarqueeSelectTrigger className="w-[200px] h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+                    <SelectValue placeholder="Filtrar filas por malla" />
+                  </MarqueeSelectTrigger>
+                  <SelectContent className="rounded-xl">
+                    <SelectItem value="all" className="text-[10px] font-bold">Ver todas las mallas</SelectItem>
+                    {mallas.map((m) => (
+                      <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[10px] font-bold">
+                        {m.nombre}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+                <p className="text-[9px] text-muted-foreground">Solo filtra filas ya asignadas</p>
+              </div>
             </div>
           </div>
 
@@ -778,16 +777,15 @@ export default function AsignacionCargaLectivaPage() {
                 const curso = cursos.find(c => c.id_curso === carga.id_curso);
                 
                 return (
-                <div key={index} className="grid grid-cols-12 gap-4 items-end p-4 bg-muted/30 rounded-lg border border-border relative">
-                  {esFilaVacia && selectedMalla === "all" && (
-                    <div className={`col-span-12 sm:col-span-2 lg:col-span-2 space-y-1 ${!(esFilaVacia && selectedMalla === "all") ? "hidden" : ""}`}>
-                      <Label className="text-[10px] uppercase font-bold text-muted-foreground">Plan de Estudios</Label>
+                <div key={index} className="grid grid-cols-12 gap-3 sm:gap-4 items-end p-4 bg-muted/30 rounded-lg border border-border relative">
+                  <div className="col-span-12 sm:col-span-3 space-y-1">
+                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Malla curricular</Label>
+                    {esFilaVacia ? (
                       <Select
                         disabled={esLectura}
                         value={mallaFilaInicial}
                         onValueChange={(value) => {
                           setMallaFilaInicial(value);
-                          // Limpiar el curso seleccionado si cambiamos de malla
                           const nuevasCargas = [...cargasLectivas];
                           nuevasCargas[0].id_curso = 0;
                           nuevasCargas[0].horas_semanales = 0;
@@ -809,17 +807,24 @@ export default function AsignacionCargaLectivaPage() {
                           ))}
                         </SelectContent>
                       </Select>
-                      <div className="min-h-[18px]"></div>
-                    </div>
-                  )}
-                  <div className={`space-y-1 ${esFilaVacia && selectedMalla === "all" ? "col-span-12 sm:col-span-4 lg:col-span-4" : "col-span-12 sm:col-span-6 lg:col-span-6"}`}>
+                    ) : (
+                      <div
+                        className="h-8 px-2 flex items-center rounded-lg border border-border bg-muted/50 text-[10px] font-bold text-muted-foreground truncate"
+                        title={curso?.malla_rel?.nombre || "Sin malla"}
+                      >
+                        {curso?.malla_rel?.nombre || "—"}
+                      </div>
+                    )}
+                    <div className="min-h-[18px]"></div>
+                  </div>
+                  <div className="col-span-12 sm:col-span-5 space-y-1">
                     <Label className="text-[10px] uppercase font-bold text-muted-foreground">Curso</Label>
                     {esFilaVacia ? (
                       <SearchableSelect
                         disabled={esLectura}
-                        options={cursosFilaInicial.map((curso) => ({
+                        options={cursosParaNuevaFila.map((curso) => ({
                           value: curso.id_curso.toString(),
-                          label: `${curso.codigo} - ${curso.nombre}${curso.ciclo_rel ? ` (C${curso.ciclo_rel.numero})` : ''}`
+                          label: formatCursoLabel(curso, mallaFilaInicial === "all")
                         }))}
                         placeholder="Buscar curso por código o nombre"
                         value={carga.id_curso?.toString() || ""}
@@ -831,7 +836,7 @@ export default function AsignacionCargaLectivaPage() {
                           
                           // Actualizar horas y tipo de clase automáticamente
                           if (value) {
-                            const cursoSeleccionado = cursosFilaInicial.find(c => c.id_curso.toString() === value);
+                            const cursoSeleccionado = cursosParaNuevaFila.find(c => c.id_curso.toString() === value);
                             if (cursoSeleccionado) {
                               // Verificar si el tipo de clase actual es válido para este curso
                               let tipoValido = false;
@@ -866,9 +871,9 @@ export default function AsignacionCargaLectivaPage() {
                     ) : (
                       <SearchableSelect
                         disabled={esLectura}
-                        options={cursosVisibles.map((curso) => ({
+                        options={cursosParaEditarFila.map((curso) => ({
                           value: curso.id_curso.toString(),
-                          label: `${curso.codigo} - ${curso.nombre}${curso.ciclo_rel ? ` (C${curso.ciclo_rel.numero})` : ''}`
+                          label: formatCursoLabel(curso, false)
                         }))}
                         placeholder="Seleccionar curso"
                         value={carga.id_curso?.toString() || ""}
@@ -879,7 +884,7 @@ export default function AsignacionCargaLectivaPage() {
                           
                           // Actualizar horas y tipo de clase automáticamente
                           if (value) {
-                            const cursoSeleccionado = cursosVisibles.find(c => c.id_curso.toString() === value);
+                            const cursoSeleccionado = cursosParaEditarFila.find(c => c.id_curso.toString() === value);
                             if (cursoSeleccionado) {
                               // Verificar si el tipo de clase actual es válido para este curso
                               let tipoValido = false;

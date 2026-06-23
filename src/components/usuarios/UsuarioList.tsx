@@ -327,91 +327,90 @@ export function UsuarioList() {
   const [deletingId, setDeletingId] = useState<number | null>(null);
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-5 rounded-2xl border border-border shadow-sm">
-        <div className="flex items-center gap-4">
-          <div className="h-12 w-12 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm">
-            <ShieldCheck className="h-6 w-6 text-primary" />
+    <div className="space-y-4 animate-in fade-in duration-500">
+      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
+          <div className="flex items-center gap-3">
+            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
+              <ShieldCheck className="h-4 w-4 text-primary" />
+            </div>
+            <div>
+              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Usuarios</h2>
+              <p className="text-muted-foreground text-[10px] mt-1">Gestión de accesos y privilegios</p>
+            </div>
           </div>
-          <div>
-            <h2 className="text-[20px] font-black text-foreground tracking-tight">Usuarios del Sistema</h2>
-            <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest leading-none mt-1">Gestión de Accesos y Privilegios</p>
-          </div>
-        </div>
 
-        <div className="flex flex-wrap items-center gap-3 w-full sm:w-auto">
-          <div className="relative flex-1 sm:min-w-[320px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input 
-              placeholder="Buscar por nombre, código o email..." 
-              className="pl-11 h-11 rounded-xl border-border bg-muted/20 font-bold text-[13px] focus:ring-2 focus:ring-primary focus:bg-card transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
-          </div>
-          <Dialog open={isDialogOpen} onOpenChange={(open) => {
-            setIsDialogOpen(open);
-            if (!open) {
-              setEditingUsuario(null);
-              resetForm();
-            }
-          }}>
-            <DialogTrigger asChild>
-              <Button className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-6 font-bold text-[13px] shadow-lg shadow-primary/10 transition-all active:scale-95">
-                <UserPlus className="mr-2 h-4 w-4" /> Nuevo Registro
-              </Button>
-            </DialogTrigger>
-            <DialogContent className="w-[95vw] md:max-w-xl lg:max-w-2xl rounded-lg p-0 border-none shadow-xl overflow-hidden bg-card">
-              <div className="bg-primary p-3 text-primary-foreground">
-                <div className="flex items-center gap-2.5">
-                  <div className="h-8 w-8 bg-white/10 backdrop-blur-md rounded-md flex items-center justify-center border border-white/20">
-                    <UserCircle2 className="h-4 w-4 text-white" />
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 w-full sm:w-auto">
+            <div className="relative flex-1 sm:min-w-[200px]">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar por nombre, código o email..."
+                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            <Dialog open={isDialogOpen} onOpenChange={(open) => {
+              setIsDialogOpen(open);
+              if (!open) {
+                setEditingUsuario(null);
+                resetForm();
+              }
+            }}>
+              <DialogTrigger asChild>
+                <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                  <UserPlus className="mr-2 h-3.5 w-3.5" /> Nuevo Usuario
+                </Button>
+              </DialogTrigger>
+              <DialogContent className="sm:max-w-2xl rounded-xl p-6 border-none shadow-2xl bg-card text-foreground max-h-[90vh] overflow-y-auto">
+                <DialogHeader className="mb-6">
+                  <div className="flex items-center gap-3">
+                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
+                      <UserCircle2 className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                        {editingUsuario ? "Editar Usuario" : "Nuevo Usuario"}
+                      </DialogTitle>
+                      <p className="text-muted-foreground text-xs mt-1 font-medium">
+                        {editingUsuario ? "Actualizar datos de acceso" : "Registrar nueva cuenta"}
+                      </p>
+                    </div>
                   </div>
-                  <div>
-                    <DialogTitle className="text-base font-bold text-white tracking-tight">
-                      {editingUsuario ? "Editar" : "Nuevo Usuario"}
-                    </DialogTitle>
-                    <p className="text-white/70 text-[9px] font-semibold uppercase tracking-wider">
-                      {editingUsuario ? "Actualizar datos" : "Crear cuenta"}
-                    </p>
-                  </div>
-                </div>
-              </div>
-              
-              <form onSubmit={handleSubmit} className="p-4 space-y-3 bg-card">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-x-3 gap-y-2">
-                  <div className="space-y-1">
-                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">DNI</Label>
-                    <div className="relative">
-                      <Input 
-                        className="h-8 rounded-md border-border font-semibold text-[12px] bg-card focus:ring-primary/10 transition-colors" 
-                        value={formData.dni} 
+                </DialogHeader>
+
+                <form onSubmit={handleSubmit} className="space-y-4">
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">DNI</Label>
+                      <Input
+                        className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                        value={formData.dni}
                         onChange={(e) => setFormData({ ...formData, dni: e.target.value })}
-                        required 
+                        required
                         placeholder="DNI"
                       />
                     </div>
-                  </div>
 
-                  <div className="space-y-1">
-                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Rol</Label>
-                    <Select value={formData.rol} onValueChange={(v) => setFormData({ ...formData, rol: v })}>
-                      <SelectTrigger className="h-8 rounded-md border-border font-semibold text-[12px] bg-card focus:ring-primary/10 transition-all">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent className="rounded-md border-border shadow-md">
-                        <SelectItem value="admin" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Admin</SelectItem>
-                        <SelectItem value="operador" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Operador</SelectItem>
-                        <SelectItem value="docente" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Docente</SelectItem>
-                        <SelectItem value="director_departamento" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Director de Departamento</SelectItem>
-                        <SelectItem value="decano" className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary">Decano</SelectItem>
-                      </SelectContent>
-                    </Select>
-                  </div>
+                    <div className="space-y-1.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Rol</Label>
+                      <Select value={formData.rol} onValueChange={(v) => setFormData({ ...formData, rol: v })}>
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="admin">Admin</SelectItem>
+                          <SelectItem value="operador">Operador</SelectItem>
+                          <SelectItem value="docente">Docente</SelectItem>
+                          <SelectItem value="director_departamento">Director de Departamento</SelectItem>
+                          <SelectItem value="decano">Decano</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
 
                   {['docente', 'director_departamento', 'decano', 'admin'].includes(formData.rol) && (
                     <div className="space-y-1">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">
                         Docente Asociado
                         {['docente', 'director_departamento', 'decano'].includes(formData.rol) && (
                           <span className="text-destructive ml-1">*</span>
@@ -427,7 +426,7 @@ export function UsuarioList() {
                           }
                         }}
                       >
-                        <SelectTrigger className="h-8 rounded-md border-border font-semibold text-[12px] bg-card focus:ring-primary/10 transition-all">
+                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                           <SelectValue placeholder="Seleccionar docente" />
                         </SelectTrigger>
                         <SelectContent className="rounded-md border-border shadow-md max-h-80">
@@ -436,7 +435,7 @@ export function UsuarioList() {
                                 <SelectItem 
                                   key={docente.id_docente} 
                                   value={docente.id_docente.toString()} 
-                                  className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary"
+                                  className="text-sm focus:bg-primary/10 focus:text-primary"
                                 >
                                   {docente.nombres} {docente.apellidos} ({docente.departamento?.nombre || 'Sin departamento'})
                                 </SelectItem>
@@ -445,7 +444,7 @@ export function UsuarioList() {
                                 <SelectItem 
                                   key={docente.id_docente} 
                                   value={docente.id_docente.toString()} 
-                                  className="font-semibold text-[11px] focus:bg-primary/10 focus:text-primary"
+                                  className="text-sm focus:bg-primary/10 focus:text-primary"
                                 >
                                   {docente.nombres} {docente.apellidos} ({docente.departamento?.nombre || 'Sin departamento'})
                                 </SelectItem>
@@ -457,9 +456,9 @@ export function UsuarioList() {
                   )}
 
                   <div className="space-y-1">
-                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Nombres</Label>
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombres</Label>
                     <Input 
-                      className="h-8 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
+                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                       value={formData.nombres} 
                       onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} 
                       required 
@@ -468,9 +467,9 @@ export function UsuarioList() {
                   </div>
 
                   <div className="space-y-1">
-                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Apellidos</Label>
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Apellidos</Label>
                     <Input 
-                      className="h-8 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
+                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                       value={formData.apellidos} 
                       onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} 
                       required 
@@ -479,11 +478,11 @@ export function UsuarioList() {
                   </div>
 
                   <div className="space-y-1 md:col-span-2">
-                    <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Correo</Label>
+                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Correo</Label>
                     <div className="relative">
-                      <Mail className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                      <Mail className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input 
-                        className="h-8 pl-7 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
+                        className="h-9 pl-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                         type="email" 
                         value={formData.correo_electronico} 
                         onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} 
@@ -495,11 +494,11 @@ export function UsuarioList() {
 
                   {!editingUsuario && (
                     <div className="space-y-1 md:col-span-2">
-                      <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Contraseña</Label>
+                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Contraseña</Label>
                       <div className="relative">
-                        <Key className="absolute left-2 top-1/2 -translate-y-1/2 h-3 w-3 text-muted-foreground" />
+                        <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                         <Input 
-                          className="h-8 pl-7 rounded-md border-border font-semibold text-[12px] focus:ring-primary/10" 
+                          className="h-9 pl-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                           type="password" 
                           value={formData.contrasena} 
                           onChange={(e) => setFormData({ ...formData, contrasena: e.target.value })} 
@@ -515,20 +514,20 @@ export function UsuarioList() {
                     <div className="md:col-span-2 pt-2 border-t border-border mt-1">
                       <div className="flex items-center gap-1 mb-2">
                         <div className="h-3 w-0.5 bg-primary rounded-full" />
-                        <h4 className="text-[9px] font-bold text-foreground uppercase tracking-wider">Datos Académicos</h4>
+                        <h4 className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1 text-foreground">Datos Académicos</h4>
                       </div>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                         <div className="space-y-1">
-                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Categoría</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
                           {formData.id_docente ? (
                             <Input 
-                              className="h-8 rounded-md border-border bg-muted/30 font-semibold text-[12px] text-muted-foreground cursor-not-allowed" 
+                              className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]" 
                               value={formData.categoriaDocente} 
                               disabled 
                             />
                           ) : (
                             <Select value={formData.categoriaDocente} onValueChange={(v) => setFormData({ ...formData, categoriaDocente: v })}>
-                              <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"><SelectValue /></SelectTrigger>
                               <SelectContent className="rounded-md border-border">
                                 <SelectItem value="PRINCIPAL" className="font-semibold">Principal</SelectItem>
                                 <SelectItem value="ASOCIADO" className="font-semibold">Asociado</SelectItem>
@@ -538,16 +537,16 @@ export function UsuarioList() {
                           )}
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Condición</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Condición</Label>
                           {formData.id_docente ? (
                             <Input 
-                              className="h-8 rounded-md border-border bg-muted/30 font-semibold text-[12px] text-muted-foreground cursor-not-allowed" 
+                              className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]" 
                               value={formData.condicion} 
                               disabled 
                             />
                           ) : (
                             <Select value={formData.condicion} onValueChange={(v) => setFormData({ ...formData, condicion: v })}>
-                              <SelectTrigger className="h-8 rounded-md border-border bg-card font-semibold text-[12px]"><SelectValue /></SelectTrigger>
+                              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"><SelectValue /></SelectTrigger>
                               <SelectContent className="rounded-md border-border">
                                 <SelectItem value="ORDINARIO" className="font-semibold">Ordinario</SelectItem>
                                 <SelectItem value="CONTRATADO" className="font-semibold">Contratado</SelectItem>
@@ -557,9 +556,9 @@ export function UsuarioList() {
                           )}
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Grado</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Grado</Label>
                           <Input 
-                            className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" 
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                             value={formData.grado_academico} 
                             onChange={(e) => setFormData({ ...formData, grado_academico: e.target.value })} 
                             placeholder="Grado académico" 
@@ -567,9 +566,9 @@ export function UsuarioList() {
                           />
                         </div>
                         <div className="space-y-1">
-                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Especialidad</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Especialidad</Label>
                           <Input 
-                            className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" 
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                             value={formData.especialidad} 
                             onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} 
                             placeholder="Especialidad" 
@@ -577,10 +576,10 @@ export function UsuarioList() {
                           />
                         </div>
                         <div className="space-y-1 md:col-span-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-wider text-muted-foreground ml-0.5">Fecha Ingreso</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Fecha Ingreso</Label>
                           <Input 
                             type="date" 
-                            className="h-8 rounded-md border-border bg-card font-semibold text-[12px]" 
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                             value={formData.fecha_ingreso} 
                             onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} 
                             disabled={!!formData.id_docente} 
@@ -591,75 +590,65 @@ export function UsuarioList() {
                   )}
                 </div>
                 
-                <div className="flex justify-end gap-2 pt-2 border-t border-border">
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-8 rounded-md font-semibold text-muted-foreground px-4 text-[12px] hover:bg-muted transition-colors">
+                <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-muted-foreground hover:bg-muted px-6 text-[11px]">
                     Cancelar
                   </Button>
-                  <Button type="submit" className="h-8 bg-primary hover:bg-primary/90 text-primary-foreground rounded-md px-5 font-bold text-[12px] shadow-sm shadow-primary/10 active:scale-95 transition-all">
-                    {editingUsuario ? "Guardar" : "Registrar"}
+                  <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                    {editingUsuario ? "Actualizar" : "Registrar"}
                   </Button>
                 </div>
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
       </div>
 
-      <div className="bg-card rounded-2xl border border-border shadow-sm overflow-hidden">
+      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
         <div className="overflow-x-auto">
-          <Table>
+          <Table className="min-w-[900px] w-full">
             <TableHeader className="bg-muted/50">
-              <TableRow className="border-none hover:bg-transparent">
-                <TableHead className="w-[120px] text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Código</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Usuario</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Rol</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Docente Asociado</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Estado</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Último Acceso</TableHead>
-                <TableHead className="w-[150px] text-right text-[10px] font-black text-muted-foreground uppercase tracking-widest px-6 py-4">Acciones</TableHead>
+              <TableRow className="border-b border-border hover:bg-transparent">
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Código</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Usuario</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Rol</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden md:table-cell">Docente</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Estado</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Último Acceso</TableHead>
+                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {loading ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-3">
-                      <div className="h-10 w-10 border-4 border-primary/10 border-t-primary rounded-full animate-spin" />
-                      <p className="text-[13px] font-bold text-muted-foreground uppercase tracking-widest">Sincronizando Usuarios...</p>
-                    </div>
+                  <TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    Cargando...
                   </TableCell>
                 </TableRow>
               ) : currentItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="py-20 text-center">
-                    <div className="flex flex-col items-center gap-2 opacity-30">
-                      <Search className="h-12 w-12 text-muted-foreground" />
-                      <p className="text-[15px] font-bold text-muted-foreground">No se encontraron registros</p>
-                    </div>
+                  <TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                    No se encontraron registros
                   </TableCell>
                 </TableRow>
               ) : (
                 currentItems.map((usuario) => (
-                  <TableRow key={usuario.id_usuario} className="group border-b border-border hover:bg-muted/50 transition-all">
-                    <TableCell className="px-6 py-4">
-                      <span className="font-mono font-bold text-[12px] text-primary bg-primary/5 px-2 py-1 rounded-md border border-primary/10">
+                  <TableRow key={usuario.id_usuario} className="group hover:bg-muted/50 transition-colors">
+                    <TableCell className="px-4 py-2">
+                      <span className="font-mono text-[9px] font-bold text-primary bg-primary/10 px-2 py-1 rounded-full border border-primary/20">
                         {(usuario as any).dni || usuario.codigo}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <div className="flex items-center gap-4">
-                        <div className="h-10 w-10 rounded-xl bg-primary/5 flex items-center justify-center border border-primary/10 text-primary shadow-sm">
-                          <UserCircle2 className="h-5 w-5" />
-                        </div>
-                        <div>
-                          <p className="font-bold text-foreground text-[14px] leading-tight">{usuario.apellidos.toUpperCase()}, {usuario.nombres.toUpperCase()}</p>
-                          <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{usuario.correo_electronico}</p>
-                        </div>
+                    <TableCell className="px-4 py-2">
+                      <div className="flex flex-col min-w-[160px]">
+                        <span className="font-bold text-foreground text-[11px] leading-tight">{usuario.apellidos}, {usuario.nombres}</span>
+                        <span className="text-[9px] text-muted-foreground font-medium mt-0.5 truncate">{usuario.correo_electronico}</span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4">
+                    <TableCell className="px-4 py-2">
                       <span className={cn(
-                        "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider shadow-sm",
+                        "inline-flex px-2 py-0.5 rounded-md text-[8px] font-black uppercase tracking-tighter",
                         usuario.rol === 'admin' ? "bg-destructive/10 text-destructive border border-destructive/20" : 
                         usuario.rol === 'operador' ? "bg-primary/10 text-primary border border-primary/20" : 
                         usuario.rol === 'director_departamento' ? "bg-blue-500/10 text-blue-600 border border-blue-500/20" :
@@ -671,40 +660,40 @@ export function UsuarioList() {
                          usuario.rol}
                       </span>
                     </TableCell>
-                    <TableCell className="px-6 py-4">
+                    <TableCell className="px-4 py-2 hidden md:table-cell">
                       {usuario.docente ? (
-                        <div className="text-[12px] text-foreground">
-                          <p className="font-semibold">{usuario.docente.nombres} {usuario.docente.apellidos}</p>
-                          <p className="text-[10px] text-muted-foreground">{usuario.docente.departamento?.nombre || 'Sin departamento'}</p>
+                        <div>
+                          <p className="text-[10px] font-bold text-foreground">{usuario.docente.nombres} {usuario.docente.apellidos}</p>
+                          <p className="text-[9px] text-muted-foreground">{usuario.docente.departamento?.nombre || 'Sin departamento'}</p>
                         </div>
                       ) : (
-                        <span className="text-[11px] text-muted-foreground">Sin docente</span>
+                        <span className="text-[9px] text-muted-foreground">Sin docente</span>
                       )}
                     </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <div className="flex items-center gap-2.5">
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center gap-2">
                         <div className={cn(
-                          "h-2 w-2 rounded-full", 
-                          usuario.activo ? "bg-emerald-500 shadow-[0_0_8px_rgba(16,185,129,0.5)]" : "bg-muted-foreground/30"
+                          "h-1.5 w-1.5 rounded-full",
+                          usuario.activo ? "bg-emerald-500" : "bg-muted-foreground/30"
                         )} />
                         <span className={cn(
-                          "text-[12px] font-bold",
+                          "text-[10px] font-bold",
                           usuario.activo ? "text-emerald-600" : "text-muted-foreground/50"
                         )}>
                           {usuario.activo ? "Activo" : "Inactivo"}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <div className="flex items-center gap-2 text-muted-foreground">
+                    <TableCell className="px-4 py-2 hidden lg:table-cell">
+                      <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Activity className="h-3.5 w-3.5" />
-                        <span className="text-[12px] font-bold font-mono uppercase">
+                        <span className="text-[10px] font-bold font-mono">
                           {usuario.ultimo_acceso ? usuario.ultimo_acceso : 'S/I'}
                         </span>
                       </div>
                     </TableCell>
-                    <TableCell className="px-6 py-4">
-                      <div className="flex items-center justify-end gap-1.5 opacity-100 transition-opacity">
+                    <TableCell className="px-4 py-2">
+                      <div className="flex items-center justify-end gap-1">
                         <Button 
                           variant="ghost" 
                           size="icon" 
@@ -713,9 +702,9 @@ export function UsuarioList() {
                             setIsAdminConfirmOpen(true);
                           }} 
                           title="Cambiar Contraseña" 
-                          className="h-8 w-8 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 text-muted-foreground transition-colors"
+                          className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 text-muted-foreground transition-all"
                         >
-                          <Key className="h-4 w-4" />
+                          <Key className="h-3.5 w-3.5" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -740,9 +729,9 @@ export function UsuarioList() {
                             setIsDialogOpen(true);
                           }} 
                           title="Editar Perfil" 
-                          className="h-8 w-8 rounded-lg hover:bg-primary/10 hover:text-primary text-muted-foreground transition-colors"
+                          className="h-7 w-7 rounded-lg hover:bg-primary/10 hover:text-primary text-muted-foreground transition-all"
                         >
-                          <Edit className="h-4 w-4" />
+                          <Edit className="h-3.5 w-3.5" />
                         </Button>
                         <Button 
                           variant="ghost" 
@@ -752,9 +741,9 @@ export function UsuarioList() {
                             setIsDeleteDialogOpen(true);
                           }}
                           title="Eliminar Registro" 
-                          className="h-8 w-8 rounded-lg hover:bg-destructive/10 hover:text-destructive text-muted-foreground transition-colors"
+                          className="h-7 w-7 rounded-lg hover:bg-rose-500/10 hover:text-rose-600 text-muted-foreground transition-all"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          <Trash2 className="h-3.5 w-3.5" />
                         </Button>
                       </div>
                     </TableCell>
@@ -774,83 +763,72 @@ export function UsuarioList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-0 overflow-hidden max-w-md bg-card">
-          <div className="bg-destructive p-6 text-destructive-foreground flex items-center gap-4">
-            <div className="h-12 w-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30">
-              <Trash2 className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <AlertDialogTitle className="text-xl font-black text-white">¿Eliminar Usuario?</AlertDialogTitle>
-              <p className="text-destructive-foreground/60 text-[11px] font-bold uppercase tracking-widest mt-0.5">Esta acción es irreversible</p>
-            </div>
-          </div>
-          <div className="p-8 bg-card">
-            <AlertDialogDescription className="text-[14px] font-bold text-muted-foreground leading-relaxed">
-              ¿Está seguro que desea eliminar permanentemente esta cuenta de acceso? El usuario perderá el acceso al sistema de forma inmediata.
+        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-6 bg-card">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-lg font-bold">¿Eliminar usuario?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-sm">
+              Esta acción es irreversible. El usuario perderá el acceso al sistema de forma inmediata.
             </AlertDialogDescription>
-            <div className="flex justify-end gap-3 mt-8">
-              <AlertDialogCancel className="h-11 rounded-xl font-bold text-[13px] border-border hover:bg-muted px-6">
-                No, Mantener
-              </AlertDialogCancel>
-              <AlertDialogAction 
-                onClick={() => deletingId && handleDelete(deletingId)}
-                className="h-11 rounded-xl bg-destructive hover:bg-destructive/90 text-destructive-foreground font-black text-[13px] px-8 shadow-lg shadow-destructive/10 transition-all active:scale-95"
-              >
-                Sí, Confirmar Eliminación
-              </AlertDialogAction>
-            </div>
-          </div>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 mt-4">
+            <AlertDialogCancel className="h-9 rounded-lg font-bold text-[11px] border-border hover:bg-muted px-6">
+              Cancelar
+            </AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => deletingId && handleDelete(deletingId)}
+              className="h-9 rounded-lg bg-destructive hover:bg-destructive/90 text-destructive-foreground font-bold text-[11px] px-6"
+            >
+              Confirmar eliminación
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <Dialog open={isAdminConfirmOpen} onOpenChange={setIsAdminConfirmOpen}>
-        <DialogContent className="rounded-2xl p-0 border-none shadow-2xl max-w-md overflow-hidden bg-card">
-          <div className="bg-amber-500 p-6 text-white flex items-center gap-4">
-            <div className="h-12 w-12 bg-white/20 backdrop-blur-md rounded-xl flex items-center justify-center border border-white/30">
-              <Lock className="h-6 w-6 text-white" />
-            </div>
-            <div>
-              <DialogTitle className="text-xl font-black text-white">Seguridad de Acceso</DialogTitle>
-              <p className="text-amber-100 text-[11px] font-bold uppercase tracking-widest mt-0.5">Reset de credenciales</p>
-            </div>
-          </div>
-          <div className="p-8 space-y-6 bg-card">
-            <p className="text-[13px] font-bold text-muted-foreground leading-relaxed">
-              Para resetear la contraseña del usuario, confirme su identidad como administrador del sistema.
-            </p>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tu Contraseña (Admin)</Label>
-                <div className="relative">
-                  <ShieldCheck className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    type="password" 
-                    className="h-12 pl-11 rounded-xl border-border bg-muted/50 font-bold text-[15px] focus:ring-amber-500/10" 
-                    value={adminPassword}
-                    onChange={(e) => setAdminPassword(e.target.value)}
-                    placeholder="Contraseña de administrador"
-                  />
-                </div>
+        <DialogContent className="sm:max-w-md rounded-xl p-6 border-none shadow-2xl bg-card">
+          <DialogHeader className="mb-4">
+            <div className="flex items-center gap-3">
+              <div className="h-10 w-10 bg-amber-500/10 rounded-lg flex items-center justify-center border border-amber-500/20">
+                <Lock className="h-5 w-5 text-amber-600" />
               </div>
-              <div className="space-y-2">
-                <Label className="text-[11px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nueva Contraseña del Usuario</Label>
-                <div className="relative">
-                  <Key className="absolute left-3.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input 
-                    type="password" 
-                    className="h-12 pl-11 rounded-xl border-border bg-muted/50 font-bold text-[15px] focus:ring-amber-500/10" 
-                    value={newPassword}
-                    onChange={(e) => setNewPassword(e.target.value)}
-                    placeholder="Mínimo 8 caracteres"
-                  />
-                </div>
+              <div>
+                <DialogTitle className="text-lg font-bold text-foreground">Reset de contraseña</DialogTitle>
+                <p className="text-muted-foreground text-xs mt-1">Confirme su identidad como administrador</p>
               </div>
             </div>
-            <div className="flex justify-end gap-3 pt-4">
-              <Button variant="ghost" onClick={() => setIsAdminConfirmOpen(false)} className="h-11 font-bold text-muted-foreground">
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-1.5">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tu contraseña (admin)</Label>
+              <div className="relative">
+                <ShieldCheck className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="password"
+                  className="h-9 pl-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                  value={adminPassword}
+                  onChange={(e) => setAdminPassword(e.target.value)}
+                  placeholder="Contraseña de administrador"
+                />
+              </div>
+            </div>
+            <div className="space-y-1.5">
+              <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nueva contraseña</Label>
+              <div className="relative">
+                <Key className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                <Input
+                  type="password"
+                  className="h-9 pl-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                  placeholder="Mínimo 8 caracteres"
+                />
+              </div>
+            </div>
+            <div className="flex justify-end gap-3 pt-2">
+              <Button variant="ghost" onClick={() => setIsAdminConfirmOpen(false)} className="h-9 rounded-lg font-bold text-muted-foreground text-[11px]">
                 Cancelar
               </Button>
-              <Button 
+              <Button
                 onClick={async () => {
                   if (newPassword.length < 8) {
                     toast.error("La nueva contraseña debe tener al menos 8 caracteres");
@@ -873,9 +851,9 @@ export function UsuarioList() {
                     toast.error("Error al actualizar contraseña");
                   }
                 }} 
-                className="bg-amber-500 hover:bg-amber-600 text-white font-black px-8 rounded-xl h-11 shadow-lg shadow-amber-500/10 transition-all active:scale-95"
+                className="h-9 rounded-lg bg-amber-500 hover:bg-amber-600 text-white font-bold text-[11px] px-6"
               >
-                Actualizar Acceso
+                Actualizar acceso
               </Button>
             </div>
           </div>

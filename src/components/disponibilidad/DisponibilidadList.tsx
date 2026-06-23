@@ -48,6 +48,8 @@ interface DocenteDisp {
   categoria: string;
   categoriaDocente?: string;
   condicion?: string;
+  regimenDedicacion?: string;
+  tipoContrato?: string;
   modalidad: string;
   antiguedad: number | null;
   tiene_disponibilidad: boolean;
@@ -83,6 +85,8 @@ export function DisponibilidadList() {
   // Estado para el modal de edición
   const [editingDocente, setEditingDocente] = useState<DocenteDisp | null>(null);
   const [disponibilidadActual, setDisponibilidadActual] = useState<any[]>([]);
+  const [horasMaximasDocente, setHorasMaximasDocente] = useState(0);
+  const [etiquetaRegimenDocente, setEtiquetaRegimenDocente] = useState("");
   const [loadingDisp, setLoadingDisp] = useState(false);
 
   // Sincronizar con el periodo global
@@ -120,8 +124,10 @@ export function DisponibilidadList() {
     setLoadingDisp(true);
     try {
       const res = await fetch(`/api/docentes/disponibilidad/${docente.id_docente}?periodoId=${selectedPeriodo}`);
-      const data = await res.json();
-      setDisponibilidadActual(data);
+      const payload = await res.json();
+      setDisponibilidadActual(payload.disponibilidad ?? payload);
+      setHorasMaximasDocente(payload.horasMaximas ?? 0);
+      setEtiquetaRegimenDocente(payload.etiquetaRegimen ?? "");
     } catch (error) {
       toast.error("Error al cargar disponibilidad");
     } finally {
@@ -154,7 +160,8 @@ export function DisponibilidadList() {
         setEditingDocente(null);
         fetchDocentes();
       } else {
-        toast.error("Error al guardar disponibilidad");
+        const err = await res.json().catch(() => ({}));
+        toast.error(err.error || "Error al guardar disponibilidad");
       }
     } catch (error) {
       toast.error("Error de conexión");
@@ -381,6 +388,8 @@ export function DisponibilidadList() {
                 periodoId={parseInt(selectedPeriodo)}
                 initialData={disponibilidadActual}
                 docenteNombre={`${editingDocente.nombres} ${editingDocente.apellidos}`}
+                horasMaximas={horasMaximasDocente}
+                etiquetaRegimen={etiquetaRegimenDocente}
                 onSave={handleSaveDisponibilidad}
                 onCancel={() => setEditingDocente(null)}
                 isReadOnly={esLectura}

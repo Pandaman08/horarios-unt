@@ -53,6 +53,7 @@ import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { useSession } from 'next-auth/react';
 import { useDepartment } from '@/contexts/DepartmentContext';
+import { DeclaracionJuradaPanel } from '@/components/declaracion/DeclaracionJuradaPanel';
 
 interface DeclaracionHoraria {
   id_declaracion: number;
@@ -517,15 +518,10 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                                   </div>
                                 </div>
 
-                                {declaracion.declaracionJuradaOpcion && (
-                                  <div className="p-4 bg-amber-50 dark:bg-amber-900/10 border border-amber-200 dark:border-amber-800 rounded-lg">
-                                    <h4 className="text-sm font-bold text-amber-800 dark:text-amber-300 mb-2 flex items-center gap-2">
-                                      <FileText size={16} />
-                                      Declaración Jurada
-                                    </h4>
-                                    <p className="text-xs text-amber-700 dark:text-amber-400">{declaracion.declaracionJuradaOpcion}</p>
-                                  </div>
-                                )}
+                                <DeclaracionJuradaPanel
+                                  declaracion={declaracion}
+                                  docente={declaracion.docente as any}
+                                />
                               </div>
 
                               <div className="pt-6 border-t border-border space-y-4">

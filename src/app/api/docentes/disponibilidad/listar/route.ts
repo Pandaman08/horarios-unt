@@ -73,6 +73,8 @@ export async function GET(req: NextRequest) {
         dni: d.dni,
         categoriaDocente: d.categoriaDocente,
         condicion: d.condicion,
+        regimenDedicacion: d.regimenDedicacion,
+        tipoContrato: d.tipoContrato,
         antiguedad: d.fecha_ingreso ? antiguedad : null,
         tiene_disponibilidad: d.disponibilidad.length > 0
       };

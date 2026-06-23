@@ -9,7 +9,18 @@ export async function GET(request: Request) {
 
     const where: any = { activo: true };
     if (departamentoId) {
-      where.departamentoId = departamentoId;
+      const depto = await prisma.departamentoAcademico.findUnique({
+        where: { id: departamentoId },
+        select: { id: true, facultadId: true },
+      });
+      if (depto) {
+        where.OR = [
+          { departamentoId },
+          { facultadId: depto.facultadId },
+        ];
+      } else {
+        where.departamentoId = departamentoId;
+      }
     } else if (facultadId) {
       where.facultadId = facultadId;
     }

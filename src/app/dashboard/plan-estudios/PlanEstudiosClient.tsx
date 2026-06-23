@@ -37,7 +37,6 @@ import {
   BookOpen,
   AlertCircle,
   GraduationCap,
-  Filter,
   ChevronLeft,
   ChevronRight,
   FileDown
@@ -300,23 +299,15 @@ export function PlanEstudiosClient() {
   const getTipoBadge = (tipo: string) => {
     switch (tipo) {
       case "especializacion":
-        return (
-          <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-200 font-bold text-xs">S</Badge>
-        );
+        return <Badge variant="secondary" className="text-xs font-semibold">S</Badge>;
       case "obligatorio":
-        return (
-          <Badge className="bg-green-100 text-green-800 hover:bg-green-200 font-bold text-xs">OB</Badge>
-        );
+        return <Badge className="text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/15">OB</Badge>;
       case "opcional":
-        return (
-          <Badge className="bg-yellow-100 text-yellow-800 hover:bg-yellow-200 font-bold text-xs">OP</Badge>
-        );
+        return <Badge variant="outline" className="text-xs font-semibold">OP</Badge>;
       case "electivo":
-        return (
-          <Badge className="bg-gray-100 text-gray-800 hover:bg-gray-200 font-bold text-xs">EL</Badge>
-        );
+        return <Badge variant="secondary" className="text-xs font-semibold">EL</Badge>;
       default:
-        return <Badge className="text-xs">{tipo}</Badge>;
+        return <Badge variant="outline" className="text-xs">{tipo}</Badge>;
     }
   };
 
@@ -535,20 +526,20 @@ export function PlanEstudiosClient() {
   const currentCiclo = nonEmptyCiclos[currentCycleIndex];
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-4 bg-card p-6 rounded-xl border border-border shadow-sm">
+    <div className="space-y-4">
+      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <div className="flex items-center gap-3">
-            <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-              <GraduationCap className="h-5 w-5 text-primary" />
+            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
+              <GraduationCap className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h2 className="text-lg font-bold text-foreground tracking-tight leading-none">Plan de Estudios</h2>
-              <p className="text-muted-foreground text-sm mt-1">Gestión de la estructura curricular y prerequisitos</p>
+              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Plan de Estudios</h2>
+              <p className="text-muted-foreground text-[10px] mt-1">Malla curricular y prerequisitos</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
+          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
             <Button
               onClick={() => {
                 const url = new URL('/api/reportes/pdf', window.location.origin);
@@ -558,74 +549,71 @@ export function PlanEstudiosClient() {
                 }
                 window.open(url.toString(), '_blank');
               }}
-              className="h-10 rounded-lg bg-green-600 hover:bg-green-700 text-white font-bold text-sm shadow-lg"
+              variant="outline"
+              className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs"
             >
-              <FileDown className="mr-2 h-4 w-4" />
+              <FileDown className="mr-2 h-3.5 w-3.5" />
               Descargar PDF
             </Button>
             {isAdminOrSecretaria && (
               <>
-                {/* Show current malla info and edit button if malla is selected */}
                 {selectedMalla !== "all" && mallas.length > 0 && (
-                  <div className="flex items-center gap-2 px-4 py-2 bg-purple-50 rounded-lg border border-purple-200">
-                    <span className="text-sm font-bold text-purple-800">
+                  <div className="flex items-center gap-2 px-3 h-9 bg-muted/50 rounded-lg border border-border min-w-0">
+                    <span className="text-[11px] font-bold text-foreground truncate">
                       {mallas.find(m => m.id_malla.toString() === selectedMalla)?.nombre}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-8 w-8 hover:bg-purple-100 text-purple-700"
+                      className="h-7 w-7 shrink-0 hover:bg-muted"
                       onClick={() => {
                         const malla = mallas.find(m => m.id_malla.toString() === selectedMalla);
-                        if (malla) {
-                          handleEditMalla(malla);
-                        }
+                        if (malla) handleEditMalla(malla);
                       }}
                     >
-                      <Edit className="h-4 w-4" />
+                      <Edit className="h-3.5 w-3.5" />
                     </Button>
                   </div>
                 )}
 
                 <Dialog open={isMallaDialogOpen} onOpenChange={(open) => { setIsMallaDialogOpen(open); if (!open) { setEditingMalla(null); resetMallaForm(); } }}>
                   <DialogTrigger asChild>
-                    <Button className="h-10 rounded-lg bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm shadow-lg">
-                      <Plus className="mr-2 h-4 w-4" /> Nueva Malla
+                    <Button variant="outline" className="h-9 rounded-lg font-bold text-[11px]">
+                      <Plus className="mr-2 h-3.5 w-3.5" /> Nueva Malla
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
-                    <DialogHeader className="bg-purple-600 p-6 text-white">
-                      <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                        {editingMalla ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                  <DialogContent className="sm:max-w-[500px] rounded-xl p-6 border-none shadow-2xl bg-card text-foreground max-h-[90vh] overflow-y-auto">
+                    <DialogHeader className="mb-4">
+                      <DialogTitle className="text-lg font-bold">
                         {editingMalla ? "Editar Malla Curricular" : "Nueva Malla Curricular"}
                       </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleMallaSubmit} className="p-6 space-y-5">
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                    <form onSubmit={handleMallaSubmit} className="space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
                         <Input
                           value={mallaFormData.nombre}
                           onChange={(e) => setMallaFormData({ ...mallaFormData, nombre: e.target.value })}
-                          className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                          className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                           placeholder="Ej: Plan de Estudios 2024"
                           required
                         />
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Año</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Año</Label>
                           <Input 
                             type="number" 
                             value={mallaFormData.anio} 
                             onChange={(e) => setMallaFormData({ ...mallaFormData, anio: e.target.value })} 
-                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" 
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                             required
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
                           <Select
                             value={mallaFormData.facultadId}
                             onValueChange={(v) => {
@@ -633,12 +621,12 @@ export function PlanEstudiosClient() {
                               fetchEscuelas(v);
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                               <SelectValue placeholder="Seleccionar facultad" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
+                            <SelectContent className="rounded-lg border-border">
                               {allFacultades.map((f: any) => (
-                                <SelectItem key={f.id} value={f.id} className="font-bold text-sm">
+                                <SelectItem key={f.id} value={f.id} className="text-sm">
                                   {f.nombre}
                                 </SelectItem>
                               ))}
@@ -647,38 +635,38 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
                           <Select
                             value={mallaFormData.escuelaId}
                             onValueChange={(v) => setMallaFormData({ ...mallaFormData, escuelaId: v })}
                             disabled={!mallaFormData.facultadId}
                           >
-                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                               <SelectValue placeholder="Seleccionar escuela" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
+                            <SelectContent className="rounded-lg border-border">
                               {allEscuelas.map((e: any) => (
-                                <SelectItem key={e.id} value={e.id} className="font-bold text-sm">
+                                <SelectItem key={e.id} value={e.id} className="text-sm">
                                   {e.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
                           <Select
                             value={mallaFormData.departamentoId}
                             onValueChange={(v) => setMallaFormData({ ...mallaFormData, departamentoId: v })}
                           >
-                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                               <SelectValue placeholder="Seleccionar departamento" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
+                            <SelectContent className="rounded-lg border-border">
                               {allDepartamentos.map((d: any) => (
-                                <SelectItem key={d.id} value={d.id} className="font-bold text-sm">
+                                <SelectItem key={d.id} value={d.id} className="text-sm">
                                   {d.nombre}
                                 </SelectItem>
                               ))}
@@ -687,19 +675,19 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Descripción (opcional)</Label>
+                      <div className="space-y-1.5">
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Descripción (opcional)</Label>
                         <Input
                           value={mallaFormData.descripcion}
                           onChange={(e) => setMallaFormData({ ...mallaFormData, descripcion: e.target.value })}
-                          className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                          className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                           placeholder="Descripción opcional"
                         />
                       </div>
 
-                      <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)} className="h-11 rounded-xl font-bold text-sm px-6">Cancelar</Button>
-                        <Button type="submit" className="h-11 rounded-xl bg-purple-600 hover:bg-purple-700 text-white font-bold text-sm px-8 shadow-lg">
+                      <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)} className="h-9 rounded-lg font-bold text-[11px] px-6">Cancelar</Button>
+                        <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-bold text-[11px] px-8 shadow-sm">
                           {editingMalla ? "Actualizar" : "Crear"}
                         </Button>
                       </div>
@@ -709,47 +697,46 @@ export function PlanEstudiosClient() {
 
                 <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
                   <DialogTrigger asChild>
-                    <Button className="h-10 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm shadow-lg shadow-primary/20 transition-all">
-                      <Plus className="mr-2 h-4 w-4" /> Nuevo Curso
+                    <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-[11px] shadow-sm">
+                      <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
-                    <DialogHeader className="bg-primary p-6 text-primary-foreground">
-                      <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                        {editingCurso ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
+                  <DialogContent className="sm:max-w-[600px] rounded-xl p-6 border-none shadow-2xl bg-card text-foreground max-h-[90vh] overflow-y-auto">
+                    <DialogHeader className="mb-4">
+                      <DialogTitle className="text-lg font-bold">
                         {editingCurso ? "Editar Curso" : "Nuevo Curso"}
                       </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
+                    <form onSubmit={handleSubmit} className="space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
                           <Input
                             value={formData.codigo}
                             onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                             placeholder="1939"
                             required
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
                           <Input
                             value={formData.nombre}
                             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                             placeholder="Introducción a la Ingeniería de Sistemas"
                             required
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="space-y-1.5">
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
                           <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
-                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                               <SelectValue placeholder="Seleccionar..." />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border">
@@ -762,9 +749,9 @@ export function PlanEstudiosClient() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Malla Curricular</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Malla Curricular</Label>
                           <Select value={formData.id_malla} onValueChange={(v) => setFormData({ ...formData, id_malla: v })}>
-                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                               <SelectValue placeholder="Seleccionar malla" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border">
@@ -778,11 +765,11 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
                           <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
-                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                               <SelectValue />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border">
@@ -795,9 +782,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-4 gap-4">
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Créditos</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Créditos</Label>
                           <Input 
                             type="number" 
                             min="1" 
@@ -809,27 +796,27 @@ export function PlanEstudiosClient() {
                                 setFormData({ ...formData, creditos: val });
                               }
                             }} 
-                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" 
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                           />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">T</Label>
-                          <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">T</Label>
+                          <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">P</Label>
-                          <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">P</Label>
+                          <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">L</Label>
-                          <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">L</Label>
+                          <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
-                          <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm" />
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
+                          <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
                         </div>
                         <div className="space-y-2 flex items-center">
                           <div className="flex items-center gap-3">
@@ -838,13 +825,13 @@ export function PlanEstudiosClient() {
                               checked={formData.activo}
                               onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
                             />
-                            <Label htmlFor="activo" className="text-xs font-black uppercase tracking-widest text-muted-foreground">Activo</Label>
+                            <Label htmlFor="activo" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Activo</Label>
                           </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
                           <Select 
                             value={formData.departamentoId} 
                             onValueChange={(v) => {
@@ -856,7 +843,7 @@ export function PlanEstudiosClient() {
                               });
                             }}
                           >
-                            <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm">
+                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
                               <SelectValue placeholder="Seleccionar departamento" />
                             </SelectTrigger>
                             <SelectContent className="rounded-xl border-border">
@@ -869,18 +856,18 @@ export function PlanEstudiosClient() {
                           </Select>
                         </div>
                         <div className="space-y-2">
-                          <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable (Texto)</Label>
+                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable (Texto)</Label>
                           <Input
                             value={formData.departamento_responsable}
                             onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
-                            className="h-10 rounded-xl bg-muted/50 border-border font-bold text-sm"
+                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                             placeholder="Ingeniería de Sistemas"
                           />
                         </div>
                       </div>
 
                       <div className="space-y-2">
-                        <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Prerequisitos</Label>
+                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Prerequisitos</Label>
                         <div className="space-y-2">
                           <SearchableSelect
                             options={allCursos
@@ -928,9 +915,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="flex justify-end gap-3 pt-4">
-                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-sm px-6">Cancelar</Button>
-                        <Button type="submit" className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-sm px-8 shadow-lg shadow-primary/20 transition-all">
+                      <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
+                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-[11px] px-6">Cancelar</Button>
+                        <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-bold text-[11px] px-8 shadow-sm">
                           {editingCurso ? "Actualizar" : "Crear"}
                         </Button>
                       </div>
@@ -943,81 +930,91 @@ export function PlanEstudiosClient() {
         </div>
 
         {/* Filters */}
-        <div className="flex flex-wrap gap-4 items-center border-t border-border pt-4">
-          <div className="flex items-center gap-2">
-            <Filter className="h-4 w-4 text-muted-foreground" />
-            <span className="text-sm font-semibold text-muted-foreground">Filtros:</span>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-border/50">
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Malla Curricular</Label>
+            <Select value={selectedMalla} onValueChange={setSelectedMalla}>
+              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                <SelectValue placeholder="Malla Curricular" />
+              </SelectTrigger>
+              <SelectContent className="rounded-lg border-border">
+                <SelectItem value="all">Todas las mallas</SelectItem>
+                {mallas.map((m) => (
+                  <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[11px] font-bold">
+                    {m.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           </div>
-          
-          <Select value={selectedMalla} onValueChange={setSelectedMalla}>
-            <SelectTrigger className="w-[180px] h-10 rounded-lg border-input bg-muted/50 font-semibold text-sm">
-              <SelectValue placeholder="Malla Curricular" />
-            </SelectTrigger>
-            <SelectContent className="rounded-lg border-border">
-              <SelectItem value="all">Todas las mallas</SelectItem>
-              {mallas.map((m) => (
-                <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="font-bold text-sm">
-                  {m.nombre}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-          
-          <div className="relative flex-1 min-w-[200px]">
-            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Buscar curso..."
-              className="pl-10 h-10 rounded-lg border-input bg-muted/50 font-semibold text-sm focus:ring-1 focus:ring-primary transition-all"
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-            />
+
+          <div className="space-y-1.5 sm:col-span-2">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Buscar</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+              <Input
+                placeholder="Buscar curso..."
+                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
           </div>
-          
-          <div className="flex flex-wrap items-center gap-3">
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
             <Select value={filterCiclo} onValueChange={setFilterCiclo}>
-              <SelectTrigger className="w-[150px] h-10 rounded-lg border-input bg-muted/50 font-semibold text-sm">
+              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
                 <SelectValue placeholder="Ciclo" />
               </SelectTrigger>
               <SelectContent className="rounded-lg border-border">
                 <SelectItem value="all">Todos los ciclos</SelectItem>
                 {ciclos.map((c) => (
-                  <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="font-bold text-sm">
+                  <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="text-[11px] font-bold">
                     {c.nombre}
                   </SelectItem>
                 ))}
               </SelectContent>
             </Select>
-            
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
             <Select value={filterTipoCurso} onValueChange={setFilterTipoCurso}>
-              <SelectTrigger className="w-[150px] h-10 rounded-lg border-input bg-muted/50 font-semibold text-sm">
+              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
               <SelectContent className="rounded-lg border-border">
                 <SelectItem value="all">Todos los tipos</SelectItem>
-                <SelectItem value="especializacion" className="font-bold text-sm">Especialización</SelectItem>
-                <SelectItem value="obligatorio" className="font-bold text-sm">Obligatorio</SelectItem>
-                <SelectItem value="opcional" className="font-bold text-sm">Opcional</SelectItem>
-                <SelectItem value="electivo" className="font-bold text-sm">Electivo</SelectItem>
+                <SelectItem value="especializacion">Especialización</SelectItem>
+                <SelectItem value="obligatorio">Obligatorio</SelectItem>
+                <SelectItem value="opcional">Opcional</SelectItem>
+                <SelectItem value="electivo">Electivo</SelectItem>
               </SelectContent>
             </Select>
-            
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Créditos</Label>
             <Select value={filterCreditos} onValueChange={setFilterCreditos}>
-              <SelectTrigger className="w-[130px] h-10 rounded-lg border-input bg-muted/50 font-semibold text-sm">
+              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
                 <SelectValue placeholder="Créditos" />
               </SelectTrigger>
               <SelectContent className="rounded-lg border-border">
-                <SelectItem value="all">Todos créditos</SelectItem>
-                <SelectItem value="1">1 Crédito</SelectItem>
-                <SelectItem value="2">2 Créditos</SelectItem>
-                <SelectItem value="3">3 Créditos</SelectItem>
-                <SelectItem value="4">4 Créditos</SelectItem>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="1">1</SelectItem>
+                <SelectItem value="2">2</SelectItem>
+                <SelectItem value="3">3</SelectItem>
+                <SelectItem value="4">4</SelectItem>
               </SelectContent>
             </Select>
-            
-            <div className="flex items-center gap-3 ml-2 pl-3 border-l border-border">
-              <Label htmlFor="hasPrerequisitos" className="text-sm font-semibold text-muted-foreground whitespace-nowrap">
-                Con prerequisitos
-              </Label>
+          </div>
+
+          <div className="space-y-1.5 flex flex-col justify-end">
+            <Label htmlFor="hasPrerequisitos" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+              Con prerequisitos
+            </Label>
+            <div className="flex items-center h-9">
               <Switch
                 id="hasPrerequisitos"
                 checked={filterHasPrerequisitos}
@@ -1036,26 +1033,24 @@ export function PlanEstudiosClient() {
         <>
           {/* Pagination controls for cycles - only show if no specific cycle selected and no search term */}
           {filterCiclo === "all" && !searchTerm && nonEmptyCiclos.length > 0 && (
-            <div className="flex items-center justify-between bg-card p-4 rounded-xl border border-border shadow-sm">
+            <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border shadow-sm">
               <Button
                 variant="ghost"
                 onClick={() => setCurrentCycleIndex((prev) => Math.max(0, prev - 1))}
                 disabled={currentCycleIndex === 0}
-                className="h-10 rounded-lg"
+                className="h-8 rounded-lg text-[11px] font-bold"
               >
-                <ChevronLeft className="h-4 w-4 mr-2" />
+                <ChevronLeft className="h-3.5 w-3.5 mr-1" />
                 Anterior
               </Button>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-                  <BookOpen className="h-5 w-5 text-primary" />
-                </div>
-                <div>
-                  <h3 className="text-lg font-bold text-foreground">
+              <div className="flex items-center gap-2 min-w-0">
+                <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                <div className="min-w-0 text-center">
+                  <h3 className="text-[11px] font-bold text-foreground truncate">
                     {currentCiclo?.nombre || "Sin resultados"}
                   </h3>
-                  <p className="text-sm text-muted-foreground">
-                    {currentCiclo ? `${currentCiclo.cursos.length} cursos` : "No hay cursos para mostrar"}
+                  <p className="text-[9px] text-muted-foreground">
+                    {currentCiclo ? `${currentCiclo.cursos.length} cursos` : "—"}
                   </p>
                 </div>
               </div>
@@ -1063,10 +1058,10 @@ export function PlanEstudiosClient() {
                 variant="ghost"
                 onClick={() => setCurrentCycleIndex((prev) => Math.min(nonEmptyCiclos.length - 1, prev + 1))}
                 disabled={currentCycleIndex === nonEmptyCiclos.length - 1}
-                className="h-10 rounded-lg"
+                className="h-8 rounded-lg text-[11px] font-bold"
               >
                 Siguiente
-                <ChevronRight className="h-4 w-4 ml-2" />
+                <ChevronRight className="h-3.5 w-3.5 ml-1" />
               </Button>
             </div>
           )}
@@ -1118,66 +1113,66 @@ export function PlanEstudiosClient() {
             return (
               <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
                 {displayTitle && (
-                  <div className="bg-muted/50 px-6 py-4 border-b border-border">
-                    <h3 className="text-lg font-bold text-foreground flex items-center gap-2">
-                      <BookOpen className="h-5 w-5 text-primary" />
+                  <div className="bg-muted/50 px-4 py-2 border-b border-border">
+                    <h3 className="text-[11px] font-bold text-foreground flex items-center gap-2">
+                      <BookOpen className="h-3.5 w-3.5 text-primary" />
                       {displayTitle}
                     </h3>
                   </div>
                 )}
                 <div className="overflow-x-auto">
-                  <Table className="w-full">
-                    <TableHeader className="bg-muted/30">
+                  <Table className="min-w-[900px] w-full">
+                    <TableHeader className="bg-muted/50">
                       <TableRow className="border-b border-border hover:bg-transparent">
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 w-28">Código</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3">Curso</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3">Departamento</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-20">Tipo</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-16">T</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-16">P</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-16">L</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-center w-20">Créd.</TableHead>
-                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3">Prerequisitos</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-20">Cód.</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden md:table-cell">Depto.</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-14">Tipo</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-10">T</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-10">P</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-10">L</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-14">Créd.</TableHead>
+                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Prereq.</TableHead>
                         {isAdminOrSecretaria && (
-                          <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-6 py-3 text-right w-32">Acciones</TableHead>
+                          <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                       {displayCursos.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isAdminOrSecretaria ? 10 : 9} className="py-10 text-center text-sm font-bold text-muted-foreground uppercase tracking-widest">
+                          <TableCell colSpan={isAdminOrSecretaria ? 10 : 9} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                             No hay cursos para mostrar
                           </TableCell>
                         </TableRow>
                       ) : (
                         displayCursos.map((curso) => (
                           <TableRow key={curso.id_curso} className="group hover:bg-muted/50 transition-colors">
-                            <TableCell className="px-6 py-3">
-                              <span className="font-mono text-sm font-bold text-muted-foreground">{curso.codigo}</span>
+                            <TableCell className="px-4 py-2">
+                              <span className="font-mono text-[9px] font-bold text-muted-foreground">{curso.codigo}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-3">
-                              <span className="font-bold text-foreground text-sm">{curso.nombre}</span>
+                            <TableCell className="px-4 py-2">
+                              <span className="font-bold text-foreground text-[11px] leading-tight">{curso.nombre}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-3">
-                              <span className="text-sm font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
+                            <TableCell className="px-4 py-2 hidden md:table-cell">
+                              <span className="text-[10px] font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
+                            <TableCell className="px-4 py-2 text-center">
                               {getTipoBadge(curso.tipo_curso)}
                             </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                              <span className="text-sm font-bold text-foreground">{curso.horas_teoria}</span>
+                            <TableCell className="px-4 py-2 text-center">
+                              <span className="text-[10px] font-bold text-foreground">{curso.horas_teoria}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                              <span className="text-sm font-bold text-foreground">{curso.horas_practica}</span>
+                            <TableCell className="px-4 py-2 text-center">
+                              <span className="text-[10px] font-bold text-foreground">{curso.horas_practica}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                              <span className="text-sm font-bold text-foreground">{curso.horas_laboratorio}</span>
+                            <TableCell className="px-4 py-2 text-center">
+                              <span className="text-[10px] font-bold text-foreground">{curso.horas_laboratorio}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-3 text-center">
-                              <span className="text-sm font-bold text-foreground">{curso.creditos}</span>
+                            <TableCell className="px-4 py-2 text-center">
+                              <span className="text-[10px] font-bold text-foreground">{curso.creditos}</span>
                             </TableCell>
-                            <TableCell className="px-6 py-3">
+                            <TableCell className="px-4 py-2 hidden lg:table-cell">
                               <div className="flex flex-wrap gap-1">
                                 {curso.prerequisitos_rel.length === 0 ? (
                                   <span className="text-xs text-muted-foreground italic">Ninguno</span>
@@ -1191,13 +1186,13 @@ export function PlanEstudiosClient() {
                               </div>
                             </TableCell>
                             {isAdminOrSecretaria && (
-                              <TableCell className="px-6 py-3">
+                              <TableCell className="px-4 py-2">
                                 <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar" className="h-8 w-8 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-all">
-                                    <Edit className="h-4 w-4" />
+                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar" className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-all">
+                                    <Edit className="h-3.5 w-3.5" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-8 w-8 rounded-lg hover:bg-rose-500/10 hover:text-rose-600 transition-all">
-                                    <Trash2 className="h-4 w-4" />
+                                  <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-7 w-7 rounded-lg hover:bg-rose-500/10 hover:text-rose-600 transition-all">
+                                    <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
                               </TableCell>
@@ -1206,11 +1201,11 @@ export function PlanEstudiosClient() {
                         ))
                       )}
                       {displayCursos.length > 0 && (
-                        <TableRow className="bg-blue-50 font-bold">
-                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="px-6 py-4 text-right text-sm uppercase tracking-widest text-blue-800">
-                            Total de Créditos del Ciclo:
+                        <TableRow className="bg-muted/30 font-bold">
+                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="px-4 py-2 text-right text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Total créditos del ciclo:
                           </TableCell>
-                          <TableCell className="px-6 py-4 text-center text-xl text-blue-900">
+                          <TableCell className="px-4 py-2 text-center text-[11px] font-black text-primary">
                             {totalFinal}
                           </TableCell>
                           {isAdminOrSecretaria && <TableCell></TableCell>}
@@ -1225,9 +1220,9 @@ export function PlanEstudiosClient() {
 
           {/* If no cycles with courses */}
           {nonEmptyCiclos.length === 0 && (
-            <div className="bg-card rounded-xl border border-border shadow-sm p-10 text-center">
-              <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest">
-                No hay cursos para mostrar con los filtros seleccionados
+            <div className="bg-card rounded-xl border border-border shadow-sm p-8 text-center">
+              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                No hay cursos con los filtros seleccionados
               </p>
             </div>
           )}
@@ -1235,30 +1230,30 @@ export function PlanEstudiosClient() {
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-6 bg-card text-foreground">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-xl font-bold">¿Está completamente seguro?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground font-medium">
+            <AlertDialogTitle className="text-lg font-bold">¿Está completamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-sm">
               Esta acción no se puede deshacer. Se eliminará permanentemente el curso y sus relaciones de prerequisitos.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 mt-6">
-            <AlertDialogCancel className="h-11 rounded-xl font-bold border-border hover:bg-muted text-foreground">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold shadow-lg shadow-destructive/20 transition-all">
-              Confirmar Eliminación
+          <AlertDialogFooter className="gap-3 mt-4">
+            <AlertDialogCancel className="h-9 rounded-lg font-bold text-[11px] border-border hover:bg-muted">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-9 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold text-[11px]">
+              Confirmar eliminación
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-6 bg-card text-foreground">
           <AlertDialogHeader>
             {dependencias.length > 0 ? (
               <>
                 <div className="flex items-center gap-3 text-destructive mb-2">
-                  <AlertCircle className="h-6 w-6" />
-                  <AlertDialogTitle className="text-xl font-bold">No se puede eliminar este curso</AlertDialogTitle>
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <AlertDialogTitle className="text-lg font-bold">No se puede eliminar este curso</AlertDialogTitle>
                 </div>
                 <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-4 rounded-xl border border-destructive/10">
                   Este curso es prerequisito de los siguientes cursos:
@@ -1274,8 +1269,8 @@ export function PlanEstudiosClient() {
             ) : (
               <>
                 <div className="flex items-center gap-3 text-destructive mb-2">
-                  <AlertCircle className="h-6 w-6" />
-                  <AlertDialogTitle className="text-xl font-bold">Error al eliminar</AlertDialogTitle>
+                  <AlertCircle className="h-5 w-5 shrink-0" />
+                  <AlertDialogTitle className="text-lg font-bold">Error al eliminar</AlertDialogTitle>
                 </div>
                 <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-4 rounded-xl border border-destructive/10">
                   {errorMessage}
@@ -1283,8 +1278,8 @@ export function PlanEstudiosClient() {
               </>
             )}
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-6">
-            <AlertDialogAction onClick={() => { setIsErrorDialogOpen(false); setDependencias([]); }} className="h-11 rounded-xl bg-muted text-foreground hover:bg-muted/80 font-bold px-8 transition-all">
+          <AlertDialogFooter className="mt-4">
+            <AlertDialogAction onClick={() => { setIsErrorDialogOpen(false); setDependencias([]); }} className="h-9 rounded-lg bg-muted text-foreground hover:bg-muted/80 font-bold text-[11px] px-8">
               Entendido
             </AlertDialogAction>
           </AlertDialogFooter>

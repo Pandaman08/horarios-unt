@@ -1,5 +1,8 @@
 ﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
+import { assertPuedeVerDeclaracionDocente } from '@/lib/declaracion-horaria-auth';
 import { 
   mapCondicionToTexto, 
   mapCategoriaDocenteToTexto, 
@@ -20,17 +23,23 @@ export async function GET(request: Request) {
     const departamentoId = searchParams.get('departamentoId');
 
     if (idDocente && idPeriodo) {
+      const docenteIdNum = parseInt(idDocente);
+      const auth = await assertPuedeVerDeclaracionDocente(docenteIdNum);
+      if (!auth.ok) {
+        return NextResponse.json({ error: auth.error }, { status: auth.status });
+      }
+
       const declaracion = await prisma.declaracionHoraria.findUnique({
         where: {
           id_docente_id_periodo: {
-            id_docente: parseInt(idDocente),
+            id_docente: docenteIdNum,
             id_periodo: parseInt(idPeriodo)
           }
         },
         include: {
           docente: true,
           periodo: true,
-          cargas_lectivas: { include: { curso: true, grupo: true } },
+          cargas_lectivas: { include: { curso: { include: { ciclo_rel: true, escuela: true } }, grupo: true } },
           cargas_no_lectivas: { include: { horarios: true, cargo: true } },
           formatos: true
         }
@@ -48,7 +57,7 @@ export async function GET(request: Request) {
         include: {
           docente: true,
           periodo: true,
-          cargas_lectivas: { include: { curso: true } },
+          cargas_lectivas: { include: { curso: { include: { ciclo_rel: true, escuela: true } }, grupo: true } },
           cargas_no_lectivas: { include: { horarios: true, cargo: true } }
         }
       });
@@ -131,7 +140,7 @@ export async function POST(request: Request) {
       include: {
         docente: true,
         periodo: true,
-        cargas_lectivas: { include: { curso: true, grupo: true } },
+        cargas_lectivas: { include: { curso: { include: { ciclo_rel: true, escuela: true } }, grupo: true } },
         cargas_no_lectivas: { include: { horarios: true, cargo: true } },
         formatos: true
       }
