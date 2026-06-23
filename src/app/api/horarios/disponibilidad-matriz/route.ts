@@ -1,5 +1,103 @@
 ﻿import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+
+// Helper: Verificar si el docente tiene CargaLectiva en el período
+async function tieneCarhaLectiva(docenteId: number, periodoId: number): Promise<boolean> {
+  const carga = await prisma.cargaLectiva.findFirst({
+    where: {
+      declaracion: {
+        id_docente: docenteId,
+        id_periodo: periodoId
+      }
+    }
+  });
+  return !!carga;
+}
+
+// Helper: Verificar si el docente está dentro de su ventana de atención
+async function estaDentroDeVentana(docenteId: number, periodoId: number): Promise<boolean> {
+  const ventanas = await prisma.ventanaAtencion.findMany({
+    where: {
+      id_periodo: periodoId,
+      activo: true,
+      completado: false
+    },
+    orderBy: { orden_prioridad: 'asc' }
+  });
+
+  console.log('🔍 [VENTANA] Ventanas disponibles:', ventanas.length);
+
+  if (ventanas.length === 0) {
+    console.log('✅ [VENTANA] No hay ventanas, permitiendo acceso');
+    return true;
+  }
+
+  // Obtener datos del docente
+  const docente = await prisma.docente.findUnique({
+    where: { id_docente: docenteId }
+  });
+
+  console.log('👤 [VENTANA] Datos del docente:', {
+    id: docenteId,
+    condicion: docente?.condicion,
+    categoriaDocente: docente?.categoriaDocente
+  });
+
+  if (!docente) {
+    console.log('❌ [VENTANA] Docente no encontrado');
+    return false;
+  }
+
+  // Buscar ventana que coincida
+  const ventanaDelDocente = ventanas.find((v: any) => 
+    v.modalidad === (docente.condicion || '') &&
+    v.categoria === (docente.categoriaDocente || '')
+  );
+
+  console.log('🪟 [VENTANA] Busca ventana con modalidad:', docente.condicion, 'y categoría:', docente.categoriaDocente);
+  console.log('🪟 [VENTANA] Ventanas disponibles:', ventanas.map((v: any) => ({ modalidad: v.modalidad, categoria: v.categoria, fecha: v.fecha, hora_inicio: v.hora_inicio, hora_fin: v.hora_fin })));
+
+  if (!ventanaDelDocente) {
+    console.log('❌ [VENTANA] No se encontró ventana para esta modalidad/categoría');
+    return false;
+  }
+
+  // Comparar fechas según el día local de la ventana
+  const ahora = new Date();
+  const hoyLocal = new Date(ahora.getFullYear(), ahora.getMonth(), ahora.getDate());
+  const fechaVentanaLocal = new Date(
+    ventanaDelDocente.fecha.getFullYear(),
+    ventanaDelDocente.fecha.getMonth(),
+    ventanaDelDocente.fecha.getDate()
+  );
+
+  console.log('📅 [VENTANA] Comparación de fechas (local):');
+  console.log('   Hoy local:', hoyLocal.toISOString().split('T')[0]);
+  console.log('   Ventana local:', fechaVentanaLocal.toISOString().split('T')[0]);
+
+  if (hoyLocal.getTime() !== fechaVentanaLocal.getTime()) {
+    console.log('❌ [VENTANA] No es el día de tu ventana');
+    return false;
+  }
+
+  // Comparar horarios
+  const [horaInicioH, horaInicioM] = ventanaDelDocente.hora_inicio.split(':').map(Number);
+  const [horaFinH, horaFinM] = ventanaDelDocente.hora_fin.split(':').map(Number);
+  const minutoActual = ahora.getHours() * 60 + ahora.getMinutes();
+  const minutoInicio = horaInicioH * 60 + horaInicioM;
+  const minutoFin = horaFinH * 60 + horaFinM;
+
+  console.log('⏱️  [VENTANA] Comparación de horarios:');
+  console.log('   Hora actual:', `${ahora.getHours()}:${ahora.getMinutes().toString().padStart(2, '0')} (minuto: ${minutoActual})`);
+  console.log('   Ventana:', `${horaInicioH}:${horaInicioM.toString().padStart(2, '0')} - ${horaFinH}:${horaFinM.toString().padStart(2, '0')} (${minutoInicio} - ${minutoFin})`);
+
+  const dentroDeHorario = minutoActual >= minutoInicio && minutoActual < minutoFin;
+  console.log(`   ¿Dentro de horario?: ${dentroDeHorario}`);
+
+  return dentroDeHorario;
+}
 
 export async function GET(request: Request) {
   try {
@@ -9,6 +107,40 @@ export async function GET(request: Request) {
     const id_docente = searchParams.get('id_docente');
 
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
+
+    // Si se proporciona id_docente, validar acceso
+    if (id_docente) {
+      const docenteId = parseInt(id_docente);
+      const periodoId = parseInt(id_periodo);
+
+      // Verificar que el docente tenga CargaLectiva
+      const tieneCarga = await tieneCarhaLectiva(docenteId, periodoId);
+      if (!tieneCarga) {
+        return NextResponse.json({
+          asignaciones: [],
+          temporales: [],
+          tienePermiso: false,
+          mensaje: 'No tienes cursos asignados para este período'
+        });
+      }
+
+      // Verificar que esté dentro de su ventana (si existen ventanas)
+      const ventanas = await prisma.ventanaAtencion.findMany({
+        where: { id_periodo: periodoId }
+      });
+      
+      if (ventanas.length > 0) {
+        const dentroVentana = await estaDentroDeVentana(docenteId, periodoId);
+        if (!dentroVentana) {
+          return NextResponse.json({
+            asignaciones: [],
+            temporales: [],
+            tienePermiso: false,
+            mensaje: 'Estás fuera de tu ventana de atención'
+          });
+        }
+      }
+    }
 
     // Verificar si hay ventanas de tiempo para este período (modo intervalo)
     const ventanas = await prisma.ventanaAtencion.count({

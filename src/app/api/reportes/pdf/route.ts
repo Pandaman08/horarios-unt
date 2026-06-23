@@ -731,7 +731,7 @@ export async function GET(request: Request) {
         }
       });
       
-      console.log('Ciclos obtenidos:', ciclos.map(c => ({
+      console.log('Ciclos obtenidos:', ciclos.map((c: { numero: number; nombre: string; cursos: any[] }) => ({
         numero: c.numero, nombre: c.nombre, cursos: c.cursos.length })));
 
       // Get malla info for filename and title
@@ -844,7 +844,7 @@ export async function GET(request: Request) {
         <td>${new Date(clad.fechaFin).toLocaleDateString('es-PE')}</td>
         <td>${clad.totalHoras}</td>
         <td>
-          ${clad.horarios.map(h => `${DIAS_LABEL[h.dia as keyof typeof DIAS_LABEL]}: ${h.horaInicio} - ${h.horaFin}`).join('<br/>')}
+          ${clad.horarios.map((h: { dia: string; horaInicio: string; horaFin: string }) => `${DIAS_LABEL[h.dia as keyof typeof DIAS_LABEL]}: ${h.horaInicio} - ${h.horaFin}`).join('<br/>')}
         </td>
       </tr>
     </tbody>
@@ -1787,6 +1787,43 @@ export async function GET(request: Request) {
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
 
+      // Si se solicita incluir actividades no lectivas, cargarlas y mapear a un formato compatible
+      if (searchParams.get('incluirNoLectivas')) {
+        try {
+          const cargas = await prisma.cargaNoLectiva.findMany({
+            where: { id_docente: parseInt(docenteId), id_periodo: parseInt(id_periodo) },
+            include: { horarios: true }
+          });
+
+          const diaMap: Record<string, number> = { LU: 0, MA: 1, MI: 2, JU: 3, VI: 4, SA: 5 };
+
+          const mapped: any[] = [];
+          for (const c of cargas) {
+            for (const h of c.horarios || []) {
+              const diaIdx = diaMap[h.dia as string] ?? (typeof h.dia === 'number' ? h.dia : 0);
+              mapped.push({
+                id_asignacion: null,
+                id_curso: null,
+                id_grupo: null,
+                id_ambiente: null,
+                curso: { nombre: c.descripcion || c.tipo || 'No lectiva' },
+                grupo: null,
+                ambiente: null,
+                tipo_clase: c.tipo || 'no_lectiva',
+                dia_semana: diaIdx,
+                hora_inicio: h.horaInicio,
+                hora_fin: h.horaFin,
+                docente: { nombres: docente.nombres, apellidos: docente.apellidos }
+              });
+            }
+          }
+
+          // Fusionar las actividades no lectivas con los horarios asignados
+          docente.horarios_asignados = (docente.horarios_asignados ?? []).concat(mapped);
+        } catch (err) {
+          console.warn('No se pudieron cargar cargas no lectivas para el docente:', err);
+        }
+      }
 
       isLandscape = true;
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;

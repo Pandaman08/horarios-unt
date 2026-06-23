@@ -86,6 +86,10 @@ export async function POST(request: Request) {
     where: { id_periodo: idPeriodo }
   });
 
+  const declaracionLines = declaraciones
+    .map((d: typeof declaraciones[number]) => `- ${d.docente.apellidos}, ${d.docente.nombres} (${d.ibm}) - ${d.docente.departamento?.nombre || 'N/A'}`)
+    .join('\n  ');
+
   const pdfContent = `
     ENTREGABLE DE CONSOLIDACIÓN DE CARGA HORARIA
     Facultad: ${usuario?.docente?.facultad?.nombre || 'N/A'}
@@ -95,7 +99,7 @@ export async function POST(request: Request) {
     REPOSITORIO: ${repositorioUrl || 'No proporcionado'}
     
     DOCENTES INCLUIDOS:
-    ${declaraciones.map(d => `- ${d.docente.apellidos}, ${d.docente.nombres} (${d.ibm}) - ${d.docente.departamento?.nombre || 'N/A'}`).join('\n  ')}
+    ${declaracionLines}
     
     TOTAL DOCENTES: ${declaraciones.length}
   `;

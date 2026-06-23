@@ -13,6 +13,7 @@ interface Docente {
   apellidos: string;
   modalidad: string;
   categoria: string;
+  categoriaDocente?: string;
 }
 
 interface Props {

@@ -214,7 +214,7 @@ function DashboardLayoutInner({
       },
       {
         title: t("navSchedules"),
-        href: "/dashboard/horarios/seleccion",
+        href: "/dashboard/horarios/mi-horario",
         icon: Calendar,
         roles: ["docente", "director_departamento", "decano"],
       },

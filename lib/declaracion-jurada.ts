@@ -59,17 +59,17 @@ export function calcularDeclaracionJurada(docente: Docente): string {
   }
 
   // Caso 3: Ordinario TP1/TP2/TP3
-  if (condicion === CondicionDocente.ORDINARIO && [RegimenDedicacion.TP1, RegimenDedicacion.TP2, RegimenDedicacion.TP3].includes(regimenDedicacion as RegimenDedicacion)) {
+  if (condicion === CondicionDocente.ORDINARIO && typeof regimenDedicacion === 'string' && ['TP1', 'TP2', 'TP3'].includes(regimenDedicacion)) {
     return DECLARACIONES_JURADAS[2].texto;
   }
 
   // Caso 4: Contratado TC
-  if (condicion === CondicionDocente.CONTRATADO && tipoContrato === TipoContrato.A1 || tipoContrato === TipoContrato.B1) {
+  if (condicion === CondicionDocente.CONTRATADO && (tipoContrato === 'A1' || tipoContrato === 'B1')) {
     return DECLARACIONES_JURADAS[5].texto;
   }
 
   // Caso 5: Contratado TP
-  if (condicion === CondicionDocente.CONTRATADO && [TipoContrato.A2, TipoContrato.A3, TipoContrato.B2, TipoContrato.B3].includes(tipoContrato as TipoContrato)) {
+  if (condicion === CondicionDocente.CONTRATADO && typeof tipoContrato === 'string' && ['A2', 'A3', 'B2', 'B3'].includes(tipoContrato)) {
     return DECLARACIONES_JURADAS[6].texto;
   }
 

@@ -13,6 +13,11 @@ import {
   type TipoContrato as TipoContratoType 
 } from '@/lib/constants/regimenHoras';
 
+interface HorarioActividadPayload {
+  horaInicio?: string;
+  horaFin?: string;
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -20,14 +25,18 @@ export async function PUT(
   try {
     const { id } = await params;
     const data = await request.json();
-    const idNum = parseInt(id);
+    const idNum = Number.parseInt(id);
 
     const declaracionActual = await prisma.declaracionHoraria.findUnique({
       where: { id_declaracion: idNum },
       include: {
         docente: true,
         cargas_lectivas: true,
-        cargas_no_lectivas: true
+        cargas_no_lectivas: {
+          include: {
+            horarios: true
+          }
+        }
       }
     });
 
@@ -58,11 +67,24 @@ export async function PUT(
     // Only check horas de dedicacion if we're explicitly setting the state to ENVIADO or APROBADO
     if (nuevoEstado === 'ENVIADO' || nuevoEstado === 'APROBADO') {
       const totalLectivas = declaracionActual.cargas_lectivas.reduce(
-        (sum, c) => sum + c.horas_semanales * (c.grupos_asignados || 1),
+        (sum: number, c: { horas_semanales: number; grupos_asignados?: number }) => sum + c.horas_semanales * (c.grupos_asignados || 1),
         0
       );
       const totalNoLectivas = declaracionActual.cargas_no_lectivas.reduce(
-        (sum, c) => sum + c.horas_semanales,
+        (sum: number, c: { horas_semanales: number; horarios?: HorarioActividadPayload[] }) => {
+          const minutos = (c.horarios || []).reduce((s: number, h: HorarioActividadPayload) => {
+            const inicio = h?.horaInicio;
+            const fin = h?.horaFin;
+            if (typeof inicio !== 'string' || typeof fin !== 'string') return s;
+            const [hi, mi] = inicio.split(':').map(Number);
+            const [hf, mf] = fin.split(':').map(Number);
+            if ([hi, mi, hf, mf].some((n) => Number.isNaN(n))) return s;
+            const fechaInicio = new Date(0, 0, 0, hi, mi);
+            const fechaFin = new Date(0, 0, 0, hf, mf);
+            return s + Math.max(0, (fechaFin.getTime() - fechaInicio.getTime()) / 60000);
+          }, 0);
+          return sum + (minutos > 0 ? Math.round(minutos / 60) : c.horas_semanales);
+        },
         0
       );
       const totalGeneral = totalLectivas + totalNoLectivas;

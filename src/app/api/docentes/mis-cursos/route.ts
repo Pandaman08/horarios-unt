@@ -127,7 +127,9 @@ export async function GET(request: Request) {
       },
     });
 
-    if (declaracion?.estado === 'APROBADO') {
+    // Incluir cursos si la declaración está en APROBADO, BORRADOR, o LECTIVA_CONFIRMADA
+    const estadosValidos = ['APROBADO', 'BORRADOR', 'LECTIVA_CONFIRMADA', 'ENVIADO'];
+    if (declaracion && estadosValidos.includes(declaracion.estado)) {
       for (const carga of declaracion.cargas_lectivas) {
         if (!carga.curso) continue;
 
@@ -206,10 +208,10 @@ export async function GET(request: Request) {
         });
 
         let minutosTotales = 0;
-        asignaciones.forEach((a) => {
+        asignaciones.forEach((a: { hora_inicio: string; hora_fin: string }) => {
           minutosTotales += calcularMinutos(a.hora_inicio, a.hora_fin);
         });
-        temporales.forEach((t) => {
+        temporales.forEach((t: { hora_inicio: string; hora_fin: string }) => {
           minutosTotales += calcularMinutos(t.hora_inicio, t.hora_fin);
         });
 

@@ -20,7 +20,14 @@ export async function consultarSanciones(dni: string) {
     }
   }
 
-  let resultado = [];
+  let resultado: Array<{
+    id: number;
+    tipo: string;
+    fecha: string;
+    motivo: string;
+    activo: boolean;
+    hasta: string | null;
+  }> = [];
 
   if (docente?.sancionActiva) {
     resultado = [

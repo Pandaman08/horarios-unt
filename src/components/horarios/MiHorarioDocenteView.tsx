@@ -1,7 +1,6 @@
 ﻿"use client";
 
 import { useState, useEffect } from "react";
-import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { Button } from "@/components/ui/button";
 import {
@@ -11,10 +10,8 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
 import {
   Calendar,
-  AlertCircle,
   Download,
   FileText,
 } from "lucide-react";
@@ -50,10 +47,11 @@ const getColorPorCurso = (cursoNombre: string, cursosUnicos: string[]) => {
 };
 
 interface HorarioAsignado {
-  id_asignacion: number;
-  id_curso: number;
-  id_grupo: number;
-  id_ambiente: number;
+  id_asignacion?: number;
+  id_curso?: number | null;
+  id_grupo?: number | null;
+  id_ambiente?: number | null;
+  id_carga_no_lectiva?: number;
   curso_codigo: string;
   curso_nombre: string;
   grupo_codigo: string;
@@ -64,16 +62,18 @@ interface HorarioAsignado {
   hora_inicio: string;
   hora_fin: string;
   ciclo_nombre: string;
+  is_no_lectiva?: boolean;
 }
 
 export function MiHorarioDocenteView() {
-  const { data: session } = useSession();
   const { periodoSeleccionado, periodos } = usePeriodo();
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
   const [generatingReport, setGeneratingReport] = useState(false);
+
+  const [mostrarNoLectivas, setMostrarNoLectivas] = useState(true);
 
   useEffect(() => {
     if (periodoSeleccionado) {
@@ -86,7 +86,11 @@ export function MiHorarioDocenteView() {
   }, [selectedPeriodo]);
 
   const handleDownloadReport = async () => {
-    if (!selectedPeriodo) { toast.warning("Seleccione un periodo académico"); return; }
+    if (!selectedPeriodo) {
+      toast.warning("Seleccione un periodo académico");
+      return;
+    }
+
     try {
       setGeneratingReport(true);
       const url = `/api/reportes/pdf?tipo=docente_propio&id_periodo=${selectedPeriodo}`;
@@ -96,14 +100,14 @@ export function MiHorarioDocenteView() {
         throw new Error(errorData.error || "Error en la generación");
       }
       const blob = await response.blob();
-      const downloadUrl = window.URL.createObjectURL(blob);
+      const downloadUrl = globalThis.URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = downloadUrl;
       a.download = `Mi_Horario_${periodoActualObj?.nombre || "Docente"}.pdf`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(downloadUrl);
+      globalThis.URL.revokeObjectURL(downloadUrl);
       toast.success("Horario generado correctamente");
     } catch (error: any) {
       toast.error(error.message || "Error al generar horario");
@@ -116,7 +120,7 @@ export function MiHorarioDocenteView() {
     try {
       setLoading(true);
       const res = await fetch(`/api/docentes/horarios?periodoId=${selectedPeriodo}`);
-      if (!res.ok) throw new Error();
+      if (!res.ok) throw new Error("Error de red");
       const data = await res.json();
       setHorarios(Array.isArray(data) ? data : []);
     } catch {
@@ -127,13 +131,31 @@ export function MiHorarioDocenteView() {
     }
   };
 
+  const horasTotales = horarios.reduce((sum, h) => {
+    const start = Number.parseInt(h.hora_inicio.split(":")[0], 10);
+    const end = Number.parseInt(h.hora_fin.split(":")[0], 10);
+    return sum + Math.max(0, end - start);
+  }, 0);
+
+  const noLectivas = horarios.filter((h) => h.is_no_lectiva);
+  const lectivas = horarios.filter((h) => !h.is_no_lectiva);
+
   const getHorariosEnCelda = (diaIndex: number, hora: string) =>
     horarios.filter(
-      (h) => h.dia_semana === diaIndex && h.hora_inicio <= hora && h.hora_fin > hora
+      (h) =>
+        h.dia_semana === diaIndex &&
+        h.hora_inicio <= hora &&
+        h.hora_fin > hora &&
+        (mostrarNoLectivas || !h.is_no_lectiva)
     );
 
-  const cursosUnicos = Array.from(new Set(horarios.map((h) => h.curso_nombre)));
-  const totalHoras = horarios.length;
+  const cursosUnicos = Array.from(new Set(lectivas.map((h) => h.curso_nombre)));
+  const horariosOrdenados = [...horarios].sort((a, b) => {
+    if (a.dia_semana < b.dia_semana) return -1;
+    if (a.dia_semana > b.dia_semana) return 1;
+    return a.hora_inicio.localeCompare(b.hora_inicio);
+  });
+  const totalHoras = horasTotales;
   const periodoActualObj = periodos.find(
     (p) => p.id_periodo.toString() === selectedPeriodo
   );
@@ -162,11 +184,11 @@ export function MiHorarioDocenteView() {
         </div>
 
         <div className="space-y-2">
-          <label className="text-sm font-semibold text-foreground">
+          <label htmlFor="periodo-select" className="text-sm font-semibold text-foreground">
             Periodo Académico
           </label>
           <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-            <SelectTrigger className="w-full sm:w-80 bg-card border-border text-card-foreground">
+            <SelectTrigger id="periodo-select" className="w-full sm:w-80 bg-card border-border text-card-foreground">
               <SelectValue placeholder="Selecciona un periodo" />
             </SelectTrigger>
             <SelectContent className="bg-card border-border text-card-foreground">
@@ -178,23 +200,9 @@ export function MiHorarioDocenteView() {
               ))}
             </SelectContent>
           </Select>
-        </div>
-
-        {/* Aviso sin horarios */}
-        <div className="bg-blue-500/10 border border-blue-500/20 rounded-2xl p-5">
-          <div className="flex items-start gap-3">
-            <AlertCircle className="h-5 w-5 text-blue-500 flex-shrink-0 mt-0.5" />
-            <div className="text-sm">
-              <p className="font-medium text-blue-500 mb-1">
-                No hay horarios asignados
-              </p>
-              <p className="text-xs text-blue-500/80">
-                {periodoActualObj?.estado === "finalizado"
-                  ? "No se encontraron horarios registrados para este periodo finalizado."
-                  : "Los horarios se generan automáticamente una vez que el administrador o operador ejecuta la generación de horarios."}
-              </p>
+            <div className="text-xs text-muted-foreground mt-1">
+              {lectivas.length} bloques lectivos y {noLectivas.length} bloques no lectivos cargados.
             </div>
-          </div>
         </div>
       </div>
     );
@@ -226,11 +234,47 @@ export function MiHorarioDocenteView() {
               )}
               {generatingReport ? "Generando..." : "Descargar PDF"}
             </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={async () => {
+                if (!selectedPeriodo) { toast.warning("Seleccione un periodo académico"); return; }
+                try {
+                  setGeneratingReport(true);
+                  const url = `/api/reportes/pdf?tipo=docente_propio&id_periodo=${selectedPeriodo}&incluirNoLectivas=1`;
+                  const response = await fetch(url);
+                  if (!response.ok) {
+                    const errorData = await response.json().catch(() => ({ error: "Error desconocido" }));
+                    throw new Error(errorData.error || "Error en la generación");
+                  }
+                  const blob = await response.blob();
+                  const downloadUrl = globalThis.URL.createObjectURL(blob);
+                  const a = document.createElement("a");
+                  a.href = downloadUrl;
+                  a.download = `Mi_Horario_Con_NoLectivas_${periodoActualObj?.nombre || "Docente"}.pdf`;
+                  document.body.appendChild(a);
+                  a.click();
+                  a.remove();
+                  globalThis.URL.revokeObjectURL(downloadUrl);
+                  toast.success("Horario (con no lectivas) generado correctamente");
+                } catch (error: any) {
+                  toast.error(error.message || "Error al generar horario");
+                } finally {
+                  setGeneratingReport(false);
+                }
+              }}
+              disabled={generatingReport}
+              className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
+            >
+              <Download className="h-4 w-4" />
+              Descargar con No-Lectivas
+            </Button>
             <Button
               variant={view === "matriz" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("matriz")}
-              className={view !== "matriz" ? "bg-card border-border text-card-foreground hover:bg-muted" : ""}
+              className={view === "matriz" ? undefined : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               Vista Matriz
             </Button>
@@ -238,9 +282,17 @@ export function MiHorarioDocenteView() {
               variant={view === "lista" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("lista")}
-              className={view !== "lista" ? "bg-card border-border text-card-foreground hover:bg-muted" : ""}
+              className={view === "lista" ? undefined : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               Vista Lista
+            </Button>
+            <Button
+              variant={mostrarNoLectivas ? "default" : "outline"}
+              size="sm"
+              onClick={() => setMostrarNoLectivas((prev) => !prev)}
+              className={mostrarNoLectivas ? "" : "bg-card border-border text-card-foreground hover:bg-muted"}
+            >
+              {mostrarNoLectivas ? "Ocultar no lectivas" : "Mostrar no lectivas"}
             </Button>
           </div>
         </div>
@@ -260,9 +312,9 @@ export function MiHorarioDocenteView() {
                 <div className="p-2 text-center text-sm font-semibold text-muted-foreground bg-muted rounded-lg">
                   Hora
                 </div>
-                {DIAS.map((dia, idx) => (
+                {DIAS.map((dia) => (
                   <div
-                    key={idx}
+                    key={dia}
                     className="p-2 text-center text-sm font-semibold bg-primary text-primary-foreground rounded-lg"
                   >
                     {dia}
@@ -282,18 +334,28 @@ export function MiHorarioDocenteView() {
                       </div>
 
                       {/* Celdas por día */}
-                      {DIAS.map((_, diaIndex) => {
+                      {DIAS.map((dia, diaIndex) => {
                         const horariosEnCelda = getHorariosEnCelda(diaIndex, horaInicio);
                         return (
                           <div
-                            key={diaIndex}
+                            key={dia}
                             className="relative min-h-[20px] border border-border rounded-lg bg-background p-1"
                           >
                             {horariosEnCelda.map((horario) => {
-                              const colores = getColorPorCurso(horario.curso_nombre, cursosUnicos);
+                              const esNoLectiva = horario.is_no_lectiva;
+                              const colores = esNoLectiva
+                                ? {
+                                    bg: "bg-rose-500/10",
+                                    border: "border-l-rose-500",
+                                    text: "text-rose-600 dark:text-rose-400"
+                                  }
+                                : getColorPorCurso(horario.curso_nombre, cursosUnicos);
+
+                              const horarioKey = `${esNoLectiva ? "no-lectiva" : "lectiva"}-${horario.id_asignacion ?? horario.id_carga_no_lectiva}-${horaInicio}-${horario.dia_semana}`;
+
                               return (
                                 <div
-                                  key={horario.id_asignacion}
+                                  key={horarioKey}
                                   className={cn(
                                     "mb-0.5 p-1 rounded border-l-2 text-[10px]",
                                     colores.bg,
@@ -301,8 +363,12 @@ export function MiHorarioDocenteView() {
                                     colores.text
                                   )}
                                 >
-                                  <div className="font-bold">{horario.ambiente_codigo}</div>
-                                  <div className="opacity-70">{horario.ciclo_nombre}</div>
+                                  <div className="font-bold truncate">
+                                    {esNoLectiva ? horario.curso_nombre : horario.ambiente_codigo}
+                                  </div>
+                                  <div className="opacity-70 truncate">
+                                    {esNoLectiva ? horario.tipo_clase : horario.ciclo_nombre}
+                                  </div>
                                 </div>
                               );
                             })}
@@ -319,9 +385,9 @@ export function MiHorarioDocenteView() {
           {/* Leyenda */}
           <div className="bg-card border border-border rounded-2xl p-5">
             <p className="text-sm font-bold text-card-foreground mb-3">
-              Leyenda de Cursos
+              Leyenda de Horarios
             </p>
-            <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-2">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
               {cursosUnicos.map((cursoNombre) => {
                 const colores = getColorPorCurso(cursoNombre, cursosUnicos);
                 return (
@@ -337,6 +403,10 @@ export function MiHorarioDocenteView() {
                   </div>
                 );
               })}
+              <div className="flex items-center gap-2">
+                <div className="w-4 h-4 rounded border-l-2 bg-rose-500/10 border-l-rose-500" />
+                <span className="text-xs text-card-foreground">No lectivas</span>
+              </div>
             </div>
           </div>
         </>
@@ -363,20 +433,16 @@ export function MiHorarioDocenteView() {
                 </tr>
               </thead>
               <tbody>
-                {horarios
-                  .sort((a, b) =>
-                    a.dia_semana !== b.dia_semana
-                      ? a.dia_semana - b.dia_semana
-                      : a.hora_inicio.localeCompare(b.hora_inicio)
-                  )
-                  .map((h, idx) => (
-                    <tr
-                      key={h.id_asignacion}
-                      className={cn(
-                        "border-b border-border last:border-0 transition-colors hover:bg-muted/50",
-                        idx % 2 !== 0 && "bg-muted/30"
-                      )}
-                    >
+                {horariosOrdenados.map((h, idx) => {
+                    const rowKey = `${h.is_no_lectiva ? "no-lectiva" : "lectiva"}-${h.id_asignacion ?? h.id_carga_no_lectiva}-${h.dia_semana}-${h.hora_inicio}-${h.hora_fin}-${idx}`;
+                    return (
+                      <tr
+                        key={rowKey}
+                        className={cn(
+                          "border-b border-border last:border-0 transition-colors hover:bg-muted/50",
+                          idx % 2 !== 0 && "bg-muted/30"
+                        )}
+                      >
                       <td className="px-4 py-3">
                         <p className="font-semibold text-card-foreground">
                           {h.curso_codigo}
@@ -395,15 +461,21 @@ export function MiHorarioDocenteView() {
                         {h.grupo_codigo}
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
-                        {h.ambiente_codigo}
+                        {h.ambiente_codigo || (h.is_no_lectiva ? "-" : "")}
                       </td>
                       <td className="px-4 py-3">
-                        <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border border-border bg-muted text-muted-foreground">
+                        <span className={cn(
+                          "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-muted",
+                          h.is_no_lectiva
+                            ? "border-rose-500 text-rose-600 dark:text-rose-400"
+                            : "border-border text-muted-foreground"
+                        )}>
                           {h.tipo_clase}
                         </span>
                       </td>
                     </tr>
-                  ))}
+                  );
+                })}
               </tbody>
             </table>
           </div>

@@ -58,6 +58,8 @@ interface DocenteDisp {
   apellidos: string;
   dni: string;
   categoria: string;
+  categoriaDocente?: string;
+  condicion?: string;
   modalidad: string;
   antiguedad: number | null;
   tiene_disponibilidad: boolean;

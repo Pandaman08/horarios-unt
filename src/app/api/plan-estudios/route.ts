@@ -16,7 +16,7 @@ export async function GET(request: Request) {
         ...(departamentoId ? { departamentoId } : {})
       }
     });
-    const availableMallaIds = mallas.map(m => m.id_malla);
+    const availableMallaIds = mallas.map((m: { id_malla: number }) => m.id_malla);
 
     // Build where clause for cursos - filter by mallaId and/or departamento's mallas
     const cursoWhere: any = {

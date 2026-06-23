@@ -99,15 +99,15 @@ export async function POST(request: Request) {
       }
     });
 
-    const docentesMap = new Map(docentes.map((d) => [d.id_docente, d]));
+    const docentesMap = new Map(docentes.map((d: { id_docente: number }) => [d.id_docente, d]));
     const docentesConDatos = docentesOrdenados
-      .map((d) => docentesMap.get(d.id_docente))
+      .map((d: { id_docente: number }) => docentesMap.get(d.id_docente))
       .filter(Boolean) as typeof docentes;
 
     // Mostrar el orden de prioridad
     console.log(`✅ Docentes encontrados: ${docentesConDatos.length}`);
     console.log("\n📊 Orden de prioridad de docentes:");
-    docentesConDatos.forEach((doc, index) => {
+    docentesConDatos.forEach((doc: typeof docentes[number], index: number) => {
       const antiguedad = doc.fecha_ingreso 
         ? new Date().getFullYear() - new Date(doc.fecha_ingreso).getFullYear()
         : 0;

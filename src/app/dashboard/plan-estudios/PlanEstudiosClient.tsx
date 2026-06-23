@@ -477,7 +477,9 @@ export function PlanEstudiosClient() {
     setEditingMalla(null);
   };
 
-  const isAdminOrSecretaria = session?.user?.rol === "administrador" || session?.user?.rol === "secretaria" || session?.user?.rol === "administrador_sistema" || session?.user?.rol === "operador_horarios";
+  const isAdminOrSecretaria =
+    session?.user?.rol === "administrador_sistema" ||
+    session?.user?.rol === "operador_horarios";
 
   // Filter courses for current cycle
   const filteredCiclos = ciclos.map((ciclo) => {

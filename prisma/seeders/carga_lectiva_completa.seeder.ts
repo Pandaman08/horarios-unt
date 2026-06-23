@@ -2,7 +2,7 @@
 import { PrismaClient } from '@prisma/client';
 
 export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
-  console.log('🌱 Sembrando Carga Lectiva COMPLETA por ciclos...');
+  console.log('🌱 Sembrando Carga Lectiva (solo asignación de cursos)...');
 
   // Obtener período activo (2026-I)
   const periodo = await prisma.periodoAcademico.findUnique({
@@ -24,7 +24,6 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
   for (const docente of docentes) {
     const nombreCompleto = `${docente.nombres} ${docente.apellidos}`.toUpperCase();
     docenteMap.set(nombreCompleto, docente.id_docente);
-    // También mapear con formato "apellidos, nombres" por si acaso
     const nombreFormato2 = `${docente.apellidos}, ${docente.nombres}`.toUpperCase();
     docenteMap.set(nombreFormato2, docente.id_docente);
   }
@@ -146,16 +145,18 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
         continue;
       }
 
-      // Primero, buscar o crear declaración de carga horaria para este docente y período
+      // === NUEVO: BUSCAR UNA DECLARACIÓN EN ESTADO BORRADOR O LECTIVA_CONFIRMADA ===
+      // Si no existe, crear una con estado BORRADOR
       let declaracion = await prisma.declaracionHoraria.findFirst({
-        where: { id_docente: idDocente, id_periodo: periodo.id_periodo }
+        where: { 
+          id_docente: idDocente, 
+          id_periodo: periodo.id_periodo,
+          estado: { in: ['BORRADOR', 'LECTIVA_CONFIRMADA'] }
+        }
       });
 
       if (!declaracion) {
-        // Obtener datos del docente para la declaración
         const docente = docentes.find(d => d.id_docente === idDocente);
-        
-        // Determinar horas de dedicación (por defecto 40, algunos podrían tener menos si son contratados parciales)
         const horasDedicacion = docente?.condicion === 'CONTRATADO' ? 20 : 40;
         
         declaracion = await prisma.declaracionHoraria.create({
@@ -167,89 +168,73 @@ export async function seedCargaLectivaCompleta(prisma: PrismaClient) {
             categoria: docente?.categoriaDocente ? docente.categoriaDocente.charAt(0).toUpperCase() + docente.categoriaDocente.slice(1).toLowerCase() : 'Auxiliar',
             dedicacion: horasDedicacion === 40 ? 'Tiempo Completo 40 h' : 'Tiempo Parcial 20 h',
             horas_dedicacion: horasDedicacion,
-            estado: 'ENVIADO', // Se envía para que el administrador lo apruebe
+            estado: 'BORRADOR' // Ahora en BORRADOR para que el docente pueda pasar por el flujo
           }
         });
+        console.log(`📝 Declaración creada para ${docente?.nombres} ${docente?.apellidos} (ID: ${declaracion.id_declaracion})`);
+      }
 
-        // Al crear la declaración por primera vez, asignamos carga no lectiva inicial
-        // para completar las horas de dedicación
-        const tiposNoLectivos = [
-          { tipo: 'PREPARACION_EVALUACION', horas: 10 },
-          { tipo: 'TUTORIA', horas: 5 },
-          { tipo: 'INVESTIGACION', horas: 5 },
-        ];
+      // Crear carga lectiva (curso asignado)
+      // Primero verificar si ya existe para evitar duplicados
+      const existeCarga = await prisma.cargaLectiva.findFirst({
+        where: {
+          id_declaracion: declaracion.id_declaracion,
+          id_curso: idCurso,
+          tipo_clase: { in: ['teoria', 'practica', 'laboratorio'] }
+        }
+      });
 
-        for (const nl of tiposNoLectivos) {
-          await prisma.cargaNoLectiva.create({
+      if (!existeCarga) {
+        // Crear carga lectiva para TEORÍA si hay horas
+        if (asignacion.T > 0) {
+          await prisma.cargaLectiva.create({
             data: {
               id_declaracion: declaracion.id_declaracion,
-              tipo: nl.tipo as any,
-              descripcion: `Actividades de ${nl.tipo.toLowerCase().replace('_', ' ')}`,
-              horas_semanales: nl.horas
+              id_curso: idCurso,
+              tipo_clase: 'teoria',
+              horas_semanales: asignacion.T,
+              grupos_asignados: 1,
             }
           });
+          totalAsignaciones++;
         }
-      }
 
-      // Crear carga lectiva para TEORÍA si hay horas
-      if (asignacion.T > 0) {
-        await prisma.cargaLectiva.create({
-          data: {
-            id_declaracion: declaracion.id_declaracion,
-            id_curso: idCurso,
-            tipo_clase: 'teoria',
-            horas_semanales: asignacion.T,
-            grupos_asignados: 1, // Teoría siempre es 1 grupo
-          }
-        });
-        totalAsignaciones++;
-      }
+        // Crear carga lectiva para PRÁCTICA si hay horas
+        if (asignacion.P > 0) {
+          await prisma.cargaLectiva.create({
+            data: {
+              id_declaracion: declaracion.id_declaracion,
+              id_curso: idCurso,
+              tipo_clase: 'practica',
+              horas_semanales: asignacion.P,
+              grupos_asignados: 1,
+            }
+          });
+          totalAsignaciones++;
+        }
 
-      // Crear carga lectiva para PRÁCTICA si hay horas
-      if (asignacion.P > 0) {
-        await prisma.cargaLectiva.create({
-          data: {
-            id_declaracion: declaracion.id_declaracion,
-            id_curso: idCurso,
-            tipo_clase: 'practica',
-            horas_semanales: asignacion.P,
-            grupos_asignados: 1, // Prácticas comparten aula con teoría → 1 grupo
-          }
-        });
-        totalAsignaciones++;
-      }
+        // Crear carga lectiva para LABORATORIO si hay horas
+        if (asignacion.L > 0) {
+          await prisma.cargaLectiva.create({
+            data: {
+              id_declaracion: declaracion.id_declaracion,
+              id_curso: idCurso,
+              tipo_clase: 'laboratorio',
+              horas_semanales: asignacion.L,
+              grupos_asignados: asignacion.gruposLab,
+            }
+          });
+          totalAsignaciones++;
+        }
 
-      // Crear carga lectiva para LABORATORIO si hay horas
-      if (asignacion.L > 0) {
-        await prisma.cargaLectiva.create({
-          data: {
-            id_declaracion: declaracion.id_declaracion,
-            id_curso: idCurso,
-            tipo_clase: 'laboratorio',
-            horas_semanales: asignacion.L,
-            grupos_asignados: asignacion.gruposLab,
-          }
-        });
-        totalAsignaciones++;
+        console.log(`✅ Asignado: ${asignacion.docente} - ${asignacion.curso} (T:${asignacion.T} P:${asignacion.P} L:${asignacion.L})`);
+      } else {
+        console.log(`⏭️ Ya existe carga para ${asignacion.docente} - ${asignacion.curso}`);
       }
-
-      console.log(`✅ Asignado: ${asignacion.docente} - ${asignacion.curso} (T:${asignacion.T} P:${asignacion.P} L:${asignacion.L})`);
     }
   }
 
-  const declaraciones = await prisma.declaracionHoraria.findMany({
-  where: { id_periodo: periodo.id_periodo }
-  });
-  for (const dec of declaraciones) {
-    // Actualiza solo algunas (ej. las de los primeros 3 docentes)
-    if (dec.id_docente <= 3) {
-      await prisma.declaracionHoraria.update({
-        where: { id_declaracion: dec.id_declaracion },
-        data: { estado: 'APROBADO' }
-      });
-    }
-  }
-
-  console.log(`\n🎉 Total de ${totalAsignaciones} cargas lectivas sembradas!`);
+  console.log(`\n🎉 Total de ${totalAsignaciones} cargas lectivas asignadas!`);
+  console.log('📌 Recuerda: Los docentes deben confirmar sus horarios lectivos antes de declarar su carga no lectiva.');
   return totalAsignaciones;
 }

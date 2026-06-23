@@ -3,7 +3,6 @@ import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import { GestorVentanasAtencion } from '@/services/ventanas/GestorVentanasAtencion';
-import { RolUsuario } from '@prisma/client';
 
 export async function GET() {
   const session = await getServerSession(authOptions);
@@ -14,16 +13,16 @@ export async function GET() {
 
   // Los administradores, operadores, directores y decanos siempre tienen acceso
   if ([
-    RolUsuario.administrador_sistema, 
-    RolUsuario.operador_horarios, 
-    RolUsuario.director_departamento,
-    RolUsuario.decano
+    'administrador_sistema', 
+    'operador_horarios', 
+    'director_departamento',
+    'decano'
   ].includes(session.user.rol)) {
     return NextResponse.json({ tieneAcceso: true });
   }
 
   // Si es docente, verificar su ventana
-  if (session.user.rol === RolUsuario.docente) {
+  if (session.user.rol === 'docente') {
     const docente = await prisma.docente.findFirst({
       where: { id_usuario: session.user.id_usuario }
     });

@@ -111,7 +111,7 @@ export const authOptions: NextAuthOptions = {
     async session({ session, token }) {
       // Transferir datos del token a la sesión
       if (session.user) {
-        session.user.rol = token.rol as string;
+        session.user.rol = token.rol as RolUsuario;
         session.user.id_usuario = token.id_usuario as number;
         session.user.id_docente = token.id_docente as number | undefined;
       }

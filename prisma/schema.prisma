@@ -530,6 +530,7 @@ enum EstadoDeclaracion {
   VALIDADO_DEPARTAMENTO
   APROBADO
   RECHAZADO
+  LECTIVA_CONFIRMADA 
 }
 
 enum TipoCargaNoLectiva {

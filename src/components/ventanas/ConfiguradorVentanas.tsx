@@ -53,8 +53,7 @@ export function ConfiguradorVentanas() {
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [loading, setLoading] = useState(true);
   const [stats, setStats] = useState<{
-    docentes_aprobados?: number;
-    docentes_pendientes?: number;
+    docentes_con_cursos?: number;
     ventanas_activas?: number;
   } | null>(null);
 
@@ -119,27 +118,39 @@ export function ConfiguradorVentanas() {
   const fetchStats = async () => {
     if (!selectedPeriodo) return;
     try {
-      const statsRes = await fetch(`/api/ventanas?stats=true&id_periodo=${selectedPeriodo}`);
+      // Usamos el mismo endpoint pero con un parámetro que indique que queremos estadísticas del nuevo flujo
+      const statsRes = await fetch(`/api/ventanas?stats=true&id_periodo=${selectedPeriodo}&flujo=nuevo`);
       const statsData = await statsRes.json();
-      setStats(statsData);
+      setStats({
+        docentes_con_cursos: statsData.docentes_con_cursos ?? 0,
+        ventanas_activas: statsData.ventanas_activas ?? 0,
+      });
     } catch (error) {
       console.error("Error al cargar stats:", error);
+      // Fallback a estadísticas de la vista anterior (por si el backend no está actualizado)
+      try {
+        const fallbackRes = await fetch(`/api/ventanas?stats=true&id_periodo=${selectedPeriodo}`);
+        const fallbackData = await fallbackRes.json();
+        setStats({
+          docentes_con_cursos: fallbackData.docentes_aprobados ?? 0,
+          ventanas_activas: fallbackData.ventanas_activas ?? 0,
+        });
+      } catch (e) {
+        console.error("Error al cargar stats de fallback:", e);
+      }
     }
   };
 
   const fetchVentanas = async () => {
     try {
-      const res = await fetch(`/api/ventanas?id_periodo=${selectedPeriodo}`);
+      const res = await fetch(`/api/ventanas?id_periodo=${selectedPeriodo}&flujo=nuevo`);
       const data = await res.json();
       
-      // Check if data has the 'ventanas' key (as per API)
       const ventanasData = data.ventanas || data;
       
       if (Array.isArray(ventanasData)) {
-        // Cargar ventanas normales (para la sección original)
-        // We'll separate the data (but for now, let's just set both)
-        setVentanas(ventanasData); // For the original section
-        setVentanasDocentes(ventanasData); // For the docentes section
+        setVentanas(ventanasData);
+        setVentanasDocentes(ventanasData);
       }
       setLoading(false);
     } catch (error) {
@@ -163,7 +174,7 @@ export function ConfiguradorVentanas() {
     
     try {
       if (modoGeneracion === "intervalo") {
-        setLogsGeneracion(["📋 Generando ventanas de atención para docentes con carga aprobada..."]);
+        setLogsGeneracion(["📋 Generando ventanas de atención para docentes con cursos asignados..."]);
 
         const res = await fetch("/api/ventanas", {
           method: "POST",
@@ -175,6 +186,7 @@ export function ConfiguradorVentanas() {
             hora_fin_jornada: horaFinJornada,
             intervalo_por_docente: intervaloMinutos,
             modo: "incremental",
+            flujo: "nuevo", // Indicamos que use el nuevo flujo
           }),
         });
 
@@ -186,7 +198,7 @@ export function ConfiguradorVentanas() {
         setLogsGeneracion(prev => [
           ...prev,
           `✅ ${data.message}`,
-          `📋 Docentes con carga aprobada: ${data.docentes_aprobados ?? stats?.docentes_aprobados ?? 0}`,
+          `📋 Docentes con cursos asignados: ${data.docentes_procesados ?? stats?.docentes_con_cursos ?? 0}`,
           `⏰ Ventanas creadas en esta ejecución: ${data.ventanas_creadas ?? 0}`,
         ]);
         setProgresoGeneracion(100);
@@ -196,7 +208,7 @@ export function ConfiguradorVentanas() {
         return;
       }
 
-      // Modo automático: asigna horarios y crea ventanas para docentes aprobados
+      // Modo automático: asigna horarios y crea ventanas para docentes con cursos asignados
       setLogsGeneracion(prev => [...prev, "📋 Ejecutando asignación automática de horarios y ventanas..."]);
       
       const res = await fetch("/api/horarios/asignacion-automatica", {
@@ -208,6 +220,7 @@ export function ConfiguradorVentanas() {
           intervalo_minutos: parseInt(intervaloMinutos),
           modo: "automatico",
           regenerar_ventanas: false,
+          flujo: "nuevo",
         }),
       });
 
@@ -325,7 +338,7 @@ export function ConfiguradorVentanas() {
             <p className="text-[9px] text-muted-foreground mt-0.5">
               {esLectura 
                 ? "Consulta de ventanas históricas. Modo lectura activado."
-                : "Define el orden jerárquico de prioridad para la selección de horarios."
+                : "Los docentes con cursos asignados pueden elegir sus horarios lectivos."
               }
             </p>
           </div>
@@ -363,7 +376,7 @@ export function ConfiguradorVentanas() {
                     <h3 className="text-xs font-black text-foreground uppercase tracking-widest">Programación de Ventanas</h3>
                     <p className="text-[9px] font-medium text-muted-foreground mt-0.5">
                       {modoGeneracion === "intervalo"
-                        ? "Crea turnos de atención por docente (carga aprobada). Cada docente elige su horario en su ventana."
+                        ? "Crea turnos de atención para docentes con cursos asignados. Cada docente elige su horario en su ventana."
                         : "Asigna horarios automáticamente y crea las ventanas de atención correspondientes."}
                     </p>
                   </div>
@@ -478,9 +491,9 @@ export function ConfiguradorVentanas() {
             {!esLectura && (
               <div className="pt-1.5 border-t border-border/50 space-y-2">
                 <p className="text-[9px] text-muted-foreground">
-                  Solo se generan ventanas para docentes con carga horaria aprobada.
-                  {stats?.docentes_aprobados !== undefined && (
-                    <> Hay <strong>{stats.docentes_aprobados}</strong> docente(s) listo(s).</>
+                  Solo se generan ventanas para docentes con cursos asignados que aún no han elegido sus horarios.
+                  {stats?.docentes_con_cursos !== undefined && (
+                    <> Hay <strong>{stats.docentes_con_cursos}</strong> docente(s) con cursos asignados.</>
                   )}
                 </p>
                 <Button 
@@ -691,8 +704,7 @@ export function ConfiguradorVentanas() {
             </CardHeader>
             <CardContent className="p-4 pt-0 space-y-2.5">
               {[
-                { label: "Carga aprobada", cantidad: stats?.docentes_aprobados ?? 0, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-                { label: "Pendientes de aprobación", cantidad: stats?.docentes_pendientes ?? 0, color: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+                { label: "Docentes con cursos asignados", cantidad: stats?.docentes_con_cursos ?? 0, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
                 { label: "Ventanas activas", cantidad: stats?.ventanas_activas ?? 0, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
               ].map((item, idx) => (
                 <div key={idx} className="flex items-center justify-between">

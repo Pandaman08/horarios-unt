@@ -65,7 +65,7 @@ const getEstadoBadgeVariant = (estado: string) => {
       return 'secondary';
     case 'VALIDADO_DEPARTAMENTO':
     case 'APROBADO':
-      return 'success';
+      return 'secondary';
     case 'RECHAZADO':
       return 'destructive';
     default:

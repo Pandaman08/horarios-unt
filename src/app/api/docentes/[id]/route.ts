@@ -1,7 +1,7 @@
 ﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { Prisma } from '@prisma/client';
+import { Prisma, CondicionDocente, CategoriaDocente, RegimenDedicacion, TipoContrato, TipoExtraordinario } from '@prisma/client';
 
 export async function GET(
   request: Request,
@@ -66,8 +66,9 @@ export async function PUT(
         });
       }
 
-      // Process enum fields: convert empty string to null
-      const processEnum = (value: string | null | undefined) => value && value.trim() !== "" ? value : null;
+      // Process enum fields: convert empty string to null, typed for Prisma enums
+      const processEnum = <T extends string | null | undefined>(value: T): T extends string ? T : null =>
+        (value && typeof value === 'string' && value.trim() !== "" ? value : null) as any;
 
       // 3. Actualizar el Docente
       const docente = await tx.docente.update({
@@ -85,11 +86,11 @@ export async function PUT(
           facultadId: data.facultadId,
           departamentoId: data.departamentoId,
           // New fields
-          condicion: processEnum(data.condicion),
-          categoriaDocente: data.categoriaDocente,
-          regimenDedicacion: data.condicion === 'ORDINARIO' ? processEnum(data.regimenDedicacion) : null,
-          tipoContrato: data.condicion === 'CONTRATADO' ? processEnum(data.tipoContrato) : null,
-          tipoExtraordinario: data.condicion === 'EXTRAORDINARIO' ? processEnum(data.tipoExtraordinario) : null,
+          condicion: processEnum(data.condicion) as CondicionDocente | null,
+          categoriaDocente: data.categoriaDocente as CategoriaDocente | null,
+          regimenDedicacion: data.condicion === 'ORDINARIO' ? processEnum(data.regimenDedicacion) as RegimenDedicacion | null : null,
+          tipoContrato: data.condicion === 'CONTRATADO' ? processEnum(data.tipoContrato) as TipoContrato | null : null,
+          tipoExtraordinario: data.condicion === 'EXTRAORDINARIO' ? processEnum(data.tipoExtraordinario) as TipoExtraordinario | null : null,
           esInvestigadorAcreditado: data.esInvestigadorAcreditado || false,
           nivelRenacyt: data.nivelRenacyt || null,
           sancionActiva: data.sancionActiva || false,

@@ -7,7 +7,7 @@ export async function PUT(request: Request, { params }: { params: Promise<{ id: 
   try {
     const { id } = await params;
     const session = await getServerSession(authOptions);
-    if (!session?.user?.roles?.includes('ADMINISTRADOR_SISTEMA')) {
+    if (!session?.user?.rol || session.user.rol !== 'administrador_sistema') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 
@@ -32,7 +32,7 @@ export async function DELETE(request: Request, { params }: { params: Promise<{ i
   try {
     const { id } = await params;
     const session = await getServerSession(authOptions);
-    if (!session?.user?.roles?.includes('ADMINISTRADOR_SISTEMA')) {
+    if (!session?.user?.rol || session.user.rol !== 'administrador_sistema') {
       return NextResponse.json({ error: 'No autorizado' }, { status: 401 });
     }
 

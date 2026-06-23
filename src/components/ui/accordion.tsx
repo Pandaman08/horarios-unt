@@ -30,7 +30,7 @@ function AccordionItem({ className, children, value }: AccordionItemProps) {
       {React.Children.map(children, (child) => {
         if (React.isValidElement(child)) {
           // Pasamos el estado a los hijos
-          return React.cloneElement(child, {
+          return React.cloneElement(child as React.ReactElement<any>, {
             isOpen,
             setIsOpen,
           })

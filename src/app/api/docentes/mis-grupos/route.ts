@@ -84,9 +84,7 @@ export async function GET(request: Request) {
     });
 
     if (declaracion?.estado === 'APROBADO') {
-      const carga = declaracion.cargas_lectivas.find(
-        (c) => normalizeTipo(c.tipo_clase) === tipoNorm
-      );
+      const carga = declaracion.cargas_lectivas.find((c: { tipo_clase: string }) => normalizeTipo(c.tipo_clase) === tipoNorm);
 
       if (carga) {
         if (carga.id_grupo && carga.grupo?.activo !== false) {

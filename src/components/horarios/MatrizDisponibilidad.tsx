@@ -66,6 +66,12 @@ interface Props {
 
   tipo_clase_actual?: string;
 
+  tipoVista?: string;
+
+  actividadSeleccionadaId?: number;
+
+  actividadesNoLectivas?: Array<any>;
+
   onCellClick?: (
     dia: number,
     hora: string
@@ -92,6 +98,9 @@ export function MatrizDisponibilidad({
   id_curso_actual,
   id_grupo_actual,
   tipo_clase_actual,
+  tipoVista,
+  actividadSeleccionadaId,
+  actividadesNoLectivas,
   onCellClick,
   onSelectionChange,
   soloLectura: propSoloLectura,
@@ -166,6 +175,48 @@ export function MatrizDisponibilidad({
 
     return cleanup;
   }, [id_periodo, id_ambiente]);
+
+  // Re-map actividades no lectivas cuando cambian para mostrar cambios inmediatos
+  useEffect(() => {
+    if (!actividadesNoLectivas) return;
+
+    try {
+      const map = { ...disponibilidad };
+
+      (actividadesNoLectivas || []).forEach((carga: any) => {
+        const esSeleccionada = actividadSeleccionadaId === carga.id_carga_no_lectiva;
+
+        (carga.horarios || []).forEach((h: any) => {
+          let current = parse(h.horaInicio, 'HH:mm', new Date());
+          const end = parse(h.horaFin, 'HH:mm', new Date());
+
+          while (current < end) {
+            const slotHora = format(current, 'HH:mm');
+            const diaIndex = ['LU','MA','MI','JU','VI','SA'].indexOf(h.dia);
+            const key = `${diaIndex}-${slotHora}`;
+
+            if (map[key] && (map[key].id_asignacion || map[key].id_seleccion)) {
+              // keep lective/temporal assignment
+            } else {
+              map[key] = {
+                ...map[key],
+                id_carga_no_lectiva: carga.id_carga_no_lectiva,
+                curso_nombre: carga.descripcion || carga.tipo || 'No lectiva',
+                id_docente: esSeleccionada ? id_docente_actual : undefined,
+                estado: esSeleccionada ? 'seleccionado_mio' : 'ocupado',
+              } as CeldaInfo;
+            }
+
+            current = addMinutes(current, 15);
+          }
+        });
+      });
+
+      setDisponibilidad(map);
+    } catch (err) {
+      console.warn('Error remapeando actividadesNoLectivas', err);
+    }
+  }, [actividadesNoLectivas, actividadSeleccionadaId]);
 
   const checkAccess = async () => {
     try {
@@ -376,6 +427,44 @@ export function MatrizDisponibilidad({
         }
 
         setDisponibilidad(map);
+
+        // Si recibimos actividades no lectivas desde el consumer, marcar sus bloques
+        try {
+          (actividadesNoLectivas ?? []).forEach((carga: any) => {
+            const esSeleccionada = actividadSeleccionadaId === carga.id_carga_no_lectiva;
+
+            (carga.horarios || []).forEach((h: any) => {
+              let current = parse(h.horaInicio, 'HH:mm', new Date());
+              const end = parse(h.horaFin, 'HH:mm', new Date());
+
+              while (current < end) {
+                const slotHora = format(current, 'HH:mm');
+                const diaIndex = ['LU','MA','MI','JU','VI','SA'].indexOf(h.dia);
+                const key = `${diaIndex}-${slotHora}`;
+
+                // Do not overwrite if a lective asignacion or temporal already occupies it
+                if (map[key] && (map[key].id_asignacion || map[key].id_seleccion)) {
+                  // keep existing lectiva/temporal
+                } else {
+                  map[key] = {
+                    ...map[key],
+                    id_carga_no_lectiva: carga.id_carga_no_lectiva,
+                    curso_nombre: carga.descripcion || carga.tipo || 'No lectiva',
+                    id_docente: esSeleccionada ? id_docente_actual : undefined,
+                    estado: esSeleccionada ? 'seleccionado_mio' : 'ocupado',
+                  } as CeldaInfo;
+                }
+
+                current = addMinutes(current, 15);
+              }
+            });
+          });
+
+          setDisponibilidad({ ...map });
+        } catch (err) {
+          // Ignore mapping errors from malformed horarios
+          console.warn('Error mapping actividadesNoLectivas', err);
+        }
       } catch (error) {
         console.error(error);
 

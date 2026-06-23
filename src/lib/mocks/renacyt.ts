@@ -20,7 +20,7 @@ export async function consultarRenacyt(dni: string) {
     }
   }
 
-  let resultado = { acreditado: false };
+  let resultado: { acreditado: boolean; nivel?: string } = { acreditado: false };
 
   if (docente?.esInvestigadorAcreditado) {
     resultado = { acreditado: true, nivel: docente.nivelRenacyt || 'Candidato' };

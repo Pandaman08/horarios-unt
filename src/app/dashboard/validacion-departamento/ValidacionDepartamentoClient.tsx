@@ -155,13 +155,17 @@ export default function ValidacionDepartamentoClient({ periodos }: { periodos: a
       setLoading(true);
       let url = `/api/validacion-departamento?idPeriodo=${idPeriodo}`;
       const res = await fetch(url);
-      let data = await res.json();
-      if (!Array.isArray(data)) {
-        data = data ? [data] : [];
+      const data = await res.json();
+      if (!res.ok) {
+        toast.error(data?.error || 'Error al cargar declaraciones');
+        setDeclaraciones([]);
+        return;
       }
-      setDeclaraciones(data);
+      const declaracionesArray = Array.isArray(data) ? data : (data ? [data] : []);
+      setDeclaraciones(declaracionesArray);
     } catch (err) {
       console.error(err);
+      toast.error('Error al cargar declaraciones');
     } finally {
       setLoading(false);
     }

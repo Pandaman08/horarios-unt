@@ -55,8 +55,16 @@ import { Pagination } from "@/components/ui/pagination";
 
 interface Docente {
   id_docente: number;
+  codigo_docente?: string;
   nombres: string;
   apellidos: string;
+  dni?: string;
+  correo_electronico?: string;
+  categoriaDocente?: string;
+  condicion?: string;
+  especialidad?: string;
+  grado_academico?: string;
+  fecha_ingreso?: string;
   departamentoId?: number | null;
   facultadId?: number | null;
   departamento?: {
@@ -124,7 +132,7 @@ export function UsuarioList() {
         nombres: docenteSeleccionado.nombres,
         apellidos: docenteSeleccionado.apellidos,
         correo_electronico: docenteSeleccionado.correo_electronico || "",
-        codigo: docenteSeleccionado.codigo_docente,
+        codigo: docenteSeleccionado.codigo_docente || "",
         categoriaDocente: ((docenteSeleccionado as any).categoriaDocente || "AUXILIAR"),
         condicion: ((docenteSeleccionado as any).condicion || "CONTRATADO"),
         especialidad: (docenteSeleccionado as any).especialidad || "",

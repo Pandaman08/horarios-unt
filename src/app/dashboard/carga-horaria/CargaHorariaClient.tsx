@@ -1,8 +1,9 @@
 ﻿'use client';
 
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { usePeriodo } from '@/contexts/PeriodoContext';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { useRouter } from 'next/navigation';
+import { Card, CardContent } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -24,7 +25,6 @@ import {
   Send, 
   FileText, 
   Download, 
-  Loader2, 
   BookOpen, 
   CheckCircle2, 
   User, 
@@ -32,10 +32,12 @@ import {
   LayoutGrid,
   Info,
   Clock,
-  Briefcase
+  Briefcase,
+  Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SimulacionBadge } from '@/components/ui/SimulacionBadge';
+import { parse, format, addMinutes } from 'date-fns';
 import { 
   mapCondicionToTexto, 
   mapCategoriaDocenteToTexto, 
@@ -47,6 +49,7 @@ import {
   type RegimenDedicacion as RegimenDedicacionType, 
   type TipoContrato as TipoContratoType 
 } from '@/lib/constants/regimenHoras';
+import { MatrizDisponibilidad } from '@/components/horarios/MatrizDisponibilidad';
 
 const CONDICION_OPCIONES = [
   { value: 'ORDINARIO', label: 'Ordinario (Nombrado)' },
@@ -141,6 +144,7 @@ const DIAS_SEMANA = [
 
 export default function CargaHorariaClient({ initialDocente }: { initialDocente: any }) {
   const { periodoActivo } = usePeriodo();
+  const router = useRouter();
   const [declaracion, setDeclaracion] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
@@ -155,19 +159,25 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [cursos, setCursos] = useState<any[]>([]);
   const [grupos, setGrupos] = useState<any[]>([]);
   const [cargosAcademicos, setCargosAcademicos] = useState<any[]>([]);
+  const [horariosLectivos, setHorariosLectivos] = useState<any[]>([]);
+  const [horariosLectivosLoading, setHorariosLectivosLoading] = useState(true);
+  const [actividadNoLectivaSeleccionada, setActividadNoLectivaSeleccionada] = useState<number | null>(null);
+  const [isSaving, setIsSaving] = useState(false);
+  const lastSavedSnapshotRef = useRef<string>('');
+
+  // Verificar si los horarios lectivos ya están confirmados
+  useEffect(() => {
+    if (periodoActivo && initialDocente) {
+      fetchHorariosLectivos();
+    }
+  }, [periodoActivo, initialDocente]);
 
   useEffect(() => {
     const fetchCursos = async () => {
       try {
         const res = await fetch('/api/cursos');
         const data = await res.json();
-        if (Array.isArray(data)) {
-          setCursos(data);
-        } else if (data && Array.isArray(data.cursos)) {
-          setCursos(data.cursos);
-        } else {
-          setCursos([]);
-        }
+        setCursos(Array.isArray(data) ? data : (data?.cursos || []));
       } catch (err) {
         console.error(err);
       }
@@ -180,9 +190,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       try {
         const res = await fetch('/api/cargos-academicos-administrativos');
         const data = await res.json();
-        if (Array.isArray(data)) {
-          setCargosAcademicos(data);
-        }
+        setCargosAcademicos(Array.isArray(data) ? data : []);
       } catch (err) {
         console.error(err);
       }
@@ -196,6 +204,22 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       fetchDeclaracion(periodoActivo.id_periodo, initialDocente.id_docente);
     }
   }, [periodoActivo, initialDocente]);
+
+  const fetchHorariosLectivos = async () => {
+    if (!initialDocente?.id_docente || !periodoActivo?.id_periodo) return;
+    try {
+      setHorariosLectivosLoading(true);
+      const res = await fetch(`/api/docentes/horarios?periodoId=${periodoActivo.id_periodo}`);
+      if (res.ok) {
+        const data = await res.json();
+        setHorariosLectivos(Array.isArray(data) ? data : []);
+      }
+    } catch (err) {
+      console.error(err);
+    } finally {
+      setHorariosLectivosLoading(false);
+    }
+  };
 
   const getHorasDedicacion = (docente: any): number => {
     if (docente.condicion === 'CONTRATADO' && docente.tipoContrato) {
@@ -216,6 +240,25 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
   };
 
+  const getSaveSnapshot = (formData: any, cargas: any[]) => JSON.stringify({
+    formData: {
+      ibm: formData.ibm,
+      condicion: formData.condicion,
+      categoria: formData.categoria,
+      dedicacion: formData.dedicacion,
+      horas_dedicacion: formData.horas_dedicacion
+    },
+    cargasNoLectivas: cargas.map(c => ({
+      id_carga_no_lectiva: c.id_carga_no_lectiva,
+      tipo: c.tipo,
+      descripcion: c.descripcion,
+      horas_semanales: c.horas_semanales,
+      ambiente: c.ambiente,
+      horarios: c.horarios || [],
+      cargoId: c.cargoId || null
+    }))
+  });
+
   const fetchDeclaracion = async (idPeriodo: number, idDocente: number) => {
     try {
       const res = await fetch(`/api/declaracion-horaria?idDocente=${idDocente}&idPeriodo=${idPeriodo}`);
@@ -223,13 +266,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       if (data) {
         setDeclaracion(data);
         // Always use initialDocente's enums for formData
-        setFormData({
+        const loadedFormData = {
           ibm: data.ibm || initialDocente.codigo_docente || '',
           condicion: initialDocente.condicion,
           categoria: initialDocente.categoriaDocente,
           dedicacion: initialDocente.regimenDedicacion,
           horas_dedicacion: getHorasDedicacion(initialDocente)
-        });
+        };
+
+        setFormData(loadedFormData);
         setCargasLectivas(data.cargas_lectivas || []);
         
         // Initialize with all predefined types, merging existing ones
@@ -253,17 +298,20 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           };
         });
         setCargasNoLectivas(cargasInicializadas);
+        lastSavedSnapshotRef.current = getSaveSnapshot(loadedFormData, cargasInicializadas);
       } else {
         // If no declaration exists, initialize formData from initialDocente
         const horasDedicacion = getHorasDedicacion(initialDocente);
         
-        setFormData({
+        const loadedFormData = {
           ibm: initialDocente.codigo_docente || '',
           condicion: initialDocente.condicion,
           categoria: initialDocente.categoriaDocente,
           dedicacion: initialDocente.regimenDedicacion,
           horas_dedicacion: horasDedicacion
-        });
+        };
+
+        setFormData(loadedFormData);
         
         // Initialize with all predefined types
         const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
@@ -276,21 +324,22 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           cargoId: null
         }));
         setCargasNoLectivas(cargasInicializadas);
+        lastSavedSnapshotRef.current = getSaveSnapshot(loadedFormData, cargasInicializadas);
       }
     } catch (err) {
       console.error(err);
       // Initialize formData from initialDocente even on error
       const horasDedicacion = getHorasDedicacion(initialDocente);
       
-      setFormData({
+      const loadedFormData = {
         ibm: initialDocente.codigo_docente || '',
         condicion: initialDocente.condicion,
         categoria: initialDocente.categoriaDocente,
         dedicacion: initialDocente.regimenDedicacion,
         horas_dedicacion: horasDedicacion
-      });
+      };
+      setFormData(loadedFormData);
       
-      // Initialize with all predefined types even on error
       const cargasInicializadas = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.map((tipo, idx) => ({
         id_carga_no_lectiva: `temp_${Date.now()}_${idx}`,
         tipo: tipo.value,
@@ -301,6 +350,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         cargoId: null
       }));
       setCargasNoLectivas(cargasInicializadas);
+      lastSavedSnapshotRef.current = getSaveSnapshot(loadedFormData, cargasInicializadas);
     } finally {
       setLoading(false);
     }
@@ -308,10 +358,25 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
 
   const handleCreateOrSave = async () => {
     if (!initialDocente || !periodoActivo) return;
+    if (isSaving) return;
+
+    const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
+    if (lastSavedSnapshotRef.current === currentSnapshot) {
+      toast.success('No hay cambios para guardar');
+      return;
+    }
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+
+    setIsSaving(true);
 
     // Validate total hours don't exceed dedication
     if (formData.horas_dedicacion > 0 && totalGeneral > formData.horas_dedicacion) {
       toast.error(`Error: El total de horas (${totalGeneral}h) excede las horas de dedicación (${formData.horas_dedicacion}h)`);
+      setIsSaving(false);
       return;
     }
 
@@ -333,7 +398,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           body: JSON.stringify({
             id_docente: initialDocente.id_docente,
             id_periodo: periodoActivo.id_periodo,
-            ...formData
+            ...formData,
+            estado: 'BORRADOR'
           })
         });
         const newDeclaracion = await res.json();
@@ -348,33 +414,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         });
       }
 
-      // Save cargas lectivas
-      for (const carga of cargasLectivas) {
-        if (!carga.id_curso) continue;
-        
-        if (carga.id_carga_lectiva && typeof carga.id_carga_lectiva === 'number') {
-          // TODO: Update existing carga
-        } else {
-          const res = await fetch('/api/carga-lectiva', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              id_declaracion: declaracionId,
-              id_curso: carga.id_curso,
-              id_grupo: carga.id_grupo || null,
-              tipo_clase: carga.tipo_clase || 'teoria',
-              horas_semanales: carga.horas_semanales || 0,
-              grupos_asignados: carga.grupos_asignados || null
-            })
-          });
-          const data = await res.json();
-          if (data.warning && !warningShown) {
-            toast.warning(data.warning, { duration: 6000 });
-            warningShown = true;
-          }
-        }
-      }
-
       // Save cargas no lectivas using upsert
       await fetch('/api/carga-no-lectiva', {
         method: 'PUT',
@@ -386,38 +425,35 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       });
 
       // Refresh data
-      fetchDeclaracion(periodoActivo.id_periodo, initialDocente.id_docente);
+      await fetchDeclaracion(periodoActivo.id_periodo, initialDocente.id_docente);
+      lastSavedSnapshotRef.current = currentSnapshot;
       toast.success('Declaración guardada correctamente');
     } catch (err) {
       console.error(err);
       toast.error('Error al guardar la declaración');
+    } finally {
+      setIsSaving(false);
     }
-  };
-
-  const addCargaLectiva = () => {
-    setCargasLectivas([...cargasLectivas, { 
-      id_carga_lectiva: Date.now(), 
-      id_curso: null, 
-      id_grupo: null,
-      tipo_clase: 'teoria', 
-      horas_semanales: 0,
-      grupos_asignados: 0
-    }]);
-  };
-
-  const removeCargaLectiva = async (id: number) => {
-    if (typeof id === 'number' && declaracion) {
-      try {
-        await fetch(`/api/carga-lectiva?id=${id}`, { method: 'DELETE' });
-      } catch (err) {
-        console.error(err);
-      }
-    }
-    setCargasLectivas(cargasLectivas.filter(c => c.id_carga_lectiva !== id));
   };
 
   const handleEnviar = async () => {
     if (!declaracion) return;
+
+    // Verificar que los horarios lectivos estén confirmados
+    if (horariosLectivos.length === 0) {
+      toast.error('Error: Primero debe confirmar sus horarios lectivos en la sección de selección de horarios.');
+      return;
+    }
+
+    // Guardar cambios pendientes antes de enviar para que el backend valide el estado con datos actualizados
+    const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
+    if (lastSavedSnapshotRef.current !== currentSnapshot) {
+      await handleCreateOrSave();
+      if (lastSavedSnapshotRef.current !== currentSnapshot) {
+        toast.error('Error: No se pudieron guardar los cambios antes de enviar. Intente nuevamente.');
+        return;
+      }
+    }
 
     // Validación obligatoria de horas totales
     if (totalGeneral !== formData.horas_dedicacion) {
@@ -431,11 +467,18 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
 
     try {
-      await fetch(`/api/declaracion-horaria/${declaracion.id_declaracion}`, {
+      const res = await fetch(`/api/declaracion-horaria/${declaracion.id_declaracion}`, {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ...formData, estado: 'ENVIADO' })
       });
+
+      const responseData = await res.json();
+      if (!res.ok) {
+        toast.error(responseData?.error || 'Error al enviar la declaración');
+        return;
+      }
+
       toast.success('Declaración enviada para aprobación');
       fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente);
     } catch (err) {
@@ -459,15 +502,32 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
   };
 
+  const getHorasNoLectivas = (carga: any) => {
+    const minutos = (carga.horarios || []).reduce((s: number, h: any) => {
+      try {
+        const start = parse(h.horaInicio, 'HH:mm', new Date());
+        const end = parse(h.horaFin, 'HH:mm', new Date());
+        return s + Math.max(0, (end.getTime() - start.getTime()) / 60000);
+      } catch (e) {
+        return s;
+      }
+    }, 0);
+
+    if (minutos > 0) {
+      return Math.round((minutos / 60) * 100) / 100;
+    }
+
+    return carga.horas_semanales || 0;
+  };
+
   const totalLectivas = cargasLectivas.reduce((sum, c) => {
     const grupos = c.grupos_asignados || 0;
     const horas = c.horas_semanales || 0;
     return sum + (grupos * horas);
   }, 0);
-  const totalNoLectivas = cargasNoLectivas.reduce((sum, c) => sum + (c.horas_semanales || 0), 0);
+  const totalNoLectivas = cargasNoLectivas.reduce((sum, c) => sum + getHorasNoLectivas(c), 0);
   const totalGeneral = totalLectivas + totalNoLectivas;
 
-  // Función para agrupar cargas por curso
   const cargasPorCurso = cargasLectivas.reduce((acc, carga) => {
     const cursoId = carga.id_curso;
     if (!cursoId) return acc;
@@ -479,14 +539,192 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     return acc;
   }, {} as Record<number, { curso: any; cargas: any[] }>);
   
-  // Aseguramos el tipo para el map
   const cursosArray = Object.values(cargasPorCurso) as Array<{ curso: any; cargas: any[] }>;
+
+  // Verificar si el estado de la declaración permite editar no lectiva
+  const puedeEditarNoLectiva = declaracion && (
+    declaracion.estado === 'BORRADOR' || 
+    declaracion.estado === 'RECHAZADO' || 
+    declaracion.estado === 'LECTIVA_CONFIRMADA'
+  );
+  const puedeEnviar = declaracion && (
+    declaracion.estado === 'BORRADOR' || 
+    declaracion.estado === 'RECHAZADO' || 
+    declaracion.estado === 'LECTIVA_CONFIRMADA'
+  );
+  const mostrarHorarioConfirmado = declaracion?.estado === 'LECTIVA_CONFIRMADA' && !horariosLectivosLoading && horariosLectivos.length > 0;
+
+  // Handler para asignar bloques a la actividad no lectiva seleccionada
+  const autosaveCargas = async (cargasToSave: any[]) => {
+    if (!initialDocente || !periodoActivo) return;
+
+    try {
+      let declaracionId = declaracion?.id_declaracion;
+
+      if (!declaracionId) {
+        const res = await fetch('/api/declaracion-horaria', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            id_docente: initialDocente.id_docente,
+            id_periodo: periodoActivo.id_periodo,
+            ...formData,
+            estado: 'BORRADOR'
+          })
+        });
+
+        if (res.ok) {
+          const newDeclaracion = await res.json();
+          declaracionId = newDeclaracion.id_declaracion;
+          setDeclaracion(newDeclaracion);
+        } else {
+          toast.error('Error al crear declaración antes de guardar cargas');
+          return;
+        }
+      }
+
+      await fetch('/api/carga-no-lectiva', {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ id_declaracion: declaracionId, cargas: cargasToSave })
+      });
+
+      // Refresh
+      if (declaracionId) {
+        await fetchDeclaracion(periodoActivo.id_periodo, initialDocente.id_docente);
+        lastSavedSnapshotRef.current = getSaveSnapshot(formData, cargasToSave);
+      }
+      toast.success('Cambios guardados automáticamente');
+    } catch (err) {
+      console.error('Error autosaving cargas', err);
+      toast.error('Error al guardar cambios automáticamente');
+    }
+  };
+
+  // Debounced autosave: schedule saves to avoid spamming the server
+  const autosaveTimerRef = useRef<number | null>(null);
+  const lastCargasRef = useRef<any[] | null>(null);
+
+  const scheduleAutosave = (cargasToSave: any[]) => {
+    lastCargasRef.current = cargasToSave;
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+    }
+
+    autosaveTimerRef.current = window.setTimeout(() => {
+      if (lastCargasRef.current) autosaveCargas(lastCargasRef.current);
+      autosaveTimerRef.current = null;
+    }, 800);
+  };
+
+  useEffect(() => {
+    return () => {
+      if (autosaveTimerRef.current) clearTimeout(autosaveTimerRef.current);
+    };
+  }, []);
+
+  const handleNoLectivaCellClick = async (dia: number, hora: string) => {
+    if (!actividadNoLectivaSeleccionada) {
+      toast.error('Seleccione una actividad antes de asignar bloques');
+      return;
+    }
+
+    const diasCodigo = ['LU','MA','MI','JU','VI','SA'];
+    const diaCodigo = diasCodigo[dia] || 'LU';
+
+    const idx = cargasNoLectivas.findIndex(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada);
+    if (idx === -1) return;
+
+    const carga = cargasNoLectivas[idx];
+
+    // Limitar por horas semanales declaradas
+    const existentes = carga.horarios || [];
+
+    // Si ya está asignado, quitar (deseleccionar)
+    const yaAsignadoIdx = existentes.findIndex((h: any) => h.dia === diaCodigo && h.horaInicio === hora);
+    if (yaAsignadoIdx !== -1) {
+      const newCargas = [...cargasNoLectivas];
+      const nuevosHorarios = [...(newCargas[idx].horarios || [])];
+      nuevosHorarios.splice(yaAsignadoIdx, 1);
+      newCargas[idx] = { ...newCargas[idx], horarios: nuevosHorarios };
+      setCargasNoLectivas(newCargas);
+
+      // Persist change immediately for removals to reflect deletion on server
+      await autosaveCargas(newCargas);
+      return;
+    }
+
+    // Calcular minutos asignados actuales
+    const minutosAsignados = (existentes || []).reduce((s: number, h: any) => {
+      try {
+        const start = parse(h.horaInicio, 'HH:mm', new Date());
+        const end = parse(h.horaFin, 'HH:mm', new Date());
+        return s + Math.max(0, (end.getTime() - start.getTime()) / 60000);
+      } catch (e) {
+        return s;
+      }
+    }, 0);
+
+    const bloqueMinutos = 60; // actualmente se añade 60 min por bloque
+    if (carga.horas_semanales && (minutosAsignados + bloqueMinutos) > (carga.horas_semanales * 60)) {
+      toast.error('No puede asignar más bloques: excede las horas semanales declaradas para esta actividad');
+      return;
+    }
+
+    // Evitar conflicto con otras actividades
+    const conflicto = cargasNoLectivas.some(c => c.id_carga_no_lectiva !== carga.id_carga_no_lectiva && (c.horarios || []).some((h: any) => h.dia === diaCodigo && h.horaInicio === hora));
+    if (conflicto) {
+      toast.error('El bloque está ocupado por otra actividad no lectiva');
+      return;
+    }
+
+    // Evitar conflicto con horarios lectivos confirmados
+    const lectivoConflicto = horariosLectivos.some((hl: any) => hl.dia_semana === dia && hl.hora_inicio === hora);
+    if (lectivoConflicto) {
+      toast.error('El bloque está ocupado por horario lectivo confirmado');
+      return;
+    }
+
+    // Calcular hora fin asumiendo 60 minutos
+    const inicio = parse(hora, 'HH:mm', new Date());
+    const fin = format(addMinutes(inicio, 60), 'HH:mm');
+
+    const newCargas = [...cargasNoLectivas];
+    newCargas[idx] = {
+      ...newCargas[idx],
+      horarios: [...(newCargas[idx].horarios || []), { dia: diaCodigo, horaInicio: hora, horaFin: fin }]
+    };
+
+    setCargasNoLectivas(newCargas);
+
+    // Persist change (debounced)
+    scheduleAutosave(newCargas);
+  };
 
   if (loading) return <div className="p-8">Cargando...</div>;
 
+  // Si no hay horarios lectivos confirmados y la declaración no existe o no está en estado LECTIVA_CONFIRMADA, redirigir
+  if (!horariosLectivosLoading && horariosLectivos.length === 0 && declaracion?.estado !== 'LECTIVA_CONFIRMADA') {
+    return (
+      <div className="p-8 text-center">
+        <div className="max-w-md mx-auto space-y-4">
+          <Calendar className="h-16 w-16 text-blue-500 mx-auto" />
+          <h2 className="text-2xl font-bold text-foreground">Horarios Lectivos Pendientes</h2>
+          <p className="text-muted-foreground">
+            Primero debe seleccionar sus horarios lectivos en la ventana de autogestión.
+          </p>
+          <Button onClick={() => router.push('/dashboard/horarios/seleccion')} className="mt-4">
+            Ir a Selección de Horarios
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
   return (
     <div className="p-6 space-y-4 bg-background min-h-screen">
-      {/* Header Unificado */}
+      {/* Header */}
       <Card className="shadow-sm border-border overflow-hidden">
         <CardContent className="p-0">
           <div className="p-4 flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-card">
@@ -496,19 +734,22 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               </div>
               <div>
                 <h1 className="text-lg font-bold text-foreground leading-none">Declaración de Carga Horaria</h1>
-                <p className="text-muted-foreground text-xs mt-1">Gestiona tu carga lectiva y no lectiva para el periodo académico</p>
+                <p className="text-muted-foreground text-xs mt-1">Complete su carga no lectiva y envíe a aprobación</p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
-              <Button 
-                onClick={handleCreateOrSave} 
-                variant="outline" 
-                size="sm"
-                className="h-9 px-4 text-xs font-bold uppercase border-border hover:bg-muted flex items-center gap-2"
-              >
-                <Save size={14} /> Guardar Borrador
-              </Button>
-              {declaracion && (declaracion.estado === 'BORRADOR' || declaracion.estado === 'RECHAZADO') && (
+              {puedeEditarNoLectiva && (
+                <Button 
+                  onClick={handleCreateOrSave} 
+                  variant="outline" 
+                  size="sm"
+                  disabled={isSaving}
+                  className="h-9 px-4 text-xs font-bold uppercase border-border hover:bg-muted flex items-center gap-2"
+                >
+                  <Save size={14} /> {isSaving ? 'Guardando...' : 'Guardar Borrador'}
+                </Button>
+              )}
+              {puedeEnviar && (
                 <Button 
                   onClick={handleEnviar} 
                   variant="default" 
@@ -528,10 +769,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       declaracion.estado === 'BORRADOR' ? "bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-950/30 dark:text-amber-400 dark:border-amber-900/50" :
                       declaracion.estado === 'ENVIADO' ? "bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-950/30 dark:text-blue-400 dark:border-blue-900/50" :
                       declaracion.estado === 'APROBADO' ? "bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50" :
+                      declaracion.estado === 'LECTIVA_CONFIRMADA' ? "bg-indigo-50 text-indigo-700 border-indigo-200 dark:bg-indigo-950/30 dark:text-indigo-400 dark:border-indigo-900/50" :
                       "bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-950/30 dark:text-rose-400 dark:border-rose-900/50"
                     )}
                   >
-                    {declaracion.estado}
+                    {mostrarHorarioConfirmado ? 'HORARIOS CONFIRMADOS' : declaracion.estado}
                   </Badge>
                 </div>
               )}
@@ -589,6 +831,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       value={formData.ibm}
                       onChange={e => setFormData({ ...formData, ibm: e.target.value })}
                       className="h-10 bg-background border-border focus:bg-background transition-all text-sm"
+                      disabled={!puedeEditarNoLectiva}
                     />
                   )}
                 </div>
@@ -597,7 +840,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                   {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCondicionToTexto(initialDocente.condicion)}</div>
                   ) : (
-                    <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })}>
+                    <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })} disabled={!puedeEditarNoLectiva}>
                       <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
                         <SelectValue placeholder="Seleccionar condición" />
                       </SelectTrigger>
@@ -612,7 +855,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                   {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCategoriaDocenteToTexto(initialDocente.categoriaDocente)}</div>
                   ) : (
-                    <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })}>
+                    <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })} disabled={!puedeEditarNoLectiva}>
                       <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
                         <SelectValue placeholder="Seleccionar categoría" />
                       </SelectTrigger>
@@ -633,6 +876,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                         const newHoras = REGIMEN_DEDICACION[v as RegimenDedicacionType]?.totalHoras || 0;
                         setFormData({ ...formData, dedicacion: v, horas_dedicacion: newHoras });
                       }}
+                      disabled={!puedeEditarNoLectiva}
                     >
                       <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
                         <SelectValue placeholder="Seleccionar dedicación" />
@@ -703,82 +947,48 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         </Card>
       </div>
 
-      {/* Carga Lectiva Asignada */}
+      {/* Horarios Lectivos Confirmados (Solo Lectura) */}
       <Card className="p-4 shadow-sm border-border overflow-hidden">
         <div className="px-4 py-3 border-b border-border bg-muted/30 flex justify-between items-center">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
-            <BookOpen size={16} className="text-blue-500 dark:text-blue-400" />
-            Carga Lectiva Asignada
+            <Calendar size={16} className="text-emerald-500 dark:text-emerald-400" />
+            Horarios Lectivos Confirmados
           </h3>
-          <Badge variant="secondary" className="bg-blue-50 text-blue-700 dark:bg-blue-950/30 dark:text-blue-400 hover:bg-blue-50 dark:hover:bg-blue-950/30 text-[10px] font-bold px-2 py-0.5 border-blue-200 dark:border-blue-900/50 uppercase">
-            Total: {totalLectivas}h
+          <Badge variant="secondary" className="bg-emerald-50 text-emerald-700 dark:bg-emerald-950/30 dark:text-emerald-400 border-emerald-200 dark:border-emerald-900/50">
+            {horariosLectivos.length} bloques
           </Badge>
         </div>
-        <CardContent className="p-0">
-          {cargasLectivas.length === 0 ? (
-            <div className="text-center py-16 bg-card">
-              <BookOpen className="w-10 h-10 mx-auto mb-3 text-muted-foreground/30" />
-              <p className="text-muted-foreground font-medium text-xs">Aún no hay carga lectiva asignada</p>
+        <CardContent className="p-4">
+          {horariosLectivos.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              <p>No hay horarios lectivos confirmados aún.</p>
             </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/30">
-                  <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Código</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Curso</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-2 h-10 text-center">Tipo</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-2 h-10 text-center">Escuela</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-2 h-10 text-center">Ciclo</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-2 h-10 text-center">HT</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-2 h-10 text-center">HP</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-2 h-10 text-center">HL</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-right">Total</TableHead>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Curso</TableHead>
+                    <TableHead>Día</TableHead>
+                    <TableHead>Hora</TableHead>
+                    <TableHead>Ambiente</TableHead>
+                    <TableHead>Tipo</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {cursosArray.map(({ curso, cargas }, index) => {
-                    const HT = cargas.find(c => c.tipo_clase === 'teoria')?.horas_semanales || 0;
-                    const HP = cargas.find(c => c.tipo_clase === 'practica')?.horas_semanales || 0;
-                    const cLaboratorio = cargas.find(c => c.tipo_clase === 'laboratorio');
-                    const HL = (cLaboratorio?.grupos_asignados || 0) * (cLaboratorio?.horas_semanales || 0);
-                    const totalHoras = HT + HP + HL;
-                    
-                    const cursoCiclos: { [key: string]: string } = {
-                      'introducción a la programación': 'I', 'introducción a la ingeniería de sistemas': 'I',
-                      'programación orientada a objetos ii': 'III', 'sistémica': 'III',
-                      'ingeniería de datos i': 'V', 'sistemas de información': 'V',
-                      'ingeniería del software i': 'VII', 'redes y comunicaciones i': 'VII',
-                      'tesis i': 'IX', 'analítica de negocios': 'IX'
-                    };
-                    let ciclo = 'V';
-                    if (curso?.nombre) {
-                      const nombre = curso.nombre.toLowerCase().trim();
-                      if (cursoCiclos[nombre]) ciclo = cursoCiclos[nombre];
-                    }
-                    
-                    return (
-                      <TableRow key={`${index}-${curso?.id_curso}`} className="hover:bg-muted/50 border-border last:border-0">
-                        <TableCell className="px-4 py-3 text-xs font-bold text-foreground">{curso?.codigo}</TableCell>
-                        <TableCell className="px-4 py-3 text-xs font-medium text-foreground">{curso?.nombre}</TableCell>
-                        <TableCell className="px-2 py-3 text-center">
-                          <Badge variant="outline" className="text-[9px] font-bold px-1.5 py-0 bg-card border-border">
-                            {curso?.codigo?.startsWith('EL') ? 'EL' : 'OB'}
-                          </Badge>
-                        </TableCell>
-                        <TableCell className="px-2 py-3 text-center text-[11px] text-muted-foreground font-medium">Sistemas</TableCell>
-                        <TableCell className="px-2 py-3 text-center text-[11px] font-bold text-foreground">{ciclo}</TableCell>
-                        <TableCell className="px-2 py-3 text-center text-xs text-muted-foreground">{HT || '-'}</TableCell>
-                        <TableCell className="px-2 py-3 text-center text-xs text-muted-foreground">{HP || '-'}</TableCell>
-                        <TableCell className="px-2 py-3 text-center text-xs text-muted-foreground">{HL || '-'}</TableCell>
-                        <TableCell className="px-4 py-3 text-right text-xs font-black text-foreground">{totalHoras}h</TableCell>
-                      </TableRow>
-                    );
-                  })}
-                  <TableRow className="bg-muted/80 hover:bg-muted font-bold border-t border-border">
-                    <TableCell colSpan={8} className="px-4 py-3 text-[11px] font-bold uppercase text-muted-foreground tracking-wider">Total Carga Lectiva</TableCell>
-                    <TableCell className="px-4 py-3 text-right text-sm font-black text-blue-600 dark:text-blue-400">{totalLectivas}h</TableCell>
-                  </TableRow>
+                  {horariosLectivos.map((h: any) => (
+                    <TableRow key={h.id_asignacion}>
+                      <TableCell className="font-medium">{h.curso_nombre}</TableCell>
+                      <TableCell>{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana]}</TableCell>
+                      <TableCell>{h.hora_inicio} - {h.hora_fin}</TableCell>
+                      <TableCell>{h.ambiente_nombre || h.ambiente_codigo || '—'}</TableCell>
+                      <TableCell>
+                        <Badge variant="outline" className="text-[10px]">
+                          {h.tipo_clase}
+                        </Badge>
+                      </TableCell>
+                    </TableRow>
+                  ))}
                 </TableBody>
               </Table>
             </div>
@@ -786,21 +996,40 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         </CardContent>
       </Card>
 
-      {/* Carga No Lectiva Asignada */}
+      {/* Carga No Lectiva Asignada (Editable) */}
       <Card className="p-4 shadow-sm border-border overflow-hidden">
         <div className="px-4 py-3 border-b border-border bg-muted/30 flex justify-between items-center">
           <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
             <Briefcase size={16} className="text-indigo-500 dark:text-indigo-400" />
             Carga No Lectiva Asignada
           </h3>
-          <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 hover:bg-indigo-50 dark:hover:bg-indigo-950/30 text-[10px] font-bold px-2 py-0.5 border-indigo-200 dark:border-indigo-900/50 uppercase">
+          <Badge variant="secondary" className="bg-indigo-50 text-indigo-700 dark:bg-indigo-950/30 dark:text-indigo-400 border-indigo-200 dark:border-indigo-900/50">
             Total: {totalNoLectivas}h
           </Badge>
         </div>
         <CardContent className="p-0">
+          <div className="p-4">
+            {/* Shared matrix for no-lectiva */}
+            {actividadNoLectivaSeleccionada && (
+              <div className="mb-4">
+                <div className="border rounded-lg p-2 bg-muted/10">
+                  <MatrizDisponibilidad
+                    id_periodo={periodoActivo?.id_periodo || 0}
+                    id_docente_actual={initialDocente?.id_docente}
+                    soloLectura={!puedeEditarNoLectiva}
+                    tipoVista="no-lectiva"
+                    actividadSeleccionadaId={actividadNoLectivaSeleccionada as any}
+                    actividadesNoLectivas={cargasNoLectivas}
+                    onCellClick={handleNoLectivaCellClick}
+                    onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                    />
+                </div>
+              </div>
+            )}
+
           <Table>
             <TableHeader className="bg-muted/30">
-              <TableRow className="hover:bg-transparent">
+              <TableRow>
                 <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Tipo de Actividad</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Descripción de Actividades</TableHead>
                 <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-right">Horas/Sem</TableHead>
@@ -843,6 +1072,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           placeholder={requiereDocumento ? 'Ingrese el documento de sustento...' : 'Describa brevemente la actividad...'}
                           value={carga.descripcion || ''}
                           className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none"
+                          disabled={!puedeEditarNoLectiva}
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
                             const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
@@ -860,16 +1090,20 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                               Cargo Académico/Administrativo
                             </Label>
                             <Select
-                              value={carga.cargoId || ''}
+                              value={carga.cargoId != null ? String(carga.cargoId) : ''}
+                              disabled={!puedeEditarNoLectiva}
                               onValueChange={val => {
                                 const newCargas = [...cargasNoLectivas];
                                 const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                const cargo = cargosAcademicos.find(c => c.id === val);
-                                if (cargo) {
-                                  newCargas[idx].cargoId = val;
-                                  newCargas[idx].horas_semanales = cargo.chnla;
-                                } else {
+                                if (val === 'none') {
                                   newCargas[idx].cargoId = null;
+                                  newCargas[idx].horas_semanales = 0;
+                                } else {
+                                  const cargo = cargosAcademicos.find(c => String(c.id) === val);
+                                  if (cargo) {
+                                    newCargas[idx].cargoId = cargo.id;
+                                    newCargas[idx].horas_semanales = cargo.chnla;
+                                  }
                                 }
                                 setCargasNoLectivas(newCargas);
                               }}
@@ -878,8 +1112,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                                 <SelectValue placeholder="Seleccione un cargo..." />
                               </SelectTrigger>
                               <SelectContent>
+                                <SelectItem value="none" className="text-xs text-muted-foreground">
+                                  Ninguno
+                                </SelectItem>
                                 {cargosAcademicos.map(cargo => (
-                                  <SelectItem key={cargo.id} value={cargo.id} className="text-xs">
+                                  <SelectItem key={cargo.id} value={String(cargo.id)} className="text-xs">
                                     {cargo.nombre}
                                   </SelectItem>
                                 ))}
@@ -911,6 +1148,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           placeholder="Ej: Aula 101, Laboratorio 3..."
                           value={carga.ambiente || ''}
                           className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none"
+                          disabled={!puedeEditarNoLectiva}
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
                             const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
@@ -920,113 +1158,67 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                         />
                       </div>
 
-                      {/* Horarios */}
+                      {/* Horarios - Selector para abrir la matriz compartida */}
                       <div className="space-y-2">
                         <div className="flex items-center justify-between">
                           <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Horario Semanal
+                            Horario Semanal (usar la matriz compartida)
                           </Label>
-                          <Button
-                            variant="ghost"
-                            size="sm"
-                            className="h-6 px-2 text-[10px] font-bold"
-                            onClick={() => {
-                              const newCargas = [...cargasNoLectivas];
-                              const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                              newCargas[idx].horarios = [
-                                ...(newCargas[idx].horarios || []),
-                                { id: Date.now(), dia: 'LU', horaInicio: '08:00', horaFin: '10:00' }
-                              ];
-                              setCargasNoLectivas(newCargas);
-                            }}
-                          >
-                            <Plus size={12} className="mr-1" /> Agregar Horario
-                          </Button>
+                          <Badge variant="outline" className="text-[10px]">
+                            {carga.horarios?.length || 0} bloques
+                          </Badge>
                         </div>
 
-                        <div className="space-y-2">
-                          {(carga.horarios || []).map((horario: any, hIndex: number) => (
-                            <div key={horario.id} className="flex items-center gap-2 bg-background/50 p-2 rounded-lg border border-border">
-                              <Select
-                                value={horario.dia}
-                                onValueChange={val => {
-                                  const newCargas = [...cargasNoLectivas];
-                                  const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                  newCargas[idx].horarios[hIndex].dia = val;
-                                  setCargasNoLectivas(newCargas);
-                                }}
-                              >
-                                <SelectTrigger className="h-7 w-24 text-xs">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent>
-                                  {DIAS_SEMANA.map(dia => (
-                                    <SelectItem key={dia.value} value={dia.value} className="text-xs">
-                                      {dia.label}
-                                    </SelectItem>
-                                  ))}
-                                </SelectContent>
-                              </Select>
-
-                              <div className="flex items-center gap-1">
-                                <Input
-                                  type="time"
-                                  value={horario.horaInicio}
-                                  onChange={e => {
-                                    const newCargas = [...cargasNoLectivas];
-                                    const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                    newCargas[idx].horarios[hIndex].horaInicio = e.target.value;
-                                    setCargasNoLectivas(newCargas);
-                                  }}
-                                  className="h-7 w-24 text-xs"
-                                />
-                                <span className="text-xs text-muted-foreground">-</span>
-                                <Input
-                                  type="time"
-                                  value={horario.horaFin}
-                                  onChange={e => {
-                                    const newCargas = [...cargasNoLectivas];
-                                    const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                    newCargas[idx].horarios[hIndex].horaFin = e.target.value;
-                                    setCargasNoLectivas(newCargas);
-                                  }}
-                                  className="h-7 w-24 text-xs"
-                                />
-                              </div>
-
+                        <div className="flex items-center gap-2">
+                          {puedeEditarNoLectiva ? (
+                            <>
                               <Button
-                                variant="ghost"
-                                size="icon"
-                                className="h-7 w-7 text-rose-500 hover:text-rose-700 hover:bg-rose-50"
-                                onClick={() => {
-                                  const newCargas = [...cargasNoLectivas];
-                                  const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                  newCargas[idx].horarios = newCargas[idx].horarios.filter((_: any, i: number) => i !== hIndex);
-                                  setCargasNoLectivas(newCargas);
-                                }}
+                                size="sm"
+                                variant={actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'destructive' : 'outline'}
+                                onClick={() => setActividadNoLectivaSeleccionada(actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? null : carga.id_carga_no_lectiva)}
                               >
-                                <Trash2 size={14} />
+                                {actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'Cerrar matriz' : 'Seleccionar actividad'}
                               </Button>
+                              <div className="text-xs text-muted-foreground">Seleccione la actividad y luego haga clic en los bloques libres de la matriz compartida.</div>
+                            </>
+                          ) : (
+                            <div className="text-sm text-muted-foreground">
+                              {carga.horarios?.length > 0 ? (
+                                <div className="space-y-1">
+                                  {carga.horarios.map((h: any, i: number) => (
+                                    <div key={i} className="text-xs">
+                                      {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][['LU','MA','MI','JU','VI','SA'].indexOf(h.dia)]}: {h.horaInicio} - {h.horaFin}
+                                    </div>
+                                  ))}
+                                </div>
+                              ) : (
+                                <span>No hay horarios asignados</span>
+                              )}
                             </div>
-                          ))}
+                          )}
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-3 w-32 text-right align-top pt-3">
                       <div className="flex items-center justify-end gap-2">
+                        {/* Mostrar horas actualmente asignadas (lectiva/no-lectiva) y no permitir edición manual */}
                         <Input
                           type="number"
-                          min="0"
-                          step="1"
                           className={cn("bg-background border-border h-8 w-16 text-center font-black text-sm shadow-none", color.text)}
-                          value={carga.horas_semanales || 0}
-                          onChange={e => {
-                            const horas = Math.floor(parseFloat(e.target.value) || 0);
-                            const newCargas = [...cargasNoLectivas];
-                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                            newCargas[idx].horas_semanales = Math.max(0, horas);
-                            setCargasNoLectivas(newCargas);
-                          }}
+                          value={(() => {
+                            const minutos = (carga.horarios || []).reduce((s: number, h: any) => {
+                              try {
+                                const start = parse(h.horaInicio, 'HH:mm', new Date());
+                                const end = parse(h.horaFin, 'HH:mm', new Date());
+                                return s + Math.max(0, (end.getTime() - start.getTime()) / 60000);
+                              } catch (e) {
+                                return s;
+                              }
+                            }, 0);
+
+                            return Math.round(minutos / 60);
+                          })()}
+                          disabled={true}
                         />
                         <span className={cn("text-xs font-bold", color.text)}>h</span>
                       </div>
@@ -1039,7 +1231,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 <TableCell className="px-4 py-3 text-right text-sm font-black text-indigo-800 dark:text-indigo-400">{totalNoLectivas}h</TableCell>
               </TableRow>
             </TableBody>
-          </Table>
+            </Table>
+          </div>
         </CardContent>
       </Card>
 

@@ -19,7 +19,7 @@ export async function verificarInformeInvestigacion(docenteId: number, periodoId
   // Mock response - let's randomize sometimes but have a default
   const docente = await prisma.docente.findUnique({ where: { id_docente: docenteId } });
 
-  let resultado = { validado: true };
+  let resultado: { validado: boolean; observacion?: string } = { validado: true };
 
   if (docente?.apellidos.toLowerCase().includes('perez') || docente?.apellidos.toLowerCase().includes('garcia')) {
     resultado = { validado: false, observacion: 'Informe semestral pendiente de entrega' };

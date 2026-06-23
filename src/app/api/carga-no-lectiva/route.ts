@@ -1,6 +1,27 @@
 ﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
+interface HorarioPayload {
+  horaInicio?: string;
+  horaFin?: string;
+}
+
+const calcularHorasSemanales = (horarios: HorarioPayload[]): number => {
+  const minutos = (horarios || []).reduce((sum: number, horario: HorarioPayload) => {
+    const inicio = horario?.horaInicio;
+    const fin = horario?.horaFin;
+    if (typeof inicio !== 'string' || typeof fin !== 'string') return sum;
+    const [hi, mi] = inicio.split(':').map(Number);
+    const [hf, mf] = fin.split(':').map(Number);
+    if ([hi, mi, hf, mf].some(n => Number.isNaN(n))) return sum;
+    const fechaInicio = new Date(0, 0, 0, hi, mi);
+    const fechaFin = new Date(0, 0, 0, hf, mf);
+    return sum + Math.max(0, (fechaFin.getTime() - fechaInicio.getTime()) / 60000);
+  }, 0);
+
+  return Math.round(minutos / 60);
+};
+
 export async function POST(request: Request) {
   try {
     const data = await request.json();
@@ -35,13 +56,20 @@ export async function PUT(request: Request) {
     for (const carga of cargas) {
       let cargaCreadaOActualizada;
 
+      let horasSemanales = 0;
+      if (carga.horarios && carga.horarios.length > 0) {
+        horasSemanales = calcularHorasSemanales(carga.horarios);
+      } else if (typeof carga.horas_semanales === 'number') {
+        horasSemanales = carga.horas_semanales;
+      }
+
       if (carga.id_carga_no_lectiva && typeof carga.id_carga_no_lectiva === 'number') {
         // Update existing
         cargaCreadaOActualizada = await prisma.cargaNoLectiva.update({
           where: { id_carga_no_lectiva: carga.id_carga_no_lectiva },
           data: {
             descripcion: carga.descripcion || null,
-            horas_semanales: carga.horas_semanales,
+            horas_semanales: horasSemanales,
             sedeId: carga.sedeId || null,
             ambiente: carga.ambiente || null,
             cargoId: carga.cargoId || null
@@ -62,7 +90,7 @@ export async function PUT(request: Request) {
             where: { id_carga_no_lectiva: existing.id_carga_no_lectiva },
             data: {
               descripcion: carga.descripcion || null,
-              horas_semanales: carga.horas_semanales,
+              horas_semanales: horasSemanales,
               sedeId: carga.sedeId || null,
               ambiente: carga.ambiente || null,
               cargoId: carga.cargoId || null
@@ -75,7 +103,7 @@ export async function PUT(request: Request) {
               id_declaracion: id_declaracion,
               tipo: carga.tipo,
               descripcion: carga.descripcion || null,
-              horas_semanales: carga.horas_semanales,
+              horas_semanales: horasSemanales,
               sedeId: carga.sedeId || null,
               ambiente: carga.ambiente || null,
               cargoId: carga.cargoId || null
@@ -118,7 +146,7 @@ export async function DELETE(request: Request) {
     const id = searchParams.get('id');
     if (!id) return NextResponse.json({ error: 'Falta id' }, { status: 400 });
 
-    await prisma.cargaNoLectiva.delete({ where: { id_carga_no_lectiva: parseInt(id) } });
+    await prisma.cargaNoLectiva.delete({ where: { id_carga_no_lectiva: Number.parseInt(id) } });
     return NextResponse.json({ success: true });
   } catch (error) {
     console.error('Error en DELETE /api/carga-no-lectiva:', error);
