@@ -976,8 +976,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {horariosLectivos.map((h: any) => (
-                    <TableRow key={h.id_asignacion}>
+                  {horariosLectivos.map((h: any, idx: number) => (
+                    <TableRow key={h.id_asignacion ?? `horario-${idx}`}>
                       <TableCell className="font-medium">{h.curso_nombre}</TableCell>
                       <TableCell>{['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][h.dia_semana]}</TableCell>
                       <TableCell>{h.hora_inicio} - {h.hora_fin}</TableCell>
@@ -1052,7 +1052,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 const color = colors[index % colors.length];
                 
                 return (
-                  <TableRow key={carga.id_carga_no_lectiva ?? `no-lectiva-${carga.tipo}-${index}`} className={cn("border-border", color.bg)}>
+                  <TableRow key={carga.id_carga_no_lectiva ?? `no-lectiva-${index}`} className={cn("border-border", color.bg)}>
                     <TableCell className="px-4 py-3">
                       <div className="flex items-center gap-2">
                         <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
@@ -1185,8 +1185,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                             <div className="text-sm text-muted-foreground">
                               {carga.horarios?.length > 0 ? (
                                 <div className="space-y-1">
-                                  {carga.horarios.map((h: any) => (
-                                    <div key={`${carga.id_carga_no_lectiva ?? carga.tipo}-${h.dia}-${h.horaInicio}-${h.horaFin}`} className="text-xs">
+                                  {carga.horarios.map((h: any, hIdx: number) => (
+                                    <div key={`${carga.id_carga_no_lectiva ?? carga.tipo}-${h.dia}-${h.horaInicio}-${h.horaFin}-${hIdx}`} className="text-xs">
                                       {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][['LU','MA','MI','JU','VI','SA'].indexOf(h.dia)]}: {h.horaInicio} - {h.horaFin}
                                     </div>
                                   ))}
@@ -1226,7 +1226,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                   </TableRow>
                 );
               })}
-              <TableRow className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold border-t border-indigo-200 dark:border-indigo-900/50">
+              <TableRow key="total-carga-no-lectiva" className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold border-t border-indigo-200 dark:border-indigo-900/50">
                 <TableCell colSpan={2} className="px-4 py-3 text-[11px] font-bold uppercase text-indigo-700 dark:text-indigo-400 tracking-wider">Total Carga No Lectiva</TableCell>
                 <TableCell className="px-4 py-3 text-right text-sm font-black text-indigo-800 dark:text-indigo-400">{totalNoLectivas}h</TableCell>
               </TableRow>

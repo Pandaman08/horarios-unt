@@ -144,7 +144,10 @@ export class GestorVentanasAtencion {
         return dateB - dateA;
       })[0];
 
-      fechaActual = new Date(ultimaVentana.fecha);
+      // Normalizar la fecha a date-only en zona local (medianoche local) para evitar
+      // efectos de zona horaria al almacenar/leer fechas.
+      const ut = new Date(ultimaVentana.fecha);
+      fechaActual = new Date(ut.getFullYear(), ut.getMonth(), ut.getDate());
       horaActual = this.parseHora(ultimaVentana.hora_fin, fechaActual);
       prioridadActual = Math.max(...ventanasExistentes.map((v: any) => v.orden_prioridad || 0)) + 1;
     }
@@ -182,10 +185,13 @@ export class GestorVentanasAtencion {
           docentesProcesadosEnGrupo + cantidadDocentesEnEstaVentana
         );
 
+        // Guardar solo la parte de fecha (medianoche local) para que al recuperar la
+        // ventana desde la base de datos no haya desplazamientos de día por timezone.
+        const fechaParaGuardar = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), fechaActual.getDate());
         const ventana = await prisma.ventanaAtencion.create({
           data: {
             id_periodo,
-            fecha: fechaActual,
+            fecha: fechaParaGuardar,
             hora_inicio: format(horaActual, 'HH:mm'),
             hora_fin: format(horaFinVentana, 'HH:mm'),
             modalidad: condicion,
