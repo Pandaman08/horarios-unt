@@ -248,11 +248,11 @@ export async function GET(request: Request) {
 
     return NextResponse.json({
       soloLectura: false,
-      mensaje: `Ventana activa. Tiempo restante: ${Math.floor(Math.max(0, segundosRestantes) / 60)} minutos.`,
+      mensaje: `Ventana activa. Tiempo restante: ${Math.floor(Math.max(0, segundosRestantes ?? 0) / 60)} minutos.`,
       hayVentanas: true,
       esMiTurno: true,
       dentroDeHorario: true,
-      segundos_restantes: Math.max(0, segundosRestantes),
+      segundos_restantes: Math.max(0, segundosRestantes ?? 0),
       ventanaActual: {
         horaInicio: ventanaActual.hora_inicio,
         horaFin: ventanaActual.hora_fin,

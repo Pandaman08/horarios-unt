@@ -286,7 +286,7 @@ export function MatrizDisponibilidad({
     const cleanup = setupSocket();
 
     return cleanup;
-  }, [id_periodo, id_ambiente]);
+  }, [id_periodo, id_ambiente, id_curso_actual, id_grupo_actual, soloLectura]);
 
   // Re-map carga lectiva (guía) y carga no lectiva cuando cambian los datos
   useEffect(() => {
@@ -381,6 +381,24 @@ export function MatrizDisponibilidad({
           url += `&id_docente=${id_docente_actual}`;
         }
 
+        if (soloLectura) {
+          url += "&modo_consulta=1";
+        }
+
+        if (
+          id_curso_actual !== undefined &&
+          !isNaN(id_curso_actual)
+        ) {
+          url += `&id_curso=${id_curso_actual}`;
+        }
+
+        if (
+          id_grupo_actual !== undefined &&
+          !isNaN(id_grupo_actual)
+        ) {
+          url += `&id_grupo=${id_grupo_actual}`;
+        }
+
         const res = await fetch(url);
 
         const data = await res.json();
@@ -462,7 +480,9 @@ export function MatrizDisponibilidad({
                 estado:
                   tipoVista === "no-lectiva" && esMia
                     ? "bloqueado_lectivo"
-                    : "ocupado",
+                    : esMia
+                      ? "seleccionado_mio"
+                      : "ocupado",
               }
             );
           }

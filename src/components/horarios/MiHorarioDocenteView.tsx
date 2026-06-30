@@ -19,7 +19,16 @@ import {
 import { cn } from "@/lib/utils";
 import { usePeriodo } from "@/contexts/PeriodoContext";
 
+const ESTADOS_LECTIVA_DECLARADA = [
+  "LECTIVA_CONFIRMADA",
+  "ENVIADO",
+  "VALIDADO_DEPARTAMENTO",
+  "APROBADO",
+  "RECHAZADO",
+] as const;
+
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
+
 
 const RANGOS_HORARIOS = [
   "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
@@ -239,11 +248,13 @@ interface HorarioAsignado {
 }
 
 export function MiHorarioDocenteView() {
-  const { periodoSeleccionado, periodos } = usePeriodo();
+  const { periodoSeleccionado, periodos, periodoActivo, loading: periodoLoading } = usePeriodo();
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
   const [cursosLeyenda, setCursosLeyenda] = useState<CursoLeyendaItem[]>([]);
   const [noLectivasLeyenda, setNoLectivasLeyenda] = useState<NoLectivaLeyendaItem[]>([]);
+  const [estadoDeclaracion, setEstadoDeclaracion] = useState<string | null>(null);
+  const [cargaAprobadaPorDecano, setCargaAprobadaPorDecano] = useState(false);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -251,14 +262,20 @@ export function MiHorarioDocenteView() {
   const [mostrarNoLectivas, setMostrarNoLectivas] = useState(true);
 
   useEffect(() => {
-    if (periodoSeleccionado) {
-      setSelectedPeriodo(periodoSeleccionado.id_periodo.toString());
+    const periodoId = periodoSeleccionado?.id_periodo ?? periodoActivo?.id_periodo;
+    if (periodoId) {
+      setSelectedPeriodo(periodoId.toString());
     }
-  }, [periodoSeleccionado]);
+  }, [periodoSeleccionado, periodoActivo]);
 
   useEffect(() => {
-    if (selectedPeriodo) fetchHorarios();
-  }, [selectedPeriodo]);
+    if (periodoLoading) return;
+    if (!selectedPeriodo) {
+      setLoading(false);
+      return;
+    }
+    void fetchHorarios();
+  }, [selectedPeriodo, periodoLoading]);
 
   const handleDownloadReport = async () => {
     if (!selectedPeriodo) {
@@ -328,32 +345,46 @@ export function MiHorarioDocenteView() {
         setHorarios(data);
         setCursosLeyenda([]);
         setNoLectivasLeyenda([]);
+        setEstadoDeclaracion(null);
+        setCargaAprobadaPorDecano(false);
       } else {
         setHorarios(Array.isArray(data.horarios) ? data.horarios : []);
         setCursosLeyenda(data.cursosLeyenda ?? []);
         setNoLectivasLeyenda(data.noLectivasLeyenda ?? []);
+        setEstadoDeclaracion(data.estadoDeclaracion ?? null);
+        setCargaAprobadaPorDecano(!!data.cargaAprobadaPorDecano);
       }
     } catch {
       toast.error("No se encontraron horarios asignados");
       setHorarios([]);
       setCursosLeyenda([]);
       setNoLectivasLeyenda([]);
+      setEstadoDeclaracion(null);
+      setCargaAprobadaPorDecano(false);
     } finally {
       setLoading(false);
     }
   };
 
-  const horasTotales = horarios.reduce((sum, h) => {
+  const noLectivas = horarios.filter((h) => h.is_no_lectiva);
+  const lectivas = horarios.filter((h) => !h.is_no_lectiva);
+  const tieneCargaLectiva =
+    lectivas.length > 0 ||
+    (estadoDeclaracion != null &&
+      ESTADOS_LECTIVA_DECLARADA.includes(
+        estadoDeclaracion as (typeof ESTADOS_LECTIVA_DECLARADA)[number],
+      ));
+  const horariosVisibles = cargaAprobadaPorDecano ? horarios : lectivas;
+  const puedeDescargar = tieneCargaLectiva && lectivas.length > 0;
+
+  const horasTotales = horariosVisibles.reduce((sum, h) => {
     const start = Number.parseInt(h.hora_inicio.split(":")[0], 10);
     const end = Number.parseInt(h.hora_fin.split(":")[0], 10);
     return sum + Math.max(0, end - start);
   }, 0);
 
-  const noLectivas = horarios.filter((h) => h.is_no_lectiva);
-  const lectivas = horarios.filter((h) => !h.is_no_lectiva);
-
   const getHorariosEnCelda = (diaIndex: number, hora: string) =>
-    horarios.filter(
+    horariosVisibles.filter(
       (h) =>
         h.dia_semana === diaIndex &&
         h.hora_inicio <= hora &&
@@ -375,7 +406,7 @@ export function MiHorarioDocenteView() {
     const key = `${horario.id_curso}-${horario.id_grupo}`;
     return cursosLeyenda.find((c) => c.key === key)?.numero;
   };
-  const horariosOrdenados = [...horarios].sort((a, b) => {
+  const horariosOrdenados = [...horariosVisibles].sort((a, b) => {
     if (a.dia_semana < b.dia_semana) return -1;
     if (a.dia_semana > b.dia_semana) return 1;
     return a.hora_inicio.localeCompare(b.hora_inicio);
@@ -386,7 +417,7 @@ export function MiHorarioDocenteView() {
   );
 
   // ── Loading ──────────────────────────────────────────────────────────────
-  if (loading) {
+  if (loading || periodoLoading) {
     return (
       <div className="bg-card border border-border rounded-2xl p-12 text-center text-muted-foreground">
         Cargando horarios...
@@ -394,51 +425,12 @@ export function MiHorarioDocenteView() {
     );
   }
 
-  // ── Sin horarios ──────────────────────────────────────────────────────────
-  if (horarios.length === 0) {
-    return (
-      <div className="space-y-6 max-w-4xl mx-auto">
-        <div className="space-y-2">
-          <div className="flex items-center gap-2">
-            <Calendar className="h-5 w-5 text-primary" />
-            <h1 className="text-2xl font-bold text-foreground">Mi Horario</h1>
-          </div>
-          <p className="text-sm text-muted-foreground">
-            Visualiza los horarios asignados a tus cursos por periodo académico.
-          </p>
-        </div>
-
-        <div className="space-y-2">
-          <label htmlFor="periodo-select" className="text-sm font-semibold text-foreground">
-            Periodo Académico
-          </label>
-          <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
-            <SelectTrigger id="periodo-select" className="w-full sm:w-80 bg-card border-border text-card-foreground">
-              <SelectValue placeholder="Selecciona un periodo" />
-            </SelectTrigger>
-            <SelectContent className="bg-card border-border text-card-foreground">
-              {periodos.map((p) => (
-                <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
-                  {p.nombre} {p.activo && "(Activo)"}{" "}
-                  {p.estado === "finalizado" && "(Finalizado)"}
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
-            <div className="text-xs text-muted-foreground mt-1">
-              {lectivas.length} bloques lectivos y {noLectivas.length} bloques no lectivos cargados.
-            </div>
-        </div>
-      </div>
-    );
-  }
-
-  // ── Vista principal ───────────────────────────────────────────────────────
+  // ── Vista principal (unificada con o sin horarios) ────────────────────────
   return (
-    <div className="space-y-6 max-w-7xl mx-auto">
+    <div className="space-y-6 w-full min-w-0">
 
       {/* Cabecera */}
-      <div className="space-y-2">
+      <div className="space-y-4">
         <div className="flex items-center justify-between flex-wrap gap-3">
           <div className="flex items-center gap-2">
             <Calendar className="h-5 w-5 text-primary" />
@@ -449,7 +441,7 @@ export function MiHorarioDocenteView() {
               variant="outline"
               size="sm"
               onClick={handleDownloadReport}
-              disabled={generatingReport}
+              disabled={generatingReport || !puedeDescargar}
               className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
             >
               {generatingReport ? (
@@ -464,7 +456,7 @@ export function MiHorarioDocenteView() {
               variant="outline"
               size="sm"
               onClick={handleDownloadExcel}
-              disabled={generatingReport}
+              disabled={generatingReport || !puedeDescargar}
               className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
             >
               {generatingReport ? (
@@ -504,7 +496,7 @@ export function MiHorarioDocenteView() {
                   setGeneratingReport(false);
                 }
               }}
-              disabled={generatingReport}
+              disabled={generatingReport || !puedeDescargar || !cargaAprobadaPorDecano}
               className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
             >
               <Download className="h-4 w-4" />
@@ -514,6 +506,7 @@ export function MiHorarioDocenteView() {
               variant={view === "matriz" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("matriz")}
+              disabled={!puedeDescargar}
               className={view === "matriz" ? undefined : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               Vista Matriz
@@ -522,6 +515,7 @@ export function MiHorarioDocenteView() {
               variant={view === "lista" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("lista")}
+              disabled={!puedeDescargar}
               className={view === "lista" ? undefined : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               Vista Lista
@@ -530,19 +524,79 @@ export function MiHorarioDocenteView() {
               variant={mostrarNoLectivas ? "default" : "outline"}
               size="sm"
               onClick={() => setMostrarNoLectivas((prev) => !prev)}
+              disabled={!puedeDescargar || (cargaAprobadaPorDecano && noLectivas.length === 0)}
               className={mostrarNoLectivas ? "" : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               {mostrarNoLectivas ? "Ocultar no lectivas" : "Mostrar no lectivas"}
             </Button>
           </div>
         </div>
-        <p className="text-sm text-muted-foreground">
-          Horarios asignados en el período seleccionado. Total:{" "}
-          <strong className="text-foreground">{totalHoras} horas</strong>
-        </p>
+
+        <div className="flex flex-col sm:flex-row sm:items-end gap-4">
+          <div className="space-y-2 flex-1">
+            <label htmlFor="periodo-select" className="text-sm font-semibold text-foreground">
+              Periodo Académico
+            </label>
+            <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
+              <SelectTrigger id="periodo-select" className="w-full sm:w-80 bg-card border-border text-card-foreground">
+                <SelectValue placeholder="Selecciona un periodo" />
+              </SelectTrigger>
+              <SelectContent className="bg-card border-border text-card-foreground">
+                {periodos.map((p) => (
+                  <SelectItem key={p.id_periodo} value={p.id_periodo.toString()}>
+                    {p.nombre} {p.activo && "(Activo)"}{" "}
+                    {p.estado === "finalizado" && "(Finalizado)"}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <p className="text-sm text-muted-foreground sm:pb-2">
+            {!tieneCargaLectiva ? (
+              "No hay bloques asignados en este periodo."
+            ) : !cargaAprobadaPorDecano ? (
+              <>
+                {lectivas.length} lectivo(s) registrado(s).{" "}
+                <strong className="text-foreground">Pendiente de aprobación del decano.</strong>
+              </>
+            ) : (
+              <>
+                Total: <strong className="text-foreground">{totalHoras} horas</strong>
+                {" · "}
+                {lectivas.length} lectivo(s), {noLectivas.length} no lectivo(s)
+              </>
+            )}
+          </p>
+        </div>
       </div>
 
-      {/* ── Vista Matriz ─────────────────────────────────────────────────── */}
+      {!tieneCargaLectiva && (
+        <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center">
+          <p className="text-sm text-muted-foreground mb-4">
+            Aún no tiene horarios registrados para el periodo seleccionado.
+            Si aún no ha confirmado su selección lectiva, vaya a la ventana de autogestión.
+          </p>
+          <Button variant="outline" size="sm" asChild>
+            <a href="/dashboard/horarios/seleccion">Ir a Selección de Horarios</a>
+          </Button>
+        </div>
+      )}
+
+      {tieneCargaLectiva && !cargaAprobadaPorDecano && (
+        <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-950/20 p-8 text-center">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Su carga horaria fue enviada y está <strong>pendiente de aprobación del decano</strong>.
+            Una vez aprobada, podrá visualizar aquí su matriz semanal y el detalle completo.
+          </p>
+          <p className="text-xs text-muted-foreground mt-3">
+            Mientras tanto, puede descargar su horario lectivo en PDF o Excel.
+          </p>
+        </div>
+      )}
+
+      {cargaAprobadaPorDecano && horariosVisibles.length > 0 && (
+        <>
+      {/* ── Vista Matriz / Lista ─────────────────────────────────────────── */}
       {view === "matriz" ? (
         <>
           <div className="overflow-x-auto rounded-2xl border border-border bg-card">
@@ -701,11 +755,15 @@ export function MiHorarioDocenteView() {
           </div>
         </div>
       )}
+        </>
+      )}
 
-      <DetalleCargaHorariaTables
-        cursosLeyenda={cursosLeyenda}
-        noLectivasLeyenda={noLectivasLeyenda}
-      />
+      {cargaAprobadaPorDecano && (
+        <DetalleCargaHorariaTables
+          cursosLeyenda={cursosLeyenda}
+          noLectivasLeyenda={noLectivasLeyenda}
+        />
+      )}
     </div>
   );
 }

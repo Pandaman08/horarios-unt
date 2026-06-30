@@ -16,6 +16,29 @@ async function tieneCarhaLectiva(docenteId: number, periodoId: number): Promise<
   return !!carga;
 }
 
+// Helper: Verificar si el docente ya confirmó su carga lectiva
+async function tieneLectivaConfirmada(docenteId: number, periodoId: number): Promise<boolean> {
+  const declaracion = await prisma.declaracionHoraria.findUnique({
+    where: {
+      id_docente_id_periodo: {
+        id_docente: docenteId,
+        id_periodo: periodoId,
+      },
+    },
+    select: { estado: true },
+  });
+
+  const estadosConLectiva = [
+    'LECTIVA_CONFIRMADA',
+    'ENVIADO',
+    'VALIDADO_DEPARTAMENTO',
+    'APROBADO',
+    'RECHAZADO',
+  ];
+
+  return !!declaracion?.estado && estadosConLectiva.includes(declaracion.estado);
+}
+
 // Helper: Verificar si el docente está dentro de su ventana de atención
 async function estaDentroDeVentana(docenteId: number, periodoId: number): Promise<boolean> {
   const ventanas = await prisma.ventanaAtencion.findMany({
@@ -105,8 +128,13 @@ export async function GET(request: Request) {
     const id_periodo = searchParams.get('id_periodo');
     const id_ambiente = searchParams.get('id_ambiente');
     const id_docente = searchParams.get('id_docente');
+    const id_curso = searchParams.get('id_curso');
+    const id_grupo = searchParams.get('id_grupo');
+    const modoConsulta = searchParams.get('modo_consulta') === '1';
 
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
+
+    let lectivaConfirmada = false;
 
     // Si se proporciona id_docente, validar acceso
     if (id_docente) {
@@ -124,20 +152,24 @@ export async function GET(request: Request) {
         });
       }
 
-      // Verificar que esté dentro de su ventana (si existen ventanas)
-      const ventanas = await prisma.ventanaAtencion.findMany({
-        where: { id_periodo: periodoId }
-      });
-      
-      if (ventanas.length > 0) {
-        const dentroVentana = await estaDentroDeVentana(docenteId, periodoId);
-        if (!dentroVentana) {
-          return NextResponse.json({
-            asignaciones: [],
-            temporales: [],
-            tienePermiso: false,
-            mensaje: 'Estás fuera de tu ventana de atención'
-          });
+      lectivaConfirmada = await tieneLectivaConfirmada(docenteId, periodoId);
+
+      // Fuera de ventana solo bloquea la edición; en consulta o con lectiva confirmada se permite ver
+      if (!modoConsulta && !lectivaConfirmada) {
+        const ventanas = await prisma.ventanaAtencion.findMany({
+          where: { id_periodo: periodoId }
+        });
+
+        if (ventanas.length > 0) {
+          const dentroVentana = await estaDentroDeVentana(docenteId, periodoId);
+          if (!dentroVentana) {
+            return NextResponse.json({
+              asignaciones: [],
+              temporales: [],
+              tienePermiso: false,
+              mensaje: 'Estás fuera de tu ventana de atención'
+            });
+          }
         }
       }
     }
@@ -193,7 +225,7 @@ export async function GET(request: Request) {
     }
 
     // Obtener horarios CONFIRMADOS (estos son visibles para todos)
-    const asignaciones = await prisma.horarioAsignado.findMany({
+    let asignaciones = await prisma.horarioAsignado.findMany({
       where: whereConfirmados,
       include: {
         docente: true,
@@ -203,8 +235,42 @@ export async function GET(request: Request) {
       }
     });
 
+    // En modo consulta, asegurar que los horarios propios del curso/grupo se muestren
+    // aunque el ambiente seleccionado en la UI no coincida
+    if (
+      (modoConsulta || lectivaConfirmada) &&
+      id_docente &&
+      id_curso &&
+      id_grupo
+    ) {
+      const misHorariosCurso = await prisma.horarioAsignado.findMany({
+        where: {
+          id_periodo: parseInt(id_periodo),
+          id_docente: parseInt(id_docente),
+          id_curso: parseInt(id_curso),
+          id_grupo: parseInt(id_grupo),
+          OR: [{ estado: 'confirmado' }, { estado: 'definitivo' }],
+        },
+        include: {
+          docente: true,
+          curso: true,
+          grupo: true,
+          ambiente: true,
+        },
+      });
+
+      const idsExistentes = new Set(
+        asignaciones.map((a: { id_asignacion: number }) => a.id_asignacion),
+      );
+      for (const horario of misHorariosCurso) {
+        if (!idsExistentes.has(horario.id_asignacion)) {
+          asignaciones.push(horario);
+        }
+      }
+    }
+
     // Obtener horarios TEMPORALES (solo del docente actual en modo intervalo)
-    const temporales = await prisma.seleccionTemporalHorario.findMany({
+    let temporales = await prisma.seleccionTemporalHorario.findMany({
       where: whereTemporales,
       include: {
         docente: true,

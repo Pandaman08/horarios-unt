@@ -44,14 +44,6 @@ export async function GET(request: Request) {
         { status: 404 }
       );
     }
-    
-    if (!periodo.activo) {
-      return NextResponse.json({
-        horarios: [],
-        cursosLeyenda: [],
-        noLectivasLeyenda: [],
-      });
-    }
 
     // Buscar el docente por el id_usuario de la sesión
     const docente = await prisma.docente.findUnique({
@@ -170,7 +162,12 @@ export async function GET(request: Request) {
       }
     });
 
-    const cargasNL = declaracion?.cargas_no_lectivas ?? [];
+    const estadoDeclaracion = declaracion?.estado ?? null;
+    const cargaAprobadaPorDecano = estadoDeclaracion === "APROBADO";
+
+    const cargasNL = cargaAprobadaPorDecano
+      ? (declaracion?.cargas_no_lectivas ?? [])
+      : [];
     const noLectivasLeyenda = cargasNL.map((carga: (typeof cargasNL)[number], idx: number) => ({
       id_carga_no_lectiva: carga.id_carga_no_lectiva,
       numero: idx + 1,
@@ -208,6 +205,8 @@ export async function GET(request: Request) {
       horarios: horariosFormato,
       cursosLeyenda,
       noLectivasLeyenda,
+      estadoDeclaracion,
+      cargaAprobadaPorDecano,
     });
   } catch (error) {
     console.error("Error al obtener horarios:", error);

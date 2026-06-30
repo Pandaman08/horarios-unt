@@ -6,6 +6,7 @@ import Link from "next/link";
 import { usePathname, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/LocaleContext";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageSelector } from "@/components/layout/LanguageSelector";
 import { FontSizeAdjuster } from "@/components/layout/FontSizeAdjuster";
@@ -42,6 +43,7 @@ function DashboardLayoutInner({
   children: React.ReactNode;
 }) {
   const { data: session } = useSession();
+  const { periodoSeleccionado, periodoActivo } = usePeriodo();
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const { t } = useLocale();
@@ -49,6 +51,43 @@ function DashboardLayoutInner({
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [gestionAcademicaOpen, setGestionAcademicaOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mostrarSeleccionLectiva, setMostrarSeleccionLectiva] = useState(false);
+
+  useEffect(() => {
+    const verificarLectivaDeclarada = async () => {
+      if (session?.user?.rol !== "docente" || !session?.user?.id_docente) {
+        setMostrarSeleccionLectiva(false);
+        return;
+      }
+      const periodoId =
+        periodoSeleccionado?.id_periodo ?? periodoActivo?.id_periodo;
+      if (!periodoId) {
+        setMostrarSeleccionLectiva(false);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/declaracion-horaria?idDocente=${session.user.id_docente}&idPeriodo=${periodoId}`,
+        );
+        if (!res.ok) {
+          setMostrarSeleccionLectiva(false);
+          return;
+        }
+        const data = await res.json();
+        const estadosConLectiva = [
+          "LECTIVA_CONFIRMADA",
+          "ENVIADO",
+          "VALIDADO_DEPARTAMENTO",
+          "APROBADO",
+          "RECHAZADO",
+        ];
+        setMostrarSeleccionLectiva(estadosConLectiva.includes(data?.estado));
+      } catch {
+        setMostrarSeleccionLectiva(false);
+      }
+    };
+    void verificarLectivaDeclarada();
+  }, [session?.user?.rol, session?.user?.id_docente, periodoSeleccionado, periodoActivo]);
 
   const menuItems = useMemo(
     () => [
@@ -219,6 +258,13 @@ function DashboardLayoutInner({
         roles: ["docente", "director_departamento", "decano"],
       },
       {
+        title: "Selección Horarios Lectivos",
+        href: "/dashboard/horarios/seleccion",
+        icon: ClipboardList,
+        roles: ["docente"],
+        requiresLectivaDeclarada: true,
+      },
+      {
         title: t("navReports"),
         href: "/dashboard/reportes",
         icon: FileText,
@@ -265,7 +311,17 @@ function DashboardLayoutInner({
   const userRol = session?.user?.rol;
 
   const filteredMenu = menuItems
-    .filter((item) => !item.roles || (userRol && item.roles.includes(userRol)))
+    .filter((item) => {
+      if (item.roles && (!userRol || !item.roles.includes(userRol))) return false;
+      if (
+        "requiresLectivaDeclarada" in item &&
+        item.requiresLectivaDeclarada &&
+        !mostrarSeleccionLectiva
+      ) {
+        return false;
+      }
+      return true;
+    })
     .map((item) => {
       if (!("isGroup" in item) || !item.items) return item;
       const items = item.items.filter(

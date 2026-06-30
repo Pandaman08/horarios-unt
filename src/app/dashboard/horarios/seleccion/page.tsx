@@ -39,6 +39,18 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
+const ESTADOS_LECTIVA_DECLARADA = [
+  "LECTIVA_CONFIRMADA",
+  "ENVIADO",
+  "VALIDADO_DEPARTAMENTO",
+  "APROBADO",
+  "RECHAZADO",
+] as const;
+
+function esLectivaDeclarada(estado?: string | null) {
+  return !!estado && ESTADOS_LECTIVA_DECLARADA.includes(estado as (typeof ESTADOS_LECTIVA_DECLARADA)[number]);
+}
+
 export default function SeleccionHorariosLectivosPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
@@ -123,7 +135,7 @@ export default function SeleccionHorariosLectivosPage() {
         status: res.status
       });
       
-      if (data.soloLectura !== undefined) {
+      if (data.soloLectura !== undefined && !esLectivaDeclarada(declaracion?.estado)) {
         setSoloLectura(!!data.soloLectura);
         console.log('📝 [CHECK-INTERVAL] soloLectura actualizado a:', !!data.soloLectura);
       }
@@ -205,10 +217,10 @@ export default function SeleccionHorariosLectivosPage() {
           id_periodo: data?.id_periodo
         });
         setDeclaracion(data);
-        // Si la declaración ya tiene horarios lectivos confirmados, redirigir a carga horaria
-        if (data?.estado === 'LECTIVA_CONFIRMADA' || data?.estado === 'ENVIADO' || data?.estado === 'APROBADO') {
-          console.log('✅ [DECLARACION] Declaración ya confirmada, redirigiendo a carga-horaria');
-          router.push('/dashboard/carga-horaria');
+        if (esLectivaDeclarada(data?.estado)) {
+          console.log('✅ [DECLARACION] Carga lectiva ya confirmada — modo solo lectura');
+          setSoloLectura(true);
+          setYaConfirmo(true);
         }
       } else {
         console.warn('⚠️  [DECLARACION] No se pudo obtener la declaración, status:', res.status);
@@ -254,10 +266,9 @@ export default function SeleccionHorariosLectivosPage() {
       // yaConfirmo solo debe ser true si:
       // 1. La declaración está en estado LECTIVA_CONFIRMADA o superior
       // 2. O si ya hay horarios confirmados y NO hay temporales (significa que ya pasó por confirmación)
-      const yaConfirmoActual = (declaracion?.estado === 'LECTIVA_CONFIRMADA' || 
-                                 declaracion?.estado === 'ENVIADO' || 
-                                 declaracion?.estado === 'APROBADO') || 
-                               (hayConfirmados && !hayTemporales);
+      const yaConfirmoActual =
+        esLectivaDeclarada(declaracion?.estado) ||
+        (hayConfirmados && !hayTemporales);
       
       setYaConfirmo(yaConfirmoActual);
       console.log('✅ [HORARIOS] yaConfirmo actualizado a:', yaConfirmoActual);
@@ -364,6 +375,47 @@ export default function SeleccionHorariosLectivosPage() {
     }
   }, [cursoSeleccionado, idPeriodo]);
 
+  useEffect(() => {
+    const restaurarConfiguracionDesdeHorarios = async () => {
+      if (
+        !yaConfirmo ||
+        !session?.user?.id_docente ||
+        !idPeriodo ||
+        !cursoSeleccionado
+      ) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/docentes/horarios?periodoId=${idPeriodo}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const horarios = Array.isArray(data) ? data : (data.horarios ?? []);
+        const delCurso = horarios.filter(
+          (h: { is_no_lectiva?: boolean; id_curso?: number; tipo_clase?: string; id_grupo?: number | null; id_ambiente?: number | null }) =>
+            !h.is_no_lectiva &&
+            h.id_curso === cursoSeleccionado.id &&
+            h.tipo_clase?.toLowerCase() === cursoSeleccionado.tipo?.toLowerCase(),
+        );
+
+        if (delCurso.length === 0) return;
+
+        const primerHorario = delCurso[0];
+        if (primerHorario.id_grupo) {
+          setIdGrupo(primerHorario.id_grupo.toString());
+        }
+        if (primerHorario.id_ambiente) {
+          setIdAmbiente(primerHorario.id_ambiente.toString());
+        }
+      } catch (error) {
+        console.error("Error al restaurar configuración de horarios", error);
+      }
+    };
+
+    void restaurarConfiguracionDesdeHorarios();
+  }, [yaConfirmo, cursoSeleccionado, idPeriodo, session?.user?.id_docente]);
+
   const confirmarHorariosLectivos = async () => {
     if (!session?.user?.id_docente || !idPeriodo) return;
     
@@ -435,12 +487,6 @@ export default function SeleccionHorariosLectivosPage() {
     }
   };
 
-  // Si ya se confirmaron los horarios lectivos o la declaración está en un estado posterior, redirigir
-  if (declaracion?.estado === 'LECTIVA_CONFIRMADA' || declaracion?.estado === 'ENVIADO' || declaracion?.estado === 'APROBADO') {
-    console.log('🔄 [RENDER] Redirigiendo - declaración ya confirmada');
-    return null; // El useEffect se encarga de la redirección
-  }
-
   // Log de estado antes del renderizado
   console.log('📊 [RENDER] Estado del componente:', {
     soloLectura,
@@ -462,7 +508,14 @@ export default function SeleccionHorariosLectivosPage() {
               <BookOpen className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <span className="text-[10px] bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Paso 1/2</span>
+              <span className={cn(
+                "text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg",
+                soloLectura && yaConfirmo
+                  ? "bg-muted text-muted-foreground"
+                  : "bg-primary/10 text-primary",
+              )}>
+                {soloLectura && yaConfirmo ? "Solo lectura" : "Paso 1/2"}
+              </span>
               <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight mt-2">
                 Selección de Horarios Lectivos
               </h1>
@@ -485,6 +538,10 @@ export default function SeleccionHorariosLectivosPage() {
                     <span className="text-[10px] font-bold uppercase tracking-widest">Tiempo restante:</span>
                     <span className="text-xs font-mono font-black">{tiempoRestante}</span>
                   </div>
+                ) : soloLectura && yaConfirmo ? (
+                  <p className="text-muted-foreground text-xs">
+                    Consulta de horarios lectivos confirmados (solo lectura)
+                  </p>
                 ) : (
                   <p className="text-muted-foreground text-xs">Seleccione los bloques horarios para sus cursos</p>
                 )}
