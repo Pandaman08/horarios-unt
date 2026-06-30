@@ -47,6 +47,178 @@ const getColorPorCurso = (cursoNombre: string, cursosUnicos: string[]) => {
   return CURSO_COLORES[index % CURSO_COLORES.length];
 };
 
+const getColorPorLeyendaNumero = (numero: number) =>
+  CURSO_COLORES[(numero - 1) % CURSO_COLORES.length];
+
+interface CursoLeyendaItem {
+  key: string;
+  numero: number;
+  codigo: string;
+  nombre: string;
+  ciclo: string;
+  grupo: string;
+  teoria: number;
+  practica: number;
+  laboratorio: number;
+}
+
+interface NoLectivaLeyendaItem {
+  id_carga_no_lectiva?: number;
+  numero: number;
+  tipo: string;
+  descripcion: string;
+  horasSemanales: number;
+}
+
+function DetalleCargaHorariaTables({
+  cursosLeyenda,
+  noLectivasLeyenda,
+}: {
+  cursosLeyenda: CursoLeyendaItem[];
+  noLectivasLeyenda: NoLectivaLeyendaItem[];
+}) {
+  const lectivaCols = [
+    { label: "Nº", headerClass: "w-12 text-center", cellClass: "text-center" },
+    { label: "Código", headerClass: "w-24 text-center", cellClass: "text-center" },
+    { label: "Asignatura", headerClass: "min-w-[180px] text-left", cellClass: "text-left" },
+    { label: "Ciclo", headerClass: "w-28 text-center", cellClass: "text-center" },
+    { label: "Grupo", headerClass: "w-20 text-center", cellClass: "text-center" },
+    { label: "T / P / L", headerClass: "w-28 text-center", cellClass: "text-center" },
+  ] as const;
+
+  const noLectivaCols = [
+    { label: "Nº", headerClass: "w-12 text-center", cellClass: "text-center" },
+    { label: "Tipo", headerClass: "w-32 text-center", cellClass: "text-center" },
+    { label: "Descripción", headerClass: "min-w-[200px] text-left", cellClass: "text-left" },
+    { label: "Hrs/sem", headerClass: "w-24 text-center", cellClass: "text-center" },
+  ] as const;
+
+  return (
+    <div className="space-y-4">
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="bg-primary px-4 py-2.5">
+          <p className="text-sm font-bold text-primary-foreground text-center uppercase tracking-wide">
+            Detalle de Carga Lectiva
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm table-fixed">
+            <thead className="bg-muted/80 border-b border-border">
+              <tr>
+                {lectivaCols.map((col) => (
+                  <th
+                    key={col.label}
+                    className={cn(
+                      "px-3 py-2.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide whitespace-nowrap",
+                      col.headerClass,
+                    )}
+                  >
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {cursosLeyenda.length === 0 ? (
+                <tr>
+                  <td colSpan={6} className="px-4 py-6 text-center text-sm text-muted-foreground italic">
+                    Sin carga lectiva registrada
+                  </td>
+                </tr>
+              ) : (
+                cursosLeyenda.map((curso) => {
+                  const colores = getColorPorLeyendaNumero(curso.numero);
+                  return (
+                    <tr
+                      key={curso.key}
+                      className={cn("border-b border-border last:border-0", colores.bg)}
+                    >
+                      <td className={cn("px-3 py-2.5 font-bold", colores.text, lectivaCols[0].cellClass)}>
+                        {curso.numero}
+                      </td>
+                      <td className={cn("px-3 py-2.5 font-semibold whitespace-nowrap", colores.text, lectivaCols[1].cellClass)}>
+                        {curso.codigo}
+                      </td>
+                      <td className={cn("px-3 py-2.5 font-medium", colores.text, lectivaCols[2].cellClass)}>
+                        {curso.nombre}
+                      </td>
+                      <td className={cn("px-3 py-2.5 whitespace-nowrap", colores.text, lectivaCols[3].cellClass)}>
+                        {curso.ciclo}
+                      </td>
+                      <td className={cn("px-3 py-2.5 font-semibold", colores.text, lectivaCols[4].cellClass)}>
+                        {curso.grupo}
+                      </td>
+                      <td className={cn("px-3 py-2.5 font-semibold whitespace-nowrap", colores.text, lectivaCols[5].cellClass)}>
+                        {curso.teoria} / {curso.practica} / {curso.laboratorio}
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <div className="bg-card border border-border rounded-2xl overflow-hidden">
+        <div className="bg-primary px-4 py-2.5">
+          <p className="text-sm font-bold text-primary-foreground text-center uppercase tracking-wide">
+            Detalle de Carga No Lectiva
+          </p>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-sm table-fixed">
+            <thead className="bg-muted/80 border-b border-border">
+              <tr>
+                {noLectivaCols.map((col) => (
+                  <th
+                    key={col.label}
+                    className={cn(
+                      "px-3 py-2.5 font-semibold text-muted-foreground text-xs uppercase tracking-wide whitespace-nowrap",
+                      col.headerClass,
+                    )}
+                  >
+                    {col.label}
+                  </th>
+                ))}
+              </tr>
+            </thead>
+            <tbody>
+              {noLectivasLeyenda.length === 0 ? (
+                <tr>
+                  <td colSpan={4} className="px-4 py-6 text-center text-sm text-muted-foreground italic">
+                    Sin carga no lectiva registrada
+                  </td>
+                </tr>
+              ) : (
+                noLectivasLeyenda.map((nl) => (
+                  <tr
+                    key={`nl-${nl.id_carga_no_lectiva ?? nl.numero}`}
+                    className="border-b border-border last:border-0 bg-rose-500/10"
+                  >
+                    <td className={cn("px-3 py-2.5 font-bold text-rose-600 dark:text-rose-400", noLectivaCols[0].cellClass)}>
+                      {nl.numero}
+                    </td>
+                    <td className={cn("px-3 py-2.5 text-rose-600 dark:text-rose-400 whitespace-nowrap capitalize", noLectivaCols[1].cellClass)}>
+                      {nl.tipo}
+                    </td>
+                    <td className={cn("px-3 py-2.5 text-rose-600 dark:text-rose-400", noLectivaCols[2].cellClass)}>
+                      {nl.descripcion}
+                    </td>
+                    <td className={cn("px-3 py-2.5 font-bold text-rose-600 dark:text-rose-400", noLectivaCols[3].cellClass)}>
+                      {nl.horasSemanales}
+                    </td>
+                  </tr>
+                ))
+              )}
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  );
+}
+
 interface HorarioAsignado {
   id_asignacion?: number;
   id_curso?: number | null;
@@ -70,6 +242,8 @@ export function MiHorarioDocenteView() {
   const { periodoSeleccionado, periodos } = usePeriodo();
   const [selectedPeriodo, setSelectedPeriodo] = useState<string>("");
   const [horarios, setHorarios] = useState<HorarioAsignado[]>([]);
+  const [cursosLeyenda, setCursosLeyenda] = useState<CursoLeyendaItem[]>([]);
+  const [noLectivasLeyenda, setNoLectivasLeyenda] = useState<NoLectivaLeyendaItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"matriz" | "lista">("matriz");
   const [generatingReport, setGeneratingReport] = useState(false);
@@ -150,10 +324,20 @@ export function MiHorarioDocenteView() {
       const res = await fetch(`/api/docentes/horarios?periodoId=${selectedPeriodo}`);
       if (!res.ok) throw new Error("Error de red");
       const data = await res.json();
-      setHorarios(Array.isArray(data) ? data : []);
+      if (Array.isArray(data)) {
+        setHorarios(data);
+        setCursosLeyenda([]);
+        setNoLectivasLeyenda([]);
+      } else {
+        setHorarios(Array.isArray(data.horarios) ? data.horarios : []);
+        setCursosLeyenda(data.cursosLeyenda ?? []);
+        setNoLectivasLeyenda(data.noLectivasLeyenda ?? []);
+      }
     } catch {
       toast.error("No se encontraron horarios asignados");
       setHorarios([]);
+      setCursosLeyenda([]);
+      setNoLectivasLeyenda([]);
     } finally {
       setLoading(false);
     }
@@ -178,6 +362,19 @@ export function MiHorarioDocenteView() {
     );
 
   const cursosUnicos = Array.from(new Set(lectivas.map((h) => h.curso_nombre)));
+
+  const getLeyendaNumero = (horario: HorarioAsignado) => {
+    if (horario.is_no_lectiva) {
+      if (horario.id_carga_no_lectiva) {
+        return noLectivasLeyenda.find(
+          (n) => n.id_carga_no_lectiva === horario.id_carga_no_lectiva,
+        )?.numero;
+      }
+      return undefined;
+    }
+    const key = `${horario.id_curso}-${horario.id_grupo}`;
+    return cursosLeyenda.find((c) => c.key === key)?.numero;
+  };
   const horariosOrdenados = [...horarios].sort((a, b) => {
     if (a.dia_semana < b.dia_semana) return -1;
     if (a.dia_semana > b.dia_semana) return 1;
@@ -386,13 +583,16 @@ export function MiHorarioDocenteView() {
                           >
                             {horariosEnCelda.map((horario) => {
                               const esNoLectiva = horario.is_no_lectiva;
+                              const leyendaNum = getLeyendaNumero(horario);
                               const colores = esNoLectiva
                                 ? {
                                     bg: "bg-rose-500/10",
                                     border: "border-l-rose-500",
-                                    text: "text-rose-600 dark:text-rose-400"
+                                    text: "text-rose-600 dark:text-rose-400",
                                   }
-                                : getColorPorCurso(horario.curso_nombre, cursosUnicos);
+                                : leyendaNum
+                                  ? getColorPorLeyendaNumero(leyendaNum)
+                                  : getColorPorCurso(horario.curso_nombre, cursosUnicos);
 
                               const horarioKey = `${esNoLectiva ? "no-lectiva" : "lectiva"}-${horario.id_asignacion ?? horario.id_carga_no_lectiva}-${horaInicio}-${horario.dia_semana}`;
 
@@ -403,14 +603,19 @@ export function MiHorarioDocenteView() {
                                     "mb-0.5 p-1 rounded border-l-2 text-[10px]",
                                     colores.bg,
                                     colores.border,
-                                    colores.text
+                                    colores.text,
                                   )}
                                 >
                                   <div className="font-bold truncate">
-                                    {esNoLectiva ? horario.curso_nombre : horario.ambiente_codigo}
+                                    {esNoLectiva
+                                      ? `NL-${leyendaNum ?? ""}`
+                                      : `${leyendaNum ?? ""} · ${horario.ambiente_codigo}`}
+                                  </div>
+                                  <div className="opacity-80 truncate">
+                                    {esNoLectiva ? horario.curso_nombre : horario.ciclo_nombre}
                                   </div>
                                   <div className="opacity-70 truncate">
-                                    {esNoLectiva ? horario.tipo_clase : horario.ciclo_nombre}
+                                    {esNoLectiva ? horario.ciclo_nombre : horario.curso_codigo}
                                   </div>
                                 </div>
                               );
@@ -421,34 +626,6 @@ export function MiHorarioDocenteView() {
                     </div>
                   );
                 })}
-              </div>
-            </div>
-          </div>
-
-          {/* Leyenda */}
-          <div className="bg-card border border-border rounded-2xl p-5">
-            <p className="text-sm font-bold text-card-foreground mb-3">
-              Leyenda de Horarios
-            </p>
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-              {cursosUnicos.map((cursoNombre) => {
-                const colores = getColorPorCurso(cursoNombre, cursosUnicos);
-                return (
-                  <div key={cursoNombre} className="flex items-center gap-2">
-                    <div
-                      className={cn(
-                        "w-4 h-4 rounded border-l-2",
-                        colores.bg,
-                        colores.border
-                      )}
-                    />
-                    <span className="text-xs text-card-foreground">{cursoNombre}</span>
-                  </div>
-                );
-              })}
-              <div className="flex items-center gap-2">
-                <div className="w-4 h-4 rounded border-l-2 bg-rose-500/10 border-l-rose-500" />
-                <span className="text-xs text-card-foreground">No lectivas</span>
               </div>
             </div>
           </div>
@@ -524,6 +701,11 @@ export function MiHorarioDocenteView() {
           </div>
         </div>
       )}
+
+      <DetalleCargaHorariaTables
+        cursosLeyenda={cursosLeyenda}
+        noLectivasLeyenda={noLectivasLeyenda}
+      />
     </div>
   );
 }

@@ -224,7 +224,8 @@ export default function SeleccionHorariosLectivosPage() {
       const resConfirmados = await fetch(`/api/docentes/horarios?periodoId=${idPeriodo}`);
       let horariosConfirmados: any[] = [];
       if (resConfirmados.ok) {
-        horariosConfirmados = await resConfirmados.json();
+        const data = await resConfirmados.json();
+        horariosConfirmados = Array.isArray(data) ? data : (data.horarios ?? []);
       }
       
       const resTemporales = await fetch(`/api/horarios/disponibilidad-matriz?id_periodo=${idPeriodo}&id_docente=${session.user.id_docente}`);

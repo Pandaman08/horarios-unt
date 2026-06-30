@@ -237,7 +237,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       const res = await fetch(`/api/docentes/horarios?periodoId=${periodoActivo.id_periodo}`);
       if (res.ok) {
         const data = await res.json();
-        setHorariosLectivos(Array.isArray(data) ? data : []);
+        setHorariosLectivos(Array.isArray(data) ? data : (data.horarios ?? []));
       }
     } catch (err) {
       console.error(err);

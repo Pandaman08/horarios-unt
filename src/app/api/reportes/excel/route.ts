@@ -151,6 +151,472 @@ function calcRowHeight(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HORARIO DOCENTE — matriz semanal (lectiva + no lectiva), una sola hoja
+// ─────────────────────────────────────────────────────────────────────────────
+const DIA_MAP: Record<string, number> = { LU: 0, MA: 1, MI: 2, JU: 3, VI: 4, SA: 5, DO: 6 };
+
+const MATRIZ_COLORES = [
+  { bg: 'FFdbeafe', text: 'FF1d4ed8' },
+  { bg: 'FFf3e8ff', text: 'FF7c3aed' },
+  { bg: 'FFfef3c7', text: 'FFd97706' },
+  { bg: 'FFd1fae5', text: 'FF059669' },
+  { bg: 'FFfce7f3', text: 'FFdb2777' },
+  { bg: 'FFcffafe', text: 'FF0891b2' },
+  { bg: 'FFffedd5', text: 'FFea580c' },
+];
+const NO_LECTIVA_COLOR = { bg: 'FFffe4e6', text: 'FFe11d48' };
+
+const RANGOS_HORARIOS = [
+  '07:00', '08:00', '09:00', '10:00', '11:00', '12:00',
+  '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00',
+];
+const RANGOS_LABELS = [
+  '7-8', '8-9', '9-10', '10-11', '11-12', '12-1',
+  '1-2', '2-3', '3-4', '4-5', '5-6', '6-7', '7-8',
+];
+const DIAS_MATRIZ = ['LUNES', 'MARTES', 'MIÉRCOLES', 'JUEVES', 'VIERNES', 'SÁBADO'];
+
+interface HorarioMatrizItem {
+  dia_semana: number;
+  hora_inicio: string;
+  hora_fin: string;
+  curso_nombre: string;
+  curso_codigo: string;
+  ambiente_codigo: string;
+  ciclo_nombre: string;
+  tipo_clase: string;
+  is_no_lectiva: boolean;
+  leyendaKey: string;
+  leyendaNumero: number;
+}
+
+interface CursoLeyendaItem {
+  key: string;
+  numero: number;
+  codigo: string;
+  nombre: string;
+  ciclo: string;
+  grupo: string;
+  teoria: number;
+  practica: number;
+  laboratorio: number;
+  color: { bg: string; text: string };
+}
+
+interface NoLectivaLeyendaItem {
+  numero: number;
+  tipo: string;
+  descripcion: string;
+  horasSemanales: number;
+}
+
+async function cargarHorariosDocenteCompleto(
+  id_docente: number,
+  id_periodo: number,
+): Promise<{
+  docente: any;
+  horarios: HorarioMatrizItem[];
+  cursosLeyenda: CursoLeyendaItem[];
+  noLectivasLeyenda: NoLectivaLeyendaItem[];
+}> {
+  const docente = await prisma.docente.findUnique({ where: { id_docente } });
+  if (!docente) throw new Error('Docente no encontrado');
+
+  const lectivos = await prisma.horarioAsignado.findMany({
+    where: { id_docente, id_periodo },
+    include: {
+      curso: { include: { ciclo_rel: true } },
+      grupo: true,
+      ambiente: true,
+    },
+    orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
+  });
+
+  const cursosMap = new Map<string, CursoLeyendaItem>();
+  for (const h of lectivos) {
+    const key = `${h.id_curso}-${h.id_grupo}`;
+    if (!cursosMap.has(key)) {
+      const idx = cursosMap.size;
+      const colores = MATRIZ_COLORES[idx % MATRIZ_COLORES.length];
+      cursosMap.set(key, {
+        key,
+        numero: idx + 1,
+        codigo: h.curso.codigo,
+        nombre: h.curso.nombre,
+        ciclo: h.curso.ciclo_rel
+          ? (h.curso.ciclo_rel.nombre || `${h.curso.ciclo_rel.numero}°`)
+          : '—',
+        grupo: h.grupo.codigo_grupo,
+        teoria: h.curso.horas_teoria ?? 0,
+        practica: h.curso.horas_practica ?? 0,
+        laboratorio: h.curso.horas_laboratorio ?? 0,
+        color: colores,
+      });
+    }
+  }
+  const cursosLeyenda = Array.from(cursosMap.values());
+
+  const horarios: HorarioMatrizItem[] = lectivos.map((h: (typeof lectivos)[number]) => {
+    const key = `${h.id_curso}-${h.id_grupo}`;
+    const leyenda = cursosMap.get(key)!;
+    return {
+      dia_semana: h.dia_semana,
+      hora_inicio: h.hora_inicio,
+      hora_fin: h.hora_fin,
+      curso_nombre: h.curso.nombre,
+      curso_codigo: h.curso.codigo,
+      ambiente_codigo: h.ambiente.codigo,
+      ciclo_nombre: h.curso.ciclo_rel?.nombre ?? '',
+      tipo_clase: h.tipo_clase,
+      is_no_lectiva: false,
+      leyendaKey: key,
+      leyendaNumero: leyenda.numero,
+    };
+  });
+
+  const declaracion = await prisma.declaracionHoraria.findUnique({
+    where: { id_docente_id_periodo: { id_docente, id_periodo } },
+    include: { cargas_no_lectivas: { include: { horarios: true } } },
+  });
+
+  const cargasNL = declaracion?.cargas_no_lectivas ?? [];
+
+  const noLectivasLeyenda: NoLectivaLeyendaItem[] = cargasNL.map(
+    (carga: (typeof cargasNL)[number], idx: number) => ({
+      numero: idx + 1,
+      tipo: String(carga.tipo).replace(/_/g, ' '),
+      descripcion: carga.descripcion || String(carga.tipo).replace(/_/g, ' '),
+      horasSemanales: carga.horas_semanales ?? 0,
+    }),
+  );
+
+  for (const [idx, carga] of cargasNL.entries()) {
+    for (const h of carga.horarios ?? []) {
+      horarios.push({
+        dia_semana: DIA_MAP[h.dia?.toString().toUpperCase()] ?? 0,
+        hora_inicio: h.horaInicio,
+        hora_fin: h.horaFin,
+        curso_nombre: carga.descripcion || String(carga.tipo).replace(/_/g, ' '),
+        curso_codigo: 'NL',
+        ambiente_codigo: '',
+        ciclo_nombre: String(carga.tipo).replace(/_/g, ' '),
+        tipo_clase: 'No lectiva',
+        is_no_lectiva: true,
+        leyendaKey: `nl-${carga.id_carga_no_lectiva}`,
+        leyendaNumero: idx + 1,
+      });
+    }
+  }
+
+  return { docente, horarios, cursosLeyenda, noLectivasLeyenda };
+}
+
+function horaEnRango(horaSlot: string, inicio: string, fin: string): boolean {
+  const toMin = (h: string) => {
+    const [hh, mm] = h.split(':').map(Number);
+    return hh * 60 + (mm || 0);
+  };
+  const slot = toMin(horaSlot);
+  return slot >= toMin(inicio) && slot < toMin(fin);
+}
+
+function generarTablasLeyendaDocente(
+  ws: ExcelJS.Worksheet,
+  startRow: number,
+  totalCols: number,
+  cursosLeyenda: CursoLeyendaItem[],
+  noLectivasLeyenda: NoLectivaLeyendaItem[],
+): number {
+  let R = startRow;
+  const hdrBorder: Partial<ExcelJS.Borders> = { bottom: bThin(WHITE), right: bThin(WHITE) };
+  const hdrOpts = { bg: NAVY3, color: WHITE, bold: true, size: 7.5 };
+  const cellBorder: Partial<ExcelJS.Borders> = { bottom: bThin(), right: bThin() };
+
+  // ── Tabla carga lectiva ──────────────────────────────────────────────────
+  const tblLectStart = R;
+  wc(ws, R, 1, {
+    value: 'DETALLE DE CARGA LECTIVA',
+    mergeEnd: totalCols, bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr,
+    border: { bottom: bMed(WHITE) },
+  });
+  ws.getRow(R).height = 17; R++;
+
+  wc(ws, R, 1,  { ...hdrOpts, value: 'Nº',        align: ctr, border: hdrBorder });
+  wc(ws, R, 2,  { ...hdrOpts, value: 'CÓDIGO',    align: ctr, border: hdrBorder });
+  wc(ws, R, 3,  { ...hdrOpts, value: 'ASIGNATURA', mergeEnd: 4, align: lft, border: hdrBorder });
+  wc(ws, R, 5,  { ...hdrOpts, value: 'CICLO',     align: ctr, border: hdrBorder });
+  wc(ws, R, 6,  { ...hdrOpts, value: 'GRUPO',     align: ctr, border: hdrBorder });
+  wc(ws, R, 7,  { ...hdrOpts, value: 'T / P / L', align: ctr, border: hdrBorder });
+  ws.getRow(R).height = 14; R++;
+
+  const filasLectivas = Math.max(cursosLeyenda.length, 1);
+  for (let i = 0; i < filasLectivas; i++) {
+    const curso = cursosLeyenda[i];
+    if (curso) {
+      const rowH = calcRowHeight([{ text: curso.nombre, colWidthChars: 28 }], 7.5, 14, 3);
+      ws.getRow(R).height = rowH;
+      wc(ws, R, 1, {
+        value: curso.numero, bg: curso.color.bg, color: curso.color.text,
+        bold: true, size: 8, align: ctr, border: cellBorder,
+      });
+      wc(ws, R, 2, {
+        value: curso.codigo, bg: curso.color.bg, color: curso.color.text,
+        bold: true, size: 7.5, align: ctr, border: cellBorder,
+      });
+      wc(ws, R, 3, {
+        value: curso.nombre, bg: curso.color.bg, color: curso.color.text,
+        size: 7.5, align: lft, border: cellBorder, wrap: true, mergeEnd: 4,
+      });
+      wc(ws, R, 5, {
+        value: curso.ciclo, bg: curso.color.bg, color: curso.color.text,
+        size: 7.5, align: ctr, border: cellBorder, wrap: true,
+      });
+      wc(ws, R, 6, {
+        value: curso.grupo, bg: curso.color.bg, color: curso.color.text,
+        bold: true, size: 8, align: ctr, border: cellBorder,
+      });
+      wc(ws, R, 7, {
+        value: `${curso.teoria} / ${curso.practica} / ${curso.laboratorio}`,
+        bg: curso.color.bg, color: curso.color.text,
+        bold: true, size: 7.5, align: ctr, border: cellBorder,
+      });
+    } else {
+      ws.getRow(R).height = 13;
+      wc(ws, R, 1, { value: '—', bg: SLATE50, color: TEXTMID, size: 7.5, align: ctr, border: cellBorder });
+      wc(ws, R, 2, { value: '—', bg: SLATE50, color: TEXTMID, size: 7.5, align: ctr, border: cellBorder });
+      wc(ws, R, 3, {
+        value: 'Sin carga lectiva registrada', mergeEnd: totalCols,
+        bg: SLATE50, color: TEXTMID, italic: true, size: 7.5, align: ctr, border: cellBorder,
+      });
+    }
+    R++;
+  }
+  outerBorder(ws, tblLectStart, R - 1, 1, totalCols, bThick());
+
+  for (let c = 1; c <= totalCols; c++) ws.getCell(R, c).fill = fill(SLATE50);
+  ws.getRow(R).height = 5; R++;
+
+  // ── Tabla carga no lectiva ───────────────────────────────────────────────
+  const tblNLStart = R;
+  wc(ws, R, 1, {
+    value: 'DETALLE DE CARGA NO LECTIVA',
+    mergeEnd: totalCols, bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr,
+    border: { bottom: bMed(WHITE) },
+  });
+  ws.getRow(R).height = 17; R++;
+
+  wc(ws, R, 1, { ...hdrOpts, value: 'Nº',           align: ctr, border: hdrBorder });
+  wc(ws, R, 2, { ...hdrOpts, value: 'TIPO',         align: ctr, border: hdrBorder });
+  wc(ws, R, 3, { ...hdrOpts, value: 'DESCRIPCIÓN',  mergeEnd: 5, align: lft, border: hdrBorder });
+  wc(ws, R, 6, { ...hdrOpts, value: 'HRS/SEM',      mergeEnd: totalCols, align: ctr, border: hdrBorder });
+  ws.getRow(R).height = 14; R++;
+
+  const filasNL = Math.max(noLectivasLeyenda.length, 1);
+  for (let i = 0; i < filasNL; i++) {
+    const nl = noLectivasLeyenda[i];
+    if (nl) {
+      const rowH = calcRowHeight([{ text: nl.descripcion, colWidthChars: 42 }], 7.5, 14, 3);
+      ws.getRow(R).height = rowH;
+      wc(ws, R, 1, {
+        value: nl.numero, bg: NO_LECTIVA_COLOR.bg, color: NO_LECTIVA_COLOR.text,
+        bold: true, size: 8, align: ctr, border: cellBorder,
+      });
+      wc(ws, R, 2, {
+        value: nl.tipo, bg: NO_LECTIVA_COLOR.bg, color: NO_LECTIVA_COLOR.text,
+        size: 7.5, align: ctr, border: cellBorder, wrap: true,
+      });
+      wc(ws, R, 3, {
+        value: nl.descripcion, bg: NO_LECTIVA_COLOR.bg, color: NO_LECTIVA_COLOR.text,
+        size: 7.5, align: lft, border: cellBorder, wrap: true, mergeEnd: 5,
+      });
+      wc(ws, R, 6, {
+        value: nl.horasSemanales, bg: NO_LECTIVA_COLOR.bg, color: NO_LECTIVA_COLOR.text,
+        bold: true, size: 8, align: ctr, border: cellBorder, mergeEnd: totalCols,
+      });
+    } else {
+      ws.getRow(R).height = 13;
+      wc(ws, R, 1, {
+        value: '—', bg: SLATE50, color: TEXTMID, size: 7.5, align: ctr, border: cellBorder,
+      });
+      wc(ws, R, 2, {
+        value: '—', bg: SLATE50, color: TEXTMID, size: 7.5, align: ctr, border: cellBorder,
+      });
+      wc(ws, R, 3, {
+        value: 'Sin carga no lectiva registrada', mergeEnd: totalCols,
+        bg: SLATE50, color: TEXTMID, italic: true, size: 7.5, align: ctr, border: cellBorder,
+      });
+    }
+    R++;
+  }
+  outerBorder(ws, tblNLStart, R - 1, 1, totalCols, bThick());
+
+  return R;
+}
+
+function generarHojaMatrizDocente(
+  ws: ExcelJS.Worksheet,
+  docente: any,
+  periodo: any,
+  horarios: HorarioMatrizItem[],
+  cursosLeyenda: CursoLeyendaItem[],
+  noLectivasLeyenda: NoLectivaLeyendaItem[],
+) {
+  const TOTAL_COLS_MATRIZ = 7;
+  const COL_WIDTHS_MATRIZ: Record<number, number> = {
+    1: 12, 2: 22, 3: 22, 4: 22, 5: 22, 6: 22, 7: 22,
+  };
+  for (const [col, w] of Object.entries(COL_WIDTHS_MATRIZ)) {
+    ws.getColumn(Number(col)).width = w;
+  }
+
+  const colorPorKey = (key: string, isNoLectiva: boolean) => {
+    if (isNoLectiva) return NO_LECTIVA_COLOR;
+    return cursosLeyenda.find((c) => c.key === key)?.color ?? MATRIZ_COLORES[0];
+  };
+
+  const horasTotales = horarios.reduce((sum, h) => {
+    const start = Number.parseInt(h.hora_inicio.split(':')[0], 10);
+    const end = Number.parseInt(h.hora_fin.split(':')[0], 10);
+    return sum + Math.max(0, end - start);
+  }, 0);
+
+  let R = 1;
+  const sem = periodo?.semestre === 1 ? 'I' : 'II';
+  const nombreDocente = `${docente.nombres} ${docente.apellidos}`;
+
+  wc(ws, R, 1, {
+    value: 'UNIVERSIDAD NACIONAL DE TRUJILLO — FACULTAD DE INGENIERÍA TRUJILLO',
+    mergeEnd: TOTAL_COLS_MATRIZ, bg: NAVY, color: WHITE, bold: true, size: 11, align: ctr,
+  });
+  ws.getRow(R).height = 22; R++;
+
+  wc(ws, R, 1, {
+    value: `HORARIO SEMANAL DEL DOCENTE — ${nombreDocente.toUpperCase()}`,
+    mergeEnd: TOTAL_COLS_MATRIZ, bg: NAVY2, color: WHITE, bold: true, size: 10, align: ctr,
+  });
+  ws.getRow(R).height = 18; R++;
+
+  wc(ws, R, 1, {
+    value: `Periodo: ${periodo?.nombre ?? ''}  •  Año ${periodo?.anio ?? ''} — Sem. ${sem}  •  ${cursosLeyenda.length} curso(s) lectivo(s)  •  ${noLectivasLeyenda.length} actividad(es) no lectiva(s)  •  ${horasTotales} h en matriz`,
+    mergeEnd: TOTAL_COLS_MATRIZ, bg: SLATE100, color: TEXTMID, bold: true, size: 8, align: ctr,
+    border: { bottom: bThin() },
+  });
+  ws.getRow(R).height = 16; R++;
+
+  for (let c = 1; c <= TOTAL_COLS_MATRIZ; c++) ws.getCell(R, c).fill = fill(SLATE50);
+  ws.getRow(R).height = 4; R++;
+
+  const gridHeaderR = R;
+  wc(ws, R, 1, {
+    value: 'HORA', bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr,
+    border: { right: bThin(WHITE), bottom: bMed(WHITE) },
+  });
+  for (let d = 0; d < 6; d++) {
+    wc(ws, R, d + 2, {
+      value: DIAS_MATRIZ[d], bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr,
+      border: { right: bThin(WHITE), bottom: bMed(WHITE) },
+    });
+  }
+  ws.getRow(R).height = 18; R++;
+
+  for (let idx = 0; idx < RANGOS_HORARIOS.length; idx++) {
+    const hora = RANGOS_HORARIOS[idx];
+    const label = RANGOS_LABELS[idx];
+    const esAlm = hora === '13:00';
+    ws.getRow(R).height = esAlm ? 14 : 36;
+
+    wc(ws, R, 1, {
+      value: label, bg: SLATE100, color: NAVY, bold: true, size: 8, align: ctr,
+      border: { bottom: bThin(), right: bThin() },
+    });
+
+    if (esAlm) {
+      wc(ws, R, 2, {
+        value: '—   A L M U E R Z O   —', mergeEnd: TOTAL_COLS_MATRIZ,
+        bg: SLATE100, color: TEXTMID, bold: true, italic: true, size: 8, align: ctr,
+        border: { top: bMed(), bottom: bMed(), right: bThin() },
+      });
+    } else {
+      for (let d = 0; d < 6; d++) {
+        const bloque = horarios.find(
+          (h) => h.dia_semana === d && horaEnRango(hora, h.hora_inicio, h.hora_fin),
+        );
+        if (bloque) {
+          const colores = colorPorKey(bloque.leyendaKey, bloque.is_no_lectiva);
+          const linea1 = bloque.is_no_lectiva
+            ? `NL-${bloque.leyendaNumero}`
+            : `${bloque.leyendaNumero} · ${bloque.ambiente_codigo}`;
+          const linea2 = bloque.is_no_lectiva
+            ? bloque.curso_nombre
+            : bloque.ciclo_nombre;
+          const linea3 = bloque.is_no_lectiva ? bloque.ciclo_nombre : bloque.curso_codigo;
+          wc(ws, R, d + 2, {
+            value: `${linea1}\n${linea2}\n${linea3}`,
+            bg: colores.bg, color: colores.text, bold: true, size: 8,
+            align: { horizontal: 'center', vertical: 'middle', wrapText: true },
+            border: { bottom: bThin(), right: bThin() },
+          });
+        } else {
+          wc(ws, R, d + 2, {
+            value: '', bg: WHITE, align: ctr,
+            border: { bottom: bThin(), right: bThin() },
+          });
+        }
+      }
+    }
+    R++;
+  }
+
+  const gridEnd = R - 1;
+  outerBorder(ws, gridHeaderR, gridEnd, 1, TOTAL_COLS_MATRIZ, bThick());
+
+  for (let c = 1; c <= TOTAL_COLS_MATRIZ; c++) ws.getCell(R, c).fill = fill(SLATE50);
+  ws.getRow(R).height = 6; R++;
+
+  R = generarTablasLeyendaDocente(ws, R, TOTAL_COLS_MATRIZ, cursosLeyenda, noLectivasLeyenda);
+
+  for (let c = 1; c <= TOTAL_COLS_MATRIZ; c++) ws.getCell(R, c).fill = fill(SLATE50);
+  ws.getRow(R).height = 4; R++;
+
+  wc(ws, R, 1, {
+    value: `Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT`,
+    mergeEnd: TOTAL_COLS_MATRIZ, bg: SLATE50, color: TEXTMID, italic: true, size: 7, align: rgt,
+  });
+  ws.getRow(R).height = 12;
+}
+
+async function generarExcelHorarioDocente(
+  id_docente: number,
+  id_periodo: number,
+  periodo: any,
+): Promise<{ buffer: ExcelJS.Buffer; filename: string }> {
+  const { docente, horarios, cursosLeyenda, noLectivasLeyenda } =
+    await cargarHorariosDocenteCompleto(id_docente, id_periodo);
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Sistema de Gestión de Horarios UNT';
+  workbook.created = new Date();
+
+  const ws = workbook.addWorksheet('Mi Horario', {
+    pageSetup: {
+      paperSize: 9,
+      orientation: 'landscape',
+      fitToPage: true,
+      fitToWidth: 1,
+      fitToHeight: 0,
+      margins: { left: 0.3, right: 0.3, top: 0.4, bottom: 0.4, header: 0.15, footer: 0.15 },
+    },
+    views: [{ showGridLines: false }],
+  });
+
+  generarHojaMatrizDocente(ws, docente, periodo, horarios, cursosLeyenda, noLectivasLeyenda);
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const filename = `Mi_Horario_${docente.apellidos}_${docente.nombres}_${periodo?.codigo ?? 'docente'}.xlsx`;
+  return { buffer, filename };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HANDLER
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET(request: Request) {
@@ -182,6 +648,21 @@ export async function GET(request: Request) {
     const periodo = await prisma.periodoAcademico.findUnique({
       where: { id_periodo: parseInt(id_periodo) },
     });
+
+    // Horario individual del docente: matriz semanal en una sola hoja
+    if (id_docente && !id_ambiente && !id_ciclo) {
+      const { buffer, filename } = await generarExcelHorarioDocente(
+        id_docente,
+        parseInt(id_periodo),
+        periodo,
+      );
+      return new Response(buffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      });
+    }
 
     // Determinar qué ciclos procesar
     let ciclos: any[] = [];
