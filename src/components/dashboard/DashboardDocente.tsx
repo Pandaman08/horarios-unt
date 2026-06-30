@@ -234,7 +234,7 @@ export default function DashboardDocente() {
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 flex-1">
-            Completa y envía tu declaración de carga lectiva y no lectiva para su aprobación.
+            Seleccione sus horarios lectivos y complete su declaración de carga no lectiva para enviarla a aprobación.
           </p>
           <div className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
             Ir a declaración <span aria-hidden="true">&rarr;</span>

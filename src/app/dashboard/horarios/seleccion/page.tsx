@@ -461,19 +461,16 @@ export default function SeleccionHorariosLectivosPage() {
 
       if (res.ok) {
         console.log('✅ [CONFIRMACION] Horarios lectivos confirmados exitosamente');
-        toast.success("Horarios lectivos confirmados con éxito. Ahora complete su carga no lectiva.");
+        toast.success("Horarios lectivos confirmados. Continúe con su carga no lectiva.");
         
-        // Actualizar estado local antes de redirigir
         setYaConfirmo(true);
-        
-        // Redirigir a la vista de carga horaria para completar la no lectiva
-        setTimeout(() => {
-          router.push('/dashboard/carga-horaria');
-        }, 500);
+        setSoloLectura(true);
         
         getSocket().emit("horario-actualizado", { 
           mensaje: `El docente ${session?.user?.name} ha confirmado sus horarios lectivos.` 
         });
+
+        router.replace('/dashboard/carga-horaria');
       } else {
         const data = await res.json();
         console.error('❌ [CONFIRMACION] Error en respuesta del servidor:', data);

@@ -375,7 +375,7 @@ export function MiHorarioDocenteView() {
         estadoDeclaracion as (typeof ESTADOS_LECTIVA_DECLARADA)[number],
       ));
   const horariosVisibles = cargaAprobadaPorDecano ? horarios : lectivas;
-  const puedeDescargar = tieneCargaLectiva && lectivas.length > 0;
+  const puedeUsarOpciones = cargaAprobadaPorDecano && horariosVisibles.length > 0;
 
   const horasTotales = horariosVisibles.reduce((sum, h) => {
     const start = Number.parseInt(h.hora_inicio.split(":")[0], 10);
@@ -441,7 +441,7 @@ export function MiHorarioDocenteView() {
               variant="outline"
               size="sm"
               onClick={handleDownloadReport}
-              disabled={generatingReport || !puedeDescargar}
+              disabled={generatingReport || !puedeUsarOpciones}
               className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
             >
               {generatingReport ? (
@@ -456,7 +456,7 @@ export function MiHorarioDocenteView() {
               variant="outline"
               size="sm"
               onClick={handleDownloadExcel}
-              disabled={generatingReport || !puedeDescargar}
+              disabled={generatingReport || !puedeUsarOpciones}
               className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
             >
               {generatingReport ? (
@@ -466,47 +466,11 @@ export function MiHorarioDocenteView() {
               )}
               {generatingReport ? "Generando..." : "Descargar Excel"}
             </Button>
-
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={async () => {
-                if (!selectedPeriodo) { toast.warning("Seleccione un periodo académico"); return; }
-                try {
-                  setGeneratingReport(true);
-                  const url = `/api/reportes/pdf?tipo=docente_propio&id_periodo=${selectedPeriodo}&incluirNoLectivas=1`;
-                  const response = await fetch(url);
-                  if (!response.ok) {
-                    const errorData = await response.json().catch(() => ({ error: "Error desconocido" }));
-                    throw new Error(errorData.error || "Error en la generación");
-                  }
-                  const blob = await response.blob();
-                  const downloadUrl = globalThis.URL.createObjectURL(blob);
-                  const a = document.createElement("a");
-                  a.href = downloadUrl;
-                  a.download = `Mi_Horario_Con_NoLectivas_${periodoActualObj?.nombre || "Docente"}.pdf`;
-                  document.body.appendChild(a);
-                  a.click();
-                  a.remove();
-                  globalThis.URL.revokeObjectURL(downloadUrl);
-                  toast.success("Horario (con no lectivas) generado correctamente");
-                } catch (error: any) {
-                  toast.error(error.message || "Error al generar horario");
-                } finally {
-                  setGeneratingReport(false);
-                }
-              }}
-              disabled={generatingReport || !puedeDescargar || !cargaAprobadaPorDecano}
-              className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
-            >
-              <Download className="h-4 w-4" />
-              Descargar con No-Lectivas
-            </Button>
             <Button
               variant={view === "matriz" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("matriz")}
-              disabled={!puedeDescargar}
+              disabled={!puedeUsarOpciones}
               className={view === "matriz" ? undefined : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               Vista Matriz
@@ -515,7 +479,7 @@ export function MiHorarioDocenteView() {
               variant={view === "lista" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("lista")}
-              disabled={!puedeDescargar}
+              disabled={!puedeUsarOpciones}
               className={view === "lista" ? undefined : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               Vista Lista
@@ -524,7 +488,7 @@ export function MiHorarioDocenteView() {
               variant={mostrarNoLectivas ? "default" : "outline"}
               size="sm"
               onClick={() => setMostrarNoLectivas((prev) => !prev)}
-              disabled={!puedeDescargar || (cargaAprobadaPorDecano && noLectivas.length === 0)}
+              disabled={!puedeUsarOpciones || noLectivas.length === 0}
               className={mostrarNoLectivas ? "" : "bg-card border-border text-card-foreground hover:bg-muted"}
             >
               {mostrarNoLectivas ? "Ocultar no lectivas" : "Mostrar no lectivas"}
@@ -574,10 +538,10 @@ export function MiHorarioDocenteView() {
         <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center">
           <p className="text-sm text-muted-foreground mb-4">
             Aún no tiene horarios registrados para el periodo seleccionado.
-            Si aún no ha confirmado su selección lectiva, vaya a la ventana de autogestión.
+            Complete primero su declaración de carga horaria.
           </p>
           <Button variant="outline" size="sm" asChild>
-            <a href="/dashboard/horarios/seleccion">Ir a Selección de Horarios</a>
+            <a href="/dashboard/carga-horaria">Ir a Carga Horaria</a>
           </Button>
         </div>
       )}
@@ -586,10 +550,7 @@ export function MiHorarioDocenteView() {
         <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-950/20 p-8 text-center">
           <p className="text-sm text-amber-800 dark:text-amber-200">
             Su carga horaria fue enviada y está <strong>pendiente de aprobación del decano</strong>.
-            Una vez aprobada, podrá visualizar aquí su matriz semanal y el detalle completo.
-          </p>
-          <p className="text-xs text-muted-foreground mt-3">
-            Mientras tanto, puede descargar su horario lectivo en PDF o Excel.
+            Una vez aprobada, podrá visualizar aquí su matriz semanal, descargar reportes y el detalle completo.
           </p>
         </div>
       )}

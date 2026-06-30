@@ -33,7 +33,6 @@ import {
   Info,
   Clock,
   Briefcase,
-  Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SimulacionBadge } from '@/components/ui/SimulacionBadge';
@@ -188,7 +187,16 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [horariosLectivosLoading, setHorariosLectivosLoading] = useState(true);
   const [actividadNoLectivaSeleccionada, setActividadNoLectivaSeleccionada] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [redirectingASeleccion, setRedirectingASeleccion] = useState(false);
   const lastSavedSnapshotRef = useRef<string>('');
+
+  const ESTADOS_PASO_LECTIVA_COMPLETO = [
+    'LECTIVA_CONFIRMADA',
+    'ENVIADO',
+    'VALIDADO_DEPARTAMENTO',
+    'APROBADO',
+    'RECHAZADO',
+  ];
 
   // Verificar si los horarios lectivos ya están confirmados
   useEffect(() => {
@@ -229,6 +237,30 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       fetchDeclaracion(periodoActivo.id_periodo, initialDocente.id_docente);
     }
   }, [periodoActivo, initialDocente]);
+
+  // Paso 1 pendiente: redirigir automáticamente a la matriz de selección lectiva
+  useEffect(() => {
+    if (horariosLectivosLoading || loading) return;
+
+    const horariosLectivosConfirmados = horariosLectivos.filter(
+      (h: { is_no_lectiva?: boolean }) => !h.is_no_lectiva,
+    );
+    const pasoLectivaCompleto =
+      (declaracion?.estado &&
+        ESTADOS_PASO_LECTIVA_COMPLETO.includes(declaracion.estado)) ||
+      horariosLectivosConfirmados.length > 0;
+
+    if (!pasoLectivaCompleto) {
+      setRedirectingASeleccion(true);
+      router.replace('/dashboard/horarios/seleccion');
+    }
+  }, [
+    horariosLectivosLoading,
+    loading,
+    declaracion?.estado,
+    horariosLectivos,
+    router,
+  ]);
 
   const fetchHorariosLectivos = async () => {
     if (!initialDocente?.id_docente || !periodoActivo?.id_periodo) return;
@@ -833,24 +865,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     scheduleAutosave(newCargas);
   };
 
-  if (loading) return <div className="p-8">Cargando...</div>;
-
-  // Si no hay horarios lectivos confirmados y la declaración no existe o no está en estado LECTIVA_CONFIRMADA, redirigir
-  if (!horariosLectivosLoading && horariosLectivos.length === 0 && declaracion?.estado !== 'LECTIVA_CONFIRMADA') {
-    return (
-      <div className="p-8 text-center">
-        <div className="max-w-md mx-auto space-y-4">
-          <Calendar className="h-16 w-16 text-blue-500 mx-auto" />
-          <h2 className="text-2xl font-bold text-foreground">Horarios Lectivos Pendientes</h2>
-          <p className="text-muted-foreground">
-            Primero debe seleccionar sus horarios lectivos en la ventana de autogestión.
-          </p>
-          <Button onClick={() => router.push('/dashboard/horarios/seleccion')} className="mt-4">
-            Ir a Selección de Horarios
-          </Button>
-        </div>
-      </div>
-    );
+  if (loading || horariosLectivosLoading || redirectingASeleccion) {
+    return <div className="p-8 text-center text-muted-foreground">Cargando...</div>;
   }
 
   return (
@@ -864,8 +880,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 <LayoutGrid className="text-blue-600 dark:text-blue-400 w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground leading-none">Declaración de Carga Horaria</h1>
-                <p className="text-muted-foreground text-xs mt-1">Complete su carga no lectiva y envíe a aprobación</p>
+                <span className="text-[10px] bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">
+                  Paso 2/2
+                </span>
+                <h1 className="text-lg font-bold text-foreground leading-none mt-2">Declaración de Carga Horaria</h1>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Complete su carga no lectiva y envíe su declaración al jefe de departamento
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
