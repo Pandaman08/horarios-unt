@@ -49,18 +49,34 @@ export function VisorReportes() {
     }
   }, [periodoSeleccionado]);
 
-  const handleDownloadExcel = async () => {
-    if (!id_periodo) {
-      toast.warning("Seleccione un período académico");
+  const handleDownloadExcel = async (tipo: string, id?: string) =>  {
+    if (!id_periodo) return;
+    if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
+      toast.warning("Seleccione un elemento de la lista");
       return;
     }
 
-    setGeneratingExcel(true);
+    type TipoExcel = 'docente' | 'aula' | 'ciclo' | 'reporte_general';
+    const loadingMap: Record<TipoExcel, React.Dispatch<React.SetStateAction<boolean>>> = {
+      docente: setGeneratingDocente,
+      aula: setGeneratingAula,
+      ciclo: setGeneratingCiclo,
+      reporte_general: setGeneratingExcel,
+    };
+    const setLoading = loadingMap[tipo as TipoExcel];
+
+    if (setLoading) setLoading(true);
     try {
       let url = `/api/reportes/excel?id_periodo=${id_periodo}`;
+      if (id) {
+        if (tipo === 'docente') url += `&id_docente=${id}`;
+        else if (tipo === 'aula') url += `&id_ambiente=${id}`;
+        else if (tipo === 'ciclo') url += `&id_ciclo=${id}`;
+      }
       if (departamentoSeleccionado) url += `&departamentoId=${departamentoSeleccionado.id}`;
       const response = await fetch(url);
       if (!response.ok) throw new Error(`Error ${response.status}`);
+
       const blob = await response.blob();
       const urlObj = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
@@ -71,11 +87,12 @@ export function VisorReportes() {
       a.remove();
       window.URL.revokeObjectURL(urlObj);
       toast.success("Excel generado correctamente");
+
     } catch (error: any) {
       console.error(error);
       toast.error(error.message || "Error al generar Excel");
     } finally {
-      setGeneratingExcel(false);
+      if (setLoading) setLoading(false);
     }
   };
 
@@ -299,7 +316,16 @@ export function VisorReportes() {
                   disabled={generatingAula}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Descargar PDF
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
+                  onClick={() => handleDownloadExcel('aula', selectedAmbiente)}
+                  disabled={generatingAula}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
                 </Button>
               </div>
               </div>
@@ -372,7 +398,16 @@ export function VisorReportes() {
                   disabled={generatingDocente}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Descargar PDF
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
+                  onClick={() => handleDownloadExcel('docente', selectedDocente)}
+                  disabled={generatingDocente}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
                 </Button>
               </div>
             </div>
@@ -404,7 +439,16 @@ export function VisorReportes() {
                   disabled={generatingCiclo}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Descargar PDF
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
+                  onClick={() => handleDownloadExcel('ciclo', selectedCicloReporte)}
+                  disabled={generatingCiclo}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
                 </Button>
               </div>
             </div>
@@ -431,7 +475,7 @@ export function VisorReportes() {
                   <Button
                     variant="outline"
                     className="h-12 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl px-6 font-bold shadow-sm"
-                    onClick={handleDownloadExcel}
+                    onClick={() => handleDownloadExcel('reporte_general')}
                     disabled={generatingExcel}
                   >
                     {generatingReporteGeneral ? (

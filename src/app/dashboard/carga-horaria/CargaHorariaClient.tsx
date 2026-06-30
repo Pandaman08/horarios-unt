@@ -174,9 +174,9 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     ibm: initialDocente?.codigo_docente || '',
-    condicion: '',
-    categoria: '',
-    dedicacion: '',
+    condicion: initialDocente?.condicion || '',
+    categoria: initialDocente?.categoriaDocente || '',
+    dedicacion: initialDocente?.regimenDedicacion || '',
     horas_dedicacion: 0
   });
   const [cargasLectivas, setCargasLectivas] = useState<any[]>([]);
@@ -385,6 +385,16 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     if (!initialDocente || !periodoActivo) return;
     if (isSaving) return;
 
+    const actividadesSinDescripcion =  cargasNoLectivas.filter(carga =>{
+      return !carga.descripcion || carga.descripcion.trim =="";
+    })
+    if (actividadesSinDescripcion.length > 0) {
+      const nombresActividades = actividadesSinDescripcion
+        .map(c => TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === c.tipo)?.label || c.tipo)
+        .join(', ');
+      toast.error(`Las siguientes actividades requieren una descripción: ${nombresActividades}`);
+      return; // Detiene el guardado
+    }
     const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
     if (lastSavedSnapshotRef.current === currentSnapshot) {
       toast.success('No hay cambios para guardar');
@@ -470,14 +480,21 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       return;
     }
 
-    // Guardar cambios pendientes antes de enviar para que el backend valide el estado con datos actualizados
+    const actividadesSinDescripcion =  cargasNoLectivas.filter(carga =>{
+      return !carga.descripcion || carga.descripcion.trim =="";
+    })
+
+    if (actividadesSinDescripcion.length > 0) {
+      const nombresActividades = actividadesSinDescripcion
+        .map(c => TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === c.tipo)?.label || c.tipo)
+        .join(', ');
+      toast.error(`Las siguientes actividades requieren una descripción: ${nombresActividades}`);
+      return; // Detiene el guardado
+    }
     const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
-    if (lastSavedSnapshotRef.current !== currentSnapshot) {
-      await handleCreateOrSave();
-      if (lastSavedSnapshotRef.current !== currentSnapshot) {
-        toast.error('Error: No se pudieron guardar los cambios antes de enviar. Intente nuevamente.');
-        return;
-      }
+    if (lastSavedSnapshotRef.current === currentSnapshot) {
+      toast.success('No hay cambios para guardar');
+      return;
     }
 
     // Validación obligatoria de horas totales
@@ -938,68 +955,19 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">IBM / Código</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{formData.ibm}</div>
-                  ) : (
-                    <Input
-                      value={formData.ibm}
-                      onChange={e => setFormData({ ...formData, ibm: e.target.value })}
-                      className="h-10 bg-background border-border focus:bg-background transition-all text-sm"
-                      disabled={!puedeEditarNoLectiva}
-                    />
-                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">Condición</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCondicionToTexto(initialDocente.condicion)}</div>
-                  ) : (
-                    <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })} disabled={!puedeEditarNoLectiva}>
-                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                        <SelectValue placeholder="Seleccionar condición" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CONDICION_OPCIONES.map(c => <SelectItem key={c.value} value={c.value} className="text-sm">{c.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">Categoría</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
-                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCategoriaDocenteToTexto(initialDocente.categoriaDocente)}</div>
-                  ) : (
-                    <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })} disabled={!puedeEditarNoLectiva}>
-                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIA_OPCIONES.map(c => <SelectItem key={c.value} value={c.value} className="text-sm">{c.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCategoriaDocenteToTexto(initialDocente.categoriaDocente)}</div>
                 </div>
                 <div className="space-y-2">
                   <Label className="text-[11px] font-bold text-muted-foreground uppercase">Dedicación Horaria</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
-                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapRegimenDedicacionToTexto(initialDocente.regimenDedicacion)}</div>
-                  ) : (
-                    <Select
-                      value={formData.dedicacion}
-                      onValueChange={v => {
-                        const newHoras = REGIMEN_DEDICACION[v as RegimenDedicacionType]?.totalHoras || 0;
-                        setFormData({ ...formData, dedicacion: v, horas_dedicacion: newHoras });
-                      }}
-                      disabled={!puedeEditarNoLectiva}
-                    >
-                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                        <SelectValue placeholder="Seleccionar dedicación" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {REGIMEN_OPCIONES.map(d => <SelectItem key={d.value} value={d.value} className="text-sm">{d.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapRegimenDedicacionToTexto(initialDocente.regimenDedicacion)}</div>
                 </div>
               </div>
             </div>
@@ -1271,6 +1239,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       <div className="space-y-1">
                         <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                           {requiereDocumento ? 'N° de Resolución/Constancia/Código de Proyecto' : 'Descripción de Actividades'}
+                          <span className="text-rose-500 ml-1">*</span>
                         </Label>
                         <Input
                           placeholder={requiereDocumento ? 'Ingrese el documento de sustento...' : 'Describa brevemente la actividad...'}
@@ -1379,7 +1348,13 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                               <Button
                                 size="sm"
                                 variant={actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'destructive' : 'outline'}
-                                disabled={!actividadPermitida}
+                                className={cn(
+                                  "transition-colors duration-200",
+                                  actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
+                                    ? "bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200"
+                                    : "bg-blue-50/80 text-blue-700 border-blue-200 hover:bg-blue-100"
+                                )}
+                                disabled={!actividadPermitida || !carga.descripcion?.trim()}
                                 onClick={() => {
                                   if (!actividadPermitida) {
                                     toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');

@@ -14,6 +14,7 @@ import {
   Calendar,
   Download,
   FileText,
+  FileSpreadsheet,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePeriodo } from "@/contexts/PeriodoContext";
@@ -111,6 +112,33 @@ export function MiHorarioDocenteView() {
       toast.success("Horario generado correctamente");
     } catch (error: any) {
       toast.error(error.message || "Error al generar horario");
+    } finally {
+      setGeneratingReport(false);
+    }
+  };
+
+  const handleDownloadExcel = async () => {
+    if (!selectedPeriodo) {
+      toast.warning("Seleccione un periodo académico");
+      return;
+    }
+    try {
+      setGeneratingReport(true);
+      const url = `/api/reportes/excel?id_periodo=${selectedPeriodo}&tipo=docente_propio`;
+      const response = await fetch(url);
+      if (!response.ok) throw new Error("Error al generar Excel");
+      const blob = await response.blob();
+      const downloadUrl = globalThis.URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = downloadUrl;
+      a.download = `Mi_Horario_${periodoActualObj?.nombre || "Docente"}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      a.remove();
+      globalThis.URL.revokeObjectURL(downloadUrl);
+      toast.success("Excel generado correctamente");
+    } catch (error: any) {
+      toast.error(error.message || "Error al generar Excel");
     } finally {
       setGeneratingReport(false);
     }
@@ -233,6 +261,21 @@ export function MiHorarioDocenteView() {
                 <FileText className="h-4 w-4" />
               )}
               {generatingReport ? "Generando..." : "Descargar PDF"}
+            </Button>
+
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={handleDownloadExcel}
+              disabled={generatingReport}
+              className="hidden sm:flex items-center gap-2 bg-card border-border text-card-foreground hover:bg-muted"
+            >
+              {generatingReport ? (
+                <Download className="h-4 w-4 animate-bounce" />
+              ) : (
+                <FileSpreadsheet className="h-4 w-4" />
+              )}
+              {generatingReport ? "Generando..." : "Descargar Excel"}
             </Button>
 
             <Button

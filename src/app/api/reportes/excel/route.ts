@@ -1,4 +1,6 @@
 ﻿import { NextResponse } from 'next/server';
+import { getServerSession } from 'next-auth';
+import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
 import ExcelJS from 'exceljs';
 
@@ -27,12 +29,10 @@ const TEXTMID  = 'FF475569';
 // ─────────────────────────────────────────────────────────────────────────────
 // LAYOUT — 14 columnas
 // ─────────────────────────────────────────────────────────────────────────────
-
 const TOTAL_COLS = 14;
 const ALL_L = 1;
 const ALL_R = 14;
 
-// ── 1. ANCHOS ACTUALIZADOS ────────────────────────────────────────────────────
 const COL_WIDTHS: Record<number, number> = {
    1:  6,
    2:  9,
@@ -43,26 +43,19 @@ const COL_WIDTHS: Record<number, number> = {
    7:  9,
    8:  9,
    9:  9,
-  10:  8,   // VIE c1 / T  (reducido)
-  11:  8,   // VIE c2 / P  (reducido)
-  12:  8,   // SAB c1 / L  (reducido)
-  13:  7,   // SAB c2 / G  (reducido)
-  14: 12,   // HORA / DEPTO (ampliado)
+  10:  8,
+  11:  8,
+  12:  8,
+  13:  7,
+  14: 12,
 };
 
-// ── Zona de grilla ────────────────────────────────────────────────────────────
 const G_HORA_L = 1;
 const G_DAYS: [number, number][] = [
-  [2,  3],   // LUNES
-  [4,  5],   // MARTES
-  [6,  7],   // MIÉRCOLES
-  [8,  9],   // JUEVES
-  [10, 11],  // VIERNES
-  [12, 13],  // SÁBADO
+  [2,  3], [4,  5], [6,  7], [8,  9], [10, 11], [12, 13],
 ];
 const G_HORA_R = 14;
 
-// ── 3. TABLA INFERIOR: constantes actualizadas ────────────────────────────────
 const BT_NUM     = 1;
 const BT_PROF    = [2,  4]  as [number, number];
 const BT_ASIG    = [5,  8]  as [number, number];
@@ -71,11 +64,11 @@ const BT_P       = 10;
 const BT_L       = 11;
 const BT_G       = 12;
 const BT_HRS     = 13;
-const BT_DEPT    = [14, 14] as [number, number];   // ← ahora es tupla
+const BT_DEPT    = [14, 14] as [number, number];
 
 const W_PROF_BT = 27;
 const W_ASIG_BT = 36;
-const W_DEPT_BT = 12;   // ← 4. AUMENTADO
+const W_DEPT_BT = 12;
 
 // ─────────────────────────────────────────────────────────────────────────────
 // ESTILOS
@@ -83,13 +76,13 @@ const W_DEPT_BT = 12;   // ← 4. AUMENTADO
 const fill = (argb: string): ExcelJS.Fill =>
   ({ type: 'pattern', pattern: 'solid', fgColor: { argb } });
 
-const bThin  = (argb = 'FFCBD5E1') => ({ style: 'thin'   as ExcelJS.BorderStyle, color: { argb } });
+const bThin  = (argb = 'FFCBD5E1') => ({ style: 'thin' as ExcelJS.BorderStyle, color: { argb } });
 const bMed   = (argb = 'FF94A3B8') => ({ style: 'medium' as ExcelJS.BorderStyle, color: { argb } });
 const bThick = (argb = NAVY)       => ({ style: 'medium' as ExcelJS.BorderStyle, color: { argb } });
 
 const ctr: Partial<ExcelJS.Alignment> = { horizontal: 'center', vertical: 'middle' };
-const lft: Partial<ExcelJS.Alignment> = { horizontal: 'left',   vertical: 'middle' };
-const rgt: Partial<ExcelJS.Alignment> = { horizontal: 'right',  vertical: 'middle' };
+const lft: Partial<ExcelJS.Alignment> = { horizontal: 'left', vertical: 'middle' };
+const rgt: Partial<ExcelJS.Alignment> = { horizontal: 'right', vertical: 'middle' };
 
 function wc(
   ws: ExcelJS.Worksheet, row: number, col: number,
@@ -164,13 +157,40 @@ export async function GET(request: Request) {
   try {
     const { searchParams } = new URL(request.url);
     const id_periodo = searchParams.get('id_periodo');
+    const tipo = searchParams.get('tipo');
     const departamentoId = searchParams.get('departamentoId');
+    let id_docente = searchParams.get('id_docente') ? parseInt(searchParams.get('id_docente')!) : undefined;
+    const id_ambiente = searchParams.get('id_ambiente') ? parseInt(searchParams.get('id_ambiente')!) : undefined;
+    const id_ciclo = searchParams.get('id_ciclo') ? parseInt(searchParams.get('id_ciclo')!) : undefined;
+
+    if (tipo === 'docente_propio') {
+      const session = await getServerSession(authOptions);
+      if (!session?.user?.id_usuario) {
+        return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
+      }
+      const docenteData = await prisma.docente.findUnique({
+        where: { id_usuario: session.user.id_usuario },
+      });
+      if (!docenteData) {
+        return NextResponse.json({ error: 'Usuario no es docente' }, { status: 403 });
+      }
+      id_docente = docenteData.id_docente;
+    }
+
     if (!id_periodo) return NextResponse.json({ error: 'Falta id_periodo' }, { status: 400 });
 
     const periodo = await prisma.periodoAcademico.findUnique({
       where: { id_periodo: parseInt(id_periodo) },
     });
-    const ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
+
+    // Determinar qué ciclos procesar
+    let ciclos: any[] = [];
+    if (id_ciclo) {
+      const ciclo = await prisma.ciclo.findUnique({ where: { id_ciclo } });
+      if (ciclo) ciclos = [ciclo];
+    } else {
+      ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
+    }
 
     const workbook = new ExcelJS.Workbook();
     workbook.creator = 'Sistema de Gestión de Horarios UNT';
@@ -189,7 +209,10 @@ export async function GET(request: Request) {
     const DIAS_NOMBRE = ['LUNES','MARTES','MIÉRCOLES','JUEVES','VIERNES','SÁBADO'];
 
     for (const ciclo of ciclos) {
-      const where: any = { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } };
+      const where: any = {
+        id_periodo: parseInt(id_periodo),
+        curso: { id_ciclo: ciclo.id_ciclo }
+      };
       if (departamentoId) {
         where.OR = [
           { docente: { departamentoId } },
@@ -197,6 +220,8 @@ export async function GET(request: Request) {
           { curso: { departamentoId } }
         ];
       }
+      if (id_docente) where.id_docente = id_docente;
+      if (id_ambiente) where.id_ambiente = id_ambiente;
 
       const horarios = await prisma.horarioAsignado.findMany({
         where,
@@ -205,18 +230,8 @@ export async function GET(request: Request) {
       });
       if (horarios.length === 0) continue;
 
-      // ── 2. cursosMap CON DEPARTAMENTO ──────────────────────────────────────
-      const cursosMap = new Map<string, {
-        docente:      string;
-        asignatura:   string;
-        T:            number;
-        P:            number;
-        L:            number;
-        G:            string;
-        THoras:       number;
-        departamento: string;   // ← añadido
-      }>();
-
+      // Construir cursosMap
+      const cursosMap = new Map<string, any>();
       for (const h of horarios) {
         const key = `${h.id_curso}-${h.id_docente}-${h.id_grupo}`;
         if (!cursosMap.has(key)) {
@@ -228,13 +243,13 @@ export async function GET(request: Request) {
             L:            h.curso.horas_laboratorio ?? 0,
             G:            h.grupo.codigo_grupo,
             THoras:       (h.curso.horas_teoria ?? 0) + (h.curso.horas_practica ?? 0) + (h.curso.horas_laboratorio ?? 0),
-            departamento: h.docente.especialidad ?? 'Ing. Sistemas',   // ← añadido
+            departamento: h.docente.especialidad ?? 'Ing. Sistemas',
           });
         }
       }
       const cursos = Array.from(cursosMap.values());
 
-      // ── Crear hoja — A4 vertical ──────────────────────────────────────────
+      // Crear hoja
       const ws = workbook.addWorksheet(`Ciclo ${ciclo.numero}`, {
         pageSetup: {
           paperSize:    9,
@@ -405,7 +420,7 @@ export async function GET(request: Request) {
             if (clase) {
               const ci  = cursos.findIndex(c => c.asignatura === clase.curso.nombre && c.G === clase.grupo.codigo_grupo);
               const bg  = PASTEL[ci % PASTEL.length];
-              const txt = TEXTO [ci % TEXTO .length];
+              const txt = TEXTO[ci % TEXTO.length];
               wc(ws, R, c1, {
                 value: `${ci + 1}\n(${clase.ambiente.nombre})`, mergeEnd: c2,
                 bg, color: txt, bold: true, size: 8,
@@ -448,7 +463,6 @@ export async function GET(request: Request) {
       });
       ws.getRow(R).height = 17; R++;
 
-      // Sub-encabezado
       const hdrBorder: Partial<ExcelJS.Borders> = { bottom: bThin(WHITE), right: bThin(WHITE) };
       const hdrOpts = { bg: NAVY3, color: WHITE, bold: true, size: 7.5 };
 
@@ -460,24 +474,16 @@ export async function GET(request: Request) {
       wc(ws, R, BT_L,          { ...hdrOpts, value: 'L',            align: ctr, border: hdrBorder });
       wc(ws, R, BT_G,          { ...hdrOpts, value: 'G',            align: ctr, border: hdrBorder });
       wc(ws, R, BT_HRS,        { ...hdrOpts, value: 'T.HRS',        align: ctr, border: hdrBorder });
-      // ── 7. HEADER DEPTO ACTUALIZADO ──────────────────────────────────────
-      wc(ws, R, BT_DEPT[0], {
-        ...hdrOpts,
-        value:    'DEPTO.',
-        align:    ctr,
-        border:   hdrBorder,
-      });
+      wc(ws, R, BT_DEPT[0],    { ...hdrOpts, value: 'DEPTO.',       align: ctr, border: hdrBorder });
       ws.getRow(R).height = 14; R++;
 
-      // Filas de cursos
       const MIN_ROWS = Math.max(cursos.length, 6);
       for (let i = 0; i < MIN_ROWS; i++) {
         const curso = cursos[i];
         const bg  = PASTEL[i % PASTEL.length];
-        const txt = TEXTO [i % TEXTO .length];
+        const txt = TEXTO[i % TEXTO.length];
 
         if (curso) {
-          // ── 5. calcRowHeight CONSIDERA DEPTO ───────────────────────────────
           const rowH = calcRowHeight([
             { text: curso.docente,      colWidthChars: W_PROF_BT },
             { text: curso.asignatura,   colWidthChars: W_ASIG_BT },
@@ -494,17 +500,7 @@ export async function GET(request: Request) {
           wc(ws, R, BT_L,          { value: curso.L,          bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
           wc(ws, R, BT_G,          { value: curso.G,          bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
           wc(ws, R, BT_HRS,        { value: curso.THoras,     bg, color: txt, bold: true,  size: 8,   align: ctr, border: rBorder });
-          // ── 6. CELDA DEPTO ──────────────────────────────────────────────────
-          wc(ws, R, BT_DEPT[0], {
-            value: curso.departamento,
-            bg,
-            color: txt,
-            bold:  false,
-            size:  7,
-            align: lft,
-            border: rBorder,
-            wrap:  true,
-          });
+          wc(ws, R, BT_DEPT[0],    { value: curso.departamento, bg, color: txt, bold: false, size: 7, align: lft, border: rBorder, wrap: true });
         } else {
           ws.getRow(R).height = 13;
           const stripeBg = i % 2 === 0 ? WHITE : SLATE50;
@@ -533,10 +529,22 @@ export async function GET(request: Request) {
     }
 
     const buffer = await workbook.xlsx.writeBuffer();
+    let filename = `horario_${periodo?.codigo ?? 'general'}`;
+    if (id_docente) {
+      const docente = await prisma.docente.findUnique({ where: { id_docente } });
+      if (docente) filename = `horario_${docente.apellidos}_${docente.nombres}`;
+    } else if (id_ambiente) {
+      const ambiente = await prisma.ambiente.findUnique({ where: { id_ambiente } });
+      if (ambiente) filename = `horario_${ambiente.codigo}`;
+    } else if (id_ciclo) {
+      filename = `horario_ciclo_${id_ciclo}`;
+    }
+    filename += '.xlsx';
+
     return new Response(buffer, {
       headers: {
         'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-        'Content-Disposition': `attachment; filename="horario_${periodo?.codigo ?? 'general'}.xlsx"`,
+        'Content-Disposition': `attachment; filename="${filename}"`,
       },
     });
 
