@@ -10,7 +10,7 @@ async function resolveDocenteId(
 ): Promise<number | null> {
   if (
     id_docente_manual &&
-    ['administrador_sistema', 'operador_horarios', 'docente'].includes(session.user.rol)
+    ['administrador_sistema', 'operador_horarios', 'docente', 'secretaria'].includes(session.user.rol)
   ) {
     const parsed = parseInt(id_docente_manual, 10);
     return isNaN(parsed) ? null : parsed;

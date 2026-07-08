@@ -73,7 +73,7 @@ export default function SeleccionHorariosLectivosPage() {
   const [horariosGenerados, setHorariosGenerados] = useState<any[]>([]);
   const [mensajeIntervalo, setMensajeIntervalo] = useState<string>("");
   const [declaracion, setDeclaracion] = useState<any>(null);
-  const [vistaHorarioGrafico, setVistaHorarioGrafico] = useState(false);
+  const [vistaHorarioGrafico, setVistaHorarioGrafico] = useState(true);
   
   // Timer simple - solo para visualización
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);

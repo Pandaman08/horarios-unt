@@ -187,8 +187,9 @@ export async function GET(request: Request) {
       });
     }
 
-    // 3. Encontrar la ventana del docente logueado
-    const indexDocente = docentes.findIndex((d: any) => d.id_docente === docenteLogueado.id_docente);
+    // 3. Encontrar la ventana del docente logueado usando el MISMO orden que docentes-ventana
+    const docentesOrdenados = ordenarDocentes(docentes);
+    const indexDocente = docentesOrdenados.findIndex((d: any) => d.id_docente === docenteLogueado.id_docente);
     const ventanaDocente = indexDocente !== -1 && ventanas.length > indexDocente ? ventanas[indexDocente] : null;
 
     if (!ventanaDocente) {

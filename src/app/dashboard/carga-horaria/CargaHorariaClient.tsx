@@ -419,15 +419,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     if (!initialDocente || !periodoActivo) return;
     if (isSaving) return;
 
-    const actividadesSinDescripcion =  cargasNoLectivas.filter(carga =>{
-      return !carga.descripcion || carga.descripcion.trim =="";
-    })
-    if (actividadesSinDescripcion.length > 0) {
-      const nombresActividades = actividadesSinDescripcion
+    const actividadesConHorarioSinDescripcion = cargasNoLectivas.filter(carga => {
+      return (carga.horarios?.length > 0) && (!carga.descripcion || carga.descripcion.trim === "");
+    });
+    if (actividadesConHorarioSinDescripcion.length > 0) {
+      const nombresActividades = actividadesConHorarioSinDescripcion
         .map(c => TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === c.tipo)?.label || c.tipo)
         .join(', ');
-      toast.error(`Las siguientes actividades requieren una descripción: ${nombresActividades}`);
-      return; // Detiene el guardado
+      toast.error(`Las siguientes actividades con horario asignado requieren una descripción: ${nombresActividades}`);
+      return;
     }
     const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
     if (lastSavedSnapshotRef.current === currentSnapshot) {
@@ -514,16 +514,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       return;
     }
 
-    const actividadesSinDescripcion =  cargasNoLectivas.filter(carga =>{
-      return !carga.descripcion || carga.descripcion.trim =="";
-    })
-
-    if (actividadesSinDescripcion.length > 0) {
-      const nombresActividades = actividadesSinDescripcion
+    const actividadesConHorarioSinDescripcion = cargasNoLectivas.filter(carga => {
+      return (carga.horarios?.length > 0) && (!carga.descripcion || carga.descripcion.trim === "");
+    });
+    if (actividadesConHorarioSinDescripcion.length > 0) {
+      const nombresActividades = actividadesConHorarioSinDescripcion
         .map(c => TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === c.tipo)?.label || c.tipo)
         .join(', ');
-      toast.error(`Las siguientes actividades requieren una descripción: ${nombresActividades}`);
-      return; // Detiene el guardado
+      toast.error(`Las siguientes actividades con horario asignado requieren una descripción: ${nombresActividades}`);
+      return;
     }
     const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
     if (lastSavedSnapshotRef.current === currentSnapshot) {

@@ -133,7 +133,7 @@ export async function GET(request: Request) {
       vencidos: docentesConEstado.filter((d: any) => d.estadoVentana === 'vencido').length,
     };
 
-    return NextResponse.json({ docentes: docentesConEstado, resumen });
+    return NextResponse.json({ docentes: docentesConEstado, resumen, hayVentanas: ventanas.length > 0 });
   } catch (error) {
     console.error('Error en docentes-ventana:', error);
     return NextResponse.json({ error: 'Error al obtener docentes' }, { status: 500 });

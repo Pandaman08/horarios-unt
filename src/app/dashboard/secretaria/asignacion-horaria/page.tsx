@@ -89,11 +89,12 @@ export default function AsignacionHorariaSecretariaPage() {
   const [cursoSeleccionado, setCursoSeleccionado] = useState<CursoItem | null>(null);
 
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
-  const [idAmbiente, setIdAmbiente] = useState<number>(0);
+  const [idAmbiente, setIdAmbiente] = useState<string>("");
 
   const [grupos, setGrupos] = useState<any[]>([]);
-  const [idGrupo, setIdGrupo] = useState<number>(0);
+  const [idGrupo, setIdGrupo] = useState<string>("");
 
+  const [sinVentanas, setSinVentanas] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
   const [isSkipping, setIsSkipping] = useState(false);
   const [mensaje, setMensaje] = useState<string>("");
@@ -123,12 +124,15 @@ export default function AsignacionHorariaSecretariaPage() {
   const fetchDocentes = useCallback(async () => {
     if (!idPeriodo) return;
     setIsLoadingDocentes(true);
+    setSinVentanas(false);
     try {
       const res = await fetch(`/api/secretaria/docentes-ventana?id_periodo=${idPeriodo}`);
       const data = await res.json();
       setDocentes(data.docentes || []);
+      setSinVentanas(!data.hayVentanas);
     } catch {
       setDocentes([]);
+      setSinVentanas(true);
     } finally {
       setIsLoadingDocentes(false);
     }
@@ -141,8 +145,8 @@ export default function AsignacionHorariaSecretariaPage() {
   const handleSelectDocente = async (docente: DocenteVentana) => {
     setDocenteSeleccionado(docente);
     setCursoSeleccionado(null);
-    setIdAmbiente(0);
-    setIdGrupo(0);
+    setIdAmbiente("");
+    setIdGrupo("");
     setMensaje("");
 
     setIsLoadingCursos(true);
@@ -160,31 +164,41 @@ export default function AsignacionHorariaSecretariaPage() {
     }
 
     try {
-      const res = await fetch(`/api/ambientes?activos=true`);
+      const res = await fetch(`/api/ambientes`);
       const data = await res.json();
       const list = Array.isArray(data) ? data : (data.ambientes || []);
-      setAmbientes(list);
+      const activos = list.filter((a: any) => a.activo === true);
+      setAmbientes(activos);
+      if (activos.length > 0) setIdAmbiente(activos[0].id_ambiente.toString());
     } catch {
       setAmbientes([]);
     }
   };
 
-  const handleCursoChange = async (cursoIdStr: string) => {
-    const cursoId = parseInt(cursoIdStr);
-    const curso = cursos.find(c => c.id_curso === cursoId);
+  const handleCursoChange = async (value: string) => {
+    if (!value) {
+      setCursoSeleccionado(null);
+      setIdGrupo("");
+      return;
+    }
+    const [idStr, tipoClase] = value.split(':');
+    const cursoId = parseInt(idStr);
+    const curso = cursos.find(c => c.id_curso === cursoId && c.tipo_clase === tipoClase);
     setCursoSeleccionado(curso || null);
+    setIdGrupo("");
 
     if (curso?.id_grupo) {
-      setIdGrupo(curso.id_grupo);
-    } else {
-      setIdGrupo(0);
+      setIdGrupo(curso.id_grupo.toString());
+      setGrupos([]);
+    } else if (docenteSeleccionado) {
       try {
         const res = await fetch(
-          `/api/docentes/mis-grupos?cursoId=${cursoId}&tipoClase=${curso?.tipo_clase || ''}&id_periodo=${idPeriodo}&idDocente=${docenteSeleccionado?.id_docente}`
+          `/api/docentes/mis-grupos?id_curso=${cursoId}&tipo_clase=${curso?.tipo_clase || ''}&id_periodo=${idPeriodo}&id_docente=${docenteSeleccionado.id_docente}`
         );
         const data = await res.json();
-        const list = Array.isArray(data) ? data : (data.grupos || []);
+        const list = data.grupos || [];
         setGrupos(list);
+        if (list.length > 0) setIdGrupo(list[0].id_grupo.toString());
       } catch {
         setGrupos([]);
       }
@@ -211,8 +225,8 @@ export default function AsignacionHorariaSecretariaPage() {
         await fetchDocentes();
         setDocenteSeleccionado(null);
         setCursoSeleccionado(null);
-        setIdAmbiente(0);
-        setIdGrupo(0);
+        setIdAmbiente("");
+        setIdGrupo("");
         setCursos([]);
       } else {
         setMensaje(`Error: ${data.error || 'No se pudo confirmar'}`);
@@ -282,6 +296,12 @@ export default function AsignacionHorariaSecretariaPage() {
         </div>
       </div>
 
+      {sinVentanas && (
+        <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-200">
+          No se han generado ventanas de atención para este período. Para habilitar la asignación horaria, primero debe generar las ventanas desde la gestión de ventanas.
+        </div>
+      )}
+
       <div className="grid grid-cols-1 lg:grid-cols-4 gap-4">
         <div className="lg:col-span-1 space-y-3">
           <Card>
@@ -305,12 +325,17 @@ export default function AsignacionHorariaSecretariaPage() {
                 <p className="text-sm text-muted-foreground p-4">
                   No hay docentes con carga lectiva en este período
                 </p>
+              ) : sinVentanas ? (
+                <div className="p-4 text-sm text-muted-foreground">
+                  No se han generado ventanas de atención para este período. La asignación horaria no está disponible.
+                </div>
               ) : (
                 <div className="divide-y">
                   {docentes.map((d, idx) => (
                     <button
                       key={d.id_docente}
                       onClick={() => handleSelectDocente(d)}
+                      disabled={sinVentanas}
                       className={`w-full text-left px-3 py-2.5 hover:bg-accent transition-colors ${
                         docenteSeleccionado?.id_docente === d.id_docente ? 'bg-accent border-l-2 border-primary' : ''
                       }`}
@@ -346,7 +371,7 @@ export default function AsignacionHorariaSecretariaPage() {
               size="sm"
               className="flex-1"
               onClick={handleSaltarIntervalo}
-              disabled={isSkipping || docentes.filter(d => d.estadoVentana === 'activo').length === 0}
+              disabled={isSkipping || sinVentanas || docentes.filter(d => d.estadoVentana === 'activo').length === 0}
             >
               {isSkipping ? (
                 <Loader2 className="h-4 w-4 animate-spin mr-1" />
@@ -406,13 +431,13 @@ export default function AsignacionHorariaSecretariaPage() {
                       <label className="text-xs font-medium mb-1 block">Curso</label>
                       <select
                         className="w-full border rounded px-3 py-1.5 text-sm bg-background"
-                        value={cursoSeleccionado?.id_curso || ''}
+                        value={cursoSeleccionado ? `${cursoSeleccionado.id_curso}:${cursoSeleccionado.tipo_clase}` : ''}
                         onChange={e => handleCursoChange(e.target.value)}
                         disabled={isLoadingCursos}
                       >
                         <option value="">Seleccionar curso...</option>
                         {cursos.map(c => (
-                          <option key={`${c.id_curso}-${c.tipo_clase}`} value={c.id_curso}>
+                          <option key={`${c.id_curso}-${c.tipo_clase}`} value={`${c.id_curso}:${c.tipo_clase}`}>
                             {c.nombre} ({c.tipo_clase}) - {c.horas_requeridas}h
                           </option>
                         ))}
@@ -424,20 +449,19 @@ export default function AsignacionHorariaSecretariaPage() {
                       <select
                         className="w-full border rounded px-3 py-1.5 text-sm bg-background"
                         value={idGrupo}
-                        onChange={e => setIdGrupo(parseInt(e.target.value))}
-                        disabled={grupos.length === 0 && !cursoSeleccionado?.id_grupo}
+                        onChange={e => setIdGrupo(e.target.value)}
+                        disabled={!cursoSeleccionado}
                       >
-                        {cursoSeleccionado?.id_grupo ? (
-                          <option value={cursoSeleccionado.id_grupo}>Grupo {cursoSeleccionado.id_grupo}</option>
+                        {grupos.length > 0 ? grupos.map(g => (
+                          <option key={g.id_grupo} value={g.id_grupo.toString()}>
+                            {(g as any).codigo_grupo || g.nombre || `Grupo ${g.id_grupo}`}
+                          </option>
+                        )) : cursoSeleccionado?.id_grupo ? (
+                          <option value={cursoSeleccionado.id_grupo.toString()}>
+                            Grupo {cursoSeleccionado.id_grupo}
+                          </option>
                         ) : (
-                          <>
-                            <option value={0}>Sin grupo</option>
-                            {grupos.map(g => (
-                              <option key={g.id_grupo} value={g.id_grupo}>
-                                {g.nombre || `Grupo ${g.id_grupo}`}
-                              </option>
-                            ))}
-                          </>
+                          <option value="">Sin grupo</option>
                         )}
                       </select>
                     </div>
@@ -447,11 +471,10 @@ export default function AsignacionHorariaSecretariaPage() {
                       <select
                         className="w-full border rounded px-3 py-1.5 text-sm bg-background"
                         value={idAmbiente}
-                        onChange={e => setIdAmbiente(parseInt(e.target.value))}
+                        onChange={e => setIdAmbiente(e.target.value)}
                       >
-                        <option value={0}>Seleccionar ambiente...</option>
                         {ambientes.map(a => (
-                          <option key={a.id_ambiente} value={a.id_ambiente}>
+                          <option key={a.id_ambiente} value={a.id_ambiente.toString()}>
                             {a.nombre} ({a.tipo})
                           </option>
                         ))}
@@ -471,10 +494,10 @@ export default function AsignacionHorariaSecretariaPage() {
                   ) : (
                     <MatrizDisponibilidad
                       id_periodo={idPeriodo}
-                      id_ambiente={idAmbiente || undefined}
+                      id_ambiente={idAmbiente ? parseInt(idAmbiente) : undefined}
                       id_docente_actual={docenteSeleccionado.id_docente}
                       id_curso_actual={cursoSeleccionado.id_curso}
-                      id_grupo_actual={idGrupo || undefined}
+                      id_grupo_actual={idGrupo ? parseInt(idGrupo) : undefined}
                       tipo_clase_actual={cursoSeleccionado.tipo_clase}
                       soloLectura={false}
                       onSelectionChange={fetchDocentes}
@@ -504,8 +527,8 @@ export default function AsignacionHorariaSecretariaPage() {
                   onClick={() => {
                     setDocenteSeleccionado(null);
                     setCursoSeleccionado(null);
-                    setIdAmbiente(0);
-                    setIdGrupo(0);
+                    setIdAmbiente("");
+                    setIdGrupo("");
                     setCursos([]);
                     setMensaje("");
                   }}

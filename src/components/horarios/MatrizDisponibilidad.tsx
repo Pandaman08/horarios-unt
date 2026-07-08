@@ -829,10 +829,13 @@ export function MatrizDisponibilidad({
   const handleCellMouseDown = (dia: number, hora: string, e: React.MouseEvent) => {
     if (soloLectura || processingCell) return;
 
-    if (tipoVista === 'no-lectiva' && actividadSeleccionadaId) {
-      const key = `${dia}-${hora}`;
-      const celda = disponibilidad[key];
+    const key = `${dia}-${hora}`;
+    const celda = disponibilidad[key];
+    const esMia = celda?.id_docente === id_docente_actual;
+    const esOwned = celda?.id_seleccion || celda?.id_asignacion;
+    const esBloqueado = celda?.estado === 'bloqueado' || celda?.estado === 'bloqueado_lectivo' || celda?.estado === 'ocupado';
 
+    if (tipoVista === 'no-lectiva' && actividadSeleccionadaId) {
       if (e.ctrlKey && celda?.id_carga_no_lectiva === actividadSeleccionadaId) {
         isDraggingRef.current = true;
         isRemoveDragRef.current = true;
@@ -846,13 +849,7 @@ export function MatrizDisponibilidad({
         return;
       }
 
-      if (
-        celda?.estado === 'bloqueado' ||
-        celda?.estado === 'bloqueado_lectivo' ||
-        celda?.estado === 'ocupado'
-      ) {
-        return;
-      }
+      if (esBloqueado) return;
 
       isDraggingRef.current = true;
       isRemoveDragRef.current = false;
@@ -861,7 +858,28 @@ export function MatrizDisponibilidad({
       return;
     }
 
-    handleCellClick(dia, hora);
+    // Lectiva mode: left-click drag (same as no-lectiva) / right-click also works
+    if (e.button === 2) e.preventDefault();
+
+    if (e.ctrlKey && esMia && esOwned) {
+      isDraggingRef.current = true;
+      isRemoveDragRef.current = true;
+      setDragStart({ dia, hora });
+      setDragEnd({ dia, hora });
+      return;
+    }
+
+    if (esMia && esOwned) {
+      handleCellClick(dia, hora);
+      return;
+    }
+
+    if (esBloqueado) return;
+
+    isDraggingRef.current = true;
+    isRemoveDragRef.current = false;
+    setDragStart({ dia, hora });
+    setDragEnd({ dia, hora });
   };
 
   const handleCellMouseEnter = (dia: number, hora: string) => {
@@ -903,7 +921,9 @@ export function MatrizDisponibilidad({
       const celda = disponibilidad[key];
 
       if (isRemoveDragRef.current) {
-        return celda?.id_carga_no_lectiva === actividadSeleccionadaId;
+        return tipoVista === 'no-lectiva'
+          ? celda?.id_carga_no_lectiva === actividadSeleccionadaId
+          : celda?.id_docente === id_docente_actual && (celda?.id_seleccion || celda?.id_asignacion);
       }
 
       return !celda || (
@@ -924,11 +944,70 @@ export function MatrizDisponibilidad({
     if (isRemoveDragRef.current) {
       if (onRangeRemove) {
         onRangeRemove(cells);
+      } else {
+        (async () => {
+          for (const cell of cells) {
+            const key = `${cell.dia}-${cell.hora}`;
+            const celda = disponibilidad[key];
+            if (celda?.id_seleccion) {
+              await fetch(`/api/horarios/seleccionar-celda?id_seleccion=${celda.id_seleccion}`, { method: 'DELETE' });
+            } else if (celda?.id_asignacion) {
+              await fetch(`/api/horarios/seleccionar-celda?id_asignacion=${celda.id_asignacion}`, { method: 'DELETE' });
+            }
+          }
+          toast.success('Reservas eliminadas');
+          fetchDisponibilidad();
+          onSelectionChange?.();
+          getSocket().emit('horario-actualizado');
+        })();
       }
     } else if (cells.length === 1 && onCellClick) {
       onCellClick(cells[0].dia, cells[0].hora);
     } else if (cells.length > 1 && onRangeSelect) {
       onRangeSelect(cells);
+    } else if (cells.length >= 1) {
+      (async () => {
+        let hasError = false;
+        for (const cell of cells) {
+          const key = `${cell.dia}-${cell.hora}`;
+          const celda = disponibilidad[key];
+          if (celda?.estado === 'bloqueado' || celda?.estado === 'bloqueado_lectivo' || celda?.estado === 'ocupado') continue;
+
+          const hora_fin = format(addMinutes(parse(cell.hora, "HH:mm", new Date()), intervalo || 60), "HH:mm");
+          try {
+            const res = await fetch("/api/horarios/seleccionar-celda", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                id_docente: id_docente_actual,
+                id_curso: id_curso_actual,
+                id_grupo: id_grupo_actual,
+                id_ambiente,
+                id_periodo,
+                dia_semana: cell.dia,
+                hora_inicio: cell.hora,
+                hora_fin,
+                tipo_clase: tipo_clase_actual ?? "teoria",
+                sesion_id: "sesion-temp-" + id_docente_actual,
+              }),
+            });
+            const result = await res.json();
+            if (!res.ok || !result.valido) {
+              toast.error(result.error || result.mensaje || "Error al crear reserva");
+              hasError = true;
+              break;
+            }
+          } catch {
+            toast.error("Error de conexión");
+            hasError = true;
+            break;
+          }
+        }
+        if (!hasError) toast.success("Reservas creadas");
+        fetchDisponibilidad();
+        onSelectionChange?.();
+        getSocket().emit("horario-actualizado");
+      })();
     }
 
     isDraggingRef.current = false;
@@ -1021,7 +1100,7 @@ export function MatrizDisponibilidad({
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm select-none" onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd}>
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm select-none" onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd} onContextMenu={(e) => e.preventDefault()}>
         <table className="w-full border-collapse min-w-[880px]">
           <thead>
             <tr className="bg-primary/90">
