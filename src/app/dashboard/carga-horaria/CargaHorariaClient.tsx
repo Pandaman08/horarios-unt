@@ -894,7 +894,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             </div>
             <div className="flex flex-wrap gap-2">
               {puedeEditarNoLectiva && (
-                <Button>
+                <Button
                   onClick={handleCreateOrSave} 
                   variant="outline" 
                   size="sm"
@@ -1216,6 +1216,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                     actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
                     actividadesNoLectivas={cargasNoLectivas}
                     horariosLectivosDocente={horariosLectivosSoloLectiva}
+                    horasRequeridas={cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada)?.horas_semanales}
                     soloLectura={!puedeEditarNoLectiva}
                     onCellClick={handleNoLectivaCellClick}
                     onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}

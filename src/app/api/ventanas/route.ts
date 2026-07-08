@@ -5,6 +5,14 @@ import { prisma } from '@/lib/prisma';
 
 const ROLES_VENTANAS = ['administrador_sistema', 'operador_horarios'];
 
+function addMinutesToTime(time: string, minutes: number): string {
+  const [h, m] = time.split(':').map(Number);
+  const totalMin = h * 60 + m + minutes;
+  const newH = Math.floor(totalMin / 60) % 24;
+  const newM = totalMin % 60;
+  return `${String(newH).padStart(2, '0')}:${String(newM).padStart(2, '0')}`;
+}
+
 function parseFechaLocal(fecha?: string | Date | null) {
   if (!fecha) return new Date();
   if (fecha instanceof Date) return new Date(fecha);
@@ -302,12 +310,7 @@ export async function POST(request: Request) {
     const nuevasVentanas = [];
 
     for (const docente of docentesPendientes) {
-      const [h, m] = horaActual.split(':').map(Number);
-      const fechaHora = new Date(fechaInicio);
-      fechaHora.setHours(h, m, 0, 0);
-      fechaHora.setMinutes(fechaHora.getMinutes() + intervalo);
-
-      const horaFin = `${String(fechaHora.getHours()).padStart(2, '0')}:${String(fechaHora.getMinutes()).padStart(2, '0')}`;
+      const horaFin = addMinutesToTime(horaActual, intervalo);
 
       const ventana = await prisma.ventanaAtencion.create({
         data: {

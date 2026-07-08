@@ -51,6 +51,8 @@ interface HorarioGraficoProps {
   onSelectionChange?: () => void
   soloLectura?: boolean
   horariosAsignados?: any[]
+  horasRequeridas?: number
+  horasAsignadas?: number
 }
 
 // --- Helper Functions ---
@@ -79,7 +81,9 @@ export function HorarioGrafico({
   onCellClick,
   onSelectionChange,
   soloLectura,
-  horariosAsignados
+  horariosAsignados,
+  horasRequeridas,
+  horasAsignadas = 0
 }: HorarioGraficoProps) {
   // -- State --
   const [disponibilidad, setDisponibilidad] = useState<Record<string, CeldaInfo>>({})
@@ -111,7 +115,7 @@ export function HorarioGrafico({
     if (!actividadesNoLectivas && !horariosLectivosDocente?.length) return
 
     try {
-      setDisponibilidad(prev => aplicarCapasCargaHoraria(prev, horariosLectivosDocente, actividadesNoLectivas, actividadSeleccionadaId, modo, id_docente_actual))
+      setDisponibilidad(prev => aplicarCapasCargaHoraria(prev, horariosLectivosDocente || [], actividadesNoLectivas || [], actividadSeleccionadaId, modo, id_docente_actual))
     } catch (err) {
       console.warn('Error remapping', err)
     }
@@ -130,7 +134,7 @@ export function HorarioGrafico({
         const end = parse(horaFin, 'HH:mm', new Date())
         while (current < end) {
           const slotHora = format(current, 'HH:mm')
-          const key = `${dia}-${slotHora}`
+          const key = dia.toString() + '-' + slotHora
           map[key] = { ...map[key], ...info, estado: info.estado ?? 'ocupado' } as CeldaInfo
           current = addMinutes(current, 60)
         }
@@ -162,12 +166,12 @@ export function HorarioGrafico({
 
     setLoading(true)
     try {
-      let url = `/api/horarios/disponibilidad-matriz?id_periodo=${id_periodo}`
-      if (id_ambiente_actual != null && !isNaN(id_ambiente_actual)) url += `&id_ambiente=${id_ambiente_actual}`
-      if (id_docente_actual != null && !isNaN(id_docente_actual)) url += `&id_docente=${id_docente_actual}`
-      if (soloLectura) url += `&modo_consulta=1`
-      if (id_curso_actual != null && !isNaN(id_curso_actual)) url += `&id_curso=${id_curso_actual}`
-      if (id_grupo_actual != null && !isNaN(id_grupo_actual)) url += `&id_grupo=${id_grupo_actual}`
+      let url = '/api/horarios/disponibilidad-matriz?id_periodo=' + id_periodo.toString()
+      if (id_ambiente_actual != null && !isNaN(id_ambiente_actual)) url += '&id_ambiente=' + id_ambiente_actual.toString()
+      if (id_docente_actual != null && !isNaN(id_docente_actual)) url += '&id_docente=' + id_docente_actual.toString()
+      if (soloLectura) url += '&modo_consulta=1'
+      if (id_curso_actual != null && !isNaN(id_curso_actual)) url += '&id_curso=' + id_curso_actual.toString()
+      if (id_grupo_actual != null && !isNaN(id_grupo_actual)) url += '&id_grupo=' + id_grupo_actual.toString()
 
       const res = await fetch(url)
       const data = await res.json()
@@ -180,7 +184,7 @@ export function HorarioGrafico({
         const end = parse(horaFin, 'HH:mm', new Date())
         while (current < end) {
           const slotHora = format(current, 'HH:mm')
-          const key = `${dia}-${slotHora}`
+          const key = dia.toString() + '-' + slotHora
           map[key] = { ...map[key], ...info, estado: info.estado ?? 'ocupado' } as CeldaInfo
           current = addMinutes(current, 15)
         }
@@ -191,7 +195,7 @@ export function HorarioGrafico({
         fillSlots(asig.dia_semana, asig.hora_inicio, asig.hora_fin, {
           id_asignacion: asig.id_asignacion,
           id_docente: asig.id_docente,
-          docente_nombre: `${asig.docente.nombres} ${asig.docente.apellidos}`,
+          docente_nombre: asig.docente.nombres + ' ' + asig.docente.apellidos,
           curso_nombre: asig.curso.nombre,
           ambiente_nombre: asig.ambiente?.codigo || asig.ambiente?.nombre,
           tipo_clase: asig.tipo_clase,
@@ -204,7 +208,7 @@ export function HorarioGrafico({
         fillSlots(temp.dia_semana, temp.hora_inicio, temp.hora_fin, {
           id_seleccion: temp.id_seleccion,
           id_docente: temp.id_docente,
-          docente_nombre: `${temp.docente.nombres} ${temp.docente.apellidos}`,
+          docente_nombre: temp.docente.nombres + ' ' + temp.docente.apellidos,
           curso_nombre: temp.curso.nombre,
           ambiente_nombre: temp.ambiente?.codigo || temp.ambiente?.nombre,
           tipo_clase: temp.tipo_clase,
@@ -218,13 +222,13 @@ export function HorarioGrafico({
       while (curB < endB) {
         const horaB = format(curB, 'HH:mm')
         DIAS.forEach(dia => {
-          const key = `${dia.id}-${horaB}`
+          const key = dia.id.toString() + '-' + horaB
           if (!map[key]) map[key] = { estado: 'bloqueado' }
         })
         curB = addMinutes(curB, 15)
       }
 
-      setDisponibilidad(aplicarCapasCargaHoraria(map, horariosLectivosDocente, actividadesNoLectivas, actividadSeleccionadaId, modo, id_docente_actual))
+      setDisponibilidad(aplicarCapasCargaHoraria(map, horariosLectivosDocente || [], actividadesNoLectivas || [], actividadSeleccionadaId, modo, id_docente_actual))
     } catch (err) {
       console.error(err)
       toast.error('Error al cargar disponibilidad')
@@ -271,7 +275,7 @@ export function HorarioGrafico({
           const slotHora = format(current, 'HH:mm')
           const diaIdx = DIAS.findIndex(d => d.codigo === h.dia)
           if (diaIdx === -1) { current = addMinutes(current,15); continue }
-          const key = `${diaIdx}-${slotHora}`
+          const key = diaIdx.toString() + '-' + slotHora
           
           if (next[key] && (next[key].id_asignacion || next[key].id_seleccion || next[key].estado === 'bloqueado_lectivo')) {
             // Keep existing
@@ -305,7 +309,7 @@ export function HorarioGrafico({
       const end = parse(h.hora_fin, 'HH:mm', new Date())
       while (current < end) {
         const slotHora = format(current, 'HH:mm')
-        const key = `${h.dia_semana}-${slotHora}`
+        const key = h.dia_semana.toString() + '-' + slotHora
         next[key] = {
           id_asignacion: h.id_asignacion,
           id_docente: docId,
@@ -337,17 +341,89 @@ export function HorarioGrafico({
   const handleCellClick = (dia: number, hora: string) => {
     if (soloLectura) return
     
-    if (modo === 'no-lectiva' && onCellClick) {
-      onCellClick(dia, hora)
-    } else {
-      // Para lectiva, usar la selección drag&drop
-      const key = `${dia}-${hora}`
-      const celda = disponibilidad[key]
-      if (celda?.estado !== 'disponible' && celda) return
-      
-      setIsSelecting(true)
-      setSelectionStart({ dia, hora })
-      setSelectionEnd({ dia, hora })
+    const key = dia.toString() + '-' + hora
+    const celda = disponibilidad[key]
+
+    // Si es una selección propia, dar la opción de eliminar
+    if (
+      celda?.estado === 'seleccionado_mio' && 
+      Number(celda.id_docente) === Number(id_docente_actual)
+    ) {
+      handleEliminarBloque(dia, hora)
+      return
+    }
+    
+    // Check if cell is blocked or occupied by someone else
+    if (celda && (celda.estado === 'bloqueado' || celda.estado === 'bloqueado_lectivo' || celda.estado === 'ocupado')) {
+      return
+    }
+    
+    // Start drag selection
+    setIsSelecting(true)
+    setSelectionStart({ dia, hora })
+    setSelectionEnd({ dia, hora })
+  }
+
+  const handleEliminarBloque = async (dia: number, hora: string) => {
+    try {
+      // Buscar todos los slots del mismo bloque
+      const celda = disponibilidad[dia.toString() + '-' + hora]
+      if (!celda) return
+
+      // Para modo lectiva, eliminar la selección temporal
+      if (modo === 'lectiva') {
+        // Collect all unique selection IDs (since multiple 15min slots share the same selection)
+        const uniqueSeleccionIds = new Set<number>()
+        
+        // Buscar hacia adelante y hacia atrás
+        const currentIdx = timeSlots.indexOf(hora)
+        
+        // Hacia atrás
+        for (let i = currentIdx; i >= 0; i--) {
+          const k = dia.toString() + '-' + timeSlots[i]
+          const c = disponibilidad[k]
+          if (
+            c?.estado === 'seleccionado_mio' && 
+            Number(c.id_docente) === Number(id_docente_actual)
+          ) {
+            if (c.id_seleccion) uniqueSeleccionIds.add(c.id_seleccion)
+          } else {
+            break
+          }
+        }
+        
+        // Hacia adelante
+        for (let i = currentIdx + 1; i < timeSlots.length; i++) {
+          const k = dia.toString() + '-' + timeSlots[i]
+          const c = disponibilidad[k]
+          if (
+            c?.estado === 'seleccionado_mio' && 
+            Number(c.id_docente) === Number(id_docente_actual)
+          ) {
+            if (c.id_seleccion) uniqueSeleccionIds.add(c.id_seleccion)
+          } else {
+            break
+          }
+        }
+
+        // Eliminar cada selección temporal
+        for (const idSeleccion of uniqueSeleccionIds) {
+          await fetch(`/api/horarios/seleccionar-celda?id_seleccion=${idSeleccion}`, {
+            method: 'DELETE'
+          })
+        }
+
+        toast.success('Reserva eliminada')
+        fetchDisponibilidad()
+        onSelectionChange?.()
+        getSocket().emit('horario-actualizado')
+      }
+      // Para modo no-lectiva, delegar al callback
+      else if (modo === 'no-lectiva' && onCellClick) {
+        onCellClick(dia, hora)
+      }
+    } catch (err) {
+      toast.error('Error al eliminar la reserva')
     }
   }
 
@@ -357,89 +433,150 @@ export function HorarioGrafico({
       return
     }
 
-    if (modo !== 'lectiva') {
-      setIsSelecting(false)
-      setSelectionStart(null)
-      setSelectionEnd(null)
-      return
-    }
-
     // Calculate range
     const dia = selectionStart.dia
     const startIdx = timeSlots.indexOf(selectionStart.hora)
     const endIdx = timeSlots.indexOf(selectionEnd.hora)
     const minIdx = Math.min(startIdx, endIdx)
     const maxIdx = Math.max(startIdx, endIdx)
-    
-    const horaInicio = timeSlots[minIdx]
-    const horaFin = format(addMinutes(parse(timeSlots[maxIdx], 'HH:mm', new Date()), 60), 'HH:mm')
 
-    if (minIdx === maxIdx) {
-      setIsSelecting(false)
-      setSelectionStart(null)
-      setSelectionEnd(null)
-      return
-    }
+    // Para modo lectiva
+    if (modo === 'lectiva') {
+      const horaInicio = timeSlots[minIdx]
+      const horaFin = format(addMinutes(parse(timeSlots[maxIdx], 'HH:mm', new Date()), 60), 'HH:mm')
 
-    try {
-      // Validate selection first
-      if (!id_curso_actual || !id_grupo_actual || !id_ambiente_actual) {
-        toast.warning('Seleccione curso, grupo y ambiente primero')
-        setIsSelecting(false)
-        return
-      }
-
-      // Call api to create temporal for each 15 min slot
-      let current = parse(horaInicio, 'HH:mm', new Date())
-      const end = parse(horaFin, 'HH:mm', new Date())
-      
-      while (current < end) {
-        const slotHora = format(current, 'HH:mm')
-        const nextHora = format(addMinutes(current, 15), 'HH:mm')
-        
-        const res = await fetch('/api/horarios/seleccionar-celda', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            id_docente: id_docente_actual,
-            id_curso: id_curso_actual,
-            id_grupo: id_grupo_actual,
-            id_ambiente: id_ambiente_actual,
-            id_periodo,
-            dia_semana: dia,
-            hora_inicio: slotHora,
-            hora_fin: nextHora,
-            tipo_clase: tipo_clase_actual ?? 'teoria',
-            sesion_id: `sesion-temp-${id_docente_actual}`
-          })
-        })
-
-        const result = await res.json()
-        if (!res.ok || !result.valido) {
-          toast.error(result.mensaje || 'Error al crear reserva')
-          break
+      try {
+        // Validate selection first
+        if (!id_curso_actual || !id_grupo_actual || !id_ambiente_actual) {
+          toast.warning('Seleccione curso, grupo y ambiente primero')
+          setIsSelecting(false)
+          setSelectionStart(null)
+          setSelectionEnd(null)
+          return
         }
+
+        // Check if we're exceeding the required hours
+        if (horasRequeridas && horasRequeridas > 0) {
+          const horasSeleccionadas = maxIdx - minIdx + 1
+          const totalHoras = horasAsignadas + horasSeleccionadas
+          
+          if (totalHoras > horasRequeridas) {
+            toast.warning(`Has excedido el límite de ${horasRequeridas} horas. Por favor, reduce la selección.`)
+            setIsSelecting(false)
+            setSelectionStart(null)
+            setSelectionEnd(null)
+            return
+          }
+        }
+
+        // Call api to create temporal for each 15 min slot
+        let current = parse(horaInicio, 'HH:mm', new Date())
+        const end = parse(horaFin, 'HH:mm', new Date())
+        let hasError = false
         
-        current = addMinutes(current, 15)
+        while (current < end) {
+          const slotHora = format(current, 'HH:mm')
+          const nextHora = format(addMinutes(current, 15), 'HH:mm')
+          
+          const res = await fetch('/api/horarios/seleccionar-celda', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              id_docente: id_docente_actual,
+              id_curso: id_curso_actual,
+              id_grupo: id_grupo_actual,
+              id_ambiente: id_ambiente_actual,
+              id_periodo,
+              dia_semana: dia,
+              hora_inicio: slotHora,
+              hora_fin: nextHora,
+              tipo_clase: tipo_clase_actual ?? 'teoria',
+              sesion_id: 'sesion-temp-' + id_docente_actual?.toString()
+            })
+          })
+
+          const result = await res.json()
+          if (!res.ok || !result.valido) {
+            toast.error(result.error || result.mensaje || 'Error al crear reserva')
+            hasError = true
+            break
+          }
+          
+          current = addMinutes(current, 15)
+        }
+
+        if (!hasError) {
+          toast.success('Reserva creada')
+        }
+        fetchDisponibilidad()
+        onSelectionChange?.()
+        getSocket().emit('horario-actualizado')
+
+      } catch (err) {
+        toast.error('Error de conexión')
+      } finally {
+        setIsSelecting(false)
+        setSelectionStart(null)
+        setSelectionEnd(null)
       }
+    } 
+    // Para modo no-lectiva
+    else if (modo === 'no-lectiva' && onCellClick) {
+      try {
+        if (!actividadSeleccionadaId) {
+          toast.warning('Seleccione una actividad primero')
+          setIsSelecting(false)
+          setSelectionStart(null)
+          setSelectionEnd(null)
+          return
+        }
 
-      toast.success('Reserva creada')
-      fetchDisponibilidad()
-      onSelectionChange?.()
-      getSocket().emit('horario-actualizado')
+        // Llamar al onCellClick para cada hora en el rango
+        for (let i = minIdx; i <= maxIdx; i++) {
+          const hora = timeSlots[i]
+          onCellClick(dia, hora)
+        }
 
-    } catch (err) {
-      toast.error('Error de conexión')
-    } finally {
-      setIsSelecting(false)
-      setSelectionStart(null)
-      setSelectionEnd(null)
+        toast.success('Actividad asignada')
+      } catch (err) {
+        toast.error('Error al asignar la actividad')
+      } finally {
+        setIsSelecting(false)
+        setSelectionStart(null)
+        setSelectionEnd(null)
+      }
     }
   }
 
   const handleMouseEnter = (e: React.MouseEvent, dia: number, hora: string) => {
     if (!isSelecting || !selectionStart) return
     if (dia !== selectionStart.dia) return // Only same day
+
+    // Verificar límite de horas
+    if (horasRequeridas && horasRequeridas > 0) {
+      const startIdx = timeSlots.indexOf(selectionStart.hora)
+      const endIdx = timeSlots.indexOf(hora)
+      const minIdx = Math.min(startIdx, endIdx)
+      const maxIdx = Math.max(startIdx, endIdx)
+      const horasSeleccionadas = maxIdx - minIdx + 1
+      
+      // Calcular total: horas ya asignadas + nuevas seleccionadas
+      const totalHoras = horasAsignadas + horasSeleccionadas
+      
+      if (totalHoras > horasRequeridas) {
+        // Limitar la selección para que no supere las horas requeridas
+        const horasDisponibles = horasRequeridas - horasAsignadas
+        if (horasDisponibles <= 0) return
+
+        const targetIdx = startIdx < endIdx 
+          ? startIdx + horasDisponibles - 1 
+          : startIdx - horasDisponibles + 1
+        
+        const clampedIdx = Math.max(0, Math.min(timeSlots.length - 1, targetIdx))
+        setSelectionEnd({ dia, hora: timeSlots[clampedIdx] })
+        return
+      }
+    }
     
     setSelectionEnd({ dia, hora })
   }
@@ -495,6 +632,29 @@ export function HorarioGrafico({
             Modo {modo === 'lectiva' ? 'Carga Lectiva' : 'Carga No Lectiva'}
           </span>
         </div>
+
+        {/* Progreso de horas */}
+        {horasRequeridas && horasRequeridas > 0 && (
+          <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1">
+              <span className="text-[10px] font-semibold text-muted-foreground">
+                Horas: <span className="font-bold text-primary">{horasAsignadas}</span> / {horasRequeridas}
+              </span>
+            </div>
+            <div className="w-24 h-2 bg-muted rounded-full overflow-hidden">
+              <div 
+                className={cn(
+                  "h-full transition-all duration-300",
+                  horasAsignadas >= horasRequeridas 
+                    ? "bg-emerald-500" 
+                    : "bg-primary"
+                )}
+                style={{ width: (Math.min(100, (horasAsignadas / horasRequeridas) * 100)).toString() + '%' }}
+              />
+            </div>
+          </div>
+        )}
+
         <div className="flex flex-wrap items-center gap-2 text-[10px]">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-emerald-400/50 border-2 border-emerald-500"></span>
@@ -502,7 +662,7 @@ export function HorarioGrafico({
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-amber-400/40 border border-amber-500"></span>
-            Mi Reserva
+            Mi Reserva (click para eliminar)
           </span>
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-blue-500/15 border border-blue-200"></span>
@@ -518,7 +678,7 @@ export function HorarioGrafico({
         onMouseUp={endSelection}
         onMouseLeave={endSelection}
       >
-        <div className="min-w-[900px] grid" style={{ gridTemplateColumns: `80px repeat(${DIAS.length}, 1fr)` }}>
+        <div className="min-w-[900px] grid" style={{ gridTemplateColumns: '80px repeat(' + DIAS.length + ', 1fr)' }}>
           {/* Header Row */}
           <div className="p-3 border-b border-r border-border bg-muted/50 text-center text-[10px] font-bold text-muted-foreground uppercase">
             Hora
@@ -537,7 +697,7 @@ export function HorarioGrafico({
               </div>
 
               {DIAS.map(dia => {
-                const key = `${dia.id}-${hora}`
+                const key = dia.id.toString() + '-' + hora
                 const info = disponibilidad[key]
                 const isSelected = isInSelection(dia.id, hora)
 
@@ -548,7 +708,8 @@ export function HorarioGrafico({
                       'relative h-12 border-b border-r border-border transition-colors flex items-center justify-center text-[8px]',
                       getCellClass(info, isSelected)
                     )}
-                    onClick={() => handleCellClick(dia.id, hora)}
+                    onMouseDown={() => handleCellClick(dia.id, hora)}
+                    onClick={() => {}}
                     onMouseEnter={(e) => handleMouseEnter(e, dia.id, hora)}
                   >
                     {/* Content for blocks */}

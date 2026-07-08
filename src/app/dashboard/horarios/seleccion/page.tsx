@@ -163,6 +163,12 @@ export default function SeleccionHorariosLectivosPage() {
       }
       
       if (segundosRestantes !== null && segundosRestantes > 0) {
+        // Clear existing timer before starting a new one
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+        
         segundosRestantesRef.current = segundosRestantes;
         const min = Math.floor(segundosRestantes / 60);
         const seg = Math.floor(segundosRestantes % 60);
@@ -765,6 +771,14 @@ export default function SeleccionHorariosLectivosPage() {
                         id_grupo_actual={parseInt(idGrupo)}
                         id_ambiente_actual={parseInt(idAmbiente)}
                         tipo_clase_actual={cursoSeleccionado.tipo}
+                        horasRequeridas={cursosProgreso.find(
+                          c => c.id_curso === cursoSeleccionado.id && 
+                               c.tipo_clase === cursoSeleccionado.tipo
+                        )?.horas_requeridas}
+                        horasAsignadas={cursosProgreso.find(
+                          c => c.id_curso === cursoSeleccionado.id && 
+                               c.tipo_clase === cursoSeleccionado.tipo
+                        )?.horas_asignadas || 0}
                         soloLectura={soloLectura}
                         onSelectionChange={() => {
                           console.log('🔄 [HORARIO GRAFICO] Selección cambió, refrescando datos...');

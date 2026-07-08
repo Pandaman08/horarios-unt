@@ -123,13 +123,14 @@ export async function GET(request: Request) {
       });
     }
 
-    // 1. Obtener todos los docentes con cursos asignados en el período (todos los estados relevantes)
-    const docentesRaw = await prisma.docente.findMany({
+    // 1. Obtener todos los docentes con cursos asignados en el período (MISMA LÓGICA QUE VENTANAS)
+    const docentes = await prisma.docente.findMany({
       where: {
         activo: true,
         declaraciones_horarias: {
           some: {
             id_periodo: periodoId,
+            estado: 'BORRADOR',
             cargas_lectivas: {
               some: {}
             }
@@ -138,19 +139,22 @@ export async function GET(request: Request) {
       },
       include: {
         usuario: true,
+        departamento: true,
         declaraciones_horarias: {
           where: {
-            id_periodo: periodoId
+            id_periodo: periodoId,
+            estado: 'BORRADOR'
           },
           include: {
             cargas_lectivas: true
           }
         }
-      }
+      },
+      orderBy: [
+        { categoriaDocente: 'asc' }, // primero principales, luego asociados, etc.
+        { fecha_ingreso: 'asc' }
+      ]
     });
-
-    // Ordenar usando la misma lógica que GestorVentanasAtencion!
-    const docentes = ordenarDocentes(docentesRaw);
 
     console.log('📋 CHECK-INTERVAL - Docentes con cursos asignados (ordenados):', docentes.map((d: any) => ({
       id: d.id_docente,
@@ -228,9 +232,9 @@ export async function GET(request: Request) {
 
       let mensaje = 'Su ventana de atención no está activa en este momento.';
       if (fechaVentana > hoyLima) {
-        mensaje = `Su turno está programado para el día ${new Date(ventanaDocente.fecha).toLocaleDateString('es-PE')} a las ${ventanaDocente.hora_inicio}.`;
+        mensaje = `Su turno está programado para el día ${new Date(ventanaDocente.fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })} a las ${ventanaDocente.hora_inicio}.`;
       } else if (fechaVentana < hoyLima) {
-        mensaje = `Su turno correspondió al día ${new Date(ventanaDocente.fecha).toLocaleDateString('es-PE')} a las ${ventanaDocente.hora_inicio} y ya finalizó. El sistema está en modo solo lectura.`;
+        mensaje = `Su turno correspondió al día ${new Date(ventanaDocente.fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })} a las ${ventanaDocente.hora_inicio} y ya finalizó. El sistema está en modo solo lectura.`;
       } else if (ahoraMin < inicioMin) {
         mensaje = `Su turno está programado para hoy a las ${ventanaDocente.hora_inicio}. Por favor, espere hasta la hora de inicio.`;
       } else {
