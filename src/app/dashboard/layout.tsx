@@ -222,6 +222,12 @@ function DashboardLayoutInner({
         roles: ["administrador_sistema", "operador_horarios"],
       },
       {
+        title: "Asignación Horaria (Secretaría)",
+        href: "/dashboard/secretaria/asignacion-horaria",
+        icon: Calendar,
+        roles: ["administrador_sistema", "operador_horarios", "secretaria"],
+      },
+      {
         title: "Validación Departamento",
         href: "/dashboard/validacion-departamento",
         icon: CheckCircle2,

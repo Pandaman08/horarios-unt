@@ -154,8 +154,10 @@ export async function GET(request: Request) {
 
       lectivaConfirmada = await tieneLectivaConfirmada(docenteId, periodoId);
 
-      // Fuera de ventana solo bloquea la edición; en consulta o con lectiva confirmada se permite ver
-      if (!modoConsulta && !lectivaConfirmada) {
+      // Fuera de ventana solo bloquea la edición; en consulta, modo secretaria o con lectiva confirmada se permite ver
+      const session = await getServerSession(authOptions);
+      const esOperadorAdmin = session && ['secretaria', 'administrador_sistema', 'operador_horarios'].includes(session.user?.rol || '');
+      if (!modoConsulta && !lectivaConfirmada && !esOperadorAdmin) {
         const ventanas = await prisma.ventanaAtencion.findMany({
           where: { id_periodo: periodoId }
         });

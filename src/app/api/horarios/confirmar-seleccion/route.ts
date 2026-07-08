@@ -15,7 +15,7 @@ export async function POST(request: Request) {
 
     let targetDocenteId: number;
     const userRol = session.user.rol;
-    const isOperador = ['administrador_sistema', 'operador_horarios', 'director_escuela', 'coordinador_academico'].includes(userRol);
+    const isOperador = ['administrador_sistema', 'operador_horarios', 'director_escuela', 'coordinador_academico', 'secretaria'].includes(userRol);
 
     if (id_docente && isOperador) {
       targetDocenteId = Number(id_docente);

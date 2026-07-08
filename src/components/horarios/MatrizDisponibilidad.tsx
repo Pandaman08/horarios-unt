@@ -1,6 +1,6 @@
 ﻿"use client";
 
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
 import { getSocket } from "@/lib/socket-client";
 import { toast } from "sonner";
@@ -52,6 +52,19 @@ interface CeldaInfo {
 
 const DIAS_CODIGO = ["LU", "MA", "MI", "JU", "VI", "SA"];
 
+const TIPO_NO_LECTIVA_LABELS: Record<string, string> = {
+  PREPARACION_EVALUACION: 'Prep. y Evaluación',
+  TUTORIA: 'Tutoría',
+  INVESTIGACION: 'Investigación',
+  CAPACITACION: 'Capacitación',
+  GOBIERNO: 'Gobierno',
+  ADMINISTRACION: 'Admin.',
+  ASESORIA: 'Asesoría',
+  RESPONSABILIDAD_SOCIAL: 'RSU',
+  COMITES_TECNICOS: 'Comités',
+  AUTOEVALUACION_ACREDITACION: 'Autoeval.',
+};
+
 const aplicarActividadesNoLectivas = (
   map: Record<string, CeldaInfo>,
   actividades: Array<any> | undefined,
@@ -90,7 +103,9 @@ const aplicarActividadesNoLectivas = (
           next[key] = {
             ...next[key],
             id_carga_no_lectiva: carga.id_carga_no_lectiva,
-            curso_nombre: carga.descripcion || carga.tipo || "No lectiva",
+            curso_nombre: TIPO_NO_LECTIVA_LABELS[carga.tipo] || carga.tipo || "No lectiva",
+            docente_nombre: carga.descripcion || '',
+            ambiente_nombre: carga.ambiente || '',
             id_docente: esSeleccionada ? idDocente : undefined,
             estado: esSeleccionada ? "seleccionado_mio" : "ocupado",
           } as CeldaInfo;
@@ -188,6 +203,10 @@ interface Props {
     hora: string
   ) => void;
 
+  onRangeSelect?: (cells: Array<{dia: number; hora: string}>) => void;
+
+  onRangeRemove?: (cells: Array<{dia: number; hora: string}>) => void;
+
   onSelectionChange?: () => void;
 
   soloLectura?: boolean;
@@ -214,6 +233,8 @@ export function MatrizDisponibilidad({
   actividadesNoLectivas,
   horariosLectivosDocente,
   onCellClick,
+  onRangeSelect,
+  onRangeRemove,
   onSelectionChange,
   soloLectura: propSoloLectura,
 }: Props) {
@@ -246,6 +267,11 @@ export function MatrizDisponibilidad({
     useState<
       "todos" | "libres" | "ocupados" | "mios"
     >("todos");
+
+  const [dragStart, setDragStart] = useState<{dia: number; hora: string} | null>(null);
+  const [dragEnd, setDragEnd] = useState<{dia: number; hora: string} | null>(null);
+  const isDraggingRef = useRef(false);
+  const isRemoveDragRef = useRef(false);
 
   const soloLectura =
     propSoloLectura ??
@@ -782,6 +808,135 @@ export function MatrizDisponibilidad({
     }
   };
 
+  const cellsInDragRange = useMemo(() => {
+    if (!dragStart || !dragEnd) return new Set<string>();
+    const minDia = Math.min(dragStart.dia, dragEnd.dia);
+    const maxDia = Math.max(dragStart.dia, dragEnd.dia);
+    const startIdx = timeSlots.indexOf(dragStart.hora);
+    const endIdx = timeSlots.indexOf(dragEnd.hora);
+    if (startIdx === -1 || endIdx === -1) return new Set<string>();
+    const minIdx = Math.min(startIdx, endIdx);
+    const maxIdx = Math.max(startIdx, endIdx);
+    const set = new Set<string>();
+    for (let d = minDia; d <= maxDia; d++) {
+      for (let i = minIdx; i <= maxIdx; i++) {
+        set.add(`${d}-${timeSlots[i]}`);
+      }
+    }
+    return set;
+  }, [dragStart, dragEnd, timeSlots]);
+
+  const handleCellMouseDown = (dia: number, hora: string, e: React.MouseEvent) => {
+    if (soloLectura || processingCell) return;
+
+    if (tipoVista === 'no-lectiva' && actividadSeleccionadaId) {
+      const key = `${dia}-${hora}`;
+      const celda = disponibilidad[key];
+
+      if (e.ctrlKey && celda?.id_carga_no_lectiva === actividadSeleccionadaId) {
+        isDraggingRef.current = true;
+        isRemoveDragRef.current = true;
+        setDragStart({ dia, hora });
+        setDragEnd({ dia, hora });
+        return;
+      }
+
+      if (celda?.id_carga_no_lectiva === actividadSeleccionadaId) {
+        onCellClick?.(dia, hora);
+        return;
+      }
+
+      if (
+        celda?.estado === 'bloqueado' ||
+        celda?.estado === 'bloqueado_lectivo' ||
+        celda?.estado === 'ocupado'
+      ) {
+        return;
+      }
+
+      isDraggingRef.current = true;
+      isRemoveDragRef.current = false;
+      setDragStart({ dia, hora });
+      setDragEnd({ dia, hora });
+      return;
+    }
+
+    handleCellClick(dia, hora);
+  };
+
+  const handleCellMouseEnter = (dia: number, hora: string) => {
+    if (!isDraggingRef.current || !dragStart) return;
+    setDragEnd({ dia, hora });
+  };
+
+  const handleDragEnd = () => {
+    if (!isDraggingRef.current || !dragStart || !dragEnd) {
+      isDraggingRef.current = false;
+      setDragStart(null);
+      setDragEnd(null);
+      return;
+    }
+
+    const startIdx = timeSlots.indexOf(dragStart.hora);
+    const endIdx = timeSlots.indexOf(dragEnd.hora);
+    if (startIdx === -1 || endIdx === -1) {
+      isDraggingRef.current = false;
+      setDragStart(null);
+      setDragEnd(null);
+      return;
+    }
+
+    const minDia = Math.min(dragStart.dia, dragEnd.dia);
+    const maxDia = Math.max(dragStart.dia, dragEnd.dia);
+    const minIdx = Math.min(startIdx, endIdx);
+    const maxIdx = Math.max(startIdx, endIdx);
+
+    const rawCells: Array<{dia: number; hora: string}> = [];
+    for (let d = minDia; d <= maxDia; d++) {
+      for (let i = minIdx; i <= maxIdx; i++) {
+        rawCells.push({ dia: d, hora: timeSlots[i] });
+      }
+    }
+
+    const cells = rawCells.filter(cell => {
+      const key = `${cell.dia}-${cell.hora}`;
+      const celda = disponibilidad[key];
+
+      if (isRemoveDragRef.current) {
+        return celda?.id_carga_no_lectiva === actividadSeleccionadaId;
+      }
+
+      return !celda || (
+        celda.estado !== 'bloqueado' &&
+        celda.estado !== 'bloqueado_lectivo' &&
+        celda.estado !== 'ocupado'
+      );
+    });
+
+    if (cells.length === 0) {
+      isDraggingRef.current = false;
+      isRemoveDragRef.current = false;
+      setDragStart(null);
+      setDragEnd(null);
+      return;
+    }
+
+    if (isRemoveDragRef.current) {
+      if (onRangeRemove) {
+        onRangeRemove(cells);
+      }
+    } else if (cells.length === 1 && onCellClick) {
+      onCellClick(cells[0].dia, cells[0].hora);
+    } else if (cells.length > 1 && onRangeSelect) {
+      onRangeSelect(cells);
+    }
+
+    isDraggingRef.current = false;
+    isRemoveDragRef.current = false;
+    setDragStart(null);
+    setDragEnd(null);
+  };
+
   if (loading) {
     return (
       <div className="flex flex-col items-center justify-center py-20 space-y-4 bg-card rounded-2xl border border-border shadow-sm">
@@ -866,7 +1021,7 @@ export function MatrizDisponibilidad({
         </p>
       </div>
 
-      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm">
+      <div className="overflow-x-auto rounded-xl border border-border bg-card shadow-sm select-none" onMouseUp={handleDragEnd} onMouseLeave={handleDragEnd}>
         <table className="w-full border-collapse min-w-[880px]">
           <thead>
             <tr className="bg-primary/90">
@@ -905,23 +1060,25 @@ export function MatrizDisponibilidad({
                     processingCell ===
                     key;
 
+                  const isInDragPreview = cellsInDragRange.has(key);
+
                   return (
                     <td
                       key={key}
-                      onClick={() =>
-                        !isProcessing &&
-                        handleCellClick(
-                          dia.id,
-                          hora
-                        )
-                      }
+                      onMouseDown={(e) => {
+                        e.preventDefault();
+                        if (!isProcessing) handleCellMouseDown(dia.id, hora, e);
+                      }}
+                      onMouseEnter={() => isDraggingRef.current && handleCellMouseEnter(dia.id, hora)}
                       className={cn(
-                        "relative h-12 border-b border-r border-border/60 cursor-pointer transition-colors",
-                        !info && "hover:bg-emerald-500/10",
+                        "relative h-12 border-b border-r border-border/60 cursor-pointer transition-colors select-none",
+                        !info && !isInDragPreview && "hover:bg-emerald-500/10",
                         info?.estado === "ocupado" && !esMia && "bg-rose-500/10 cursor-not-allowed",
                         esMia && info?.estado !== "bloqueado_lectivo" && "bg-amber-400/35 ring-1 ring-inset ring-amber-500/40",
                         info?.estado === "bloqueado_lectivo" && "bg-blue-500/15 cursor-not-allowed ring-1 ring-inset ring-blue-400/40",
-                        info?.estado === "bloqueado" && "bg-muted/60 cursor-not-allowed"
+                        info?.estado === "bloqueado" && "bg-muted/60 cursor-not-allowed",
+                        isInDragPreview && isRemoveDragRef.current && "bg-rose-400/30 ring-2 ring-inset ring-rose-500",
+                        isInDragPreview && !isRemoveDragRef.current && "bg-emerald-400/30 ring-2 ring-inset ring-emerald-500"
                       )}
                     >
                       {isProcessing && (
@@ -960,35 +1117,64 @@ export function MatrizDisponibilidad({
                       {info &&
                         info.estado !== "bloqueado" &&
                         info.estado !== "bloqueado_lectivo" && (
-                          <div className="absolute inset-1 rounded-lg bg-card border border-border p-1 text-[9px] flex flex-col justify-between">
-                            <div>
-                              <p className="font-black truncate">
-                                {
-                                  info.curso_nombre
-                                }
-                              </p>
-
-                              <p className="truncate text-muted-foreground">
-                                {
-                                  info.docente_nombre
-                                }
-                              </p>
-                            </div>
-
-                            <div className="flex items-center justify-between">
-                              <span className="text-[8px] uppercase font-bold">
-                                {
-                                  info.tipo_clase
-                                }
-                              </span>
-
-                              {esMia ? (
-                                <CheckCircle2 className="h-3 w-3 text-primary" />
-                              ) : (
-                                <Lock className="h-3 w-3 text-muted-foreground" />
+                          info.id_carga_no_lectiva ? (
+                            <div className={cn(
+                              "absolute inset-1 rounded-lg border p-1 flex flex-col justify-between overflow-hidden transition-all",
+                              esMia
+                                ? "bg-amber-400/20 border-amber-500/60 shadow-sm"
+                                : "bg-rose-500/10 border-rose-300/60"
+                            )}>
+                              <div className="min-w-0">
+                                <p className="font-bold truncate text-[9px] leading-tight text-amber-800 dark:text-amber-300">
+                                  {info.curso_nombre}
+                                </p>
+                                {info.docente_nombre && (
+                                  <p className="truncate text-[8px] text-muted-foreground leading-tight mt-0.5">
+                                    {info.docente_nombre}
+                                  </p>
+                                )}
+                              </div>
+                              {info.ambiente_nombre && (
+                                <div className="flex items-center gap-1 mt-0.5">
+                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
+                                  <span className="text-[7px] truncate text-muted-foreground">{info.ambiente_nombre}</span>
+                                </div>
+                              )}
+                              {esMia && (
+                                <CheckCircle2 className="absolute top-0.5 right-0.5 h-2.5 w-2.5 text-amber-600" />
                               )}
                             </div>
-                          </div>
+                          ) : (
+                            <div className="absolute inset-1 rounded-lg bg-card border border-border p-1 text-[9px] flex flex-col justify-between">
+                              <div>
+                                <p className="font-black truncate">
+                                  {
+                                    info.curso_nombre
+                                  }
+                                </p>
+
+                                <p className="truncate text-muted-foreground">
+                                  {
+                                    info.docente_nombre
+                                  }
+                                </p>
+                              </div>
+
+                              <div className="flex items-center justify-between">
+                                <span className="text-[8px] uppercase font-bold">
+                                  {
+                                    info.tipo_clase
+                                  }
+                                </span>
+
+                                {esMia ? (
+                                  <CheckCircle2 className="h-3 w-3 text-primary" />
+                                ) : (
+                                  <Lock className="h-3 w-3 text-muted-foreground" />
+                                )}
+                              </div>
+                            </div>
+                          )
                         )}
 
                       {info?.estado ===

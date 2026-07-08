@@ -231,7 +231,12 @@ export class ValidadorHorario {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente elegido ya está ocupado en este horario. Seleccione otro ambiente u otra hora.',
-        severidad: 'ERROR'
+        severidad: 'ERROR',
+        detalle: {
+          id_asignacion: ocupadoAsignado.id_asignacion,
+          id_docente: ocupadoAsignado.id_docente,
+          esTemporal: false
+        }
       });
     }
 
@@ -254,7 +259,12 @@ export class ValidadorHorario {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente elegido tiene otra reserva pendiente en este horario. Pruebe otro ambiente u otra hora.',
-        severidad: 'ERROR'
+        severidad: 'ERROR',
+        detalle: {
+          id_seleccion: ocupadoTemporal.id_seleccion,
+          id_docente: ocupadoTemporal.id_docente,
+          esTemporal: true
+        }
       });
     }
 

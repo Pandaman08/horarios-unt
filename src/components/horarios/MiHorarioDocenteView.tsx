@@ -31,6 +31,19 @@ const ESTADOS_LECTIVA_DECLARADA = [
 
 const DIAS = ["Lunes", "Martes", "Miércoles", "Jueves", "Viernes", "Sábado"];
 
+const TIPO_NO_LECTIVA_LABELS: Record<string, string> = {
+  PREPARACION_EVALUACION: 'Preparación y Evaluación',
+  TUTORIA: 'Consejería y Tutoría',
+  INVESTIGACION: 'Investigación',
+  CAPACITACION: 'Capacitación',
+  GOBIERNO: 'Gobierno',
+  ADMINISTRACION: 'Administración',
+  ASESORIA: 'Asesoría',
+  RESPONSABILIDAD_SOCIAL: 'RSU',
+  COMITES_TECNICOS: 'Comités Técnicos',
+  AUTOEVALUACION_ACREDITACION: 'Autoevaluación',
+};
+
 
 const RANGOS_HORARIOS = [
   "07:00 - 08:00", "08:00 - 09:00", "09:00 - 10:00",
@@ -528,27 +541,26 @@ export function MiHorarioDocenteView() {
             </Select>
           </div>
           <p className="text-sm text-muted-foreground sm:pb-2">
-            {!tieneCargaLectiva ? (
-              "No hay bloques asignados en este periodo."
-            ) : !cargaAprobadaPorDecano ? (
-              <>
-                {lectivas.length} lectivo(s) registrado(s).{" "}
-                <strong className="text-foreground">Pendiente de aprobación del decano.</strong>
-              </>
-            ) : (
+            {cargaAprobadaPorDecano ? (
               <>
                 Total: <strong className="text-foreground">{totalHoras} horas</strong>
                 {" · "}
                 {lectivas.length} lectivo(s), {noLectivas.length} no lectivo(s)
               </>
+            ) : tieneCargaLectiva ? (
+              <>
+                {lectivas.length} lectivo(s) registrado(s).
+              </>
+            ) : (
+              "No hay bloques asignados en este periodo."
             )}
           </p>
         </div>
       </div>
 
       {!tieneCargaLectiva && (
-        <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center">
-          <p className="text-sm text-muted-foreground mb-4">
+        <div className="rounded-2xl border border-dashed border-border bg-muted/30 p-8 text-center space-y-4">
+          <p className="text-sm text-muted-foreground">
             Aún no tiene horarios registrados para el periodo seleccionado.
             Complete primero su declaración de carga horaria.
           </p>
@@ -558,12 +570,40 @@ export function MiHorarioDocenteView() {
         </div>
       )}
 
-      {tieneCargaLectiva && !cargaAprobadaPorDecano && (
+      {estadoDeclaracion === "LECTIVA_CONFIRMADA" && (
+        <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-950/20 p-8 text-center space-y-4">
+          <p className="text-sm text-amber-800 dark:text-amber-200">
+            Su declaración de carga horaria está pendiente de envío.
+            <br />
+            Complete y <strong>envíe su carga horaria</strong> para su revisión y aprobación.
+          </p>
+          <Button variant="outline" size="sm" asChild>
+            <a href="/dashboard/carga-horaria">Ir a Carga Horaria</a>
+          </Button>
+        </div>
+      )}
+
+      {(estadoDeclaracion === "ENVIADO" || estadoDeclaracion === "VALIDADO_DEPARTAMENTO") && (
         <div className="rounded-2xl border border-dashed border-amber-200 bg-amber-50/30 dark:border-amber-900/50 dark:bg-amber-950/20 p-8 text-center">
           <p className="text-sm text-amber-800 dark:text-amber-200">
-            Su carga horaria fue enviada y está <strong>pendiente de aprobación del decano</strong>.
-            Una vez aprobada, podrá visualizar aquí su matriz semanal, descargar reportes y el detalle completo.
+            Su carga horaria fue enviada para aprobación. Actualmente está{" "}
+            <strong>pendiente de revisión</strong>.
+            <br />
+            Debe esperar la aprobación del decano.
           </p>
+        </div>
+      )}
+
+      {estadoDeclaracion === "RECHAZADO" && (
+        <div className="rounded-2xl border border-dashed border-rose-200 bg-rose-50/30 dark:border-rose-950/20 dark:border-rose-900/50 p-8 text-center space-y-4">
+          <p className="text-sm text-rose-800 dark:text-rose-200">
+            Su carga horaria ha sido <strong>rechazada</strong>.
+            <br />
+            Revise las observaciones y <strong>modifique su declaración</strong> para volver a enviarla.
+          </p>
+          <Button variant="outline" size="sm" asChild>
+            <a href="/dashboard/carga-horaria">Modificar Carga Horaria</a>
+          </Button>
         </div>
       )}
 
@@ -623,6 +663,8 @@ export function MiHorarioDocenteView() {
 
                               const horarioKey = `${esNoLectiva ? "no-lectiva" : "lectiva"}-${horario.id_asignacion ?? horario.id_carga_no_lectiva}-${horaInicio}-${horario.dia_semana}`;
 
+                              const noLectivaLabel = TIPO_NO_LECTIVA_LABELS[horario.curso_codigo] || horario.ciclo_nombre;
+
                               return (
                                 <div
                                   key={horarioKey}
@@ -633,17 +675,35 @@ export function MiHorarioDocenteView() {
                                     colores.text,
                                   )}
                                 >
-                                  <div className="font-bold truncate">
-                                    {esNoLectiva
-                                      ? `NL-${leyendaNum ?? ""}`
-                                      : `${leyendaNum ?? ""} · ${horario.ambiente_codigo}`}
-                                  </div>
-                                  <div className="opacity-80 truncate">
-                                    {esNoLectiva ? horario.curso_nombre : horario.ciclo_nombre}
-                                  </div>
-                                  <div className="opacity-70 truncate">
-                                    {esNoLectiva ? horario.ciclo_nombre : horario.curso_codigo}
-                                  </div>
+                                  {esNoLectiva ? (
+                                    <>
+                                      <div className="flex items-center justify-between gap-1">
+                                        <span className="font-bold truncate">{noLectivaLabel}</span>
+                                        <span className="shrink-0 text-[9px] font-bold opacity-80">NL</span>
+                                      </div>
+                                      <div className="opacity-80 truncate mt-0.5">
+                                        {horario.curso_nombre}
+                                      </div>
+                                      {horario.ambiente_nombre && (
+                                        <div className="flex items-center gap-1 mt-0.5 opacity-70">
+                                          <span className="w-1 h-1 rounded-full bg-rose-500 shrink-0" />
+                                          <span className="truncate">{horario.ambiente_nombre}</span>
+                                        </div>
+                                      )}
+                                    </>
+                                  ) : (
+                                    <>
+                                      <div className="font-bold truncate">
+                                        {leyendaNum ?? ""} · {horario.ambiente_codigo}
+                                      </div>
+                                      <div className="opacity-80 truncate">
+                                        {horario.ciclo_nombre}
+                                      </div>
+                                      <div className="opacity-70 truncate">
+                                        {horario.curso_codigo}
+                                      </div>
+                                    </>
+                                  )}
                                 </div>
                               );
                             })}
@@ -688,22 +748,38 @@ export function MiHorarioDocenteView() {
               </thead>
               <tbody>
                 {horariosOrdenados.map((h, idx) => {
-                    const rowKey = `${h.is_no_lectiva ? "no-lectiva" : "lectiva"}-${h.id_asignacion ?? h.id_carga_no_lectiva}-${h.dia_semana}-${h.hora_inicio}-${h.hora_fin}-${idx}`;
+                    const esNoLectiva = h.is_no_lectiva;
+                    const rowKey = `${esNoLectiva ? "no-lectiva" : "lectiva"}-${h.id_asignacion ?? h.id_carga_no_lectiva}-${h.dia_semana}-${h.hora_inicio}-${h.hora_fin}-${idx}`;
+                    const noLectivaLabel = TIPO_NO_LECTIVA_LABELS[h.curso_codigo] || h.ciclo_nombre;
                     return (
                       <tr
                         key={rowKey}
                         className={cn(
                           "border-b border-border last:border-0 transition-colors hover:bg-muted/50",
-                          idx % 2 !== 0 && "bg-muted/30"
+                          idx % 2 !== 0 && "bg-muted/30",
+                          esNoLectiva && "bg-rose-500/[0.03]"
                         )}
                       >
                       <td className="px-4 py-3">
-                        <p className="font-semibold text-card-foreground">
-                          {h.curso_codigo}
-                        </p>
-                        <p className="text-xs text-muted-foreground line-clamp-1">
-                          {h.curso_nombre}
-                        </p>
+                        {esNoLectiva ? (
+                          <>
+                            <p className="font-semibold text-rose-600 dark:text-rose-400">
+                              {noLectivaLabel}
+                            </p>
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {h.curso_nombre}
+                            </p>
+                          </>
+                        ) : (
+                          <>
+                            <p className="font-semibold text-card-foreground">
+                              {h.curso_codigo}
+                            </p>
+                            <p className="text-xs text-muted-foreground line-clamp-1">
+                              {h.curso_nombre}
+                            </p>
+                          </>
+                        )}
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
                         {DIAS[h.dia_semana]}
@@ -712,19 +788,23 @@ export function MiHorarioDocenteView() {
                         {h.hora_inicio} - {h.hora_fin}
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
-                        {h.grupo_codigo}
+                        {esNoLectiva ? (
+                          <span className="text-[10px] text-rose-500 font-medium">—</span>
+                        ) : (
+                          h.grupo_codigo
+                        )}
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
-                        {h.ambiente_codigo || (h.is_no_lectiva ? "-" : "")}
+                        {h.ambiente_codigo || (esNoLectiva ? <span className="text-[10px] text-muted-foreground">—</span> : "")}
                       </td>
                       <td className="px-4 py-3">
                         <span className={cn(
                           "inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium border bg-muted",
-                          h.is_no_lectiva
-                            ? "border-rose-500 text-rose-600 dark:text-rose-400"
+                          esNoLectiva
+                            ? "border-rose-500 text-rose-600 dark:text-rose-400 bg-rose-500/10"
                             : "border-border text-muted-foreground"
                         )}>
-                          {h.tipo_clase}
+                          {esNoLectiva ? "No Lectiva" : h.tipo_clase}
                         </span>
                       </td>
                     </tr>

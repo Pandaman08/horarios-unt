@@ -69,7 +69,8 @@ export async function GET(request: Request) {
       (
         session.user.rol === 'administrador_sistema' ||
         session.user.rol === 'operador_horarios' ||
-        session.user.rol === 'docente'
+        session.user.rol === 'docente' ||
+        session.user.rol === 'secretaria'
       )
     ) {
       const parsedDocenteId = parseInt(id_docente_manual, 10);

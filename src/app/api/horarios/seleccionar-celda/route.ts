@@ -103,6 +103,35 @@ async function tieneCargoEnCurso(docenteId: number, cursoId: number, periodoId: 
   return !!carga;
 }
 
+// Helper: Determinar si el docente A tiene mayor prioridad que el docente B según la ventana de atención
+async function tienePrioridadSobre(docenteIdA: number, docenteIdB: number, periodoId: number): Promise<boolean> {
+  const [docenteA, docenteB] = await Promise.all([
+    prisma.docente.findUnique({ where: { id_docente: docenteIdA } }),
+    prisma.docente.findUnique({ where: { id_docente: docenteIdB } }),
+  ]);
+
+  if (!docenteA || !docenteB) return false;
+
+  const ventanas = await prisma.ventanaAtencion.findMany({
+    where: { id_periodo: periodoId },
+    orderBy: { orden_prioridad: 'asc' }
+  });
+
+  if (ventanas.length === 0) return false;
+
+  const ventanaA = ventanas.find((v: any) =>
+    v.modalidad === (docenteA.condicion || '') && v.categoria === (docenteA.categoriaDocente || '')
+  );
+  const ventanaB = ventanas.find((v: any) =>
+    v.modalidad === (docenteB.condicion || '') && v.categoria === (docenteB.categoriaDocente || '')
+  );
+
+  if (!ventanaA || !ventanaB) return false;
+
+  // Menor orden_prioridad = mayor prioridad
+  return ventanaA.orden_prioridad < ventanaB.orden_prioridad;
+}
+
 function respuestaRechazo(validacion: Awaited<ReturnType<typeof ValidadorHorario.validarAsignacion>>) {
   return NextResponse.json(
     {
@@ -139,22 +168,26 @@ export async function POST(request: Request) {
     }
 
     // 2. Verificar que el docente esté dentro de su ventana de atención
-    const ventanas = await prisma.ventanaAtencion.findMany({
-      where: { id_periodo: periodoId }
-    });
-    
-    if (ventanas.length > 0) {
-      const dentroVentana = await estaDentroDeVentana(docenteId, periodoId);
-      if (!dentroVentana) {
-        return NextResponse.json({
-          valido: false,
-          error: 'Estás fuera de tu ventana de atención',
-          conflictos: [{
-            tipo: 'VENTANA_CERRADA',
-            mensaje: 'Estás fuera de tu ventana de atención',
-            severidad: 'ERROR'
-          }]
-        }, { status: 403 });
+    // Saltar esta verificación si es secretaria, administrador u operador
+    const esOperadorAdmin = ['secretaria', 'administrador_sistema', 'operador_horarios'].includes(session?.user?.rol || '');
+    if (!esOperadorAdmin) {
+      const ventanas = await prisma.ventanaAtencion.findMany({
+        where: { id_periodo: periodoId }
+      });
+      
+      if (ventanas.length > 0) {
+        const dentroVentana = await estaDentroDeVentana(docenteId, periodoId);
+        if (!dentroVentana) {
+          return NextResponse.json({
+            valido: false,
+            error: 'Estás fuera de tu ventana de atención',
+            conflictos: [{
+              tipo: 'VENTANA_CERRADA',
+              mensaje: 'Estás fuera de tu ventana de atención',
+              severidad: 'ERROR'
+            }]
+          }, { status: 403 });
+        }
       }
     }
 
@@ -186,7 +219,23 @@ export async function POST(request: Request) {
           await GestorSeleccionTemporal.eliminarSeleccion(cruceConmigo.detalle.id_seleccion);
         }
       } else {
-        return respuestaRechazo(validacion);
+        // Verificar si es un conflicto de ambiente con selección temporal de menor prioridad
+        const ocupacionAmbiente = validacion.conflictos.find(c =>
+          c.tipo === 'OCUPACION_AMBIENTE' &&
+          c.detalle?.esTemporal &&
+          c.detalle?.id_seleccion
+        );
+
+        if (ocupacionAmbiente && ocupacionAmbiente.detalle?.id_docente && ocupacionAmbiente.detalle.id_docente !== docenteId) {
+          const tienePrioridad = await tienePrioridadSobre(docenteId, ocupacionAmbiente.detalle.id_docente, periodoId);
+          if (tienePrioridad) {
+            await GestorSeleccionTemporal.eliminarSeleccion(ocupacionAmbiente.detalle.id_seleccion);
+          } else {
+            return respuestaRechazo(validacion);
+          }
+        } else {
+          return respuestaRechazo(validacion);
+        }
       }
     }
 

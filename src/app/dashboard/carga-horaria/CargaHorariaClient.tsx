@@ -28,23 +28,16 @@ import {
   BookOpen, 
   CheckCircle2, 
   User, 
-  XCircle,
-  LayoutGrid,
-  Info,
-  Clock,
+  XCircle, 
+  LayoutGrid, 
+  Info, 
+  Clock, 
   Briefcase,
-  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SimulacionBadge } from '@/components/ui/SimulacionBadge';
 import { parse, format, addMinutes } from 'date-fns';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogClose,
-} from '@/components/ui/dialog';
+
 import { 
   mapCondicionToTexto, 
   mapCategoriaDocenteToTexto, 
@@ -57,8 +50,7 @@ import {
   type TipoContrato as TipoContratoType 
 } from '@/lib/constants/regimenHoras';
 import { MatrizDisponibilidad } from '@/components/horarios/MatrizDisponibilidad';
-import { HorarioGrafico } from '@/components/horarios/HorarioGrafico';
-import { Grid3X3 } from 'lucide-react';
+
 import {
   actividadPermitidaParaRegimen,
   ETIQUETAS_ART_12_4,
@@ -198,8 +190,6 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [actividadNoLectivaSeleccionada, setActividadNoLectivaSeleccionada] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [redirectingASeleccion, setRedirectingASeleccion] = useState(false);
-  const [vistaHorarioGrafico, setVistaHorarioGrafico] = useState(false);
-  const [openHorarioGrafico, setOpenHorarioGrafico] = useState(false);
   const lastSavedSnapshotRef = useRef<string>('');
 
   const ESTADOS_PASO_LECTIVA_COMPLETO = [
@@ -799,9 +789,14 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       const newCargas = [...cargasNoLectivas];
       const nuevosHorarios = [...(newCargas[idx].horarios || [])];
       nuevosHorarios.splice(yaAsignadoIdx, 1);
-      newCargas[idx] = { ...newCargas[idx], horarios: nuevosHorarios };
+      const nuevasHoras = Math.round(minutosDesdeHorarios(nuevosHorarios) / 60);
+      newCargas[idx] = { ...newCargas[idx], horarios: nuevosHorarios, horas_semanales: nuevasHoras };
       setCargasNoLectivas(newCargas);
 
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
       // Persist change immediately for removals to reflect deletion on server
       await autosaveCargas(newCargas);
       return;
@@ -875,6 +870,142 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
 
     // Persist change (debounced)
     scheduleAutosave(newCargas);
+  };
+
+  const handleRangeSelect = async (cells: Array<{dia: number; hora: string}>) => {
+    if (!actividadNoLectivaSeleccionada) {
+      toast.error('Seleccione una actividad antes de asignar horarios');
+      return;
+    }
+
+    const diasCodigo = ['LU','MA','MI','JU','VI','SA'];
+    const idx = cargasNoLectivas.findIndex(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada);
+    if (idx === -1) return;
+
+    const carga = cargasNoLectivas[idx];
+    const existentes = carga.horarios || [];
+    const minutosAsignados = minutosDesdeHorarios(existentes);
+    const bloqueMinutos = cells.length * 60;
+
+    const maxHorasActividad = getMaxHorasActividadNoLectiva(
+      carga.tipo,
+      initialDocente,
+      trabajoLectivo
+    );
+
+    if (maxHorasActividad !== null && maxHorasActividad === 0) {
+      toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
+      return;
+    }
+
+    if (maxHorasActividad !== null && minutosAsignados + bloqueMinutos > maxHorasActividad * 60) {
+      const detalle = carga.tipo === 'PREPARACION_EVALUACION'
+        ? ` (máx. 50% del trabajo lectivo: ${trabajoLectivo}h → ${maxHorasActividad}h)`
+        : ' (Art. 12.4)';
+      const disponibles = Math.max(0, maxHorasActividad - Math.round(minutosAsignados / 60));
+      toast.error(`Límite excedido: máximo ${maxHorasActividad}h — le quedan ${disponibles}h disponibles${detalle}`);
+      return;
+    }
+
+    const nuevosHorarios: Array<{dia: string; horaInicio: string; horaFin: string}> = [];
+    const ocupados: string[] = [];
+
+    for (const cell of cells) {
+      const diaCodigo = diasCodigo[cell.dia];
+      if (!diaCodigo) continue;
+
+      const yaAsignado = existentes.some((h: any) => horarioContieneSlot(h, diaCodigo, cell.hora));
+      if (yaAsignado) continue;
+
+      const conflicto = cargasNoLectivas.some(
+        (c) => c.id_carga_no_lectiva !== carga.id_carga_no_lectiva &&
+          (c.horarios || []).some((h: any) => horarioContieneSlot(h, diaCodigo, cell.hora))
+      );
+      if (conflicto) {
+        ocupados.push(`${diaCodigo} ${cell.hora}`);
+        continue;
+      }
+
+      const lectivoConflicto = horariosLectivos
+        .filter((hl) => !hl.is_no_lectiva)
+        .some((hl) => {
+          if (hl.dia_semana !== cell.dia) return false;
+          return horarioContieneSlot(
+            { dia: diaCodigo, horaInicio: hl.hora_inicio, horaFin: hl.hora_fin },
+            diaCodigo,
+            cell.hora
+          );
+        });
+      if (lectivoConflicto) {
+        ocupados.push(`${diaCodigo} ${cell.hora}`);
+        continue;
+      }
+
+      const inicio = parse(cell.hora, 'HH:mm', new Date());
+      const fin = format(addMinutes(inicio, 60), 'HH:mm');
+      nuevosHorarios.push({ dia: diaCodigo, horaInicio: cell.hora, horaFin: fin });
+    }
+
+    if (nuevosHorarios.length === 0) {
+      toast.error('Ningún bloque disponible en el rango seleccionado');
+      return;
+    }
+
+    const newCargas = [...cargasNoLectivas];
+    newCargas[idx] = {
+      ...newCargas[idx],
+      horarios: [...(newCargas[idx].horarios || []), ...nuevosHorarios]
+    };
+
+    setCargasNoLectivas(newCargas);
+    scheduleAutosave(newCargas);
+
+    if (nuevosHorarios.length > 0) {
+      toast.success(`${nuevosHorarios.length} bloque(s) asignado(s) a ${TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo)?.label || carga.tipo}`);
+    }
+    if (ocupados.length > 0) {
+      toast.warning(`${ocupados.length} bloque(s) no disponible(s) por conflicto de horario`);
+    }
+  };
+
+  const handleRangeRemove = async (cells: Array<{dia: number; hora: string}>) => {
+    if (!actividadNoLectivaSeleccionada) return;
+
+    const diasCodigo = ['LU','MA','MI','JU','VI','SA'];
+    const idx = cargasNoLectivas.findIndex(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada);
+    if (idx === -1) return;
+
+    const carga = cargasNoLectivas[idx];
+    const nuevosHorarios = [...(carga.horarios || [])];
+    let removedCount = 0;
+
+    for (const cell of cells) {
+      const diaCodigo = diasCodigo[cell.dia];
+      if (!diaCodigo) continue;
+
+      const idxH = nuevosHorarios.findIndex((h: any) => horarioContieneSlot(h, diaCodigo, cell.hora));
+      if (idxH !== -1) {
+        nuevosHorarios.splice(idxH, 1);
+        removedCount++;
+      }
+    }
+
+    if (removedCount === 0) {
+      toast.error('Ningún bloque seleccionado pertenece a esta actividad');
+      return;
+    }
+
+    const nuevasHoras = Math.round(minutosDesdeHorarios(nuevosHorarios) / 60);
+    const newCargas = [...cargasNoLectivas];
+    newCargas[idx] = { ...newCargas[idx], horarios: nuevosHorarios, horas_semanales: nuevasHoras };
+    setCargasNoLectivas(newCargas);
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    await autosaveCargas(newCargas);
+    toast.success(`${removedCount} bloque(s) deseleccionado(s)`);
   };
 
   if (loading || horariosLectivosLoading || redirectingASeleccion) {
@@ -1195,246 +1326,70 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               </div>
             </details>
 
-            {/* Matriz: carga lectiva bloqueada + carga no lectiva asignada */}
-            <div className="rounded-lg border border-border bg-muted/10 overflow-hidden min-w-0">
-              <div className="px-3 py-2 border-b border-border bg-card/80 flex items-center justify-between">
-                <div>
-                  <p className="text-[11px] font-bold text-foreground">Matriz de horarios</p>
-                  <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                    {actividadNoLectivaSeleccionada
-                      ? 'Azul = carga lectiva (bloqueada). Ámbar = su actividad no lectiva seleccionada. Clic en celdas libres para asignar.'
-                      : 'Azul = carga lectiva. Gris/ámbar = carga no lectiva ya asignada. Seleccione una actividad abajo para agregar o quitar bloques.'}
-                  </p>
-                </div>
-                <div className="flex items-center gap-2">
-                  <Button
-                    variant="default"
-                    size="sm"
-                    onClick={() => setOpenHorarioGrafico(true)}
-                    className="text-xs h-7"
-                  >
-                    <Grid3X3 className="h-3 w-3 mr-1.5" />
-                    Horario
-                  </Button>
-                  {cargasNoLectivas.some(c => c.descripcion?.trim()) && (
-                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
-                      ¡Listo! Ahora puedes seleccionar horarios
-                    </Badge>
-                  )}
-                </div>
-              </div>
-              <div className="w-full min-w-0 overflow-x-auto p-2 sm:p-3">
-                {/* Always show MatrizDisponibilidad inline */}
-                <MatrizDisponibilidad
-                  id_periodo={periodoActivo?.id_periodo || 0}
-                  id_docente_actual={initialDocente?.id_docente}
-                  soloLectura={!puedeEditarNoLectiva}
-                  tipoVista="no-lectiva"
-                  actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
-                  actividadesNoLectivas={cargasNoLectivas}
-                  horariosLectivosDocente={horariosLectivosSoloLectiva}
-                  onCellClick={handleNoLectivaCellClick}
-                  onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
-                />
-              </div>
+            {/* Panel dividido: izquierda (actividades) + derecha (matriz con arrastre) */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Panel izquierdo: Tarjetas de actividades */}
+              <div className="w-full lg:w-96 shrink-0 space-y-3 max-h-[700px] overflow-y-auto pr-1">
+                {cargasNoLectivas.map((carga, index) => {
+                  const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
+                  const requiereDocumento = TIPOS_QUE_REQUIEREN_DOCUMENTO.has(carga.tipo);
+                  const actividadPermitida = actividadPermitidaParaRegimen(carga.tipo, initialDocente, trabajoLectivo);
+                  const horasAsignadas = horasDesdeHorarios(carga.horarios || []);
+                  const maxHoras = getMaxHorasActividadNoLectiva(carga.tipo, initialDocente, trabajoLectivo);
+                  const colors = [
+                    { bg: 'bg-rose-50/80 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-900/50' },
+                    { bg: 'bg-amber-50/80 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-900/50' },
+                    { bg: 'bg-emerald-50/80 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-900/50' },
+                    { bg: 'bg-cyan-50/80 dark:bg-cyan-950/30', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-900/50' },
+                    { bg: 'bg-indigo-50/80 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-900/50' },
+                    { bg: 'bg-fuchsia-50/80 dark:bg-fuchsia-950/30', text: 'text-fuchsia-700 dark:text-fuchsia-400', border: 'border-fuchsia-200 dark:border-fuchsia-900/50' },
+                    { bg: 'bg-orange-50/80 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-900/50' },
+                    { bg: 'bg-sky-50/80 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-200 dark:border-sky-900/50' },
+                  ];
+                  const color = colors[index % colors.length];
 
-              {/* Dialog for Horario Grafico */}
-              <Dialog open={openHorarioGrafico} onOpenChange={setOpenHorarioGrafico}>
-                <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
-                  <DialogHeader>
-                    <DialogTitle className="flex items-center gap-2">
-                      <Grid3X3 className="h-5 w-5" />
-                      Horario Gráfico - Carga No Lectiva
-                    </DialogTitle>
-                    <DialogClose asChild>
-                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
-                        <X className="h-4 w-4" />
-                      </Button>
-                    </DialogClose>
-                  </DialogHeader>
-                  
-                  {/* Total de horas (carga lectiva + carga no lectiva) */}
-                  <div className="px-6 py-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/50">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
-                        Total de horas (Lectiva + No Lectiva): {totalCargaLectivaAsignada + totalNoLectivas}h / 40h
-                      </span>
-                      {totalCargaLectivaAsignada + totalNoLectivas > 40 && (
-                        <Badge variant="destructive" className="text-[10px]">
-                          ¡Has excedido el límite de 40 horas!
-                        </Badge>
+                  return (
+                    <div
+                      key={carga.id_carga_no_lectiva ?? `no-lectiva-${index}`}
+                      className={cn(
+                        "p-3 rounded-lg border transition-all cursor-pointer",
+                        color.bg,
+                        color.border,
+                        actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
+                          ? "ring-2 ring-primary ring-offset-2 bg-white dark:bg-card shadow-md"
+                          : "hover:bg-white dark:hover:bg-card"
                       )}
-                    </div>
-                  </div>
-
-                  <div className="flex-1 overflow-hidden flex">
-                    {/* Sidebar con actividades */}
-                    <div className="w-80 bg-muted/30 border-r border-border overflow-y-auto p-4 space-y-4">
-                      <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
-                        Actividades de Carga No Lectiva
-                      </h4>
-                      
-                      {cargasNoLectivas.map((carga, index) => {
-                        const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
-                        const etiquetaLimite = getEtiquetaLimiteActividad(carga.tipo, initialDocente, trabajoLectivo);
-                        const actividadPermitida = actividadPermitidaParaRegimen(carga.tipo, initialDocente, trabajoLectivo);
-                        const horasAsignadas = horasDesdeHorarios(carga.horarios || []);
-                        const colors = [
-                          { bg: 'bg-rose-50/80 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-900/50' },
-                          { bg: 'bg-amber-50/80 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-900/50' },
-                          { bg: 'bg-emerald-50/80 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-900/50' },
-                          { bg: 'bg-cyan-50/80 dark:bg-cyan-950/30', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-900/50' },
-                          { bg: 'bg-indigo-50/80 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-900/50' },
-                          { bg: 'bg-fuchsia-50/80 dark:bg-fuchsia-950/30', text: 'text-fuchsia-700 dark:text-fuchsia-400', border: 'border-fuchsia-200 dark:border-fuchsia-900/50' },
-                          { bg: 'bg-orange-50/80 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-900/50' },
-                          { bg: 'bg-sky-50/80 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-200 dark:border-sky-900/50' },
-                        ];
-                        const color = colors[index % colors.length];
-                        
-                        return (
-                          <div 
-                            key={carga.id_carga_no_lectiva ?? `no-lectiva-${index}`} 
-                            className={cn(
-                              "p-3 rounded-lg border transition-all cursor-pointer",
-                              color.bg,
-                              color.border,
-                              actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva 
-                                ? "ring-2 ring-primary ring-offset-2 bg-white dark:bg-card" 
-                                : "hover:bg-white dark:hover:bg-card"
-                            )}
-                            onClick={() => {
-                              if (!actividadPermitida) {
-                                toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
-                                return;
-                              }
-                              if (!carga.descripcion?.trim()) {
-                                toast.error('Primero completa la descripción de la actividad');
-                                return;
-                              }
-                              setActividadNoLectivaSeleccionada(carga.id_carga_no_lectiva);
-                            }}
-                          >
-                            <div className="flex items-start justify-between">
-                              <div>
-                                <p className={cn("text-xs font-bold mb-1", color.text)}>
-                                  {tipoInfo?.label || carga.tipo}
-                                </p>
-                                <p className="text-[10px] text-muted-foreground line-clamp-2">
-                                  {carga.descripcion || 'Sin descripción'}
-                                </p>
-                              </div>
-                              <Badge variant="outline" className={cn("text-[10px]", color.text)}>
-                                {horasAsignadas}h
-                              </Badge>
-                            </div>
-                            
-                            {etiquetaLimite && (
-                              <p className={cn(
-                                "text-[10px] font-bold mt-2",
-                                etiquetaLimite.includes('No permitida')
-                                  ? "text-rose-600 dark:text-rose-400"
-                                  : "text-indigo-600 dark:text-indigo-400"
-                              )}>
-                                {etiquetaLimite}
-                              </p>
-                            )}
-                            
-                            <div className="mt-2">
-                              <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
-                                <span>Horas asignadas</span>
-                                <span className="font-bold">{horasAsignadas}h</span>
-                              </div>
-                              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
-                                <div 
-                                  className={cn("h-full transition-all duration-300", color.text.replace('text-', 'bg-'))}
-                                  style={{ width: `${Math.min(100, (horasAsignadas / Math.max(1, 40 - totalCargaLectivaAsignada)) * 100)}%` }}
-                                />
-                              </div>
-                            </div>
-                            
-                            {actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva && (
-                              <Badge className="mt-2 w-full justify-center text-[10px]">
-                                Seleccionada para edición
-                              </Badge>
-                            )}
-                          </div>
+                      onClick={() => {
+                        if (!actividadPermitida) {
+                          toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
+                          return;
+                        }
+                        setActividadNoLectivaSeleccionada(
+                          actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
+                            ? null
+                            : carga.id_carga_no_lectiva
                         );
-                      })}
-                    </div>
-
-                    {/* Horario Grafico */}
-                    <div className="flex-1 overflow-auto p-4">
-                      <HorarioGrafico
-                        modo="no-lectiva"
-                        id_periodo={periodoActivo?.id_periodo || 0}
-                        id_docente_actual={initialDocente?.id_docente}
-                        actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
-                        actividadesNoLectivas={cargasNoLectivas}
-                        horariosLectivosDocente={horariosLectivosSoloLectiva}
-                        horasRequeridas={cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada)?.horas_semanales}
-                        horasAsignadas={cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada) ? horasDesdeHorarios(cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada)?.horarios || []) : 0}
-                        soloLectura={!puedeEditarNoLectiva}
-                        onCellClick={handleNoLectivaCellClick}
-                        onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
-                      />
-                    </div>
-                  </div>
-                </DialogContent>
-              </Dialog>
-            </div>
-
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Tipo de Actividad</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Descripción de Actividades</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-right">Horas/Sem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cargasNoLectivas.map((carga, index) => {
-                const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
-                const requiereDocumento = TIPOS_QUE_REQUIEREN_DOCUMENTO.has(carga.tipo);
-                const etiquetaLimite = getEtiquetaLimiteActividad(carga.tipo, initialDocente, trabajoLectivo);
-                const actividadPermitida = actividadPermitidaParaRegimen(carga.tipo, initialDocente, trabajoLectivo);
-                const colors = [
-                  { bg: 'bg-rose-50/40 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-100 dark:border-rose-900/50' },
-                  { bg: 'bg-amber-50/40 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/50' },
-                  { bg: 'bg-emerald-50/40 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-900/50' },
-                  { bg: 'bg-cyan-50/40 dark:bg-cyan-950/30', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-100 dark:border-cyan-900/50' },
-                  { bg: 'bg-indigo-50/40 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-100 dark:border-indigo-900/50' },
-                  { bg: 'bg-fuchsia-50/40 dark:bg-fuchsia-950/30', text: 'text-fuchsia-700 dark:text-fuchsia-400', border: 'border-fuchsia-100 dark:border-fuchsia-900/50' },
-                  { bg: 'bg-orange-50/40 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-100 dark:border-orange-900/50' },
-                  { bg: 'bg-sky-50/40 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-100 dark:border-sky-900/50' },
-                ];
-                const color = colors[index % colors.length];
-                
-                return (
-                  <TableRow key={carga.id_carga_no_lectiva ?? `no-lectiva-${index}`} className={cn("border-border", color.bg)}>
-                    <TableCell className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
-                        {carga.tipo === 'INVESTIGACION' && (
-                          <SimulacionBadge tipo="INVESTIGACION_ETICA" />
-                        )}
+                      }}
+                    >
+                      {/* Nombre + horas */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn("text-xs font-bold", color.text)}>
+                            {tipoInfo?.label || carga.tipo}
+                          </div>
+                          {carga.tipo === 'INVESTIGACION' && carga.descripcion?.trim() && (
+                            <SimulacionBadge tipo="INVESTIGACION_ETICA" />
+                          )}
+                        </div>
+                        <Badge variant="outline" className={cn("text-[10px]", color.text)}>
+                          {horasAsignadas}{maxHoras !== null ? `/${maxHoras}` : ''}h
+                        </Badge>
                       </div>
-                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{tipoInfo?.descripcion}</p>
-                      {etiquetaLimite && (
-                        <p className={cn(
-                          "text-[10px] font-bold mt-1",
-                          etiquetaLimite.includes('No permitida')
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-indigo-600 dark:text-indigo-400"
-                        )}>
-                          {etiquetaLimite}
-                        </p>
-                      )}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 space-y-3">
-                      {/* Descripción / Documento */}
-                      <div className="space-y-1">
+
+                      {/* Descripción */}
+                      <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
                         <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                          {requiereDocumento ? 'N° de Resolución/Constancia/Código de Proyecto' : 'Descripción de Actividades'}
+                          {requiereDocumento ? 'N° de Resolución/Constancia/Código de Proyecto' : 'Descripción'}
                           <span className="text-rose-500 ml-1">*</span>
                         </Label>
                         <Input
@@ -1444,72 +1399,14 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           disabled={!puedeEditarNoLectiva}
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
-                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                            newCargas[idx].descripcion = e.target.value;
+                            newCargas[index] = { ...newCargas[index], descripcion: e.target.value };
                             setCargasNoLectivas(newCargas);
                           }}
                         />
                       </div>
 
-                      {/* Cargo (if applicable) */}
-                      {(carga.tipo === 'GOBIERNO' || carga.tipo === 'ADMINISTRACION') && (
-                        <div className="space-y-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                              Cargo Académico/Administrativo
-                            </Label>
-                            <Select
-                              value={carga.cargoId != null ? String(carga.cargoId) : ''}
-                              disabled={!puedeEditarNoLectiva}
-                              onValueChange={val => {
-                                const newCargas = [...cargasNoLectivas];
-                                const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                if (val === 'none') {
-                                  newCargas[idx].cargoId = null;
-                                  newCargas[idx].horas_semanales = 0;
-                                } else {
-                                  const cargo = cargosAcademicos.find(c => String(c.id) === val);
-                                  if (cargo) {
-                                    newCargas[idx].cargoId = cargo.id;
-                                    newCargas[idx].horas_semanales = cargo.chnla;
-                                  }
-                                }
-                                setCargasNoLectivas(newCargas);
-                              }}
-                            >
-                              <SelectTrigger className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none">
-                                <SelectValue placeholder="Seleccione un cargo..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none" className="text-xs text-muted-foreground">
-                                  Ninguno
-                                </SelectItem>
-                                {cargosAcademicos.map(cargo => (
-                                  <SelectItem key={cargo.id} value={String(cargo.id)} className="text-xs">
-                                    {cargo.nombre}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {carga.cargoId && (() => {
-                            const cargo = cargosAcademicos.find(c => c.id === carga.cargoId);
-                            return cargo ? (
-                              <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg">
-                                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
-                                  Información del Cargo
-                                </p>
-                                <p className="text-[10px] text-amber-700 dark:text-amber-300 mt-1">
-                                  Carga lectiva mínima sugerida: {cargo.chlm}h · Preparación y evaluación sugerida: {cargo.chnlpe}h
-                                </p>
-                              </div>
-                            ) : null;
-                          })()}
-                        </div>
-                      )}
-
-                      {/* Ambiente */}
-                      <div className="space-y-1">
+                      {/* Ambiente/Aula */}
+                      <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
                         <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
                           Ambiente/Aula (opcional)
                         </Label>
@@ -1520,96 +1417,112 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           disabled={!puedeEditarNoLectiva}
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
-                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                            newCargas[idx].ambiente = e.target.value;
+                            newCargas[index] = { ...newCargas[index], ambiente: e.target.value };
                             setCargasNoLectivas(newCargas);
                           }}
                         />
                       </div>
 
-                      {/* Horarios - Selector para abrir la matriz compartida */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
+                      {/* Cargo (GOBIERNO/ADMINISTRACION) */}
+                      {(carga.tipo === 'GOBIERNO' || carga.tipo === 'ADMINISTRACION') && (
+                        <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
                           <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Horario Semanal (usar la matriz compartida)
+                            Cargo Académico/Administrativo
                           </Label>
-                          <Badge variant="outline" className="text-[10px]">
-                            {carga.horarios?.length || 0} bloques
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {puedeEditarNoLectiva ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant={actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'destructive' : 'outline'}
-                                className={cn(
-                                  "transition-colors duration-200",
-                                  actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
-                                    ? "bg-blue-100 text-blue-700 border-blue-300 hover:bg-blue-200"
-                                    : "bg-blue-50/80 text-blue-700 border-blue-200 hover:bg-blue-100"
-                                )}
-                                disabled={!actividadPermitida || !carga.descripcion?.trim()}
-                                onClick={() => {
-                                  if (!actividadPermitida) {
-                                    toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
-                                    return;
-                                  }
-                                  setActividadNoLectivaSeleccionada(
-                                    actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
-                                      ? null
-                                      : carga.id_carga_no_lectiva
-                                  );
-                                }}
-                              >
-                                {actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'Cerrar matriz' : 'Seleccionar actividad'}
-                              </Button>
-                              <div className="text-xs text-muted-foreground">
-                                {actividadPermitida
-                                  ? 'Los bloques azules son su carga lectiva (no se puede asignar no lectiva ahí). Haga clic en celdas libres para asignar.'
-                                  : 'Esta actividad no aplica para su régimen horario.'}
+                          <Select
+                            value={carga.cargoId != null ? String(carga.cargoId) : ''}
+                            disabled={!puedeEditarNoLectiva}
+                            onValueChange={val => {
+                              const newCargas = [...cargasNoLectivas];
+                              if (val === 'none') {
+                                newCargas[index].cargoId = null;
+                                newCargas[index].horas_semanales = 0;
+                              } else {
+                                const cargo = cargosAcademicos.find(c => String(c.id) === val);
+                                if (cargo) {
+                                  newCargas[index].cargoId = cargo.id;
+                                  newCargas[index].horas_semanales = cargo.chnla;
+                                }
+                              }
+                              setCargasNoLectivas(newCargas);
+                            }}
+                          >
+                            <SelectTrigger className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none">
+                              <SelectValue placeholder="Seleccione un cargo..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none" className="text-xs text-muted-foreground">
+                                Ninguno
+                              </SelectItem>
+                              {cargosAcademicos.map(cargo => (
+                                <SelectItem key={cargo.id} value={String(cargo.id)} className="text-xs">
+                                  {cargo.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {carga.cargoId && (() => {
+                            const cargo = cargosAcademicos.find(c => c.id === carga.cargoId);
+                            return cargo ? (
+                              <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg mt-1">
+                                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
+                                  Carga lectiva mínima sugerida: {cargo.chlm}h · Prep/eval sugerida: {cargo.chnlpe}h
+                                </p>
                               </div>
-                            </>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">
-                              {carga.horarios?.length > 0 ? (
-                                <div className="space-y-1">
-                                  {carga.horarios.map((h: any, hIdx: number) => (
-                                    <div key={`${carga.id_carga_no_lectiva ?? carga.tipo}-${h.dia}-${h.horaInicio}-${h.horaFin}-${hIdx}`} className="text-xs">
-                                      {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][['LU','MA','MI','JU','VI','SA'].indexOf(h.dia)]}: {h.horaInicio} - {h.horaFin}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span>No hay horarios asignados</span>
-                              )}
-                            </div>
-                          )}
+                            ) : null;
+                          })()}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 w-32 text-right align-top pt-3">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Mostrar horas actualmente asignadas (lectiva/no-lectiva) y no permitir edición manual */}
-                        <Input
-                          type="number"
-                          className={cn("bg-background border-border h-8 w-16 text-center font-black text-sm shadow-none", color.text)}
-                          value={horasDesdeHorarios(carga.horarios || [])}
-                          disabled={true}
-                        />
-                        <span className={cn("text-xs font-bold", color.text)}>h</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              <TableRow key="total-carga-no-lectiva" className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold border-t border-indigo-200 dark:border-indigo-900/50">
-                <TableCell colSpan={2} className="px-4 py-3 text-[11px] font-bold uppercase text-indigo-700 dark:text-indigo-400 tracking-wider">Total Carga No Lectiva</TableCell>
-                <TableCell className="px-4 py-3 text-right text-sm font-black text-indigo-800 dark:text-indigo-400">{totalNoLectivas}h</TableCell>
-              </TableRow>
-            </TableBody>
-            </Table>
+                      )}
+
+                      {/* Barra de progreso */}
+                      {(maxHoras !== null || actividadNoLectivaSeleccionada !== carga.id_carga_no_lectiva) && (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                            <span>Horas asignadas</span>
+                            <span className="font-bold">{horasAsignadas}h</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn("h-full transition-all duration-300", color.text.replace('text-', 'bg-'))}
+                              style={{ width: `${maxHoras !== null ? Math.min(100, (horasAsignadas / Math.max(1, maxHoras)) * 100) : Math.min(100, (horasAsignadas / 40) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Panel derecho: Matriz con arrastre */}
+              <div className="flex-1 min-w-0">
+                <div className="rounded-lg border border-border bg-muted/10 overflow-hidden min-w-0">
+                  <div className="px-3 py-2 border-b border-border bg-card/80">
+                    <p className="text-[11px] font-bold text-foreground">Matriz de Horarios</p>
+                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                      {actividadNoLectivaSeleccionada
+                        ? <><span className="font-bold text-primary">✓ Actividad seleccionada.</span> Arrastre sobre la matriz para asignar bloques. Azul = carga lectiva. Los bloques en verde son su selección actual.</>
+                        : 'Haga clic en una actividad del panel izquierdo para seleccionarla, luego arrastre en la matriz para asignar horarios.'}
+                    </p>
+                  </div>
+                  <div className="w-full min-w-0 overflow-x-auto p-2 sm:p-3">
+                    <MatrizDisponibilidad
+                      id_periodo={periodoActivo?.id_periodo || 0}
+                      id_docente_actual={initialDocente?.id_docente}
+                      soloLectura={!puedeEditarNoLectiva}
+                      tipoVista="no-lectiva"
+                      actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
+                      actividadesNoLectivas={cargasNoLectivas}
+                      horariosLectivosDocente={horariosLectivosSoloLectiva}
+                      onCellClick={handleNoLectivaCellClick}
+                      onRangeSelect={handleRangeSelect}
+                      onRangeRemove={handleRangeRemove}
+                      onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
