@@ -33,10 +33,18 @@ import {
   Info,
   Clock,
   Briefcase,
+  X,
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SimulacionBadge } from '@/components/ui/SimulacionBadge';
 import { parse, format, addMinutes } from 'date-fns';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogClose,
+} from '@/components/ui/dialog';
 import { 
   mapCondicionToTexto, 
   mapCategoriaDocenteToTexto, 
@@ -191,6 +199,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [isSaving, setIsSaving] = useState(false);
   const [redirectingASeleccion, setRedirectingASeleccion] = useState(false);
   const [vistaHorarioGrafico, setVistaHorarioGrafico] = useState(false);
+  const [openHorarioGrafico, setOpenHorarioGrafico] = useState(false);
   const lastSavedSnapshotRef = useRef<string>('');
 
   const ESTADOS_PASO_LECTIVA_COMPLETO = [
@@ -1197,44 +1206,181 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       : 'Azul = carga lectiva. Gris/ámbar = carga no lectiva ya asignada. Seleccione una actividad abajo para agregar o quitar bloques.'}
                   </p>
                 </div>
-                <Button
-                  variant={vistaHorarioGrafico ? "default" : "secondary"}
-                  size="sm"
-                  onClick={() => setVistaHorarioGrafico(!vistaHorarioGrafico)}
-                  className="text-xs h-7"
-                >
-                  <Grid3X3 className="h-3 w-3 mr-1.5" />
-                  Horario
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="default"
+                    size="sm"
+                    onClick={() => setOpenHorarioGrafico(true)}
+                    className="text-xs h-7"
+                  >
+                    <Grid3X3 className="h-3 w-3 mr-1.5" />
+                    Horario
+                  </Button>
+                  {cargasNoLectivas.some(c => c.descripcion?.trim()) && (
+                    <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-950/30 dark:text-emerald-400 dark:border-emerald-900/50">
+                      ¡Listo! Ahora puedes seleccionar horarios
+                    </Badge>
+                  )}
+                </div>
               </div>
               <div className="w-full min-w-0 overflow-x-auto p-2 sm:p-3">
-                {vistaHorarioGrafico ? (
-                  <HorarioGrafico
-                    modo="no-lectiva"
-                    id_periodo={periodoActivo?.id_periodo || 0}
-                    id_docente_actual={initialDocente?.id_docente}
-                    actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
-                    actividadesNoLectivas={cargasNoLectivas}
-                    horariosLectivosDocente={horariosLectivosSoloLectiva}
-                    horasRequeridas={cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada)?.horas_semanales}
-                    soloLectura={!puedeEditarNoLectiva}
-                    onCellClick={handleNoLectivaCellClick}
-                    onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
-                  />
-                ) : (
-                  <MatrizDisponibilidad
-                    id_periodo={periodoActivo?.id_periodo || 0}
-                    id_docente_actual={initialDocente?.id_docente}
-                    soloLectura={!puedeEditarNoLectiva}
-                    tipoVista="no-lectiva"
-                    actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
-                    actividadesNoLectivas={cargasNoLectivas}
-                    horariosLectivosDocente={horariosLectivosSoloLectiva}
-                    onCellClick={handleNoLectivaCellClick}
-                    onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
-                  />
-                )}
+                {/* Always show MatrizDisponibilidad inline */}
+                <MatrizDisponibilidad
+                  id_periodo={periodoActivo?.id_periodo || 0}
+                  id_docente_actual={initialDocente?.id_docente}
+                  soloLectura={!puedeEditarNoLectiva}
+                  tipoVista="no-lectiva"
+                  actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
+                  actividadesNoLectivas={cargasNoLectivas}
+                  horariosLectivosDocente={horariosLectivosSoloLectiva}
+                  onCellClick={handleNoLectivaCellClick}
+                  onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                />
               </div>
+
+              {/* Dialog for Horario Grafico */}
+              <Dialog open={openHorarioGrafico} onOpenChange={setOpenHorarioGrafico}>
+                <DialogContent className="max-w-7xl max-h-[90vh] overflow-hidden flex flex-col">
+                  <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2">
+                      <Grid3X3 className="h-5 w-5" />
+                      Horario Gráfico - Carga No Lectiva
+                    </DialogTitle>
+                    <DialogClose asChild>
+                      <Button variant="ghost" size="sm" className="h-8 w-8 p-0">
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </DialogClose>
+                  </DialogHeader>
+                  
+                  {/* Total de horas (carga lectiva + carga no lectiva) */}
+                  <div className="px-6 py-3 bg-amber-50 dark:bg-amber-950/30 border-b border-amber-200 dark:border-amber-900/50">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[11px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
+                        Total de horas (Lectiva + No Lectiva): {totalCargaLectivaAsignada + totalNoLectivas}h / 40h
+                      </span>
+                      {totalCargaLectivaAsignada + totalNoLectivas > 40 && (
+                        <Badge variant="destructive" className="text-[10px]">
+                          ¡Has excedido el límite de 40 horas!
+                        </Badge>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="flex-1 overflow-hidden flex">
+                    {/* Sidebar con actividades */}
+                    <div className="w-80 bg-muted/30 border-r border-border overflow-y-auto p-4 space-y-4">
+                      <h4 className="text-sm font-bold text-foreground uppercase tracking-wider mb-2">
+                        Actividades de Carga No Lectiva
+                      </h4>
+                      
+                      {cargasNoLectivas.map((carga, index) => {
+                        const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
+                        const etiquetaLimite = getEtiquetaLimiteActividad(carga.tipo, initialDocente, trabajoLectivo);
+                        const actividadPermitida = actividadPermitidaParaRegimen(carga.tipo, initialDocente, trabajoLectivo);
+                        const horasAsignadas = horasDesdeHorarios(carga.horarios || []);
+                        const colors = [
+                          { bg: 'bg-rose-50/80 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-900/50' },
+                          { bg: 'bg-amber-50/80 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-900/50' },
+                          { bg: 'bg-emerald-50/80 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-900/50' },
+                          { bg: 'bg-cyan-50/80 dark:bg-cyan-950/30', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-900/50' },
+                          { bg: 'bg-indigo-50/80 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-900/50' },
+                          { bg: 'bg-fuchsia-50/80 dark:bg-fuchsia-950/30', text: 'text-fuchsia-700 dark:text-fuchsia-400', border: 'border-fuchsia-200 dark:border-fuchsia-900/50' },
+                          { bg: 'bg-orange-50/80 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-900/50' },
+                          { bg: 'bg-sky-50/80 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-200 dark:border-sky-900/50' },
+                        ];
+                        const color = colors[index % colors.length];
+                        
+                        return (
+                          <div 
+                            key={carga.id_carga_no_lectiva ?? `no-lectiva-${index}`} 
+                            className={cn(
+                              "p-3 rounded-lg border transition-all cursor-pointer",
+                              color.bg,
+                              color.border,
+                              actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva 
+                                ? "ring-2 ring-primary ring-offset-2 bg-white dark:bg-card" 
+                                : "hover:bg-white dark:hover:bg-card"
+                            )}
+                            onClick={() => {
+                              if (!actividadPermitida) {
+                                toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
+                                return;
+                              }
+                              if (!carga.descripcion?.trim()) {
+                                toast.error('Primero completa la descripción de la actividad');
+                                return;
+                              }
+                              setActividadNoLectivaSeleccionada(carga.id_carga_no_lectiva);
+                            }}
+                          >
+                            <div className="flex items-start justify-between">
+                              <div>
+                                <p className={cn("text-xs font-bold mb-1", color.text)}>
+                                  {tipoInfo?.label || carga.tipo}
+                                </p>
+                                <p className="text-[10px] text-muted-foreground line-clamp-2">
+                                  {carga.descripcion || 'Sin descripción'}
+                                </p>
+                              </div>
+                              <Badge variant="outline" className={cn("text-[10px]", color.text)}>
+                                {horasAsignadas}h
+                              </Badge>
+                            </div>
+                            
+                            {etiquetaLimite && (
+                              <p className={cn(
+                                "text-[10px] font-bold mt-2",
+                                etiquetaLimite.includes('No permitida')
+                                  ? "text-rose-600 dark:text-rose-400"
+                                  : "text-indigo-600 dark:text-indigo-400"
+                              )}>
+                                {etiquetaLimite}
+                              </p>
+                            )}
+                            
+                            <div className="mt-2">
+                              <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                                <span>Horas asignadas</span>
+                                <span className="font-bold">{horasAsignadas}h</span>
+                              </div>
+                              <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                                <div 
+                                  className={cn("h-full transition-all duration-300", color.text.replace('text-', 'bg-'))}
+                                  style={{ width: `${Math.min(100, (horasAsignadas / Math.max(1, 40 - totalCargaLectivaAsignada)) * 100)}%` }}
+                                />
+                              </div>
+                            </div>
+                            
+                            {actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva && (
+                              <Badge className="mt-2 w-full justify-center text-[10px]">
+                                Seleccionada para edición
+                              </Badge>
+                            )}
+                          </div>
+                        );
+                      })}
+                    </div>
+
+                    {/* Horario Grafico */}
+                    <div className="flex-1 overflow-auto p-4">
+                      <HorarioGrafico
+                        modo="no-lectiva"
+                        id_periodo={periodoActivo?.id_periodo || 0}
+                        id_docente_actual={initialDocente?.id_docente}
+                        actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
+                        actividadesNoLectivas={cargasNoLectivas}
+                        horariosLectivosDocente={horariosLectivosSoloLectiva}
+                        horasRequeridas={cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada)?.horas_semanales}
+                        horasAsignadas={cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada) ? horasDesdeHorarios(cargasNoLectivas.find(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada)?.horarios || []) : 0}
+                        soloLectura={!puedeEditarNoLectiva}
+                        onCellClick={handleNoLectivaCellClick}
+                        onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                      />
+                    </div>
+                  </div>
+                </DialogContent>
+              </Dialog>
             </div>
 
           <Table>
