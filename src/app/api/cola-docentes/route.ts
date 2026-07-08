@@ -1,6 +1,5 @@
 ﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { format } from 'date-fns';
 
 export async function GET(request: Request) {
   try {
@@ -12,18 +11,24 @@ export async function GET(request: Request) {
     if (isNaN(id_periodo)) return NextResponse.json({ error: 'id_periodo inválido' }, { status: 400 });
 
     const ahora = new Date();
-    const horaActualStr = format(ahora, 'HH:mm');
-    
-    // Normalizar fecha a mediodía UTC para coincidir con el almacenamiento de VentanaAtencion
-    const hoySoloFechaStr = format(ahora, 'yyyy-MM-dd');
-    const fechaActual = new Date(hoySoloFechaStr + 'T12:00:00Z');
+    const horaActualStr = ahora.toLocaleTimeString('en-GB', {
+      timeZone: 'America/Lima',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
 
-    // 1. Obtener ventanas activas en este momento
+    const hoyPeru = ahora.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+    const [year, month, day] = hoyPeru.split('-').map(Number);
+    const fechaInicio = new Date(Date.UTC(year, month - 1, day, 5, 0, 0)); // Peru midnight
+    const fechaFin = new Date(Date.UTC(year, month - 1, day + 1, 5, 0, 0)); // Siguiente Peru midnight
+
+    // 1. Obtener ventanas activas en este momento (en Peru timezone)
     const ventanasActivas = await prisma.ventanaAtencion.findMany({
       where: {
         id_periodo: id_periodo,
         activo: true,
-        fecha: { equals: fechaActual },
+        fecha: { gte: fechaInicio, lt: fechaFin },
         hora_inicio: { lte: horaActualStr },
         hora_fin: { gte: horaActualStr }
       }

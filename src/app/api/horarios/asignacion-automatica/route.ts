@@ -7,6 +7,26 @@ import { GestorVentanasAtencion } from "@/services/ventanas/GestorVentanasAtenci
 
 const ROLES_VENTANAS = ['administrador_sistema', 'operador_horarios'];
 
+function getFechaPeruMidnight(date: Date): Date {
+  const fechaStr = date.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+  const [year, month, day] = fechaStr.split('-').map(Number);
+  return new Date(Date.UTC(year, month - 1, day, 5, 0, 0));
+}
+
+function getHoraPeru(date: Date): string {
+  return date.toLocaleTimeString('en-GB', {
+    timeZone: 'America/Lima',
+    hour12: false,
+    hour: '2-digit',
+    minute: '2-digit'
+  });
+}
+
+function getMinutosDesdeHoraPeru(date: Date): number {
+  const [h, m] = getHoraPeru(date).split(':').map(Number);
+  return h * 60 + m;
+}
+
 export async function POST(request: Request) {
   try {
     const session = await getServerSession(authOptions);
@@ -130,7 +150,7 @@ export async function POST(request: Request) {
         regenerar_ventanas ? 0 : ventanasExistentes.length
       );
 
-      let fechaActualVentana = new Date(ahora);
+      let fechaActualVentana = getFechaPeruMidnight(ahora);
       let horaActualVentana = hora_inicio || "08:00";
       let ordenPrioridad = regenerar_ventanas
         ? 1
@@ -138,24 +158,27 @@ export async function POST(request: Request) {
 
       if (!regenerar_ventanas && ventanasExistentes.length > 0) {
         const ultima = ventanasExistentes[ventanasExistentes.length - 1];
-        fechaActualVentana = new Date(ultima.fecha);
+        fechaActualVentana = getFechaPeruMidnight(new Date(ultima.fecha));
         horaActualVentana = ultima.hora_fin;
-      } else {
-        const [horas, minutos] = horaActualVentana.split(':').map(Number);
-        fechaActualVentana.setHours(horas, minutos, 0, 0);
       }
+      // Aplicar la hora de inicio en Peru a fechaActualVentana
+      const [horasIni, minutosIni] = horaActualVentana.split(':').map(Number);
+      fechaActualVentana = new Date(fechaActualVentana.getTime() + horasIni * 3600000 + minutosIni * 60000);
 
       for (let i = 0; i < docentesSinVentana.length; i++) {
         const docente = docentesSinVentana[i];
-        
-        const horaInicioVentana = `${String(fechaActualVentana.getHours()).padStart(2, '0')}:${String(fechaActualVentana.getMinutes()).padStart(2, '0')}`;
+
+        const horaInicioVentana = getHoraPeru(fechaActualVentana);
         const fechaFinVentana = addMinutes(fechaActualVentana, intervalo_minutos || 15);
-        const horaFinVentana = `${String(fechaFinVentana.getHours()).padStart(2, '0')}:${String(fechaFinVentana.getMinutes()).padStart(2, '0')}`;
+        const horaFinVentana = getHoraPeru(fechaFinVentana);
+
+        // Guardar fecha como medianoche en Peru (UTC-5)
+        const fechaPeruMidnight = getFechaPeruMidnight(fechaActualVentana);
         
         const ventana = await prisma.ventanaAtencion.create({
           data: {
             id_periodo: parseInt(id_periodo),
-            fecha: new Date(fechaActualVentana),
+            fecha: fechaPeruMidnight,
             hora_inicio: horaInicioVentana,
             hora_fin: horaFinVentana,
             modalidad: docente.condicion,
@@ -365,7 +388,7 @@ export async function POST(request: Request) {
         ventanas_creadas: ventanasCreadas,
         modo,
         intervalo_minutos: modo === "intervalo" ? intervalo_minutos : null,
-        fecha_inicio: ahora.toISOString(),
+        fecha_inicio: getHoraPeru(ahora),
         fecha_fin_intervalo: fechaFinIntervalo?.toISOString() || null
       },
       { status: 200 }

@@ -1,7 +1,11 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { format } from 'date-fns';
+
+const prioridadCategoria = ['AUXILIAR', 'ASOCIADO', 'PRINCIPAL'];
+const prioridadCondicion = ['ORDINARIO', 'CONTRATADO', 'EXTRAORDINARIO'];
 
 function getFechaLocalPeru(date: Date) {
   return date.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
@@ -19,6 +23,28 @@ function getHoraLocalPeru(date: Date) {
 function getMinutosDesdeHora(hora: string) {
   const [h, m] = hora.split(':').map(Number);
   return h * 60 + m;
+}
+
+// Función de ordenamiento EXACTA igual a la de GestorVentanasAtencion
+function ordenarDocentes(docentes: any[]) {
+  return [...docentes].sort((a, b) => {
+    const condA = a.condicion || 'ORDINARIO';
+    const condB = b.condicion || 'ORDINARIO';
+    const idxA = prioridadCondicion.indexOf(condA);
+    const idxB = prioridadCondicion.indexOf(condB);
+    if (idxA !== idxB) return idxA - idxB;
+
+    const catA = a.categoriaDocente || 'AUXILIAR';
+    const catB = b.categoriaDocente || 'AUXILIAR';
+    const idxCatA = prioridadCategoria.indexOf(catA);
+    const idxCatB = prioridadCategoria.indexOf(catB);
+    if (idxCatA !== idxCatB) return idxCatB - idxCatA;
+
+    if (a.fecha_ingreso && b.fecha_ingreso) {
+      return new Date(a.fecha_ingreso).getTime() - new Date(b.fecha_ingreso).getTime();
+    }
+    return 0;
+  });
 }
 
 export async function GET(request: Request) {
@@ -49,85 +75,6 @@ export async function GET(request: Request) {
 
     console.log('📋 CHECK-INTERVAL - Período ID:', periodoId);
 
-    // 1. Obtener todos los docentes con cursos asignados en el período (estado BORRADOR)
-    const docentes = await prisma.docente.findMany({
-      where: {
-        activo: true,
-        declaraciones_horarias: {
-          some: {
-            id_periodo: periodoId,
-            estado: 'BORRADOR',
-            cargas_lectivas: {
-              some: {}
-            }
-          }
-        }
-      },
-      include: {
-        usuario: true,
-        declaraciones_horarias: {
-          where: {
-            id_periodo: periodoId,
-            estado: 'BORRADOR'
-          },
-          include: {
-            cargas_lectivas: true
-          }
-        }
-      },
-      orderBy: [
-        { categoriaDocente: 'asc' }, // PRINCIPAL, ASOCIADO, AUXILIAR
-        { fecha_ingreso: 'asc' }     // más antiguo primero
-      ]
-    });
-
-    console.log('📋 CHECK-INTERVAL - Docentes con cursos asignados:', docentes.map((d: { id_docente: number; nombres: string; apellidos: string; categoriaDocente: string | null; fecha_ingreso: Date | null }) => ({
-      id: d.id_docente,
-      nombre: `${d.nombres} ${d.apellidos}`,
-      categoria: d.categoriaDocente,
-      ingreso: d.fecha_ingreso
-    })));
-
-    // 2. Obtener la ventana activa más próxima (la primera no completada)
-    const ventanas = await prisma.ventanaAtencion.findMany({
-      where: {
-        id_periodo: periodoId,
-        activo: true,
-        completado: false
-      },
-      orderBy: { orden_prioridad: 'asc' }
-    });
-
-    console.log('📋 CHECK-INTERVAL - Ventanas activas:', ventanas.map((v: { id_ventana: number; orden_prioridad: number; hora_inicio: string; hora_fin: string }) => ({
-      id: v.id_ventana,
-      orden: v.orden_prioridad,
-      inicio: v.hora_inicio,
-      fin: v.hora_fin
-    })));
-
-    if (ventanas.length === 0) {
-      return NextResponse.json({
-        soloLectura: true,
-        mensaje: 'No hay ventanas activas en este período.',
-        hayVentanas: false
-      });
-    }
-
-    // Tomar la primera ventana no completada (la de mayor prioridad)
-    const ventanaActual = ventanas[0];
-
-    // 3. Determinar qué docente corresponde a esta ventana (por orden de prioridad)
-    const indiceDocente = ventanaActual.orden_prioridad - 1;
-    const docenteConTurno = docentes[indiceDocente];
-
-    if (!docenteConTurno) {
-      return NextResponse.json({
-        soloLectura: true,
-        mensaje: 'No hay docente asignado para esta ventana.',
-        hayVentanas: true
-      });
-    }
-
     // 4. Obtener el docente logueado
     let docenteLogueado = null;
 
@@ -145,8 +92,6 @@ export async function GET(request: Request) {
       });
     }
 
-    console.log('📋 CHECK-INTERVAL - docenteLogueado:', docenteLogueado?.id_docente, docenteLogueado?.nombres);
-
     if (!docenteLogueado) {
       return NextResponse.json({
         soloLectura: false,
@@ -156,20 +101,113 @@ export async function GET(request: Request) {
       });
     }
 
-    // 5. Verificar si el docente logueado es el que tiene el turno
-    const esMiTurno = docenteLogueado.id_docente === docenteConTurno.id_docente;
+    console.log('📋 CHECK-INTERVAL - docenteLogueado:', docenteLogueado.id_docente, docenteLogueado.nombres);
+
+    // PRIMERO: Verificar si el docente ya tiene horarios confirmados o asignados
+    // Si tiene horarios, permitir acceso en modo solo lectura para verlos
+    const horariosConfirmados = await prisma.horarioAsignado.findMany({
+      where: {
+        id_docente: docenteLogueado.id_docente,
+        estado: {
+          in: ["confirmado", "definitivo", "asignado", "publicado"]
+        }
+      },
+      take: 1
+    });
+
+    if (horariosConfirmados.length > 0) {
+      return NextResponse.json({
+        soloLectura: true,
+        mensaje: "Viendo horario confirmado",
+        hayVentanas: true
+      });
+    }
+
+    // 1. Obtener todos los docentes con cursos asignados en el período (todos los estados relevantes)
+    const docentesRaw = await prisma.docente.findMany({
+      where: {
+        activo: true,
+        declaraciones_horarias: {
+          some: {
+            id_periodo: periodoId,
+            cargas_lectivas: {
+              some: {}
+            }
+          }
+        }
+      },
+      include: {
+        usuario: true,
+        declaraciones_horarias: {
+          where: {
+            id_periodo: periodoId
+          },
+          include: {
+            cargas_lectivas: true
+          }
+        }
+      }
+    });
+
+    // Ordenar usando la misma lógica que GestorVentanasAtencion!
+    const docentes = ordenarDocentes(docentesRaw);
+
+    console.log('📋 CHECK-INTERVAL - Docentes con cursos asignados (ordenados):', docentes.map((d: any) => ({
+      id: d.id_docente,
+      nombre: `${d.nombres} ${d.apellidos}`,
+      categoria: d.categoriaDocente,
+      ingreso: d.fecha_ingreso
+    })));
+
+    // 2. Obtener todas las ventanas
+    const ventanas = await prisma.ventanaAtencion.findMany({
+      where: {
+        id_periodo: periodoId,
+        activo: true
+      },
+      orderBy: { orden_prioridad: 'asc' }
+    });
+
+    console.log('📋 CHECK-INTERVAL - Ventanas activas:', ventanas.map((v: any) => ({
+      id: v.id_ventana,
+      orden: v.orden_prioridad,
+      inicio: v.hora_inicio,
+      fin: v.hora_fin
+    })));
+
+    if (ventanas.length === 0) {
+      return NextResponse.json({
+        soloLectura: true,
+        mensaje: 'No hay ventanas activas en este período.',
+        hayVentanas: false
+      });
+    }
+
+    // 3. Encontrar la ventana del docente logueado
+    const indexDocente = docentes.findIndex((d: any) => d.id_docente === docenteLogueado.id_docente);
+    const ventanaDocente = indexDocente !== -1 && ventanas.length > indexDocente ? ventanas[indexDocente] : null;
+
+    if (!ventanaDocente) {
+      return NextResponse.json({
+        soloLectura: true,
+        mensaje: 'No tiene turnos programados en este periodo.',
+        hayVentanas: true
+      });
+    }
+
+    console.log('📋 CHECK-INTERVAL - Ventana del docente:', ventanaDocente);
 
     // 6. Verificar si la hora actual está dentro del intervalo de la ventana en hora local de Lima
     const ahora = new Date();
     const hoyLima = getFechaLocalPeru(ahora);
-    const fechaVentana = new Date(ventanaActual.fecha).toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+    const fechaVentana = new Date(ventanaDocente.fecha).toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
 
     let dentroDeHorario = false;
     let segundosRestantes = null;
     if (fechaVentana === hoyLima) {
       const horaActualLima = getHoraLocalPeru(ahora);
-      const inicioMin = getMinutosDesdeHora(ventanaActual.hora_inicio);
-      const finMin = getMinutosDesdeHora(ventanaActual.hora_fin);
+      const inicioMin = getMinutosDesdeHora(ventanaDocente.hora_inicio);
+      const finMin = getMinutosDesdeHora(ventanaDocente.hora_fin);
       const ahoraMin = getMinutosDesdeHora(horaActualLima);
       dentroDeHorario = ahoraMin >= inicioMin && ahoraMin < finMin;
 
@@ -181,45 +219,22 @@ export async function GET(request: Request) {
     }
 
     // 7. Construir respuesta
-    if (!esMiTurno) {
-      const siguienteVentana = ventanas[1] || null;
-      let mensaje = `Actualmente no se encuentra en su ventana de atención asignada.`;
-      if (siguienteVentana) {
-        mensaje += ` Su turno está programado para el día ${siguienteVentana.fecha.toLocaleDateString('es-PE')} a las ${siguienteVentana.hora_inicio}.`;
-      } else {
-        mensaje += ' No hay más ventanas programadas.';
-      }
-      return NextResponse.json({
-        soloLectura: true,
-        mensaje,
-        hayVentanas: true,
-        esMiTurno: false,
-        ventanaActual: {
-          docente: `${docenteConTurno.nombres} ${docenteConTurno.apellidos}`,
-          horaInicio: ventanaActual.hora_inicio,
-          horaFin: ventanaActual.hora_fin,
-          fecha: ventanaActual.fecha
-        }
-      });
-    }
-
-    // Es su turno pero no está dentro del horario activo
     if (!dentroDeHorario) {
-      const fechaInicioLima = ventanaActual.fecha.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+      const fechaInicioLima = ventanaDocente.fecha.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
       const horaActualLima = getHoraLocalPeru(ahora);
-      const inicioMin = getMinutosDesdeHora(ventanaActual.hora_inicio);
-      const finMin = getMinutosDesdeHora(ventanaActual.hora_fin);
+      const inicioMin = getMinutosDesdeHora(ventanaDocente.hora_inicio);
+      const finMin = getMinutosDesdeHora(ventanaDocente.hora_fin);
       const ahoraMin = getMinutosDesdeHora(horaActualLima);
 
       let mensaje = 'Su ventana de atención no está activa en este momento.';
       if (fechaVentana > hoyLima) {
-        mensaje = `Su turno está programado para el día ${new Date(ventanaActual.fecha).toLocaleDateString('es-PE')} a las ${ventanaActual.hora_inicio}.`;
+        mensaje = `Su turno está programado para el día ${new Date(ventanaDocente.fecha).toLocaleDateString('es-PE')} a las ${ventanaDocente.hora_inicio}.`;
       } else if (fechaVentana < hoyLima) {
-        mensaje = `Su turno correspondía al día ${new Date(ventanaActual.fecha).toLocaleDateString('es-PE')} a las ${ventanaActual.hora_inicio} y ya finalizó. El sistema está en modo solo lectura.`;
+        mensaje = `Su turno correspondió al día ${new Date(ventanaDocente.fecha).toLocaleDateString('es-PE')} a las ${ventanaDocente.hora_inicio} y ya finalizó. El sistema está en modo solo lectura.`;
       } else if (ahoraMin < inicioMin) {
-        mensaje = 'Su ventana de atención ha comenzado pero aún no está dentro del horario. Por favor, espere hasta la hora de inicio.';
+        mensaje = `Su turno está programado para hoy a las ${ventanaDocente.hora_inicio}. Por favor, espere hasta la hora de inicio.`;
       } else {
-        mensaje = `Su ventana de atención terminó a las ${ventanaActual.hora_fin}. El sistema está en modo solo lectura.`;
+        mensaje = `Su ventana de atención finalizó a las ${ventanaDocente.hora_fin}. El sistema está en modo solo lectura.`;
       }
 
       return NextResponse.json({
@@ -229,17 +244,17 @@ export async function GET(request: Request) {
         esMiTurno: true,
         dentroDeHorario: false,
         ventanaActual: {
-          horaInicio: ventanaActual.hora_inicio,
-          horaFin: ventanaActual.hora_fin,
-          fecha: ventanaActual.fecha
+          horaInicio: ventanaDocente.hora_inicio,
+          horaFin: ventanaDocente.hora_fin,
+          fecha: ventanaDocente.fecha
         }
       });
     }
 
     // Turno activo y dentro del horario
     console.log('⏱️  CHECK-INTERVAL - Cálculo de segundosRestantes:', {
-      fechaVentana: ventanaActual.fecha.toISOString().split('T')[0],
-      horaFin: ventanaActual.hora_fin,
+      fechaVentana: ventanaDocente.fecha.toISOString().split('T')[0],
+      horaFin: ventanaDocente.hora_fin,
       ahoraLima: getHoraLocalPeru(ahora),
       hoyLima,
       fechaVentanaLima: fechaVentana,
@@ -254,10 +269,10 @@ export async function GET(request: Request) {
       dentroDeHorario: true,
       segundos_restantes: Math.max(0, segundosRestantes ?? 0),
       ventanaActual: {
-        horaInicio: ventanaActual.hora_inicio,
-        horaFin: ventanaActual.hora_fin,
-        fecha: ventanaActual.fecha,
-        intervaloMinutos: ventanaActual.intervalo_minutos
+        horaInicio: ventanaDocente.hora_inicio,
+        horaFin: ventanaDocente.hora_fin,
+        fecha: ventanaDocente.fecha,
+        intervaloMinutos: ventanaDocente.intervalo_minutos
       }
     });
 

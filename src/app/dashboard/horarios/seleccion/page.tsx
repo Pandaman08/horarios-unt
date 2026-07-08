@@ -1,9 +1,10 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { MatrizDisponibilidad } from "@/components/horarios/MatrizDisponibilidad";
+import { HorarioGrafico } from "@/components/horarios/HorarioGrafico";
 import { ProgresoCursos } from "@/components/horarios/ProgresoCursos";
 import { Card, CardContent } from "@/components/ui/card";
 import {
@@ -24,7 +25,8 @@ import {
   Clock,
   Layout as LayoutIcon,
   Calendar,
-  BookOpen
+  BookOpen,
+  Grid3X3
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -71,6 +73,7 @@ export default function SeleccionHorariosLectivosPage() {
   const [horariosGenerados, setHorariosGenerados] = useState<any[]>([]);
   const [mensajeIntervalo, setMensajeIntervalo] = useState<string>("");
   const [declaracion, setDeclaracion] = useState<any>(null);
+  const [vistaHorarioGrafico, setVistaHorarioGrafico] = useState(false);
   
   // Timer simple - solo para visualización
   const timerIntervalRef = useRef<NodeJS.Timeout | null>(null);
@@ -724,37 +727,67 @@ export default function SeleccionHorariosLectivosPage() {
                   )
                 ) : cursoSeleccionado && idGrupo && idAmbiente && session?.user?.id_docente ? (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border text-xs">
-                      <span className="font-semibold text-foreground">
-                        {cursosProgreso.find(
-                          (c) => c.id_curso === cursoSeleccionado.id && c.tipo_clase === cursoSeleccionado.tipo
-                        )?.nombre || "Curso seleccionado"}
-                      </span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground capitalize">{cursoSeleccionado.tipo}</span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground">
-                        Grupo {grupos.find((g) => g.id_grupo.toString() === idGrupo)?.codigo_grupo || idGrupo}
-                      </span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground">
-                        {ambientesFiltrados.find((a) => a.id_ambiente.toString() === idAmbiente)?.codigo}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">
+                          {cursosProgreso.find(
+                            (c) => c.id_curso === cursoSeleccionado.id && c.tipo_clase === cursoSeleccionado.tipo
+                          )?.nombre || "Curso seleccionado"}
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground capitalize">{cursoSeleccionado.tipo}</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">
+                          Grupo {grupos.find((g) => g.id_grupo.toString() === idGrupo)?.codigo_grupo || idGrupo}
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">
+                          {ambientesFiltrados.find((a) => a.id_ambiente.toString() === idAmbiente)?.codigo}
+                        </span>
+                      </div>
+                      <Button
+                        variant={vistaHorarioGrafico ? "default" : "secondary"}
+                        size="sm"
+                        onClick={() => setVistaHorarioGrafico(!vistaHorarioGrafico)}
+                        className="text-xs h-8"
+                      >
+                        <Grid3X3 className="h-3.5 w-3.5 mr-1.5" />
+                        Horario
+                      </Button>
                     </div>
-                    <MatrizDisponibilidad
-                      id_periodo={parseInt(idPeriodo)}
-                      id_ambiente={parseInt(idAmbiente)}
-                      id_docente_actual={session.user.id_docente}
-                      id_curso_actual={cursoSeleccionado.id}
-                      id_grupo_actual={parseInt(idGrupo)}
-                      tipo_clase_actual={cursoSeleccionado.tipo}
-                      soloLectura={soloLectura}
-                      onSelectionChange={() => {
-                        console.log('🔄 [MATRIZ] Selección cambió, refrescando datos...');
-                        fetchDocenteCursos();
-                        verificarHorariosGenerados();
-                      }}
-                    />
+
+                    {vistaHorarioGrafico ? (
+                      <HorarioGrafico
+                        modo="lectiva"
+                        id_periodo={parseInt(idPeriodo)}
+                        id_docente_actual={session.user.id_docente}
+                        id_curso_actual={cursoSeleccionado.id}
+                        id_grupo_actual={parseInt(idGrupo)}
+                        id_ambiente_actual={parseInt(idAmbiente)}
+                        tipo_clase_actual={cursoSeleccionado.tipo}
+                        soloLectura={soloLectura}
+                        onSelectionChange={() => {
+                          console.log('🔄 [HORARIO GRAFICO] Selección cambió, refrescando datos...');
+                          fetchDocenteCursos();
+                          verificarHorariosGenerados();
+                        }}
+                      />
+                    ) : (
+                      <MatrizDisponibilidad
+                        id_periodo={parseInt(idPeriodo)}
+                        id_ambiente={parseInt(idAmbiente)}
+                        id_docente_actual={session.user.id_docente}
+                        id_curso_actual={cursoSeleccionado.id}
+                        id_grupo_actual={parseInt(idGrupo)}
+                        tipo_clase_actual={cursoSeleccionado.tipo}
+                        soloLectura={soloLectura}
+                        onSelectionChange={() => {
+                          console.log('🔄 [MATRIZ] Selección cambió, refrescando datos...');
+                          fetchDocenteCursos();
+                          verificarHorariosGenerados();
+                        }}
+                      />
+                    )}
                   </div>
                 ) : (
                   <Card className="p-10 border-dashed border-border bg-muted/20">

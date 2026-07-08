@@ -268,6 +268,7 @@ export class GestorVentanasAtencion {
 
   /**
    * Verifica si un docente tiene acceso en el momento actual
+   * Usa timezone America/Lima para todas las comparaciones
    */
   static async verificarAccesoDocente(id_docente: number) {
     const docente = await prisma.docente.findUnique({
@@ -318,46 +319,71 @@ export class GestorVentanasAtencion {
       orderBy: { orden_prioridad: 'asc' }
     });
 
+    // Obtener fecha/hora actual en Peru
     const ahora = new Date();
-    const hoySoloFechaStr = format(ahora, 'yyyy-MM-dd');
-    const horaActual = format(ahora, 'HH:mm');
+    const hoyLima = ahora.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+    const horaActualLima = ahora.toLocaleTimeString('en-GB', {
+      timeZone: 'America/Lima',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const ahoraMin = (() => {
+      const [h, m] = horaActualLima.split(':').map(Number);
+      return h * 60 + m;
+    })();
 
     if (indexDocente !== -1 && ventanas.length > indexDocente) {
       const ventana = ventanas[indexDocente];
-      const fechaInicio = new Date(ventana.fecha);
-      const [horasInicio, minutosInicio] = ventana.hora_inicio.split(':').map(Number);
-      const [horasFin, minutosFin] = ventana.hora_fin.split(':').map(Number);
-      
-      fechaInicio.setHours(horasInicio, minutosInicio, 0, 0);
-      const fechaFin = new Date(fechaInicio);
-      fechaFin.setHours(horasFin, minutosFin, 0, 0);
+      const fechaVentanaLima = new Date(ventana.fecha).toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+      const inicioMin = (() => {
+        const [h, m] = ventana.hora_inicio.split(':').map(Number);
+        return h * 60 + m;
+      })();
+      const finMin = (() => {
+        const [h, m] = ventana.hora_fin.split(':').map(Number);
+        return h * 60 + m;
+      })();
 
-      if (ahora < fechaInicio) {
-        return { 
-          tieneAcceso: false, 
+      if (fechaVentanaLima > hoyLima) {
+        return {
+          tieneAcceso: false,
           soloLectura: false,
-          mensaje: `Su turno está programado para el ${format(fechaInicio, 'dd/MM/yyyy')} a las ${ventana.hora_inicio}. (Hora del servidor: ${horaActual})` 
+          mensaje: `Su turno está programado para el ${new Date(ventana.fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })} a las ${ventana.hora_inicio}.`
         };
-      } else if (ahora >= fechaInicio && ahora <= fechaFin) {
-        const segundosRestantes = Math.max(0, Math.floor((fechaFin.getTime() - ahora.getTime()) / 1000));
-        return { 
-          tieneAcceso: true, 
+      } else if (fechaVentanaLima < hoyLima) {
+        return {
+          tieneAcceso: false,
+          soloLectura: true,
+          mensaje: `Su turno correspondió al día ${new Date(ventana.fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })} a las ${ventana.hora_inicio} y ya finalizó. El sistema está en modo solo lectura.`
+        };
+      } else if (ahoraMin < inicioMin) {
+        return {
+          tieneAcceso: false,
+          soloLectura: false,
+          mensaje: `Su turno está programado para hoy a las ${ventana.hora_inicio}. Por favor, espere hasta la hora de inicio.`
+        };
+      } else if (ahoraMin >= inicioMin && ahoraMin < finMin) {
+        const segundosRestantes = Math.max(0, (finMin - ahoraMin) * 60 - ahora.getSeconds());
+        return {
+          tieneAcceso: true,
           segundos_restantes: segundosRestantes,
-          id_ventana: ventana.id_ventana 
+          id_ventana: ventana.id_ventana
         };
       } else {
-        return { 
-          tieneAcceso: false, 
+        return {
+          tieneAcceso: false,
           soloLectura: true,
-          mensaje: `Su ventana de atención finalizó el ${format(fechaFin, 'dd/MM/yyyy')} a las ${ventana.hora_fin}. El sistema está en modo solo lectura.` 
+          mensaje: `Su ventana de atención finalizó a las ${ventana.hora_fin}. El sistema está en modo solo lectura.`
         };
       }
     }
 
-    return { 
-      tieneAcceso: false, 
+    return {
+      tieneAcceso: false,
       soloLectura: false,
-      mensaje: `No tiene turnos programados en este periodo. (Fecha servidor: ${hoySoloFechaStr}, Hora servidor: ${horaActual})` 
+      mensaje: `No tiene turnos programados en este periodo.`
     };
   }
 }

@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { toast } from "sonner";
@@ -15,9 +15,11 @@ import {
   Download,
   FileText,
   FileSpreadsheet,
+  Grid3X3,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { HorarioGrafico } from "./HorarioGrafico";
 
 const ESTADOS_LECTIVA_DECLARADA = [
   "LECTIVA_CONFIRMADA",
@@ -256,7 +258,7 @@ export function MiHorarioDocenteView() {
   const [estadoDeclaracion, setEstadoDeclaracion] = useState<string | null>(null);
   const [cargaAprobadaPorDecano, setCargaAprobadaPorDecano] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [view, setView] = useState<"matriz" | "lista">("matriz");
+  const [view, setView] = useState<"matriz" | "lista" | "grafico">("matriz");
   const [generatingReport, setGeneratingReport] = useState(false);
 
   const [mostrarNoLectivas, setMostrarNoLectivas] = useState(true);
@@ -476,6 +478,16 @@ export function MiHorarioDocenteView() {
               Vista Matriz
             </Button>
             <Button
+              variant={view === "grafico" ? "default" : "outline"}
+              size="sm"
+              onClick={() => setView("grafico")}
+              disabled={!puedeUsarOpciones}
+              className={view === "grafico" ? undefined : "bg-card border-border text-card-foreground hover:bg-muted"}
+            >
+              <Grid3X3 className="h-4 w-4 mr-1" />
+              Horario
+            </Button>
+            <Button
               variant={view === "lista" ? "default" : "outline"}
               size="sm"
               onClick={() => setView("lista")}
@@ -557,7 +569,7 @@ export function MiHorarioDocenteView() {
 
       {cargaAprobadaPorDecano && horariosVisibles.length > 0 && (
         <>
-      {/* ── Vista Matriz / Lista ─────────────────────────────────────────── */}
+      {/* ── Vista Matriz / Lista / Gráfico ─────────────────────────────────────────── */}
       {view === "matriz" ? (
         <>
           <div className="overflow-x-auto rounded-2xl border border-border bg-card">
@@ -645,6 +657,13 @@ export function MiHorarioDocenteView() {
             </div>
           </div>
         </>
+      ) : view === "grafico" ? (
+        <HorarioGrafico
+          modo="lectiva"
+          id_periodo={periodoSeleccionado?.id_periodo ?? periodoActivo?.id_periodo ?? 0}
+          soloLectura={true}
+          horariosAsignados={horariosVisibles}
+        />
       ) : (
         /* ── Vista Lista ───────────────────────────────────────────────── */
         <div className="bg-card border border-border rounded-2xl overflow-hidden">

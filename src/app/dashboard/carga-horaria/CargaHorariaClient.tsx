@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { usePeriodo } from '@/contexts/PeriodoContext';
@@ -49,6 +49,8 @@ import {
   type TipoContrato as TipoContratoType 
 } from '@/lib/constants/regimenHoras';
 import { MatrizDisponibilidad } from '@/components/horarios/MatrizDisponibilidad';
+import { HorarioGrafico } from '@/components/horarios/HorarioGrafico';
+import { Grid3X3 } from 'lucide-react';
 import {
   actividadPermitidaParaRegimen,
   ETIQUETAS_ART_12_4,
@@ -188,6 +190,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [actividadNoLectivaSeleccionada, setActividadNoLectivaSeleccionada] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [redirectingASeleccion, setRedirectingASeleccion] = useState(false);
+  const [vistaHorarioGrafico, setVistaHorarioGrafico] = useState(false);
   const lastSavedSnapshotRef = useRef<string>('');
 
   const ESTADOS_PASO_LECTIVA_COMPLETO = [
@@ -891,7 +894,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             </div>
             <div className="flex flex-wrap gap-2">
               {puedeEditarNoLectiva && (
-                <Button 
+                <Button>
                   onClick={handleCreateOrSave} 
                   variant="outline" 
                   size="sm"
@@ -1185,26 +1188,51 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
 
             {/* Matriz: carga lectiva bloqueada + carga no lectiva asignada */}
             <div className="rounded-lg border border-border bg-muted/10 overflow-hidden min-w-0">
-              <div className="px-3 py-2 border-b border-border bg-card/80">
-                <p className="text-[11px] font-bold text-foreground">Matriz de horarios</p>
-                <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
-                  {actividadNoLectivaSeleccionada
-                    ? 'Azul = carga lectiva (bloqueada). Ámbar = su actividad no lectiva seleccionada. Clic en celdas libres para asignar.'
-                    : 'Azul = carga lectiva. Gris/ámbar = carga no lectiva ya asignada. Seleccione una actividad abajo para agregar o quitar bloques.'}
-                </p>
+              <div className="px-3 py-2 border-b border-border bg-card/80 flex items-center justify-between">
+                <div>
+                  <p className="text-[11px] font-bold text-foreground">Matriz de horarios</p>
+                  <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                    {actividadNoLectivaSeleccionada
+                      ? 'Azul = carga lectiva (bloqueada). Ámbar = su actividad no lectiva seleccionada. Clic en celdas libres para asignar.'
+                      : 'Azul = carga lectiva. Gris/ámbar = carga no lectiva ya asignada. Seleccione una actividad abajo para agregar o quitar bloques.'}
+                  </p>
+                </div>
+                <Button
+                  variant={vistaHorarioGrafico ? "default" : "secondary"}
+                  size="sm"
+                  onClick={() => setVistaHorarioGrafico(!vistaHorarioGrafico)}
+                  className="text-xs h-7"
+                >
+                  <Grid3X3 className="h-3 w-3 mr-1.5" />
+                  Horario
+                </Button>
               </div>
               <div className="w-full min-w-0 overflow-x-auto p-2 sm:p-3">
-                <MatrizDisponibilidad
-                  id_periodo={periodoActivo?.id_periodo || 0}
-                  id_docente_actual={initialDocente?.id_docente}
-                  soloLectura={!puedeEditarNoLectiva}
-                  tipoVista="no-lectiva"
-                  actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
-                  actividadesNoLectivas={cargasNoLectivas}
-                  horariosLectivosDocente={horariosLectivosSoloLectiva}
-                  onCellClick={handleNoLectivaCellClick}
-                  onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
-                />
+                {vistaHorarioGrafico ? (
+                  <HorarioGrafico
+                    modo="no-lectiva"
+                    id_periodo={periodoActivo?.id_periodo || 0}
+                    id_docente_actual={initialDocente?.id_docente}
+                    actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
+                    actividadesNoLectivas={cargasNoLectivas}
+                    horariosLectivosDocente={horariosLectivosSoloLectiva}
+                    soloLectura={!puedeEditarNoLectiva}
+                    onCellClick={handleNoLectivaCellClick}
+                    onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                  />
+                ) : (
+                  <MatrizDisponibilidad
+                    id_periodo={periodoActivo?.id_periodo || 0}
+                    id_docente_actual={initialDocente?.id_docente}
+                    soloLectura={!puedeEditarNoLectiva}
+                    tipoVista="no-lectiva"
+                    actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
+                    actividadesNoLectivas={cargasNoLectivas}
+                    horariosLectivosDocente={horariosLectivosSoloLectiva}
+                    onCellClick={handleNoLectivaCellClick}
+                    onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                  />
+                )}
               </div>
             </div>
 

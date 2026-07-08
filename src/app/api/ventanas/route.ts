@@ -10,7 +10,9 @@ function parseFechaLocal(fecha?: string | Date | null) {
   if (fecha instanceof Date) return new Date(fecha);
 
   const [year, month, day] = fecha.split('-').map(Number);
-  return new Date(year, month - 1, day);
+  // Construir como medianoche en Peru (UTC-5)
+  // Así al leer con timeZone: 'America/Lima' se obtiene la fecha correcta
+  return new Date(Date.UTC(year, month - 1, day, 5, 0, 0));
 }
 
 async function requireRolVentanas() {
@@ -327,7 +329,7 @@ export async function POST(request: Request) {
       horaActual = horaFin;
 
       if (horaActual > horaFinJornada) {
-        fechaInicio.setDate(fechaInicio.getDate() + 1);
+        fechaInicio = new Date(fechaInicio.getTime() + 86400000);
         horaActual = hora_inicio_jornada || '08:00';
       }
     }
