@@ -99,7 +99,7 @@
 }
 
 :root {
-  --font-size-base: 16px;
+  --font-size-base: 18px;
   --background: oklch(0.985 0.002 247);
   --foreground: oklch(0.2 0.02 260);
   --card: oklch(1 0 0);
@@ -203,43 +203,43 @@
 
   /* Patrón unificado de páginas del dashboard */
   .page-shell {
-    @apply space-y-4 sm:space-y-6 animate-in fade-in duration-500 w-full min-w-0;
+    @apply space-y-4 sm:space-y-5 lg:space-y-6 animate-in fade-in duration-500 w-full max-w-full min-w-0;
   }
 
   .page-header-card {
-    @apply flex flex-col gap-4 bg-card p-4 sm:p-6 rounded-xl border border-border shadow-sm;
+    @apply flex flex-col gap-3 sm:gap-4 bg-card p-4 sm:p-5 lg:p-6 rounded-xl border border-border shadow-sm w-full;
   }
 
   .page-header-top {
-    @apply flex flex-col lg:flex-row justify-between items-start lg:items-center gap-4;
+    @apply flex flex-col lg:flex-row justify-between items-stretch lg:items-center gap-3 sm:gap-4;
   }
 
   .page-header-brand {
-    @apply flex items-center gap-3 min-w-0;
+    @apply flex items-center gap-3 min-w-0 shrink-0;
   }
 
   .page-icon-box {
-    @apply h-10 w-10 shrink-0 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm;
+    @apply h-9 w-9 sm:h-10 sm:w-10 shrink-0 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm;
   }
 
   .page-icon {
-    @apply h-5 w-5 text-primary;
+    @apply h-4 w-4 sm:h-5 sm:w-5 text-primary;
   }
 
   .page-title {
-    @apply text-lg font-bold text-foreground tracking-tight leading-tight;
+    @apply text-base sm:text-lg font-bold text-foreground tracking-tight leading-tight;
   }
 
   .page-subtitle {
-    @apply text-sm text-muted-foreground mt-0.5;
+    @apply text-xs sm:text-sm text-muted-foreground mt-0.5;
   }
 
   .page-toolbar {
-    @apply flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-3 w-full lg:w-auto lg:ml-auto;
+    @apply flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-2 sm:gap-3 w-full lg:flex-1 lg:justify-end;
   }
 
   .page-search-wrap {
-    @apply relative w-full sm:min-w-[220px] sm:flex-1 lg:max-w-sm;
+    @apply relative w-full sm:min-w-[200px] sm:flex-1 lg:max-w-xs xl:max-w-sm;
   }
 
   .page-search-icon {
@@ -247,11 +247,11 @@
   }
 
   .page-search {
-    @apply pl-10 h-10 rounded-lg border-input bg-muted/50 text-sm font-medium focus-visible:ring-1 focus-visible:ring-primary w-full;
+    @apply pl-10 h-9 sm:h-10 rounded-lg border-input bg-muted/50 text-sm font-medium focus-visible:ring-1 focus-visible:ring-primary w-full;
   }
 
   .page-btn {
-    @apply h-10 rounded-lg text-sm font-semibold shadow-sm w-full sm:w-auto;
+    @apply h-9 sm:h-10 rounded-lg text-sm font-semibold shadow-sm w-full sm:w-auto;
   }
 
   .page-label {
@@ -259,30 +259,30 @@
   }
 
   .page-input {
-    @apply h-10 rounded-lg border-input bg-muted/50 text-sm font-medium;
+    @apply h-9 sm:h-10 rounded-lg border-input bg-muted/50 text-sm font-medium w-full;
   }
 
   .page-table-card {
-    @apply bg-card rounded-xl border border-border shadow-sm overflow-hidden;
+    @apply bg-card rounded-xl border border-border shadow-sm w-full overflow-hidden;
   }
 
   .page-table-th {
-    @apply text-xs font-semibold text-muted-foreground uppercase tracking-wider px-4 sm:px-6 py-3 whitespace-nowrap;
+    @apply text-[11px] sm:text-xs font-semibold text-muted-foreground uppercase tracking-wider px-3 sm:px-4 py-3 whitespace-nowrap;
   }
 
   .page-table-td {
-    @apply px-4 sm:px-6 py-3 text-sm;
+    @apply px-3 sm:px-4 py-3 text-sm;
   }
 
   .page-filters {
-    @apply flex flex-col sm:flex-row flex-wrap gap-3 items-stretch sm:items-center border-t border-border pt-4;
+    @apply grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 2xl:grid-cols-5 gap-3 border-t border-border pt-4;
   }
 
   .page-filter-select {
-    @apply h-10 w-full sm:w-auto sm:min-w-[150px] rounded-lg border-input bg-muted/50 text-sm font-medium;
+    @apply h-9 sm:h-10 w-full rounded-lg border-input bg-muted/50 text-sm font-medium;
   }
 
   .page-actions-row {
-    @apply flex flex-col sm:flex-row flex-wrap gap-2 w-full lg:w-auto;
+    @apply flex flex-col sm:flex-row flex-wrap gap-2;
   }
 }

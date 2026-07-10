@@ -389,25 +389,25 @@ export function CursoList() {
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-              <BookOpen className="h-4 w-4 text-primary" />
-            </div>
+    <div className="page-shell">
+      <div className="page-header-card">
+          <div className="page-header-top">
+            <div className="page-header-brand">
+              <div className="page-icon-box">
+                <BookOpen className="page-icon" />
+              </div>
             <div>
-              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Cursos</h2>
-              <p className="text-muted-foreground text-[10px] mt-1">Mantenimiento de asignaturas y planes de estudio</p>
+              <h2 className="page-title">Cursos</h2>
+              <p className="text-muted-foreground text-xs mt-1">Mantenimiento de asignaturas y planes de estudio</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="page-toolbar">
+            <div className="page-search-wrap">
+              <Search className="page-search-icon" />
               <Input
                 placeholder="Buscar curso..."
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                className="page-search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -420,7 +420,7 @@ export function CursoList() {
                     onClick={() => handleGenerateReport('pdf')}
                     disabled={generatingReport === 999}
                     variant="outline"
-                    className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                    className="page-btn"
                   >
                     {generatingReport === 999 ? (
                       <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
@@ -431,7 +431,7 @@ export function CursoList() {
                   </Button>
                 </div>
                 <DialogTrigger asChild>
-                  <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all">
+                  <Button className="page-btn">
                     <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
                   </Button>
                 </DialogTrigger>
@@ -445,34 +445,34 @@ export function CursoList() {
                 </DialogHeader>
 
                 <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
                       <Input
                         value={formData.codigo}
                         onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                        className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs"
+                        className="rounded-xl bg-muted/50 border-border font-bold text-xs"
                         placeholder="SIST001"
                         required
                       />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
                       <Input
                         value={formData.nombre}
                         onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                        className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs"
+                        className="rounded-xl bg-muted/50 border-border font-bold text-xs"
                         placeholder="Matemática I"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
                       <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
-                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -483,9 +483,9 @@ export function CursoList() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
                       <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
-                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
                           <SelectValue placeholder="Seleccionar..." />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -497,11 +497,11 @@ export function CursoList() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
                       <Select value={formData.facultadId} onValueChange={(v) => setFormData({ ...formData, facultadId: v, escuelaId: "" })}>
-                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
                           <SelectValue placeholder="Seleccionar facultad" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -512,9 +512,9 @@ export function CursoList() {
                       </Select>
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
                       <Select value={formData.escuelaId} onValueChange={(v) => setFormData({ ...formData, escuelaId: v })} disabled={!formData.facultadId}>
-                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
                           <SelectValue placeholder="Seleccionar escuela" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -525,29 +525,29 @@ export function CursoList() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
-                      <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
+                      <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                     <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Créd.</Label>
-                      <Input type="number" value={formData.creditos} onChange={(e) => setFormData({ ...formData, creditos: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Créd.</Label>
+                      <Input type="number" value={formData.creditos} onChange={(e) => setFormData({ ...formData, creditos: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold text-xs" />
                     </div>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
                     <Input
                       value={formData.departamento_responsable}
                       onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
-                      className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs"
+                      className="rounded-xl bg-muted/50 border-border font-bold text-xs"
                       placeholder="Ingeniería de Sistemas"
                     />
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-xs px-6">Cancelar</Button>
-                    <Button type="submit" className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs px-8 shadow-lg shadow-primary/20 transition-all">
+                  <div className="page-actions-row justify-end pt-4 border-t border-border/50">
+                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold text-xs px-6">Cancelar</Button>
+                    <Button type="submit" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs px-8 shadow-lg shadow-primary/20 transition-all">
                       {editingCurso ? "Actualizar" : "Crear"}
                     </Button>
                   </div>
@@ -558,37 +558,37 @@ export function CursoList() {
         </div>
 
         {/* Barra de Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-2 border-t border-border/50">
+        <div className="page-filters">
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
+            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
             <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todos los tipos</SelectItem>
-                <SelectItem value="general" className="text-[10px] font-bold">General (EG)</SelectItem>
-                <SelectItem value="linea_carrera" className="text-[10px] font-bold">Línea de Carrera (EE)</SelectItem>
-                <SelectItem value="electivo" className="text-[10px] font-bold">Electivo (EL)</SelectItem>
+                <SelectItem value="todos" className="text-xs font-bold">Todos los tipos</SelectItem>
+                <SelectItem value="general" className="text-xs font-bold">General (EG)</SelectItem>
+                <SelectItem value="linea_carrera" className="text-xs font-bold">Línea de Carrera (EE)</SelectItem>
+                <SelectItem value="electivo" className="text-xs font-bold">Electivo (EL)</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
             <Select value={filtroCiclo} onValueChange={setFiltroCiclo}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todos los ciclos</SelectItem>
+                <SelectItem value="todos" className="text-xs font-bold">Todos los ciclos</SelectItem>
                 {ciclos
                   .filter(c => {
                     const isPar = c.numero % 2 === 0;
                     return (semestre === 1 && !isPar) || (semestre === 2 && isPar);
                   })
                   .map(c => (
-                    <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="text-[10px] font-bold">
+                    <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="text-xs font-bold">
                       {c.nombre}
                     </SelectItem>
                   ))}
@@ -598,56 +598,56 @@ export function CursoList() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="page-table-card">
         <div className="overflow-x-auto">
-          <Table className="min-w-[900px] w-full">
+          <Table className="w-full">
             <TableHeader className="bg-muted/50">
               <TableRow className="border-b border-border hover:bg-transparent">
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Escuela</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Departamento</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Máx. Docentes</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Créd.</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Ciclo</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Escuela</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Departamento</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Máx. Docentes</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Créd.</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Ciclo</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={8} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={8} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={8} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((curso) => (
                   <TableRow key={curso.id_curso} className="group hover:bg-muted/50 transition-colors">
                     <TableCell className="px-4 py-2">
-                      <span className="font-mono text-[9px] font-bold text-muted-foreground">{curso.codigo}</span>
+                      <span className="font-mono text-xs font-bold text-muted-foreground">{curso.codigo}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex flex-col">
-                        <span className="font-bold text-foreground text-[11px] leading-tight">{curso.nombre}</span>
-                        <span className="text-[8px] font-black text-muted-foreground uppercase tracking-tighter mt-0.5">
+                        <span className="font-bold text-foreground text-sm leading-tight">{curso.nombre}</span>
+                        <span className="text-xs font-black text-muted-foreground uppercase tracking-tighter mt-0.5">
                           {curso.tipo_curso.replace("_", " ")}
                         </span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2">
-                      <span className="text-[10px] font-bold text-muted-foreground">{curso.escuela?.nombre || '-'}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{curso.escuela?.nombre || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
-                      <span className="text-[10px] font-bold text-muted-foreground">{curso.departamento_responsable || '-'}</span>
+                      <span className="text-xs font-bold text-muted-foreground">{curso.departamento_responsable || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="text-[10px] font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
+                      <span className="text-xs font-black text-primary bg-primary/10 px-2.5 py-1 rounded-full border border-primary/20">
                         {curso.maximo_docentes} 
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="text-[10px] font-bold text-foreground">{curso.creditos}</span>
+                      <span className="text-xs font-bold text-foreground">{curso.creditos}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="text-[10px] font-bold text-foreground">{curso.ciclo_rel?.nombre || '-'}</span>
+                      <span className="text-xs font-bold text-foreground">{curso.ciclo_rel?.nombre || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">

@@ -1022,7 +1022,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 <LayoutGrid className="text-blue-600 dark:text-blue-400 w-5 h-5" />
               </div>
               <div>
-                <span className="text-[10px] bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">
+                <span className="text-xs bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">
                   Paso 2/2
                 </span>
                 <h1 className="text-lg font-bold text-foreground leading-none mt-2">Declaración de Carga Horaria</h1>
@@ -1055,7 +1055,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               )}
               {declaracion && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-muted border border-border rounded-md">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Estado:</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Estado:</span>
                   <Badge 
                     variant="outline" 
                     className={cn(
@@ -1104,11 +1104,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             {initialDocente && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nombre Completo</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Nombre Completo</p>
                   <p className="text-sm font-bold text-foreground">{initialDocente.nombres} {initialDocente.apellidos}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Departamento Académico</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Departamento Académico</p>
                   <p className="text-sm font-medium text-foreground">{initialDocente.departamento?.nombre || initialDocente.especialidad || 'Ingeniería de Sistemas'}</p>
                 </div>
               </div>
@@ -1117,19 +1117,19 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             <div className="pt-4 border-t border-border">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">IBM / Código</Label>
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">IBM / Código</Label>
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{formData.ibm}</div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">Condición</Label>
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">Condición</Label>
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCondicionToTexto(initialDocente.condicion)}</div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">Categoría</Label>
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">Categoría</Label>
                   <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCategoriaDocenteToTexto(initialDocente.categoriaDocente)}</div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">Dedicación Horaria</Label>
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">Dedicación Horaria</Label>
                   <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapRegimenDedicacionToTexto(initialDocente.regimenDedicacion)}</div>
                 </div>
               </div>
@@ -1148,11 +1148,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           <CardContent className="p-4 space-y-4">
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-muted rounded-lg border border-border">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">Carga Lectiva</span>
+                <span className="text-sm font-bold text-muted-foreground uppercase tracking-tight">Carga Lectiva</span>
                 <span className="text-lg font-black text-blue-600 dark:text-blue-400">{totalLectivas}h</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-muted rounded-lg border border-border">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">No Lectiva</span>
+                <span className="text-sm font-bold text-muted-foreground uppercase tracking-tight">No Lectiva</span>
                 <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{totalNoLectivas}h</span>
               </div>
               <div className={cn(
@@ -1163,7 +1163,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               )}>
                 <div className="flex flex-col">
                   <span className={cn(
-                    "text-[11px] font-bold uppercase tracking-tight",
+                    "text-sm font-bold uppercase tracking-tight",
                     totalGeneral === formData.horas_dedicacion ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                   )}>Total Registrado</span>
                   <span className="text-[9px] text-muted-foreground font-medium">Meta: {formData.horas_dedicacion}h</span>
@@ -1183,7 +1183,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             {formData.horas_dedicacion > 0 && totalGeneral !== formData.horas_dedicacion && (
               <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg flex gap-2 items-start">
                 <Info size={14} className="text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-tight font-medium">
+                <p className="text-xs text-amber-700 dark:text-amber-300 leading-tight font-medium">
                   La suma total debe coincidir exactamente con las {formData.horas_dedicacion}h de dedicación asignadas.
                 </p>
               </div>
@@ -1213,15 +1213,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Código</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Curso</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">Tipo</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Escuela</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">Ciclo</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HT</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HP</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HL</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-right">Total</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10">Código</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10">Curso</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">Tipo</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10">Escuela</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">Ciclo</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">HT</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">HP</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">HL</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1230,7 +1230,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       <TableCell className="px-4 py-3 text-xs font-medium text-foreground">{row.codigo}</TableCell>
                       <TableCell className="px-4 py-3 text-xs font-medium text-foreground">{row.nombre}</TableCell>
                       <TableCell className="px-4 py-3 text-center">
-                        <Badge variant="outline" className="text-[10px] font-bold px-2 py-0">
+                        <Badge variant="outline" className="text-xs font-bold px-2 py-0">
                           {getTipoCursoBadge(row.tipo)}
                         </Badge>
                       </TableCell>
@@ -1271,7 +1271,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         <CardContent className="p-0">
           <div className="p-4 space-y-4">
             <details className="rounded-lg border border-border bg-muted/20 p-3">
-              <summary className="text-[11px] font-bold text-foreground cursor-pointer select-none">
+              <summary className="text-sm font-bold text-foreground cursor-pointer select-none">
                 Límites máximos Art. 12.4 — su régimen: {claveRegimenDocente ?? 'No definido'}
                 {claveRegimenDocente && (
                   <span className="font-normal text-muted-foreground ml-1">
@@ -1280,11 +1280,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 )}
               </summary>
               <div className="mt-3 overflow-x-auto">
-                <p className="text-[10px] text-muted-foreground mb-2">
+                <p className="text-xs text-muted-foreground mb-2">
                   Preparación y Evaluación: máx. 50% del trabajo lectivo (redondeo a la baja).
                   «—» o 0 = no puede asignar horas a esa actividad.
                 </p>
-                <table className="w-full min-w-[640px] text-[10px] border-collapse">
+                <table className="w-full min-w-[640px] text-xs border-collapse">
                   <thead>
                     <tr className="bg-muted/50">
                       <th className="border border-border px-2 py-1 text-left font-bold">Actividad</th>
@@ -1380,14 +1380,14 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                             <SimulacionBadge tipo="INVESTIGACION_ETICA" />
                           )}
                         </div>
-                        <Badge variant="outline" className={cn("text-[10px]", color.text)}>
+                        <Badge variant="outline" className={cn("text-xs", color.text)}>
                           {horasAsignadas}{maxHoras !== null ? `/${maxHoras}` : ''}h
                         </Badge>
                       </div>
 
                       {/* Descripción */}
                       <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                           {requiereDocumento ? 'N° de Resolución/Constancia/Código de Proyecto' : 'Descripción'}
                           <span className="text-rose-500 ml-1">*</span>
                         </Label>
@@ -1406,7 +1406,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
 
                       {/* Ambiente/Aula */}
                       <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                           Ambiente/Aula (opcional)
                         </Label>
                         <Input
@@ -1425,7 +1425,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       {/* Cargo (GOBIERNO/ADMINISTRACION) */}
                       {(carga.tipo === 'GOBIERNO' || carga.tipo === 'ADMINISTRACION') && (
                         <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                             Cargo Académico/Administrativo
                           </Label>
                           <Select
@@ -1464,7 +1464,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                             const cargo = cargosAcademicos.find(c => c.id === carga.cargoId);
                             return cargo ? (
                               <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg mt-1">
-                                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
+                                <p className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
                                   Carga lectiva mínima sugerida: {cargo.chlm}h · Prep/eval sugerida: {cargo.chnlpe}h
                                 </p>
                               </div>
@@ -1476,7 +1476,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       {/* Barra de progreso */}
                       {(maxHoras !== null || actividadNoLectivaSeleccionada !== carga.id_carga_no_lectiva) && (
                         <div className="mt-2">
-                          <div className="flex items-center justify-between text-[10px] text-muted-foreground mb-1">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
                             <span>Horas asignadas</span>
                             <span className="font-bold">{horasAsignadas}h</span>
                           </div>
@@ -1497,8 +1497,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <div className="flex-1 min-w-0">
                 <div className="rounded-lg border border-border bg-muted/10 overflow-hidden min-w-0">
                   <div className="px-3 py-2 border-b border-border bg-card/80">
-                    <p className="text-[11px] font-bold text-foreground">Matriz de Horarios</p>
-                    <p className="text-[10px] text-muted-foreground mt-0.5 leading-relaxed">
+                    <p className="text-sm font-bold text-foreground">Matriz de Horarios</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
                       {actividadNoLectivaSeleccionada
                         ? <><span className="font-bold text-primary">✓ Actividad seleccionada.</span> Arrastre sobre la matriz para asignar bloques. Azul = carga lectiva. Los bloques en verde son su selección actual.</>
                         : 'Haga clic en una actividad del panel izquierdo para seleccionarla, luego arrastre en la matriz para asignar horarios.'}
@@ -1534,8 +1534,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <CheckCircle2 className="text-emerald-600 dark:text-emerald-400 w-5 h-5" />
             </div>
             <div>
-              <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Total General de Carga</p>
-              <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-tight">Carga Lectiva + No Lectiva</p>
+              <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Total General de Carga</p>
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-tight">Carga Lectiva + No Lectiva</p>
             </div>
           </div>
           <div className="flex flex-col items-end">
@@ -1548,7 +1548,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 "w-2 h-2 rounded-full",
                 totalGeneral === formData.horas_dedicacion ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
               )} />
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">
                 {totalGeneral === formData.horas_dedicacion ? "Carga Completa" : `Faltan ${formData.horas_dedicacion - totalGeneral}h`}
               </span>
             </div>
@@ -1588,7 +1588,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                   </div>
                   <div>
                     <p className="text-xs font-bold text-foreground leading-tight">{formato.label}</p>
-                    <p className="text-[10px] text-muted-foreground font-medium">{formato.sub}</p>
+                    <p className="text-xs text-muted-foreground font-medium">{formato.sub}</p>
                   </div>
                 </div>
                 <div className="p-1.5 rounded-full bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors">

@@ -147,7 +147,7 @@ export function MatrizDisponibilidadDocente({
           <h2 className="text-sm font-black text-foreground leading-tight">
             {isReadOnly ? "Ver Disponibilidad Histórica" : "Configurar Disponibilidad"}
           </h2>
-          <p className="text-[8px] text-muted-foreground mt-0.5 font-bold">
+          <p className="text-xs text-muted-foreground mt-0.5 font-bold">
             Docente: <span className="text-primary">{docenteNombre}</span>
           </p>
         </div>
@@ -231,7 +231,7 @@ export function MatrizDisponibilidadDocente({
           <Button
             variant="outline"
             onClick={onCancel}
-            className="h-6 rounded-md font-bold text-[8px] px-2.5"
+            className="h-6 rounded-md font-bold text-xs px-2.5"
           >
             {isReadOnly ? "Cerrar" : "Cancelar"}
           </Button>
@@ -240,7 +240,7 @@ export function MatrizDisponibilidadDocente({
               <Button
                 onClick={() => setShowConfirm(true)}
                 disabled={loading}
-                className="h-6 bg-primary hover:bg-primary/90 rounded-md font-bold text-[8px] px-3"
+                className="h-6 bg-primary hover:bg-primary/90 rounded-md font-bold text-xs px-3"
               >
                 {loading ? <Loader2 className="mr-1 h-2.5 w-2.5 animate-spin" /> : <Save className="mr-1 h-2.5 w-2.5" />}
                 Guardar
@@ -252,13 +252,13 @@ export function MatrizDisponibilidadDocente({
                     <AlertCircle className="h-3 w-3 text-primary" />
                   </div>
                   <AlertDialogTitle className="text-xs font-bold text-foreground">¿Guardar?</AlertDialogTitle>
-                  <AlertDialogDescription className="text-muted-foreground font-medium text-[8px]">
+                  <AlertDialogDescription className="text-muted-foreground font-medium text-xs">
                     Modificar disponibilidad de <span className="font-bold text-primary">{docenteNombre}</span>?
                   </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-1 mt-2">
-                  <AlertDialogCancel className="h-6 rounded-md font-bold border-border hover:bg-muted text-[8px] px-2.5">No</AlertDialogCancel>
-                  <AlertDialogAction onClick={handleConfirmSave} className="h-6 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-3 text-[8px]">
+                  <AlertDialogCancel className="h-6 rounded-md font-bold border-border hover:bg-muted text-xs px-2.5">No</AlertDialogCancel>
+                  <AlertDialogAction onClick={handleConfirmSave} className="h-6 rounded-md bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-3 text-xs">
                     Sí, Guardar
                   </AlertDialogAction>
                 </AlertDialogFooter>

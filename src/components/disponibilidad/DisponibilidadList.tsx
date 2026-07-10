@@ -199,7 +199,7 @@ export function DisponibilidadList() {
             </div>
             <div>
               <h1 className="text-base font-bold text-foreground tracking-tight leading-none">Gestión de Disponibilidad</h1>
-              <p className="text-muted-foreground text-[10px] mt-1">Registro de franjas horarias habilitadas por docente</p>
+              <p className="text-muted-foreground text-xs mt-1">Registro de franjas horarias habilitadas por docente</p>
             </div>
           </div>
 
@@ -211,7 +211,7 @@ export function DisponibilidadList() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
               placeholder="Buscar por nombre o DNI..." 
-              className="pl-9 h-8 rounded-lg border-border bg-muted/20 font-medium text-[11px]"
+              className="pl-9 h-8 rounded-lg border-border bg-muted/20 font-medium text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -219,28 +219,28 @@ export function DisponibilidadList() {
 
           <div className="space-y-1">
             <Select value={categoria} onValueChange={setCategoria}>
-              <SelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+              <SelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-xs">
                 <SelectValue placeholder="Categoría" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todas las categorías</SelectItem>
-                <SelectItem value="PRINCIPAL" className="text-[10px] font-bold">Principal</SelectItem>
-                <SelectItem value="ASOCIADO" className="text-[10px] font-bold">Asociado</SelectItem>
-                <SelectItem value="AUXILIAR" className="text-[10px] font-bold">Auxiliar</SelectItem>
-                <SelectItem value="JEFE_PRACTICA" className="text-[10px] font-bold">Jefe de Práctica</SelectItem>
+                <SelectItem value="todos" className="text-xs font-bold">Todas las categorías</SelectItem>
+                <SelectItem value="PRINCIPAL" className="text-xs font-bold">Principal</SelectItem>
+                <SelectItem value="ASOCIADO" className="text-xs font-bold">Asociado</SelectItem>
+                <SelectItem value="AUXILIAR" className="text-xs font-bold">Auxiliar</SelectItem>
+                <SelectItem value="JEFE_PRACTICA" className="text-xs font-bold">Jefe de Práctica</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1">
             <Select value={modalidad} onValueChange={setModalidad}>
-              <SelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+              <SelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-xs">
                 <SelectValue placeholder="Modalidad" />
               </SelectTrigger>
               <SelectContent className="rounded-xl">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todas las modalidades</SelectItem>
-                <SelectItem value="NOMBRADO" className="text-[10px] font-bold">Nombrado</SelectItem>
-                <SelectItem value="CONTRATADO" className="text-[10px] font-bold">Contratado</SelectItem>
+                <SelectItem value="todos" className="text-xs font-bold">Todas las modalidades</SelectItem>
+                <SelectItem value="NOMBRADO" className="text-xs font-bold">Nombrado</SelectItem>
+                <SelectItem value="CONTRATADO" className="text-xs font-bold">Contratado</SelectItem>
               </SelectContent>
             </Select>
           </div>
@@ -248,7 +248,7 @@ export function DisponibilidadList() {
           <Button 
             variant="outline" 
             onClick={() => setOrden(prev => prev === "antiguedad_desc" ? "antiguedad_asc" : "antiguedad_desc")}
-            className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[9px] uppercase tracking-widest gap-2"
+            className="h-8 rounded-lg border-border bg-muted/20 font-bold text-xs uppercase tracking-widest gap-2"
           >
             <ArrowUpDown className="h-3 w-3" />
             Antigüedad {orden === "antiguedad_desc" ? "↓" : "↑"}
@@ -261,13 +261,13 @@ export function DisponibilidadList() {
         <Table>
           <TableHeader>
             <TableRow className="bg-muted/50 border-b border-border hover:bg-transparent">
-              <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Docente</TableHead>
-              <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">DNI / Código</TableHead>
-              <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Categoría</TableHead>
-              <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Modalidad</TableHead>
-              <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Antigüedad</TableHead>
-              <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Estado Disp.</TableHead>
-              <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+              <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Docente</TableHead>
+              <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">DNI / Código</TableHead>
+              <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Categoría</TableHead>
+              <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Modalidad</TableHead>
+              <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Antigüedad</TableHead>
+              <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Estado Disp.</TableHead>
+              <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
             </TableRow>
           </TableHeader>
           <TableBody className="divide-y divide-border">
@@ -276,7 +276,7 @@ export function DisponibilidadList() {
                 <TableCell colSpan={7} className="py-10 text-center">
                   <div className="flex flex-col items-center gap-2">
                     <Loader2 className="h-6 w-6 text-primary animate-spin" />
-                    <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">Cargando docentes...</span>
+                    <span className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando docentes...</span>
                   </div>
                 </TableCell>
               </TableRow>
@@ -285,7 +285,7 @@ export function DisponibilidadList() {
                 <TableCell colSpan={7} className="py-10 text-center">
                   <div className="flex flex-col items-center gap-2 opacity-30">
                     <User className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">No se encontraron docentes</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase">No se encontraron docentes</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -294,30 +294,30 @@ export function DisponibilidadList() {
                 <TableRow key={docente.id_docente} className="group hover:bg-muted/50 border-b border-border transition-all">
                   <TableCell className="px-4 py-2">
                     <div className="flex items-center gap-3">
-                      <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-[9px]">
+                      <div className="h-7 w-7 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-xs">
                         {docente.nombres.charAt(0)}{docente.apellidos.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-bold text-foreground text-[11px] leading-tight">{docente.apellidos}, {docente.nombres}</p>
-                        <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{docente.codigo_docente}</p>
+                        <p className="font-bold text-foreground text-sm leading-tight">{docente.apellidos}, {docente.nombres}</p>
+                        <p className="text-xs text-muted-foreground font-medium mt-0.5">{docente.codigo_docente}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-2">
-                    <span className="font-mono text-[10px] font-bold text-muted-foreground">{docente.dni || 'N/A'}</span>
+                    <span className="font-mono text-xs font-bold text-muted-foreground">{docente.dni || 'N/A'}</span>
                   </TableCell>
                   <TableCell className="px-4 py-2">
-                    <Badge variant="outline" className="rounded-md bg-primary/5 text-primary border-primary/20 text-[8px] font-bold uppercase tracking-widest">
+                    <Badge variant="outline" className="rounded-md bg-primary/5 text-primary border-primary/20 text-xs font-bold uppercase tracking-widest">
                       {docente.categoriaDocente}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-4 py-2">
-                    <Badge variant="outline" className="rounded-md bg-muted text-muted-foreground border-border text-[8px] font-bold uppercase tracking-widest">
+                    <Badge variant="outline" className="rounded-md bg-muted text-muted-foreground border-border text-xs font-bold uppercase tracking-widest">
                       {docente.condicion}
                     </Badge>
                   </TableCell>
                   <TableCell className="px-4 py-2">
-                    <span className="text-[10px] font-bold text-foreground">
+                    <span className="text-xs font-bold text-foreground">
                       {docente.antiguedad !== null ? `${docente.antiguedad} años` : 'N/A'}
                     </span>
                   </TableCell>
@@ -326,12 +326,12 @@ export function DisponibilidadList() {
                       {docente.tiene_disponibilidad ? (
                         <div className="flex items-center gap-1 text-emerald-600">
                           <CheckCircle2 className="h-3 w-3" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest">Configurado</span>
+                          <span className="text-xs font-bold uppercase tracking-widest">Configurado</span>
                         </div>
                       ) : (
                         <div className="flex items-center gap-1 text-amber-500">
                           <XCircle className="h-3 w-3" />
-                          <span className="text-[9px] font-bold uppercase tracking-widest">Pendiente</span>
+                          <span className="text-xs font-bold uppercase tracking-widest">Pendiente</span>
                         </div>
                       )}
                     </div>
@@ -342,7 +342,7 @@ export function DisponibilidadList() {
                         size="sm"
                         onClick={() => handleEditDisponibilidad(docente)}
                         className={cn(
-                          "h-7 px-3 rounded-lg font-bold text-[10px] shadow-sm transition-all active:scale-95 flex items-center gap-1.5",
+                          "h-7 px-3 rounded-lg font-bold text-xs shadow-sm transition-all active:scale-95 flex items-center gap-1.5",
                           esLectura 
                             ? "bg-muted text-muted-foreground hover:bg-muted/80" 
                             : "bg-primary hover:bg-primary/90 text-primary-foreground"

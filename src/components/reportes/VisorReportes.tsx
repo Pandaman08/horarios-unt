@@ -220,11 +220,11 @@ export function VisorReportes() {
           </div>
           {currentPeriodoObj && (
             <div className="flex flex-col gap-1.5 px-4 py-2 bg-primary/5 rounded-xl border border-primary/20">
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 ml-1">Periodo Global</span>
+              <span className="text-xs font-black uppercase tracking-widest text-primary/70 ml-1">Periodo Global</span>
               <p className="text-sm font-bold text-primary">
                 {currentPeriodoObj.codigo}
               </p>
-              <p className="text-[9px] text-muted-foreground italic font-medium">
+              <p className="text-xs text-muted-foreground italic font-medium">
                 Reportes para {currentPeriodoObj.nombre}
               </p>
             </div>

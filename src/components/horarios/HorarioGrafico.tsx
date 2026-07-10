@@ -615,7 +615,7 @@ export function HorarioGrafico({
           <div className="h-16 w-16 border-4 border-muted border-t-primary rounded-full animate-spin" />
           <Calendar className="h-6 w-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
-        <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+        <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">
           Cargando Calendario...
         </p>
       </div>
@@ -628,7 +628,7 @@ export function HorarioGrafico({
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3 bg-card px-4 py-3 rounded-xl border border-border">
         <div className="flex items-center gap-2">
           <Clock className="h-4 w-4 text-primary shrink-0" />
-          <span className="text-[10px] font-bold uppercase text-muted-foreground">
+          <span className="text-xs font-bold uppercase text-muted-foreground">
             Modo {modo === 'lectiva' ? 'Carga Lectiva' : 'Carga No Lectiva'}
           </span>
         </div>
@@ -637,7 +637,7 @@ export function HorarioGrafico({
         {horasRequeridas && horasRequeridas > 0 && (
           <div className="flex items-center gap-2">
             <div className="flex items-center gap-1">
-              <span className="text-[10px] font-semibold text-muted-foreground">
+              <span className="text-xs font-semibold text-muted-foreground">
                 Horas: <span className="font-bold text-primary">{horasAsignadas}</span> / {horasRequeridas}
               </span>
             </div>
@@ -655,7 +655,7 @@ export function HorarioGrafico({
           </div>
         )}
 
-        <div className="flex flex-wrap items-center gap-2 text-[10px]">
+        <div className="flex flex-wrap items-center gap-2 text-xs">
           <span className="flex items-center gap-1.5">
             <span className="w-3 h-3 rounded bg-emerald-400/50 border-2 border-emerald-500"></span>
             Selección Actual
@@ -678,13 +678,13 @@ export function HorarioGrafico({
         onMouseUp={endSelection}
         onMouseLeave={endSelection}
       >
-        <div className="min-w-[900px] grid" style={{ gridTemplateColumns: '80px repeat(' + DIAS.length + ', 1fr)' }}>
+        <div className="w-full min-w-0 grid" style={{ gridTemplateColumns: '80px repeat(' + DIAS.length + ', 1fr)' }}>
           {/* Header Row */}
-          <div className="p-3 border-b border-r border-border bg-muted/50 text-center text-[10px] font-bold text-muted-foreground uppercase">
+          <div className="p-3 border-b border-r border-border bg-muted/50 text-center text-xs font-bold text-muted-foreground uppercase">
             Hora
           </div>
           {DIAS.map(dia => (
-            <div key={dia.id} className="p-3 border-b border-r border-border bg-primary/90 text-center text-[10px] font-bold text-primary-foreground uppercase">
+            <div key={dia.id} className="p-3 border-b border-r border-border bg-primary/90 text-center text-xs font-bold text-primary-foreground uppercase">
               {dia.nombre}
             </div>
           ))}
@@ -692,7 +692,7 @@ export function HorarioGrafico({
           {/* Time Slots */}
           {timeSlots.map((hora) => (
             <React.Fragment key={hora}>
-              <div className="p-2 border-b border-r border-border bg-muted/30 text-center text-[10px] font-semibold text-muted-foreground">
+              <div className="p-2 border-b border-r border-border bg-muted/30 text-center text-xs font-semibold text-muted-foreground">
                 {hora}
               </div>
 
@@ -705,7 +705,7 @@ export function HorarioGrafico({
                   <div
                     key={key}
                     className={cn(
-                      'relative h-12 border-b border-r border-border transition-colors flex items-center justify-center text-[8px]',
+                      'relative h-12 border-b border-r border-border transition-colors flex items-center justify-center text-xs',
                       getCellClass(info, isSelected)
                     )}
                     onMouseDown={() => handleCellClick(dia.id, hora)}

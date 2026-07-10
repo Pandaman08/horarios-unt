@@ -38,7 +38,7 @@ export function LanguageSelector({ className }: { className?: string }) {
 
       {open && (
         <div className="absolute right-0 mt-1.5 w-40 py-1 bg-popover border border-border rounded-lg shadow-lg z-50 animate-in fade-in slide-in-from-top-1 duration-150">
-          <p className="px-3 py-1 text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+          <p className="px-3 py-1 text-xs font-semibold text-muted-foreground uppercase tracking-wider">
             {t("language")}
           </p>
           {LOCALES.map((item) => (

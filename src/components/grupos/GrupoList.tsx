@@ -227,25 +227,25 @@ export function GrupoList() {
   };
 
   return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 bg-card p-5 rounded-2xl border border-border shadow-sm">
-        <div className="flex items-center gap-6">
-          <div className="h-14 w-14 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20 shadow-sm">
-            <Layers className="h-7 w-7 text-primary" />
+    <div className="page-shell">
+      <div className="page-header-card">
+        <div className="page-header-brand">
+          <div className="page-icon-box">
+            <Layers className="page-icon" />
           </div>
           <div>
-            <span className="text-[10px] bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Organización</span>
-            <h2 className="text-xl font-bold text-foreground tracking-tight mt-2">Grupos Académicos</h2>
-            <p className="text-muted-foreground text-xs mt-1">Gestión de secciones y capacidades por curso</p>
+            <span className="text-xs bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Organización</span>
+            <h2 className="page-title">Grupos Académicos</h2>
+            <p className="page-subtitle">Gestión de secciones y capacidades por curso</p>
           </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-4 w-full sm:w-auto">
-          <div className="relative flex-1 sm:min-w-[320px]">
-            <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+        <div className="page-toolbar">
+          <div className="page-search-wrap">
+            <Search className="page-search-icon" />
             <Input 
               placeholder="Buscar por curso, grupo o periodo..." 
-              className="pl-11 h-11 rounded-xl border-border bg-muted/20 font-bold text-xs focus:ring-2 focus:ring-primary transition-all"
+              className="page-search"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
@@ -258,7 +258,7 @@ export function GrupoList() {
             }
           }}>
             <DialogTrigger asChild>
-              <Button className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-6 font-bold text-xs shadow-lg shadow-primary/10 transition-all active:scale-95">
+              <Button className="page-btn">
                 <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
               </Button>
             </DialogTrigger>
@@ -272,16 +272,16 @@ export function GrupoList() {
                     <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">
                       {editingGrupo ? "Actualizar Grupo" : "Registrar Grupo"}
                     </DialogTitle>
-                    <p className="text-muted-foreground text-[11px] font-bold uppercase tracking-widest mt-0.5">
+                    <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest mt-0.5">
                       Defina la sección y capacidad para el curso seleccionado
                     </p>
                   </div>
                 </div>
               </DialogHeader>
               <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Periodo Académico</Label>
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Periodo Académico</Label>
                     <Select value={formData.id_periodo} onValueChange={(v) => setFormData(p => ({ ...p, id_periodo: v }))}>
                       <SelectTrigger className="h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="Seleccionar periodo" /></SelectTrigger>
                       <SelectContent className="rounded-xl border-border shadow-xl">
@@ -290,7 +290,7 @@ export function GrupoList() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Curso</Label>
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Curso</Label>
                     <Select value={formData.id_curso} onValueChange={(v) => setFormData(p => ({ ...p, id_curso: v }))}>
                       <SelectTrigger className="h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="Seleccionar curso" /></SelectTrigger>
                       <SelectContent className="rounded-xl border-border shadow-xl">
@@ -299,7 +299,7 @@ export function GrupoList() {
                     </Select>
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Código de Grupo</Label>
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Código de Grupo</Label>
                     <Input 
                       className={cn("h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all", editingGrupo && "bg-muted/30")} 
                       value={formData.codigo_grupo}
@@ -310,7 +310,7 @@ export function GrupoList() {
                     />
                   </div>
                   <div className="space-y-2">
-                    <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Máxima</Label>
+                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Máxima</Label>
                     <Input 
                       type="number" 
                       className="h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all" 
@@ -325,7 +325,7 @@ export function GrupoList() {
                     />
                   </div>
                 </div>
-                <div className="flex justify-end gap-3 pt-6 border-t border-border">
+                <div className="page-actions-row justify-end pt-6 border-t">
                   <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-muted-foreground hover:bg-muted px-8 text-xs">Cancelar</Button>
                   <Button type="submit" className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-bold text-xs shadow-lg shadow-primary/10 transition-all active:scale-95">
                     {editingGrupo ? "Guardar Cambios" : "Crear Grupo"}
@@ -337,16 +337,16 @@ export function GrupoList() {
         </div>
       </div>
 
-      <div className="bg-card rounded-[32px] border border-border shadow-sm overflow-hidden">
+      <div className="page-table-card">
         <div className="overflow-x-auto">
           <Table>
             <TableHeader>
               <TableRow className="bg-muted/50 border-b border-border hover:bg-muted/50">
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest h-14 px-6">Curso</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest h-14 px-6">Grupo</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest h-14 px-6">Periodo</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest h-14 px-6 text-center">Capacidad</TableHead>
-                <TableHead className="text-[10px] font-black text-muted-foreground uppercase tracking-widest h-14 px-6 text-right">Acciones</TableHead>
+                <TableHead className="text-xs font-black text-muted-foreground uppercase tracking-widest h-14 px-6">Curso</TableHead>
+                <TableHead className="text-xs font-black text-muted-foreground uppercase tracking-widest h-14 px-6">Grupo</TableHead>
+                <TableHead className="text-xs font-black text-muted-foreground uppercase tracking-widest h-14 px-6">Periodo</TableHead>
+                <TableHead className="text-xs font-black text-muted-foreground uppercase tracking-widest h-14 px-6 text-center">Capacidad</TableHead>
+                <TableHead className="text-xs font-black text-muted-foreground uppercase tracking-widest h-14 px-6 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -355,13 +355,13 @@ export function GrupoList() {
                   <TableCell colSpan={5} className="h-40 text-center">
                     <div className="flex flex-col items-center gap-3">
                       <div className="animate-spin h-6 w-6 border-2 border-primary border-t-transparent rounded-full" />
-                      <span className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">Cargando grupos...</span>
+                      <span className="text-sm font-black text-muted-foreground uppercase tracking-widest">Cargando grupos...</span>
                     </div>
                   </TableCell>
                 </TableRow>
               ) : currentItems.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={5} className="h-40 text-center text-[11px] font-black text-muted-foreground uppercase tracking-widest">
+                  <TableCell colSpan={5} className="h-40 text-center text-sm font-black text-muted-foreground uppercase tracking-widest">
                     No se encontraron grupos registrados
                   </TableCell>
                 </TableRow>
@@ -375,12 +375,12 @@ export function GrupoList() {
                         </div>
                         <div className="flex flex-col">
                           <span className="font-bold text-foreground text-sm leading-none">{grupo.curso.nombre}</span>
-                          <span className="text-[10px] font-bold text-muted-foreground mt-1.5 uppercase tracking-wider">{grupo.curso.codigo}</span>
+                          <span className="text-xs font-bold text-muted-foreground mt-1.5 uppercase tracking-wider">{grupo.curso.codigo}</span>
                         </div>
                       </div>
                     </TableCell>
                     <TableCell className="px-6 py-4">
-                      <span className="inline-flex items-center bg-primary/10 text-primary font-black text-[10px] uppercase tracking-widest px-3 py-1 rounded-lg border border-primary/20">
+                      <span className="inline-flex items-center bg-primary/10 text-primary font-black text-xs uppercase tracking-widest px-3 py-1 rounded-lg border border-primary/20">
                         Grupo {grupo.codigo_grupo}
                       </span>
                     </TableCell>

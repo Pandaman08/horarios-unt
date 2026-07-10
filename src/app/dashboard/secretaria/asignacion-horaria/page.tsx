@@ -23,6 +23,7 @@ import {
   Users,
   Calendar,
   X,
+  PauseCircle,
 } from "lucide-react";
 
 type VentanaInfo = {
@@ -345,11 +346,11 @@ export default function AsignacionHorariaSecretariaPage() {
                           <p className="text-sm font-medium truncate">
                             {idx + 1}. {d.apellidos}, {d.nombres}
                           </p>
-                          <p className="text-[11px] text-muted-foreground truncate">
+                          <p className="text-sm text-muted-foreground truncate">
                             {d.categoriaDocente} · {d.condicion}
                           </p>
                           {d.ventana && (
-                            <p className="text-[10px] text-muted-foreground">
+                            <p className="text-xs text-muted-foreground">
                               {d.ventana.hora_inicio} - {d.ventana.hora_fin}
                             </p>
                           )}
@@ -561,12 +562,14 @@ function EstadoBadge({ estado }: { estado: string }) {
     completado: { label: 'Completado', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
     vencido: { label: 'Vencido', className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
     sin_ventana: { label: 'Sin ventana', className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
+    pausado: { label: 'Pausado', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
   };
   const c = config[estado] || { label: estado, className: 'bg-gray-100 text-gray-500' };
   return (
-    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-[10px] font-medium ${c.className}`}>
+    <span className={`inline-flex items-center px-2 py-0.5 rounded-full text-xs font-medium ${c.className}`}>
       {estado === 'activo' && <Clock className="h-3 w-3 mr-1" />}
       {estado === 'completado' && <CheckCircle2 className="h-3 w-3 mr-1" />}
+      {estado === 'pausado' && <PauseCircle className="h-3 w-3 mr-1" />}
       {c.label}
     </span>
   );

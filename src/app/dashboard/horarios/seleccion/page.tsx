@@ -515,7 +515,7 @@ export default function SeleccionHorariosLectivosPage() {
             </div>
             <div>
               <span className={cn(
-                "text-[10px] uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg",
+                "text-xs uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg",
                 soloLectura && yaConfirmo
                   ? "bg-muted text-muted-foreground"
                   : "bg-primary/10 text-primary",
@@ -533,7 +533,7 @@ export default function SeleccionHorariosLectivosPage() {
                       : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                   }`}>
                     <Clock className="h-3.5 w-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">{mensajeIntervalo}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">{mensajeIntervalo}</span>
                     {tiempoRestante && !soloLectura && (
                       <span className="text-xs font-mono font-black ml-2">{tiempoRestante}</span>
                     )}
@@ -541,7 +541,7 @@ export default function SeleccionHorariosLectivosPage() {
                 ) : tiempoRestante ? (
                   <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 px-3 py-1 rounded-lg border border-rose-200 dark:border-rose-800 shadow-sm">
                     <Clock className="h-3.5 w-3.5 animate-pulse" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Tiempo restante:</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">Tiempo restante:</span>
                     <span className="text-xs font-mono font-black">{tiempoRestante}</span>
                   </div>
                 ) : soloLectura && yaConfirmo ? (
@@ -647,12 +647,12 @@ export default function SeleccionHorariosLectivosPage() {
 
                 {(cursoSeleccionado && (grupos.length > 0 || ambientesFiltrados.length > 0)) && (
                   <div className="rounded-2xl border border-border bg-card shadow-sm p-4 space-y-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
                       Configuración del bloque
                     </p>
                     {grupos.length > 0 && (
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-semibold text-muted-foreground">
+                        <Label className="text-xs font-semibold text-muted-foreground">
                           Grupo
                           {cursoSeleccionado.tipo === "laboratorio" && grupos.length > 1 && (
                             <span className="text-muted-foreground font-normal"> — asigne horario a cada lab</span>
@@ -674,7 +674,7 @@ export default function SeleccionHorariosLectivosPage() {
                     )}
                     {ambientesFiltrados.length > 0 && (
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-semibold text-muted-foreground">Ambiente</Label>
+                        <Label className="text-xs font-semibold text-muted-foreground">Ambiente</Label>
                         <Select value={idAmbiente} onValueChange={setIdAmbiente} disabled={soloLectura}>
                           <SelectTrigger className="h-9 text-xs">
                             <SelectValue placeholder="Seleccionar ambiente" />

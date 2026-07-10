@@ -118,7 +118,7 @@ export default function DashboardOperador() {
             </h1>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
                 Panel de Operaciones - {data?.periodo}
               </p>
             </div>
@@ -131,7 +131,7 @@ export default function DashboardOperador() {
               <Clock className="h-4 w-4" />
             </div>
             <div>
-              <p className="text-[10px] font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-0.5">
+              <p className="text-xs font-bold text-emerald-700 dark:text-emerald-400 uppercase tracking-widest mb-0.5">
                 Ventana Activa
               </p>
               <div className="text-sm font-black text-emerald-600 dark:text-emerald-500 tabular-nums leading-none">
@@ -156,7 +156,7 @@ export default function DashboardOperador() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Ventanas de Tiempo</h3>
-              <p className="text-[11px] text-muted-foreground font-medium">Control de acceso</p>
+              <p className="text-sm text-muted-foreground font-medium">Control de acceso</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 flex-1">
@@ -178,7 +178,7 @@ export default function DashboardOperador() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Disponibilidad Docente</h3>
-              <p className="text-[11px] text-muted-foreground font-medium">Revisión de horarios</p>
+              <p className="text-sm text-muted-foreground font-medium">Revisión de horarios</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 flex-1">
@@ -200,7 +200,7 @@ export default function DashboardOperador() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Asignación de Carga</h3>
-              <p className="text-[11px] text-muted-foreground font-medium">Gestión principal</p>
+              <p className="text-sm text-muted-foreground font-medium">Gestión principal</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 flex-1">
@@ -225,7 +225,7 @@ export default function DashboardOperador() {
             <span className="text-sm text-muted-foreground font-medium">/ {kpis?.totalDocentes || 0} docentes</span>
           </div>
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[10px] font-bold">
+            <div className="flex justify-between text-xs font-bold">
               <span className="text-emerald-700 dark:text-emerald-400">Progreso total</span>
               <span>{pctDocentes}%</span>
             </div>
@@ -248,7 +248,7 @@ export default function DashboardOperador() {
             <span className="text-3xl font-black text-primary">{kpis?.asignacionesRealizadas || 0}</span>
             <span className="text-sm text-muted-foreground font-medium">bloques de horario</span>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2">
+          <p className="text-sm text-muted-foreground mt-2">
             Total de asignaciones creadas en este semestre.
           </p>
         </div>
@@ -273,11 +273,11 @@ export default function DashboardOperador() {
             <span className="text-sm text-muted-foreground font-medium">pendientes de revisión</span>
           </div>
           {(kpis?.conflictosPendientes ?? 0) > 0 ? (
-            <Link href="/dashboard/reportes" className="mt-3 text-[11px] font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/50 px-3 py-1.5 rounded-md inline-flex self-start items-center gap-1 hover:bg-rose-200 transition-colors">
+            <Link href="/dashboard/reportes" className="mt-3 text-sm font-bold text-rose-600 dark:text-rose-400 bg-rose-100 dark:bg-rose-900/50 px-3 py-1.5 rounded-md inline-flex self-start items-center gap-1 hover:bg-rose-200 transition-colors">
               Resolver conflictos &rarr;
             </Link>
           ) : (
-            <p className="text-[11px] text-muted-foreground mt-2 font-medium flex items-center gap-1.5">
+            <p className="text-sm text-muted-foreground mt-2 font-medium flex items-center gap-1.5">
               <CheckCircle2 className="h-3 w-3 text-emerald-500" /> Todo en orden
             </p>
           )}

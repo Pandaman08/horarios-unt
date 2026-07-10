@@ -46,6 +46,7 @@ export async function PUT(
         orden_prioridad: parseInt(data.orden_prioridad),
         intervalo_minutos: parseInt(data.intervalo_minutos),
         completado: data.completado,
+        pausado: data.pausado,
         activo: data.activo
       }
     });

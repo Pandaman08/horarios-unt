@@ -176,8 +176,11 @@ export async function GET(request: Request) {
       })
     );
 
+    const hayPausado = ventanasExistentes.some((v: any) => v.pausado === true);
+
     return NextResponse.json({
       ventanas: ventanasConDocentes,
+      pausado: hayPausado,
       docentes_con_cursos: docentes.length,
       docentes_sin_ventana: Math.max(0, docentes.length - ventanasExistentes.length)
     });
@@ -294,30 +297,50 @@ export async function POST(request: Request) {
       });
     }
 
+    const intervalo = parseInt(intervalo_por_docente || '15');
+
+    // Usar minutos acumulados desde epoch para rastrear fechas correctamente
     let fechaInicio = parseFechaLocal(fecha_inicio);
-    let horaActual = hora_inicio_jornada || '08:00';
+    let [h0, m0] = (hora_inicio_jornada || '08:00').split(':').map(Number);
+    let minutosAcumulados = h0 * 60 + m0;
     let ordenPrioridad = ventanasActivasCount + 1;
 
     if (ventanasActivasCount > 0) {
       const ultimaVentana = ventanasExistentes[ventanasExistentes.length - 1];
       fechaInicio = new Date(ultimaVentana.fecha);
-      horaActual = ultimaVentana.hora_fin;
+      const [uh, um] = ultimaVentana.hora_fin.split(':').map(Number);
+      minutosAcumulados = uh * 60 + um;
       ordenPrioridad = (ultimaVentana.orden_prioridad || ventanasActivasCount) + 1;
     }
 
-    const intervalo = parseInt(intervalo_por_docente || '15');
-    const horaFinJornada = hora_fin_jornada || '18:00';
+    const fechaRef = new Date(fechaInicio);
     const nuevasVentanas = [];
 
     for (const docente of docentesPendientes) {
-      const horaFin = addMinutesToTime(horaActual, intervalo);
+      const minutosInicio = minutosAcumulados;
+      const minutosFin = minutosAcumulados + intervalo;
+
+      const hInicio = Math.floor(minutosInicio / 60) % 24;
+      const mInicio = minutosInicio % 60;
+      const hFin = Math.floor(minutosFin / 60) % 24;
+      const mFin = minutosFin % 60;
+
+      const horaInicioStr = `${String(hInicio).padStart(2, '0')}:${String(mInicio).padStart(2, '0')}`;
+      const horaFinStr = `${String(hFin).padStart(2, '0')}:${String(mFin).padStart(2, '0')}`;
+
+      // Detectar cruce de día (cuando minutosAcumulados cruza un múltiplo de 1440)
+      const diasPrev = Math.floor(minutosAcumulados / 1440);
+      const diasNext = Math.floor((minutosAcumulados + intervalo) / 1440);
+      if (diasNext > diasPrev) {
+        fechaRef.setDate(fechaRef.getDate() + (diasNext - diasPrev));
+      }
 
       const ventana = await prisma.ventanaAtencion.create({
         data: {
           id_periodo: idPeriodoNum,
-          fecha: fechaInicio,
-          hora_inicio: horaActual,
-          hora_fin: horaFin,
+          fecha: new Date(fechaRef.getFullYear(), fechaRef.getMonth(), fechaRef.getDate()),
+          hora_inicio: horaInicioStr,
+          hora_fin: horaFinStr,
           modalidad: docente.condicion || 'ORDINARIO',
           categoria: docente.categoriaDocente || 'AUXILIAR',
           cantidad_docentes: 1,
@@ -329,12 +352,7 @@ export async function POST(request: Request) {
       });
 
       nuevasVentanas.push({ ...ventana, docente });
-      horaActual = horaFin;
-
-      if (horaActual > horaFinJornada) {
-        fechaInicio = new Date(fechaInicio.getTime() + 86400000);
-        horaActual = hora_inicio_jornada || '08:00';
-      }
+      minutosAcumulados = minutosFin;
     }
     console.log('📋 Docentes pendientes:', docentesPendientes.length);
     return NextResponse.json({

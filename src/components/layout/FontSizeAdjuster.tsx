@@ -48,7 +48,7 @@ export function FontSizeAdjuster({ className }: { className?: string }) {
       aria-label={t("fontSizeDesc")}
     >
       <Type className="h-3.5 w-3.5" />
-      <span className="text-[10px] font-bold uppercase w-4">
+      <span className="text-xs font-bold uppercase w-4">
         {FONT_SIZES.find(f => f.value === fontSize)?.key}
       </span>
     </button>

@@ -44,7 +44,7 @@ export function CountdownTimer(props: Readonly<CountdownTimerProps>) {
       <div className="flex flex-col items-center justify-center bg-rose-50 border border-rose-100 rounded-2xl p-4 shadow-sm">
         <div className="flex items-center gap-2 mb-1">
           <Clock className="h-4 w-4 text-rose-600" />
-          <span className="text-[10px] font-black text-rose-600 uppercase tracking-[0.2em]">
+          <span className="text-xs font-black text-rose-600 uppercase tracking-[0.2em]">
             Tiempo Restante
           </span>
         </div>

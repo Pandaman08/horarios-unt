@@ -336,6 +336,15 @@ export class GestorVentanasAtencion {
 
     if (indexDocente !== -1 && ventanas.length > indexDocente) {
       const ventana = ventanas[indexDocente];
+
+      if (ventana.pausado) {
+        return {
+          tieneAcceso: false,
+          soloLectura: true,
+          mensaje: 'La venta de horarios está actualmente pausada por la administración. Intente nuevamente más tarde.'
+        };
+      }
+
       const fechaVentanaLima = new Date(ventana.fecha).toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
       const inicioMin = (() => {
         const [h, m] = ventana.hora_inicio.split(':').map(Number);

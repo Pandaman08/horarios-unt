@@ -1025,7 +1025,7 @@ export function MatrizDisponibilidad({
           <LayoutGrid className="h-6 w-6 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
         </div>
 
-        <p className="text-muted-foreground font-bold uppercase tracking-widest text-[10px]">
+        <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">
           Cargando Matriz...
         </p>
       </div>
@@ -1038,7 +1038,7 @@ export function MatrizDisponibilidad({
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-[10px] font-bold uppercase text-muted-foreground">Intervalo</span>
+            <span className="text-xs font-bold uppercase text-muted-foreground">Intervalo</span>
             <Select
               value={intervalo.toString()}
               onValueChange={(v) => setIntervalo(Number(v))}
@@ -1054,7 +1054,7 @@ export function MatrizDisponibilidad({
             </Select>
           </div>
           <div className="hidden sm:block h-4 w-px bg-border" />
-          <div className="flex flex-wrap items-center gap-3 text-[10px]">
+          <div className="flex flex-wrap items-center gap-3 text-xs">
             <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded border border-border bg-background" />
               Libre
@@ -1092,7 +1092,7 @@ export function MatrizDisponibilidad({
             </span>
           </div>
         </div>
-        <p className="text-[10px] text-muted-foreground flex items-center gap-1.5 shrink-0">
+        <p className="text-xs text-muted-foreground flex items-center gap-1.5 shrink-0">
           <Info className="h-3.5 w-3.5" />
           {tipoVista === "no-lectiva"
             ? "Use la matriz para ubicar su carga no lectiva sin cruzar horarios lectivos"
@@ -1104,13 +1104,13 @@ export function MatrizDisponibilidad({
         <table className="w-full border-collapse min-w-[880px]">
           <thead>
             <tr className="bg-primary/90">
-              <th className="w-16 py-2.5 px-2 text-[10px] font-bold text-primary-foreground sticky left-0 bg-primary/90 z-10">
+              <th className="w-16 py-2.5 px-2 text-xs font-bold text-primary-foreground sticky left-0 bg-primary/90 z-10">
                 Hora
               </th>
               {DIAS.map((dia) => (
                 <th
                   key={dia.id}
-                  className="py-2.5 px-2 text-[10px] font-bold text-primary-foreground"
+                  className="py-2.5 px-2 text-xs font-bold text-primary-foreground"
                 >
                   {dia.nombre}
                 </th>
@@ -1121,7 +1121,7 @@ export function MatrizDisponibilidad({
           <tbody>
             {timeSlots.map((hora) => (
               <tr key={hora}>
-                <td className="py-2 px-2 text-center border-b border-border bg-muted/30 text-[10px] font-semibold text-muted-foreground sticky left-0 z-10">
+                <td className="py-2 px-2 text-center border-b border-border bg-muted/30 text-xs font-semibold text-muted-foreground sticky left-0 z-10">
                   {hora}
                 </td>
 
@@ -1175,7 +1175,7 @@ export function MatrizDisponibilidad({
 
                       {info &&
                         info.estado === "bloqueado_lectivo" && (
-                          <div className="absolute inset-1 rounded-lg bg-blue-500/10 border border-blue-300/40 dark:border-blue-700/50 p-1 text-[9px] flex flex-col justify-between">
+                          <div className="absolute inset-1 rounded-lg bg-blue-500/10 border border-blue-300/40 dark:border-blue-700/50 p-1 text-xs flex flex-col justify-between">
                             <div>
                               <p className="font-black truncate text-blue-800 dark:text-blue-300">
                                 {info.curso_nombre}
@@ -1185,7 +1185,7 @@ export function MatrizDisponibilidad({
                               </p>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-[8px] uppercase font-bold text-blue-700 dark:text-blue-400">
+                              <span className="text-xs uppercase font-bold text-blue-700 dark:text-blue-400">
                                 {info.tipo_clase}
                               </span>
                               <Lock className="h-3 w-3 text-blue-500" />
@@ -1204,11 +1204,11 @@ export function MatrizDisponibilidad({
                                 : "bg-rose-500/10 border-rose-300/60"
                             )}>
                               <div className="min-w-0">
-                                <p className="font-bold truncate text-[9px] leading-tight text-amber-800 dark:text-amber-300">
+                                <p className="font-bold truncate text-xs leading-tight text-amber-800 dark:text-amber-300">
                                   {info.curso_nombre}
                                 </p>
                                 {info.docente_nombre && (
-                                  <p className="truncate text-[8px] text-muted-foreground leading-tight mt-0.5">
+                                  <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">
                                     {info.docente_nombre}
                                   </p>
                                 )}
@@ -1224,7 +1224,7 @@ export function MatrizDisponibilidad({
                               )}
                             </div>
                           ) : (
-                            <div className="absolute inset-1 rounded-lg bg-card border border-border p-1 text-[9px] flex flex-col justify-between">
+                            <div className="absolute inset-1 rounded-lg bg-card border border-border p-1 text-xs flex flex-col justify-between">
                               <div>
                                 <p className="font-black truncate">
                                   {
@@ -1240,7 +1240,7 @@ export function MatrizDisponibilidad({
                               </div>
 
                               <div className="flex items-center justify-between">
-                                <span className="text-[8px] uppercase font-bold">
+                                <span className="text-xs uppercase font-bold">
                                   {
                                     info.tipo_clase
                                   }

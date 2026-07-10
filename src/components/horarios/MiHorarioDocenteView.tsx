@@ -613,7 +613,7 @@ export function MiHorarioDocenteView() {
       {view === "matriz" ? (
         <>
           <div className="overflow-x-auto rounded-2xl border border-border bg-card">
-            <div className="min-w-[700px] p-4">
+            <div className="w-full min-w-0 p-4">
               {/* Header días */}
               <div className="grid grid-cols-7 gap-1 mb-1">
                 <div className="p-2 text-center text-sm font-semibold text-muted-foreground bg-muted rounded-lg">
@@ -669,7 +669,7 @@ export function MiHorarioDocenteView() {
                                 <div
                                   key={horarioKey}
                                   className={cn(
-                                    "mb-0.5 p-1 rounded border-l-2 text-[10px]",
+                                    "mb-0.5 p-1 rounded border-l-2 text-xs",
                                     colores.bg,
                                     colores.border,
                                     colores.text,
@@ -679,7 +679,7 @@ export function MiHorarioDocenteView() {
                                     <>
                                       <div className="flex items-center justify-between gap-1">
                                         <span className="font-bold truncate">{noLectivaLabel}</span>
-                                        <span className="shrink-0 text-[9px] font-bold opacity-80">NL</span>
+                                        <span className="shrink-0 text-xs font-bold opacity-80">NL</span>
                                       </div>
                                       <div className="opacity-80 truncate mt-0.5">
                                         {horario.curso_nombre}
@@ -789,13 +789,13 @@ export function MiHorarioDocenteView() {
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
                         {esNoLectiva ? (
-                          <span className="text-[10px] text-rose-500 font-medium">—</span>
+                          <span className="text-xs text-rose-500 font-medium">—</span>
                         ) : (
                           h.grupo_codigo
                         )}
                       </td>
                       <td className="px-4 py-3 text-card-foreground">
-                        {h.ambiente_codigo || (esNoLectiva ? <span className="text-[10px] text-muted-foreground">—</span> : "")}
+                        {h.ambiente_codigo || (esNoLectiva ? <span className="text-xs text-muted-foreground">—</span> : "")}
                       </td>
                       <td className="px-4 py-3">
                         <span className={cn(

@@ -80,6 +80,8 @@ export async function GET(request: Request) {
         estadoVentana = 'sin_ventana';
       } else if (ventana.completado) {
         estadoVentana = 'completado';
+      } else if (ventana.pausado) {
+        estadoVentana = 'pausado';
       } else {
         const fechaVentana = new Date(ventana.fecha).toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
         if (fechaVentana < hoyLocal) {
@@ -120,6 +122,7 @@ export async function GET(request: Request) {
           hora_fin: ventana.hora_fin,
           intervalo_minutos: ventana.intervalo_minutos,
           completado: ventana.completado,
+          pausado: ventana.pausado,
         } : null,
         estadoVentana,
         tiempoRestante,

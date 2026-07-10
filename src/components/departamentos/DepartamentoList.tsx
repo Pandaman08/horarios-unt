@@ -173,25 +173,25 @@ export function DepartamentoList() {
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-              <Users className="h-4 w-4 text-primary" />
+    <div className="page-shell">
+      <div className="page-header-card">
+        <div className="page-header-top">
+          <div className="page-header-brand">
+            <div className="page-icon-box">
+              <Users className="page-icon" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Departamentos Académicos</h2>
-              <p className="text-muted-foreground text-[10px] mt-1">Gestión de departamentos académicos por facultad</p>
+              <h2 className="page-title">Departamentos Académicos</h2>
+              <p className="page-subtitle">Gestión de departamentos académicos por facultad</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="page-toolbar">
+            <div className="page-search-wrap">
+              <Search className="page-search-icon" />
               <Input
                 placeholder="Buscar departamento..."
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                className="page-search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -204,7 +204,7 @@ export function DepartamentoList() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                <Button className="page-btn">
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Departamento
                 </Button>
               </DialogTrigger>
@@ -224,30 +224,30 @@ export function DepartamentoList() {
                 </DialogHeader>
                 <form onSubmit={handleSubmit} className="space-y-6">
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
                     <Select value={formData.facultadId} onValueChange={(val) => setFormData({ ...formData, facultadId: val })} required>
-                      <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                      <SelectTrigger className="rounded-lg border-input bg-muted/50 font-bold">
                         <SelectValue placeholder="Seleccionar facultad" />
                       </SelectTrigger>
                       <SelectContent position="popper">
                         {facultades.map((facultad) => (
-                          <SelectItem key={facultad.id} value={facultad.id} className="text-[11px] font-bold">{facultad.codigo} - {facultad.nombre}</SelectItem>
+                          <SelectItem key={facultad.id} value={facultad.id} className="text-sm font-bold">{facultad.codigo} - {facultad.nombre}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
                   </div>
                   <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
                     <Input 
-                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                      className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all"
                       value={formData.nombre} 
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
                       required 
                     />
                   </div>
-                  <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-muted-foreground hover:bg-muted px-6 text-[11px]">Cancelar</Button>
-                    <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                  <div className="page-actions-row justify-end pt-4 border-t">
+                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-lg font-bold text-muted-foreground hover:bg-muted px-6">Cancelar</Button>
+                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold shadow-sm transition-all active:scale-95">
                       {editingDepartamento ? 'Actualizar' : 'Registrar'}
                     </Button>
                   </div>
@@ -256,17 +256,17 @@ export function DepartamentoList() {
             </Dialog>
           </div>
         </div>
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2 border-t border-border/50">
+        <div className="page-filters">
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Filtrar por Facultad</Label>
+            <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Filtrar por Facultad</Label>
             <Select value={selectedFacultadId} onValueChange={setSelectedFacultadId}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Todas las facultades" />
               </SelectTrigger>
               <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="all" className="text-[10px] font-bold">Todas las facultades</SelectItem>
+                <SelectItem value="all" className="font-bold">Todas las facultades</SelectItem>
                 {facultades.map((facultad) => (
-                  <SelectItem key={facultad.id} value={facultad.id} className="text-[10px] font-bold">{facultad.codigo} - {facultad.nombre}</SelectItem>
+                  <SelectItem key={facultad.id} value={facultad.id} className="font-bold">{facultad.codigo} - {facultad.nombre}</SelectItem>
                 ))}
               </SelectContent>
             </Select>
@@ -274,34 +274,34 @@ export function DepartamentoList() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="page-table-card">
         <div className="overflow-x-auto">
-          <Table className="min-w-full w-full">
+          <Table className="w-full">
             <TableHeader className="bg-muted/50">
               <TableRow className="border-b border-border hover:bg-transparent">
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Facultad</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Nombre</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Facultad</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Nombre</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={3} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={3} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((departamento) => (
                   <TableRow key={departamento.id} className="group hover:bg-muted/50 transition-colors">
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-[9px]">
+                        <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-xs">
                           {departamento.facultad.codigo}
                         </div>
-                        <span className="font-semibold text-foreground text-[11px]">{departamento.facultad.nombre}</span>
+                        <span className="font-semibold text-foreground text-sm">{departamento.facultad.nombre}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2">
-                      <span className="font-semibold text-foreground text-[11px]">{departamento.nombre}</span>
+                      <span className="font-semibold text-foreground text-sm">{departamento.nombre}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">

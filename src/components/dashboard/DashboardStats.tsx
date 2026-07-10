@@ -104,7 +104,7 @@ function VerticalBarChart({
             />
           </div>
           {item.cantidad !== undefined && (
-            <span className="text-[10px] text-muted-foreground">
+            <span className="text-xs text-muted-foreground">
               Asignaciones: {item.cantidad}
             </span>
           )}
@@ -258,7 +258,7 @@ export function DashboardStats({
           <p className="text-sm font-bold text-primary mt-1 truncate">
             {ventana?.nombre || t("noWindow")}
           </p>
-          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+          <div className="mt-2 flex justify-between text-sm text-muted-foreground">
             <span>{t("kpiProgress")}</span>
             <span className="font-semibold tabular-nums">{pctGeneral}%</span>
           </div>
@@ -275,7 +275,7 @@ export function DashboardStats({
               {" "}/ {kpis?.totalDocentes ?? 0}
             </span>
           </p>
-          <div className="mt-2 flex justify-between text-[11px] text-muted-foreground">
+          <div className="mt-2 flex justify-between text-sm text-muted-foreground">
             <span>{t("kpiResponseRate")}</span>
             <span className="font-semibold text-emerald-600 dark:text-emerald-400 tabular-nums">
               {pctDocentes}%
@@ -301,7 +301,7 @@ export function DashboardStats({
           <div className="mt-2 flex justify-end">
             <Link
               href="/dashboard/reportes"
-              className="text-[11px] font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-md hover:bg-destructive/15 transition-colors"
+              className="text-sm font-semibold text-destructive bg-destructive/10 px-2 py-0.5 rounded-md hover:bg-destructive/15 transition-colors"
             >
               {t("kpiView")} →
             </Link>
@@ -353,7 +353,7 @@ export function DashboardStats({
         <div className="dashboard-card p-4 xl:col-span-2 overflow-x-auto">
           <div className="flex flex-col sm:flex-row sm:flex-wrap items-start sm:items-center justify-between gap-3 mb-4">
             <h2 className="text-sm font-bold text-primary">{t("heatmapTitle")}</h2>
-            <div className="flex items-center gap-3 text-[10px] font-medium text-muted-foreground">
+            <div className="flex items-center gap-3 text-xs font-medium text-muted-foreground">
               <span className="flex items-center gap-1.5">
                 <span className="w-3 h-3 rounded-sm bg-emerald-500/60" />
                 <span className="hidden sm:inline">{t("heatLow")}</span>
@@ -399,7 +399,7 @@ export function DashboardStats({
                         <td key={dia} className="py-2 px-1 text-center">
                           <span
                             className={cn(
-                              "inline-flex items-center justify-center min-w-[2rem] h-7 px-1 rounded-md border font-bold tabular-nums text-[10px] transition-colors",
+                              "inline-flex items-center justify-center min-w-[2rem] h-7 px-1 rounded-md border font-bold tabular-nums text-xs transition-colors",
                               HEATMAP_STYLES[nivel]
                             )}
                           >
@@ -417,7 +417,7 @@ export function DashboardStats({
 
         <div className="dashboard-card p-4 bg-gradient-to-br from-primary to-primary/80 text-primary-foreground border-primary">
           <h2 className="text-sm font-bold mb-1">{t("quickReports")}</h2>
-          <p className="text-[11px] opacity-90 mb-3 leading-relaxed">{t("quickReportsDesc")}</p>
+          <p className="text-sm opacity-90 mb-3 leading-relaxed">{t("quickReportsDesc")}</p>
           <div className="space-y-2">
             {reportLinks.map(({ href, label, icon: Icon }) => (
               <Link
