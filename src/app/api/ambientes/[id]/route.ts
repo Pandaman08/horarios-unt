@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -9,7 +9,8 @@ export async function GET(
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     const ambiente = await prisma.ambiente.findUnique({
-      where: { id_ambiente: id }
+      where: { id_ambiente: id },
+      include: { facultad: true }
     });
     if (!ambiente) return NextResponse.json({ error: 'Ambiente no encontrado' }, { status: 404 });
     return NextResponse.json(ambiente);
@@ -39,7 +40,8 @@ export async function PUT(
         caracteristicas: data.caracteristicas || {},
         activo: data.activo,
         requiere_mantenimiento: data.requiere_mantenimiento,
-        observaciones: data.observaciones
+        observaciones: data.observaciones,
+        facultadId: data.facultadId || null
       }
     });
     return NextResponse.json(ambiente);

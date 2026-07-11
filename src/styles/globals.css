@@ -99,7 +99,7 @@
 }
 
 :root {
-  --font-size-base: 16px;
+  --font-size-base: 18px;
   --background: oklch(0.985 0.002 247);
   --foreground: oklch(0.2 0.02 260);
   --card: oklch(1 0 0);
@@ -199,5 +199,152 @@
 
   .kpi-value {
     @apply text-2xl font-bold text-foreground tabular-nums leading-tight;
+  }
+
+  /* Patrón unificado de páginas del dashboard */
+  .page-shell {
+    @apply space-y-2 animate-in fade-in duration-500 w-full max-w-full min-w-0;
+  }
+
+  .page-header-card {
+    @apply flex flex-col gap-2 bg-card p-3 sm:p-4 rounded-xl border border-border shadow-sm w-full;
+  }
+
+  .page-header-top {
+    @apply flex flex-col lg:flex-row items-stretch lg:items-center gap-2;
+  }
+
+  .page-header-brand {
+    @apply flex items-center gap-2 min-w-0 flex-1;
+  }
+
+  .page-icon-box {
+    @apply h-8 w-8 shrink-0 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20;
+  }
+
+  .page-icon {
+    @apply h-4 w-4 text-primary;
+  }
+
+  .page-title {
+    @apply text-sm sm:text-base font-bold text-foreground tracking-tight leading-tight;
+  }
+
+  .page-subtitle {
+    @apply text-[11px] sm:text-xs text-muted-foreground;
+  }
+
+  .page-toolbar {
+    @apply flex flex-col sm:flex-row flex-wrap items-stretch sm:items-center gap-1.5 sm:gap-2 shrink-0;
+  }
+
+  .page-search-wrap {
+    @apply relative w-full sm:min-w-[180px] sm:flex-1;
+  }
+
+  .page-search-icon {
+    @apply absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none;
+  }
+
+  .page-search {
+    @apply pl-8 h-8 sm:h-9 rounded-lg border-input bg-muted/50 text-xs sm:text-sm font-medium focus-visible:ring-1 focus-visible:ring-primary w-full;
+  }
+
+  .page-btn {
+    @apply h-8 sm:h-9 rounded-lg text-xs sm:text-sm font-semibold shadow-sm;
+  }
+
+  .page-label {
+    @apply text-[11px] font-semibold uppercase tracking-wider text-muted-foreground;
+  }
+
+  .page-input {
+    @apply h-8 sm:h-9 rounded-lg border-input bg-muted/50 text-xs sm:text-sm font-medium w-full;
+  }
+
+  .page-table-card {
+    @apply bg-card rounded-xl border border-border shadow-sm w-full overflow-hidden;
+  }
+
+  .page-table-th {
+    @apply text-[10px] sm:text-[11px] font-semibold text-muted-foreground uppercase tracking-wider px-4 py-2 whitespace-nowrap;
+  }
+
+  .page-table-td {
+    @apply px-4 py-2 text-xs sm:text-sm;
+  }
+
+  .page-filters {
+    @apply grid gap-x-3 gap-y-2 border-t border-border pt-2.5;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+  }
+
+  .page-filter-wide {
+    grid-column: span 2;
+  }
+
+  .page-filter-full {
+    grid-column: 1 / -1;
+  }
+
+  .page-filter-select {
+    @apply h-8 sm:h-9 w-full rounded-lg border-input bg-muted/50 text-xs sm:text-sm font-medium;
+  }
+
+  .page-actions-row {
+    @apply flex flex-col sm:flex-row flex-wrap gap-1.5;
+  }
+
+  /* ── Modal / Dialog ──────────────────────────────── */
+  .page-modal {
+    @apply sm:max-w-2xl rounded-xl p-0 border-none shadow-2xl bg-card text-foreground;
+  }
+
+  .page-modal-lg {
+    @apply sm:max-w-2xl rounded-xl p-0 border-none shadow-2xl bg-card text-foreground;
+  }
+
+  .page-modal-xl {
+    @apply sm:max-w-4xl rounded-xl p-0 border-none shadow-2xl bg-card text-foreground;
+  }
+
+  .page-modal-header {
+    @apply px-6 pt-6 pb-0;
+  }
+
+  .page-modal-body {
+    @apply px-6 py-4;
+  }
+
+  .page-modal-footer {
+    @apply px-6 pb-6 pt-0;
+  }
+
+  .page-modal-field {
+    @apply space-y-1.5 min-w-0;
+  }
+
+  .page-modal-label {
+    @apply text-xs font-bold uppercase tracking-widest text-muted-foreground;
+  }
+
+  .page-modal-input {
+    @apply w-full h-9 rounded-lg border-input bg-muted/50 font-medium text-sm transition-all focus:ring-1 focus:ring-primary min-w-0 overflow-hidden;
+  }
+
+  .page-modal-btn-cancel {
+    @apply h-9 rounded-lg font-bold text-xs px-5 transition-all text-muted-foreground hover:bg-muted;
+  }
+
+  .page-modal-btn-submit {
+    @apply h-9 rounded-lg font-bold text-xs px-5 transition-all bg-primary text-primary-foreground hover:bg-primary/90 shadow-sm active:scale-[0.98];
+  }
+
+  .page-modal-alert {
+    @apply rounded-2xl border-none shadow-2xl p-6 bg-card text-foreground max-w-md;
+  }
+
+  .page-modal-alert-btn {
+    @apply h-9 rounded-lg font-bold text-xs px-5 transition-all;
   }
 }

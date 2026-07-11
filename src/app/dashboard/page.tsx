@@ -1,4 +1,4 @@
-import { getServerSession } from "next-auth";
+﻿import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import DashboardDocente from "@/components/dashboard/DashboardDocente";
 import DashboardPrincipal from "@/components/dashboard/DashboardPrincipal";

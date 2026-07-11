@@ -45,7 +45,9 @@ export class ValidadorHorario {
       this.validarCursoAsignable(solicitud),
       this.validarAmbienteValido(solicitud),
       this.validarHorasCompletadas(solicitud),
-      this.validarDeclaracionAprobada(solicitud),
+      // COMENTADO: La validación de APROBADO ya no es requerida por el nuevo flujo
+      // Ahora solo necesitamos que exista CargaLectiva asignada (cualquier estado)
+      // this.validarDeclaracionAprobada(solicitud),
     ];
 
     const resultados = await Promise.all(validaciones);
@@ -229,7 +231,12 @@ export class ValidadorHorario {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente elegido ya está ocupado en este horario. Seleccione otro ambiente u otra hora.',
-        severidad: 'ERROR'
+        severidad: 'ERROR',
+        detalle: {
+          id_asignacion: ocupadoAsignado.id_asignacion,
+          id_docente: ocupadoAsignado.id_docente,
+          esTemporal: false
+        }
       });
     }
 
@@ -252,7 +259,12 @@ export class ValidadorHorario {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente elegido tiene otra reserva pendiente en este horario. Pruebe otro ambiente u otra hora.',
-        severidad: 'ERROR'
+        severidad: 'ERROR',
+        detalle: {
+          id_seleccion: ocupadoTemporal.id_seleccion,
+          id_docente: ocupadoTemporal.id_docente,
+          esTemporal: true
+        }
       });
     }
 
@@ -341,8 +353,11 @@ export class ValidadorHorario {
         tipo_clase: s.tipoClase,
         declaracion: {
           id_docente: s.docenteId,
-          id_periodo: s.periodoId,
-          estado: 'APROBADO'
+          id_periodo: s.periodoId
+          // COMENTADO: No validamos estado APROBADO aquí
+          // Según el nuevo flujo, el docente puede seleccionar horarios
+          // sin esperar la aprobación de la declaración
+          // estado: 'APROBADO'
         }
       }
     });
@@ -350,7 +365,7 @@ export class ValidadorHorario {
     if (!habilitadoDocenteCurso && !habilitadoDeclaracion) {
       conflictos.push({
         tipo: 'CURSO_NO_ASIGNABLE',
-        mensaje: `No tiene asignado este curso en ${etiquetaTipoClase(s.tipoClase)} dentro de su carga horaria aprobada.`,
+        mensaje: `No tiene asignado este curso en ${etiquetaTipoClase(s.tipoClase)} en su carga horaria.`,
         severidad: 'ERROR'
       });
     }
@@ -391,10 +406,28 @@ export class ValidadorHorario {
     const tipoLabel = etiquetaTipoClase(s.tipoClase);
     const tipo = s.tipoClase.toLowerCase();
 
+    // Buscar la carga lectiva del docente para este curso y tipo de clase
+    const cargaLectiva = await prisma.cargaLectiva.findFirst({
+      where: {
+        id_curso: s.cursoId,
+        tipo_clase: s.tipoClase,
+        declaracion: {
+          id_docente: s.docenteId,
+          id_periodo: s.periodoId
+        }
+      }
+    });
+
+    // Calcular horas tope: usar carga lectiva si existe, sino usar horas del curso
     let horasTope = 0;
-    if (tipo.includes('teoria')) horasTope = curso.horas_teoria;
-    else if (tipo.includes('laboratorio')) horasTope = curso.horas_laboratorio;
-    else if (tipo.includes('practica') || tipo.includes('práctica')) horasTope = curso.horas_practica;
+    if (cargaLectiva) {
+      horasTope = cargaLectiva.horas_semanales * (cargaLectiva.grupos_asignados || 1);
+    } else {
+      // Fallback: usar horas del curso si no hay carga lectiva
+      if (tipo.includes('teoria')) horasTope = curso.horas_teoria;
+      else if (tipo.includes('laboratorio')) horasTope = curso.horas_laboratorio;
+      else if (tipo.includes('practica') || tipo.includes('práctica')) horasTope = curso.horas_practica;
+    }
     
     // Sumar horas ya asignadas (confirmadas)
     const asignados = await prisma.horarioAsignado.findMany({
@@ -447,23 +480,26 @@ export class ValidadorHorario {
     return conflictos;
   }
 
-  // 9. Declaración Horaria Aprobada
+  // 9. Declaración Horaria Aprobada (DESACTIVADA - Ya no se requiere APROBADO)
+  // Según el nuevo flujo de workflow, los docentes pueden seleccionar horarios
+  // sin esperar a que su declaración sea aprobada. Solo necesitan CargaLectiva asignada.
   private static async validarDeclaracionAprobada(s: SolicitudAsignacion): Promise<Conflicto[]> {
     const conflictos: Conflicto[] = [];
-    const declaracion = await prisma.declaracionHoraria.findFirst({
-      where: {
-        id_docente: s.docenteId,
-        id_periodo: s.periodoId
-      }
-    });
-
-    if (!declaracion || declaracion.estado !== 'APROBADO') {
-      conflictos.push({
-        tipo: 'CARGA_NO_APROBADA',
-        mensaje: 'Su carga horaria aún no está aprobada. Espere la aprobación del administrador para asignar horarios.',
-        severidad: 'ERROR'
-      });
-    }
+    // MÉTODO DESACTIVADO - Mantener código por compatibilidad pero no se usa
+    // const declaracion = await prisma.declaracionHoraria.findFirst({
+    //   where: {
+    //     id_docente: s.docenteId,
+    //     id_periodo: s.periodoId
+    //   }
+    // });
+    //
+    // if (!declaracion || declaracion.estado !== 'APROBADO') {
+    //   conflictos.push({
+    //     tipo: 'CARGA_NO_APROBADA',
+    //     mensaje: 'Su carga horaria aún no está aprobada. Espere la aprobación del administrador para asignar horarios.',
+    //     severidad: 'ERROR'
+    //   });
+    // }
 
     return conflictos;
   }

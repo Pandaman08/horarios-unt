@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -30,18 +30,28 @@ export async function PUT(
     const { id: idStr } = await params;
     const id = parseInt(idStr);
     const data = await request.json();
+    const capacidadMaxima = parseInt(data.capacidad_maxima);
+    const cantidadMatriculados = parseInt(data.cantidad_matriculados);
+    
     const grupo = await prisma.grupo.update({
       where: { id_grupo: id },
       data: {
         id_curso: parseInt(data.id_curso),
         id_periodo: parseInt(data.id_periodo),
         codigo_grupo: data.codigo_grupo,
-        capacidad_maxima: parseInt(data.capacidad_maxima),
-        cantidad_matriculados: parseInt(data.cantidad_matriculados),
+        capacidad_maxima: capacidadMaxima,
+        cantidad_matriculados: cantidadMatriculados,
         activo: data.activo
       }
     });
-    return NextResponse.json(grupo);
+
+    // Check for warning condition
+    let warning = null;
+    if (capacidadMaxima < 8 || capacidadMaxima > 60) {
+      warning = "Fuera del rango permitido (8-60 alumnos), Disposición Complementaria Segunda del Reglamento CAD";
+    }
+
+    return NextResponse.json({ grupo, warning });
   } catch (error) {
     return NextResponse.json({ error: 'Error al actualizar grupo' }, { status: 500 });
   }

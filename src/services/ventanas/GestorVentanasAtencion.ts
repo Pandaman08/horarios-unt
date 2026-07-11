@@ -1,8 +1,9 @@
-import { prisma } from '@/lib/prisma';
+﻿import { prisma } from '@/lib/prisma';
 import { addMinutes, format } from 'date-fns';
 import { ServicioNotificador } from '@/services/notificaciones/ServicioNotificador';
 
-const prioridadCategoria = ['jefe_practica', 'auxiliar', 'asociado', 'principal'];
+const prioridadCategoria = ['AUXILIAR', 'ASOCIADO', 'PRINCIPAL'];
+const prioridadCondicion = ['ORDINARIO', 'CONTRATADO', 'EXTRAORDINARIO'];
 
 export class GestorVentanasAtencion {
   static async obtenerDocentesAprobadosOrdenados(id_periodo: number) {
@@ -19,12 +20,17 @@ export class GestorVentanasAtencion {
     });
 
     return [...docentes].sort((a, b) => {
-      if (a.modalidad === 'nombrado' && b.modalidad !== 'nombrado') return -1;
-      if (b.modalidad === 'nombrado' && a.modalidad !== 'nombrado') return 1;
+      const condA = a.condicion || 'ORDINARIO';
+      const condB = b.condicion || 'ORDINARIO';
+      const idxA = prioridadCondicion.indexOf(condA);
+      const idxB = prioridadCondicion.indexOf(condB);
+      if (idxA !== idxB) return idxA - idxB;
 
-      const catA = prioridadCategoria.indexOf(a.categoria);
-      const catB = prioridadCategoria.indexOf(b.categoria);
-      if (catA !== catB) return catB - catA;
+      const catA = a.categoriaDocente || 'AUXILIAR';
+      const catB = b.categoriaDocente || 'AUXILIAR';
+      const idxCatA = prioridadCategoria.indexOf(catA);
+      const idxCatB = prioridadCategoria.indexOf(catB);
+      if (idxCatA !== idxCatB) return idxCatB - idxCatA;
 
       if (a.fecha_ingreso && b.fecha_ingreso) {
         return new Date(a.fecha_ingreso).getTime() - new Date(b.fecha_ingreso).getTime();
@@ -34,25 +40,28 @@ export class GestorVentanasAtencion {
   }
 
   /**
-   * Calcula cuántos docentes hay por cada categoría y modalidad
+   * Calcula cuántos docentes hay por cada categoría y condición
    */
   static async obtenerEstadisticasDocentes() {
     const docentes = await prisma.docente.findMany({
       where: { activo: true },
       select: {
-        modalidad: true,
-        categoria: true
+        condicion: true,
+        categoriaDocente: true
       }
     });
 
     const stats: Record<string, Record<string, number>> = {
-      nombrado: { principal: 0, asociado: 0, auxiliar: 0, jefe_practica: 0 },
-      contratado: { principal: 0, asociado: 0, auxiliar: 0, jefe_practica: 0 }
+      ORDINARIO: { PRINCIPAL: 0, ASOCIADO: 0, AUXILIAR: 0 },
+      CONTRATADO: { PRINCIPAL: 0, ASOCIADO: 0, AUXILIAR: 0 },
+      EXTRAORDINARIO: { PRINCIPAL: 0, ASOCIADO: 0, AUXILIAR: 0 }
     };
 
-    docentes.forEach((d: { modalidad: string | number; categoria: string | number; }) => {
-      if (stats[d.modalidad] && stats[d.modalidad][d.categoria] !== undefined) {
-        stats[d.modalidad][d.categoria]++;
+    docentes.forEach((d: any) => {
+      const cond = d.condicion || 'ORDINARIO';
+      const cat = d.categoriaDocente || 'AUXILIAR';
+      if (stats[cond] && stats[cond][cat] !== undefined) {
+        stats[cond][cat]++;
       }
     });
 
@@ -84,8 +93,8 @@ export class GestorVentanasAtencion {
         }
       },
       orderBy: [
-        { modalidad: 'asc' }, 
-        { categoria: 'asc' }, 
+        { condicion: 'asc' }, 
+        { categoriaDocente: 'asc' }, 
         { fecha_ingreso: 'asc' }
       ]
     });
@@ -135,7 +144,10 @@ export class GestorVentanasAtencion {
         return dateB - dateA;
       })[0];
 
-      fechaActual = new Date(ultimaVentana.fecha);
+      // Normalizar la fecha a date-only en zona local (medianoche local) para evitar
+      // efectos de zona horaria al almacenar/leer fechas.
+      const ut = new Date(ultimaVentana.fecha);
+      fechaActual = new Date(ut.getFullYear(), ut.getMonth(), ut.getDate());
       horaActual = this.parseHora(ultimaVentana.hora_fin, fechaActual);
       prioridadActual = Math.max(...ventanasExistentes.map((v: any) => v.orden_prioridad || 0)) + 1;
     }
@@ -143,7 +155,7 @@ export class GestorVentanasAtencion {
     horaLimite = this.parseHora(hora_fin_jornada, fechaActual);
 
     for (const grupo of gruposParaProcesar) {
-      const { modalidad, categoria, listaDocentes } = grupo;
+      const { condicion, categoriaDocente, listaDocentes } = grupo;
       const numDocentes = listaDocentes.length;
 
       const minutosNecesarios = numDocentes * intervalo_por_docente;
@@ -173,14 +185,17 @@ export class GestorVentanasAtencion {
           docentesProcesadosEnGrupo + cantidadDocentesEnEstaVentana
         );
 
+        // Guardar solo la parte de fecha (medianoche local) para que al recuperar la
+        // ventana desde la base de datos no haya desplazamientos de día por timezone.
+        const fechaParaGuardar = new Date(fechaActual.getFullYear(), fechaActual.getMonth(), fechaActual.getDate());
         const ventana = await prisma.ventanaAtencion.create({
           data: {
             id_periodo,
-            fecha: fechaActual,
+            fecha: fechaParaGuardar,
             hora_inicio: format(horaActual, 'HH:mm'),
             hora_fin: format(horaFinVentana, 'HH:mm'),
-            modalidad,
-            categoria,
+            modalidad: condicion,
+            categoria: categoriaDocente,
             orden_prioridad: prioridadActual++,
             intervalo_minutos: intervalo_por_docente,
             cantidad_docentes: cantidadDocentesEnEstaVentana,
@@ -228,15 +243,15 @@ export class GestorVentanasAtencion {
   }
 
   private static agruparDocentesPorJerarquia(docentes: any[]) {
-    const jerarquiaModalidad = ['nombrado', 'contratado'];
-    const jerarquiaCategoria = ['principal', 'asociado', 'auxiliar', 'jefe_practica'];
+    const jerarquiaCondicion = ['ORDINARIO', 'CONTRATADO', 'EXTRAORDINARIO'];
+    const jerarquiaCategoria = ['PRINCIPAL', 'ASOCIADO', 'AUXILIAR'];
     const grupos = [];
 
-    for (const mod of jerarquiaModalidad) {
+    for (const cond of jerarquiaCondicion) {
       for (const cat of jerarquiaCategoria) {
-        const lista = docentes.filter(d => d.modalidad === mod && d.categoria === cat);
+        const lista = docentes.filter((d: any) => (d.condicion || 'ORDINARIO') === cond && (d.categoriaDocente || 'AUXILIAR') === cat);
         if (lista.length > 0) {
-          grupos.push({ modalidad: mod, categoria: cat, listaDocentes: lista });
+          grupos.push({ condicion: cond, categoriaDocente: cat, listaDocentes: lista });
         }
       }
     }
@@ -253,6 +268,7 @@ export class GestorVentanasAtencion {
 
   /**
    * Verifica si un docente tiene acceso en el momento actual
+   * Usa timezone America/Lima para todas las comparaciones
    */
   static async verificarAccesoDocente(id_docente: number) {
     const docente = await prisma.docente.findUnique({
@@ -303,46 +319,80 @@ export class GestorVentanasAtencion {
       orderBy: { orden_prioridad: 'asc' }
     });
 
+    // Obtener fecha/hora actual en Peru
     const ahora = new Date();
-    const hoySoloFechaStr = format(ahora, 'yyyy-MM-dd');
-    const horaActual = format(ahora, 'HH:mm');
+    const hoyLima = ahora.toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+    const horaActualLima = ahora.toLocaleTimeString('en-GB', {
+      timeZone: 'America/Lima',
+      hour12: false,
+      hour: '2-digit',
+      minute: '2-digit'
+    });
+
+    const ahoraMin = (() => {
+      const [h, m] = horaActualLima.split(':').map(Number);
+      return h * 60 + m;
+    })();
 
     if (indexDocente !== -1 && ventanas.length > indexDocente) {
       const ventana = ventanas[indexDocente];
-      const fechaInicio = new Date(ventana.fecha);
-      const [horasInicio, minutosInicio] = ventana.hora_inicio.split(':').map(Number);
-      const [horasFin, minutosFin] = ventana.hora_fin.split(':').map(Number);
-      
-      fechaInicio.setHours(horasInicio, minutosInicio, 0, 0);
-      const fechaFin = new Date(fechaInicio);
-      fechaFin.setHours(horasFin, minutosFin, 0, 0);
 
-      if (ahora < fechaInicio) {
-        return { 
-          tieneAcceso: false, 
-          soloLectura: false,
-          mensaje: `Su turno está programado para el ${format(fechaInicio, 'dd/MM/yyyy')} a las ${ventana.hora_inicio}. (Hora del servidor: ${horaActual})` 
+      if (ventana.pausado) {
+        return {
+          tieneAcceso: false,
+          soloLectura: true,
+          mensaje: 'La venta de horarios está actualmente pausada por la administración. Intente nuevamente más tarde.'
         };
-      } else if (ahora >= fechaInicio && ahora <= fechaFin) {
-        const segundosRestantes = Math.max(0, Math.floor((fechaFin.getTime() - ahora.getTime()) / 1000));
-        return { 
-          tieneAcceso: true, 
+      }
+
+      const fechaVentanaLima = new Date(ventana.fecha).toLocaleDateString('sv-SE', { timeZone: 'America/Lima' });
+      const inicioMin = (() => {
+        const [h, m] = ventana.hora_inicio.split(':').map(Number);
+        return h * 60 + m;
+      })();
+      const finMin = (() => {
+        const [h, m] = ventana.hora_fin.split(':').map(Number);
+        return h * 60 + m;
+      })();
+
+      if (fechaVentanaLima > hoyLima) {
+        return {
+          tieneAcceso: false,
+          soloLectura: false,
+          mensaje: `Su turno está programado para el ${new Date(ventana.fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })} a las ${ventana.hora_inicio}.`
+        };
+      } else if (fechaVentanaLima < hoyLima) {
+        return {
+          tieneAcceso: false,
+          soloLectura: true,
+          mensaje: `Su turno correspondió al día ${new Date(ventana.fecha).toLocaleDateString('es-PE', { timeZone: 'America/Lima' })} a las ${ventana.hora_inicio} y ya finalizó. El sistema está en modo solo lectura.`
+        };
+      } else if (ahoraMin < inicioMin) {
+        return {
+          tieneAcceso: false,
+          soloLectura: false,
+          mensaje: `Su turno está programado para hoy a las ${ventana.hora_inicio}. Por favor, espere hasta la hora de inicio.`
+        };
+      } else if (ahoraMin >= inicioMin && ahoraMin < finMin) {
+        const segundosRestantes = Math.max(0, (finMin - ahoraMin) * 60 - ahora.getSeconds());
+        return {
+          tieneAcceso: true,
           segundos_restantes: segundosRestantes,
-          id_ventana: ventana.id_ventana 
+          id_ventana: ventana.id_ventana
         };
       } else {
-        return { 
-          tieneAcceso: false, 
+        return {
+          tieneAcceso: false,
           soloLectura: true,
-          mensaje: `Su ventana de atención finalizó el ${format(fechaFin, 'dd/MM/yyyy')} a las ${ventana.hora_fin}. El sistema está en modo solo lectura.` 
+          mensaje: `Su ventana de atención finalizó a las ${ventana.hora_fin}. El sistema está en modo solo lectura.`
         };
       }
     }
 
-    return { 
-      tieneAcceso: false, 
+    return {
+      tieneAcceso: false,
       soloLectura: false,
-      mensaje: `No tiene turnos programados en este periodo. (Fecha servidor: ${hoySoloFechaStr}, Hora servidor: ${horaActual})` 
+      mensaje: `No tiene turnos programados en este periodo.`
     };
   }
 }

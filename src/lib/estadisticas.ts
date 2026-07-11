@@ -1,4 +1,4 @@
-export const calcularMedia = (datos: number[]): number => {
+﻿export const calcularMedia = (datos: number[]): number => {
   if (datos.length === 0) return 0;
   const sum = datos.reduce((a, b) => a + b, 0);
   return sum / datos.length;

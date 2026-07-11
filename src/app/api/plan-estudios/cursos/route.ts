@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
@@ -26,6 +26,7 @@ export async function POST(request: Request) {
         creditos: parseInt(data.creditos) || 0,
         id_ciclo: data.id_ciclo ? parseInt(data.id_ciclo) : null,
         id_malla: data.id_malla ? parseInt(data.id_malla) : null,
+        departamentoId: data.departamentoId || null,
         tipo_curso: data.tipo_curso || "linea_carrera",
         horas_teoria: parseInt(data.horas_teoria) || 0,
         horas_practica: parseInt(data.horas_practica) || 0,
@@ -42,7 +43,8 @@ export async function POST(request: Request) {
         prerequisitos_rel: {
           include: { prerequisito: true }
         },
-        malla_rel: true
+        malla_rel: true,
+        departamento: true
       }
     });
 

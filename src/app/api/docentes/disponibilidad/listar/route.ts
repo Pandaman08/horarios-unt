@@ -1,13 +1,14 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { prisma } from "@/lib/prisma";
 
 export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const periodoId = searchParams.get("periodoId");
+    const departamentoId = searchParams.get("departamentoId");
     const search = searchParams.get("search") || "";
-    const categoria = searchParams.get("categoria") || "todos";
-    const modalidad = searchParams.get("modalidad") || "todos";
+    const categoriaDocente = searchParams.get("categoriaDocente") || "todos";
+    const condicion = searchParams.get("condicion") || "todos";
     const orden = searchParams.get("orden") || "antiguedad_desc";
 
     if (!periodoId) {
@@ -17,32 +18,33 @@ export async function GET(req: NextRequest) {
     const idPeriodo = parseInt(periodoId);
 
     // Obtener docentes con su disponibilidad para el periodo
+    const where: any = {
+      activo: true,
+      AND: [
+        search ? {
+          OR: [
+            { nombres: { contains: search, mode: 'insensitive' } },
+            { apellidos: { contains: search, mode: 'insensitive' } },
+            { dni: { contains: search } },
+            { codigo_docente: { contains: search } },
+          ]
+        } : {},
+        categoriaDocente !== "todos" ? { 
+          categoriaDocente: {
+            equals: categoriaDocente,
+          }
+        } : {},
+        condicion !== "todos" ? { 
+          condicion: {
+            equals: condicion,
+          }
+        } : {},
+        departamentoId ? { departamentoId } : {},
+      ]
+    };
+
     const docentes = await prisma.docente.findMany({
-      where: {
-        activo: true,
-        AND: [
-          search ? {
-            OR: [
-              { nombres: { contains: search, mode: 'insensitive' } },
-              { apellidos: { contains: search, mode: 'insensitive' } },
-              { dni: { contains: search } },
-              { codigo_docente: { contains: search } },
-            ]
-          } : {},
-          categoria !== "todos" ? { 
-            categoria: {
-              equals: categoria,
-              mode: 'insensitive'
-            }
-          } : {},
-          modalidad !== "todos" ? { 
-            modalidad: {
-              equals: modalidad,
-              mode: 'insensitive'
-            }
-          } : {},
-        ]
-      },
+      where,
       include: {
         disponibilidad: {
           where: { id_periodo: idPeriodo },
@@ -69,8 +71,10 @@ export async function GET(req: NextRequest) {
         nombres: d.nombres,
         apellidos: d.apellidos,
         dni: d.dni,
-        categoria: d.categoria,
-        modalidad: d.modalidad,
+        categoriaDocente: d.categoriaDocente,
+        condicion: d.condicion,
+        regimenDedicacion: d.regimenDedicacion,
+        tipoContrato: d.tipoContrato,
         antiguedad: d.fecha_ingreso ? antiguedad : null,
         tiene_disponibilidad: d.disponibilidad.length > 0
       };

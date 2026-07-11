@@ -10,6 +10,13 @@ export async function seedCursos(prisma: PrismaClient, idMalla?: number) {
     cicloMap.set(ciclo.numero, ciclo.id_ciclo);
   }
 
+  // Obtener Departamento de Ingeniería de Sistemas
+  const departamentoSistemas = await prisma.departamentoAcademico.findFirst({
+
+    where: { nombre: { contains: 'Ingeniería de Sistemas' } }
+  });
+  const departamentoId = departamentoSistemas?.id;
+
   // Lista de cursos según Plan de Estudios 2018 (códigos reales del documento)
   // tipo_curso: 'especializacion' (S), 'obligatorio' (OB), 'opcional' (OP), 'electivo' (EL)
   // T=horas_teoria, P=horas_practica, L=horas_laboratorio, C=creditos
@@ -134,10 +141,15 @@ export async function seedCursos(prisma: PrismaClient, idMalla?: number) {
 
   // Upsert de todos los cursos
   for (const curso of cursos) {
+    // Link to departamento de Ingeniería de Sistemas if it's that department's course
+    const cursoDepartamentoId = curso.departamento_responsable?.includes('Ingeniería de Sistemas') 
+      ? departamentoId 
+      : undefined;
+
     await prisma.curso.upsert({
       where: { codigo: curso.codigo },
-      update: { ...curso, id_malla: idMalla },
-      create: { ...curso, id_malla: idMalla },
+      update: { ...curso, id_malla: idMalla, departamentoId: cursoDepartamentoId },
+      create: { ...curso, id_malla: idMalla, departamentoId: cursoDepartamentoId },
     });
     console.log(`✅ Curso ${curso.codigo} - ${curso.nombre} (Ciclo ${curso.id_ciclo}) asegurado.`);
   }

@@ -1,8 +1,13 @@
-import { NextRequest, NextResponse } from "next/server";
+﻿import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { format, parse, addMinutes } from "date-fns";
+import {
+  getHorasMaximasSemanales,
+  getEtiquetaRegimenHoras,
+  validarDisponibilidadHoras,
+} from "@/lib/disponibilidad/validarHoras";
 
 export async function GET(req: NextRequest) {
   try {
@@ -34,7 +39,6 @@ export async function GET(req: NextRequest) {
       );
     }
 
-    // Obtener disponibilidades
     const disponibilidades = await prisma.disponibilidadDocente.findMany({
       where: {
         id_docente: docente.id_docente,
@@ -42,7 +46,16 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    return NextResponse.json(disponibilidades);
+    return NextResponse.json({
+      disponibilidades,
+      horasMaximas: getHorasMaximasSemanales(docente),
+      etiquetaRegimen: getEtiquetaRegimenHoras(docente),
+      docente: {
+        condicion: docente.condicion,
+        regimenDedicacion: docente.regimenDedicacion,
+        tipoContrato: docente.tipoContrato,
+      },
+    });
   } catch (error) {
     console.error("Error al obtener disponibilidades:", error);
     return NextResponse.json(
@@ -85,6 +98,32 @@ export async function POST(req: NextRequest) {
     if (!id_docente || !id_periodo || !Array.isArray(dataToSave)) {
       return NextResponse.json(
         { error: "Datos incompletos" },
+        { status: 400 }
+      );
+    }
+
+    const docente = await prisma.docente.findUnique({
+      where: { id_docente: Number(id_docente) },
+      select: {
+        condicion: true,
+        regimenDedicacion: true,
+        tipoContrato: true,
+        horas_maximas_semanales: true,
+      },
+    });
+
+    if (!docente) {
+      return NextResponse.json({ error: "Docente no encontrado" }, { status: 404 });
+    }
+
+    const validacion = validarDisponibilidadHoras(docente, dataToSave);
+    if (!validacion.valido) {
+      return NextResponse.json(
+        {
+          error: validacion.mensaje,
+          horasDisponibles: validacion.horasDisponibles,
+          horasMaximas: validacion.horasMaximas,
+        },
         { status: 400 }
       );
     }

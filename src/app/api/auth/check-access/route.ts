@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -11,8 +11,13 @@ export async function GET() {
     return NextResponse.json({ error: 'No autenticado' }, { status: 401 });
   }
 
-  // Los administradores y operadores siempre tienen acceso
-  if (['administrador_sistema', 'operador_horarios'].includes(session.user.rol)) {
+  // Los administradores, operadores, directores y decanos siempre tienen acceso
+  if ([
+    'administrador_sistema', 
+    'operador_horarios', 
+    'director_departamento',
+    'decano'
+  ].includes(session.user.rol)) {
     return NextResponse.json({ tieneAcceso: true });
   }
 

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect, useCallback, useRef } from 'react';
 import { ChatMessage } from '@/services/ai/ChatbotService';

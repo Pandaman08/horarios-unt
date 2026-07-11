@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -19,6 +19,14 @@ export async function GET(
   }
 }
 
+function parseFechaLocal(fecha?: string | Date | null) {
+  if (!fecha) return new Date();
+  if (fecha instanceof Date) return new Date(fecha);
+
+  const [year, month, day] = fecha.split('-').map(Number);
+  return new Date(year, month - 1, day);
+}
+
 export async function PUT(
   request: Request,
   { params }: { params: Promise<{ id: string }> }
@@ -30,7 +38,7 @@ export async function PUT(
     const ventana = await prisma.ventanaAtencion.update({
       where: { id_ventana: id },
       data: {
-        fecha: new Date(data.fecha),
+        fecha: parseFechaLocal(data.fecha),
         hora_inicio: data.hora_inicio,
         hora_fin: data.hora_fin,
         modalidad: data.modalidad,
@@ -38,6 +46,7 @@ export async function PUT(
         orden_prioridad: parseInt(data.orden_prioridad),
         intervalo_minutos: parseInt(data.intervalo_minutos),
         completado: data.completado,
+        pausado: data.pausado,
         activo: data.activo
       }
     });

@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
@@ -53,7 +53,7 @@ export function GestorNotificaciones() {
     return (
       <div className="p-20 flex flex-col items-center justify-center space-y-4">
         <RefreshCw className="h-10 w-10 text-primary animate-spin opacity-30" />
-        <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest">
+        <p className="text-xs font-black text-muted-foreground uppercase tracking-widest">
           Cargando gestor...
         </p>
       </div>
@@ -202,7 +202,7 @@ export function GestorNotificaciones() {
           {/* Pendientes */}
           <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden group transition-all hover:shadow-md">
             <div className="flex flex-row items-center justify-between p-6 pb-2">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Pendientes</p>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">Pendientes</p>
               <div className="h-10 w-10 bg-amber-500/10 rounded-xl flex items-center justify-center border border-amber-500/20 group-hover:scale-110 transition-transform">
                 <Clock className="h-5 w-5 text-amber-500" />
               </div>
@@ -213,7 +213,7 @@ export function GestorNotificaciones() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                   En espera de envío
                 </p>
               </div>
@@ -223,7 +223,7 @@ export function GestorNotificaciones() {
           {/* Incidencias */}
           <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden group transition-all hover:shadow-md">
             <div className="flex flex-row items-center justify-between p-6 pb-2">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Incidencias</p>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">Incidencias</p>
               <div className="h-10 w-10 bg-rose-500/10 rounded-xl flex items-center justify-center border border-rose-500/20 group-hover:scale-110 transition-transform">
                 <AlertTriangle className="h-5 w-5 text-rose-500" />
               </div>
@@ -234,7 +234,7 @@ export function GestorNotificaciones() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-rose-500" />
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                   Requieren reintento
                 </p>
               </div>
@@ -244,7 +244,7 @@ export function GestorNotificaciones() {
           {/* Entregados */}
           <div className="bg-card border border-border rounded-2xl shadow-sm overflow-hidden group transition-all hover:shadow-md">
             <div className="flex flex-row items-center justify-between p-6 pb-2">
-              <p className="text-[11px] font-black uppercase tracking-[0.2em] text-muted-foreground">Entregados</p>
+              <p className="text-sm font-black uppercase tracking-[0.2em] text-muted-foreground">Entregados</p>
               <div className="h-10 w-10 bg-emerald-500/10 rounded-xl flex items-center justify-center border border-emerald-500/20 group-hover:scale-110 transition-transform">
                 <CheckCircle2 className="h-5 w-5 text-emerald-500" />
               </div>
@@ -255,7 +255,7 @@ export function GestorNotificaciones() {
               </div>
               <div className="flex items-center gap-2">
                 <span className="w-1.5 h-1.5 rounded-full bg-emerald-500" />
-                <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                   Confirmación total
                 </p>
               </div>
@@ -297,7 +297,7 @@ export function GestorNotificaciones() {
                 <p className="text-[15px] font-black text-card-foreground tracking-tight">
                   Historial Reciente de Envíos
                 </p>
-                <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
+                <p className="text-sm font-bold text-muted-foreground uppercase tracking-widest mt-0.5">
                   Registro de transacciones del notificador
                 </p>
               </div>
@@ -337,7 +337,7 @@ export function GestorNotificaciones() {
                 {["Docente / Receptor", "Canal", "Tipo de Alerta", "Fecha y Hora", "Estado", "Vista Previa"].map((h) => (
                   <th
                     key={h}
-                    className="px-6 py-4 text-[10px] font-black text-muted-foreground uppercase tracking-widest text-left"
+                    className="px-6 py-4 text-xs font-black text-muted-foreground uppercase tracking-widest text-left"
                   >
                     {h}
                   </th>
@@ -359,7 +359,7 @@ export function GestorNotificaciones() {
                   </td>
                   <td className="px-4 py-4 text-center">
                     <span className={cn(
-                      "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border",
+                      "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider border",
                       notif.canal === "telegram"
                         ? "bg-sky-500/10 text-sky-500 border-sky-500/20"
                         : "bg-primary/10 text-primary border-primary/20"
@@ -369,7 +369,7 @@ export function GestorNotificaciones() {
                   </td>
                   <td className="px-4 py-4 text-center">
                     <span className={cn(
-                      "text-[10px] font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border",
+                      "text-xs font-black uppercase tracking-tighter px-2 py-0.5 rounded-md border",
                       notif.tipo_notificacion === "horario_asignado_automatico"
                         ? "bg-amber-500/10 text-amber-500 border-amber-500/20"
                         : "bg-muted text-muted-foreground border-border"
@@ -377,14 +377,14 @@ export function GestorNotificaciones() {
                       {notif.tipo_notificacion}
                     </span>
                   </td>
-                  <td className="px-4 py-4 text-center text-[11px] font-bold text-muted-foreground font-mono uppercase">
+                  <td className="px-4 py-4 text-center text-sm font-bold text-muted-foreground font-mono uppercase">
                     {notif.fecha_envio
                       ? new Date(notif.fecha_envio).toLocaleString()
                       : "PENDIENTE"}
                   </td>
                   <td className="px-4 py-4 text-center">
                     <span className={cn(
-                      "px-2.5 py-1 rounded-lg text-[9px] font-black uppercase tracking-wider border",
+                      "px-2.5 py-1 rounded-lg text-xs font-black uppercase tracking-wider border",
                       notif.estado_envio === "enviado"
                         ? "bg-emerald-500/10 text-emerald-500 border-emerald-500/20"
                         : "bg-rose-500/10 text-rose-500 border-rose-500/20"
@@ -392,7 +392,7 @@ export function GestorNotificaciones() {
                       {notif.estado_envio === "enviado" ? "Entregado" : "Fallo Crítico"}
                     </span>
                   </td>
-                  <td className="px-6 py-4 text-[11px] font-medium text-muted-foreground max-w-[200px] truncate italic" title={notif.mensaje}>
+                  <td className="px-6 py-4 text-sm font-medium text-muted-foreground max-w-[200px] truncate italic" title={notif.mensaje}>
                     {notif.mensaje}
                   </td>
                 </tr>

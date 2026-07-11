@@ -1,5 +1,5 @@
 // prisma/seeders/06_usuarios_administrativos.seeder.ts
-import { PrismaClient } from '@prisma/client';
+import { PrismaClient, RolUsuario } from '@prisma/client';
 import bcrypt from 'bcryptjs';
 
 export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
@@ -23,7 +23,7 @@ export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
     apellidos: 'SISTEMA',
     dni: '00000000',
     correo: 'admin@unitru.edu.pe',
-    rol: 'administrador_sistema',
+    rol: RolUsuario.administrador_sistema,
     contrasena: '00000000',
   };
   const adminHash = await bcrypt.hash(adminData.contrasena, 10);
@@ -49,21 +49,21 @@ export async function seedUsuariosAdministrativos(prisma: PrismaClient) {
       apellidos: 'VALERIANO RODRIGUEZ',
       dni: null, // no se tiene
       cargo: 'Administrador de Centro de Cómputo',
-      rol: 'operador_horarios',
+      rol: RolUsuario.operador_horarios,
     },
     {
       nombres: 'JEANCARLOS JOSUE',
       apellidos: 'RAMIREZ GARCIA',
       dni: null,
       cargo: 'Administrador de Centro de Cómputo',
-      rol: 'operador_horarios',
+      rol: RolUsuario.operador_horarios,
     },
     {
       nombres: 'DORIS ELIZABETH',
       apellidos: 'BRIONES HERAS',
       dni: null,
       cargo: 'Secretaria de Escuela',
-      rol: 'operador_horarios',
+      rol: RolUsuario.operador_horarios,
     },
   ];
 

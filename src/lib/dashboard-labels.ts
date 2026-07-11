@@ -1,4 +1,4 @@
-const CATEGORIA_LABELS: Record<string, string> = {
+﻿const CATEGORIA_LABELS: Record<string, string> = {
   principal: "Principal",
   asociado: "Asociado",
   auxiliar: "Auxiliar",

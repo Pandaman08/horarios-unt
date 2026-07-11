@@ -1,7 +1,7 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import bcrypt from 'bcryptjs';
-import { Prisma } from '@prisma/client';
+import { Prisma, CondicionDocente, CategoriaDocente, RegimenDedicacion, TipoContrato, TipoExtraordinario } from '@prisma/client';
 
 export async function GET(
   request: Request,
@@ -66,22 +66,36 @@ export async function PUT(
         });
       }
 
+      // Process enum fields: convert empty string to null, typed for Prisma enums
+      const processEnum = <T extends string | null | undefined>(value: T): T extends string ? T : null =>
+        (value && typeof value === 'string' && value.trim() !== "" ? value : null) as any;
+
       // 3. Actualizar el Docente
       const docente = await tx.docente.update({
         where: { id_docente: id },
         data: {
           nombres: data.nombres,
           apellidos: data.apellidos,
-          modalidad: data.modalidad,
-          categoria: data.categoria,
-          dedicacion: data.dedicacion,
           fecha_ingreso: data.fecha_ingreso ? new Date(data.fecha_ingreso) : null,
           correo_electronico: data.correo_electronico,
           telefono: data.telefono,
           grado_academico: data.grado_academico,
           especialidad: data.especialidad,
           horas_maximas_semanales: parseInt(data.horas_maximas_semanales) || 40,
-          activo: data.activo
+          activo: data.activo,
+          facultadId: data.facultadId,
+          departamentoId: data.departamentoId,
+          // New fields
+          condicion: processEnum(data.condicion) as CondicionDocente | null,
+          categoriaDocente: data.categoriaDocente as CategoriaDocente | null,
+          regimenDedicacion: data.condicion === 'ORDINARIO' ? processEnum(data.regimenDedicacion) as RegimenDedicacion | null : null,
+          tipoContrato: data.condicion === 'CONTRATADO' ? processEnum(data.tipoContrato) as TipoContrato | null : null,
+          tipoExtraordinario: data.condicion === 'EXTRAORDINARIO' ? processEnum(data.tipoExtraordinario) as TipoExtraordinario | null : null,
+          esInvestigadorAcreditado: data.esInvestigadorAcreditado || false,
+          nivelRenacyt: data.nivelRenacyt || null,
+          sancionActiva: data.sancionActiva || false,
+          sancionHasta: data.sancionHasta ? new Date(data.sancionHasta) : null,
+          dni: data.dni
         }
       });
 

@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { ValidadorHorario, SolicitudAsignacion } from '@/services/horarios/ValidadorHorario';
 
 export async function POST(request: Request) {

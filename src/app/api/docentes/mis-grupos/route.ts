@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -10,7 +10,7 @@ async function resolveDocenteId(
 ): Promise<number | null> {
   if (
     id_docente_manual &&
-    ['administrador_sistema', 'operador_horarios', 'docente'].includes(session.user.rol)
+    ['administrador_sistema', 'operador_horarios', 'docente', 'secretaria'].includes(session.user.rol)
   ) {
     const parsed = parseInt(id_docente_manual, 10);
     return isNaN(parsed) ? null : parsed;
@@ -84,9 +84,7 @@ export async function GET(request: Request) {
     });
 
     if (declaracion?.estado === 'APROBADO') {
-      const carga = declaracion.cargas_lectivas.find(
-        (c) => normalizeTipo(c.tipo_clase) === tipoNorm
-      );
+      const carga = declaracion.cargas_lectivas.find((c: { tipo_clase: string }) => normalizeTipo(c.tipo_clase) === tipoNorm);
 
       if (carga) {
         if (carga.id_grupo && carga.grupo?.activo !== false) {

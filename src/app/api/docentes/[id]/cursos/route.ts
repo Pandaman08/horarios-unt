@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
 export async function GET(
@@ -55,7 +55,7 @@ export async function POST(
       if (!curso) continue;
 
       // 2. Verificar si el docente ya está asignado (para no contar doble)
-      const yaAsignado = curso.docente_cursos.some(dc => dc.id_docente === id_docente);
+      const yaAsignado = curso.docente_cursos.some((dc: { id_docente: number }) => dc.id_docente === id_docente);
 
       // 3. Validar capacidad si no está asignado
       if (!yaAsignado && curso.docente_cursos.length >= curso.maximo_docentes) {

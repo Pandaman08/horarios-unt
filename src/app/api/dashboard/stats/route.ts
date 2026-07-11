@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { startOfDay, endOfDay } from 'date-fns';
 import { formatVentanaCategoria } from '@/lib/dashboard-labels';
@@ -65,7 +65,7 @@ export async function GET(request: Request) {
     });
 
     const docentesPorGrupo = await prisma.docente.groupBy({
-      by: ['modalidad', 'categoria'],
+      by: ['condicion', 'categoriaDocente'],
       where: { activo: true, id_docente: { in: Array.from(docentesIdsConGrupos) } },
       _count: { id_docente: true },
     });
@@ -74,24 +74,24 @@ export async function GET(request: Request) {
       where: { id_periodo },
       select: {
         id_docente: true,
-        docente: { select: { modalidad: true, categoria: true } },
+        docente: { select: { condicion: true, categoriaDocente: true } },
       },
     });
 
     const atendidosMap = atendidosPorGrupo.reduce((acc: Record<string, Set<number>>, h: any) => {
-      const key = `${h.docente?.modalidad}|${h.docente?.categoria}`;
+      const key = `${h.docente?.condicion}|${h.docente?.categoriaDocente}`;
       if (!acc[key]) acc[key] = new Set();
       acc[key].add(h.id_docente);
       return acc;
     }, {});
 
     const avanceCategoria = docentesPorGrupo.map((g: any) => {
-      const key = `${g.modalidad}|${g.categoria}`;
+      const key = `${g.condicion}|${g.categoriaDocente}`;
       const atendidos = atendidosMap[key]?.size ?? 0;
       const total = g._count.id_docente;
       const percent = total > 0 ? Math.round((atendidos / total) * 100) : 0;
       return {
-        name: formatVentanaCategoria(g.modalidad, g.categoria),
+        name: formatVentanaCategoria(g.condicion, g.categoriaDocente),
         value: atendidos,
         total,
         percent,

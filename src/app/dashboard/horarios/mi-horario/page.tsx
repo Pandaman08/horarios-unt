@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
@@ -29,8 +29,6 @@ export default function MiHorarioPage() {
   }
 
   return (
-    <div className="p-4 md:p-6 max-w-7xl mx-auto">
-      <MiHorarioDocenteView />
-    </div>
+    <MiHorarioDocenteView />
   );
 }

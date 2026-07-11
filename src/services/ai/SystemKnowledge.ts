@@ -1,4 +1,4 @@
-/**
+﻿/**
  * SystemKnowledge.ts
  * 
  * Este archivo contiene el inventario verificado de módulos, funcionalidades,

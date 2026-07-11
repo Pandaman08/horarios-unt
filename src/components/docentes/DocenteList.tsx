@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -41,6 +41,7 @@ import {
 import { cn } from "@/lib/utils";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
 import {
   Dialog,
   DialogContent,
@@ -48,20 +49,46 @@ import {
   DialogTitle,
   DialogTrigger,
 } from "@/components/ui/dialog";
+import { SimulacionBadge } from "@/components/ui/SimulacionBadge";
+import { Checkbox } from "@/components/ui/checkbox";
+
+interface Facultad {
+  id: string;
+  nombre: string;
+  codigo: string;
+}
+
+interface DepartamentoAcademico {
+  id: string;
+  nombre: string;
+  facultadId: string;
+}
 
 interface Docente {
   id_docente: number;
   codigo_docente: string;
   nombres: string;
   apellidos: string;
-  modalidad: string;
-  categoria: string;
-  dedicacion: string;
-  antiguedad: number;
+  condicion?: string;
+  categoriaDocente?: string;
+  regimenDedicacion?: string;
+  antiguedad?: number;
   correo_electronico: string;
-  telefono: string;
+  telefono?: string;
   grado_academico?: string;
   fecha_ingreso?: string;
+  facultadId?: string;
+  facultad?: Facultad;
+  departamentoId?: string;
+  departamento?: DepartamentoAcademico;
+  dni?: string;
+  esInvestigadorAcreditado?: boolean;
+  nivelRenacyt?: string;
+  sancionActiva?: boolean;
+  sancionHasta?: string;
+  tipoContrato?: string;
+  tipoExtraordinario?: string;
+  especialidad?: string;
   docente_cursos?: Array<{
     curso: {
       id_ciclo?: number;
@@ -72,6 +99,7 @@ interface Docente {
 export function DocenteList() {
   const context = usePeriodo();
   const periodoSeleccionado = context?.periodoSeleccionado;
+  const { departamentoSeleccionado } = useDepartment();
   const [docentes, setDocentes] = useState<Docente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDocenteDialogOpen, setIsDocenteDialogOpen] = useState(false);
@@ -114,17 +142,30 @@ export function DocenteList() {
     }
   };
 
+  const [facultades, setFacultades] = useState<Facultad[]>([]);
+  const [departamentos, setDepartamentos] = useState<DepartamentoAcademico[]>([]);
+
   const [formData, setFormData] = useState({
     nombres: "",
     apellidos: "",
     codigo_docente: "",
     correo_electronico: "",
     telefono: "",
-    modalidad: "NOMBRADO",
-    categoria: "PRINCIPAL",
+    categoriaDocente: "PRINCIPAL",
     grado_academico: "INGENIERO",
     especialidad: "",
     fecha_ingreso: new Date().toISOString().split("T")[0],
+    facultadId: "",
+    departamentoId: "",
+    dni: "",
+    esInvestigadorAcreditado: false,
+    nivelRenacyt: "",
+    sancionActiva: false,
+    sancionHasta: "",
+    condicion: "",
+    regimenDedicacion: "",
+    tipoContrato: "",
+    tipoExtraordinario: "",
   });
 
   // Estados de Filtros
@@ -161,8 +202,8 @@ export function DocenteList() {
 
   const filteredDocentes = docentes.filter(d => {
     const matchesSearch = `${d.nombres} ${d.apellidos} ${d.codigo_docente}`.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesCategoria = filtroCategoria === "todos" || d.categoria?.toUpperCase() === filtroCategoria.toUpperCase();
-    const matchesModalidad = filtroModalidad === "todos" || d.modalidad?.toUpperCase() === filtroModalidad.toUpperCase();
+    const matchesCategoriaDocente = filtroCategoria === "todos" || d.categoriaDocente?.toUpperCase() === filtroCategoria.toUpperCase();
+    const matchesCondicion = filtroModalidad === "todos" || d.condicion?.toUpperCase() === filtroModalidad.toUpperCase();
     const matchesGrado = filtroGrado === "todos" || d.grado_academico === filtroGrado;
 
     // Filtrar por ciclo y semestre (solo si hay filtros activos)
@@ -201,7 +242,7 @@ export function DocenteList() {
       }
     }
 
-    return matchesSearch && matchesCategoria && matchesModalidad && matchesGrado && matchesCiclo && matchesSemestre;
+    return matchesSearch && matchesCategoriaDocente && matchesCondicion && matchesGrado && matchesCiclo && matchesSemestre;
   }).sort((a, b) => {
     if (filtroAntiguedad === "todos") return 0;
     const yearsA = calculateAntiquity(a.fecha_ingreso);
@@ -242,19 +283,63 @@ export function DocenteList() {
     }
   };
 
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch("/api/facultades");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setFacultades(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar facultades:", error);
+    }
+  };
+
+  const fetchDepartamentos = async (facultadId?: string) => {
+    try {
+      const url = facultadId 
+        ? `/api/departamentos?facultadId=${encodeURIComponent(facultadId)}` 
+        : "/api/departamentos";
+      const res = await fetch(url);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setDepartamentos(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar departamentos:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchCiclos();
+    fetchFacultades();
+  }, []);
+
   useEffect(() => {
     fetchDocentes();
-    fetchCiclos();
-  }, []);
+  }, [departamentoSeleccionado]);
+
+  // Cuando la facultad cambia, actualizar los departamentos
+  useEffect(() => {
+    if (formData.facultadId) {
+      fetchDepartamentos(formData.facultadId);
+    } else {
+      setDepartamentos([]);
+    }
+  }, [formData.facultadId]);
 
   // Reset page when filters change
   useEffect(() => {
     setCurrentPage(1);
-  }, [searchTerm, filtroCategoria, filtroModalidad, filtroGrado, filtroAntiguedad, filtroCiclo, semestre]);
+  }, [searchTerm, filtroCategoria, filtroModalidad, filtroGrado, filtroAntiguedad, filtroCiclo, semestre, departamentoSeleccionado]);
 
   const fetchDocentes = async () => {
     try {
-      const res = await fetch("/api/docentes");
+      let url = "/api/docentes";
+      if (departamentoSeleccionado) {
+        url = `/api/docentes?departamentoId=${departamentoSeleccionado.id}`;
+      }
+      const res = await fetch(url);
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
@@ -366,34 +451,44 @@ export function DocenteList() {
       codigo_docente: "",
       correo_electronico: "",
       telefono: "",
-      modalidad: "NOMBRADO",
-      categoria: "PRINCIPAL",
+      categoriaDocente: "PRINCIPAL",
       grado_academico: "INGENIERO",
       especialidad: "",
       fecha_ingreso: new Date().toISOString().split("T")[0],
+      facultadId: "",
+      departamentoId: "",
+      dni: "",
+      esInvestigadorAcreditado: false,
+      nivelRenacyt: "",
+      sancionActiva: false,
+      sancionHasta: "",
+      condicion: "",
+      regimenDedicacion: "",
+      tipoContrato: "",
+      tipoExtraordinario: "",
     });
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-              <Users className="h-4 w-4 text-primary" />
+    <div className="page-shell">
+      <div className="page-header-card">
+        <div className="page-header-top">
+          <div className="page-header-brand">
+            <div className="page-icon-box">
+              <Users className="page-icon" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Docentes</h2>
-              <p className="text-muted-foreground text-[10px] mt-1">Gestión integral de la plana académica</p>
+            <div className="min-w-0">
+              <h2 className="page-title">Docentes</h2>
+              <p className="page-subtitle">Gestión integral de la plana académica</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="page-toolbar">
+            <div className="page-search-wrap">
+              <Search className="page-search-icon" />
               <Input
                 placeholder="Buscar docente..."
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                className="page-search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -403,14 +498,14 @@ export function DocenteList() {
                 onClick={() => handleGenerateInstitutionalReport('pdf')}
                 disabled={generatingReport === true}
                 variant="outline"
-                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                className="page-btn border-primary/20 text-primary hover:bg-primary/5"
               >
                 {generatingReport === true ? (
                   <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
                 ) : (
                   <FileText className="mr-2 h-3.5 w-3.5" />
                 )}
-                Reporte de lista de docentes
+                Reporte
               </Button>
             </div>
             <Dialog open={isDocenteDialogOpen} onOpenChange={(open) => {
@@ -421,82 +516,119 @@ export function DocenteList() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                <Button className="page-btn bg-primary text-primary-foreground hover:bg-primary/90">
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Docente
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-2xl rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-6">
+              <DialogContent className="page-modal-lg">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
-                      <UserCircle2 className="h-5 w-5 text-primary" />
+                    <div className="page-icon-box">
+                      <UserCircle2 className="page-icon" />
                     </div>
                     <div>
-                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                      <DialogTitle className="text-base font-bold text-foreground">
                         {editingDocente ? "Actualizar Docente" : "Registrar Docente"}
                       </DialogTitle>
-                      <p className="text-muted-foreground text-xs mt-1 font-medium">Complete la información del catedrático</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Complete la información del catedrático</p>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleDocenteSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombres</Label>
-                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.nombres} onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} required />
+                <form onSubmit={handleDocenteSubmit} className="page-modal-body space-y-4 overflow-hidden">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nombres</Label>
+                      <Input className="page-modal-input" value={formData.nombres} onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Apellidos</Label>
-                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.apellidos} onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} required />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Apellidos</Label>
+                      <Input className="page-modal-input" value={formData.apellidos} onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} required />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Código (Opcional)</Label>
-                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.codigo_docente} onChange={(e) => setFormData({ ...formData, codigo_docente: e.target.value })} placeholder="Auto-generado" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Código</Label>
+                      <Input className="page-modal-input" value={formData.codigo_docente} onChange={(e) => setFormData({ ...formData, codigo_docente: e.target.value })} placeholder="Auto-generado" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Correo Electrónico</Label>
-                      <Input type="email" className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.correo_electronico} onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} required />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Correo Electrónico</Label>
+                      <Input className="page-modal-input" type="email" value={formData.correo_electronico} onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Teléfono</Label>
-                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Teléfono</Label>
+                      <Input className="page-modal-input" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
                     </div>
-                  </div>
-
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
-                      <Select value={formData.modalidad} onValueChange={(val) => setFormData({ ...formData, modalidad: val })}>
-                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
-                          <SelectValue />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Condición</Label>
+                      <Select value={formData.condicion} onValueChange={(val) => setFormData({ ...formData, condicion: val })}>
+                        <SelectTrigger className="page-modal-input">
+                          <SelectValue placeholder="Seleccione condición" />
                         </SelectTrigger>
                         <SelectContent position="popper">
-                          <SelectItem value="NOMBRADO">Nombrado</SelectItem>
+                          <SelectItem value="ORDINARIO">Ordinario</SelectItem>
+                          <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
                           <SelectItem value="CONTRATADO">Contratado</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
-                      <Select value={formData.categoria} onValueChange={(val) => setFormData({ ...formData, categoria: val })}>
-                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
-                          <SelectValue />
-                        </SelectTrigger>
-                        <SelectContent position="popper">
-                          <SelectItem value="PRINCIPAL">Principal</SelectItem>
-                          <SelectItem value="ASOCIADO">Asociado</SelectItem>
-                          <SelectItem value="AUXILIAR">Auxiliar</SelectItem>
-                          <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Grado Académico</Label>
+                    
+                    {formData.condicion === "ORDINARIO" && (
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Régimen de Dedicación</Label>
+                        <Select value={formData.regimenDedicacion} onValueChange={(val) => setFormData({ ...formData, regimenDedicacion: val })}>
+                          <SelectTrigger className="page-modal-input">
+                            <SelectValue placeholder="Seleccione régimen" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            <SelectItem value="DE">DE (Dedicación Exclusiva - 40h)</SelectItem>
+                            <SelectItem value="TC">TC (Tiempo Completo - 40h)</SelectItem>
+                            <SelectItem value="TP1">TP1 (Tiempo Parcial 1 - 20h)</SelectItem>
+                            <SelectItem value="TP2">TP2 (Tiempo Parcial 2 - 10h)</SelectItem>
+                            <SelectItem value="TP3">TP3 (Tiempo Parcial 3 - 8h)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    {formData.condicion === "CONTRATADO" && (
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Tipo de Contrato</Label>
+                        <Select value={formData.tipoContrato} onValueChange={(val) => setFormData({ ...formData, tipoContrato: val })}>
+                          <SelectTrigger className="page-modal-input">
+                            <SelectValue placeholder="Seleccione tipo" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            <SelectItem value="A1">A1 (Doctor - 32h)</SelectItem>
+                            <SelectItem value="A2">A2 (Doctor - 16h)</SelectItem>
+                            <SelectItem value="A3">A3 (Doctor - 8h)</SelectItem>
+                            <SelectItem value="B1">B1 (Maestro - 32h)</SelectItem>
+                            <SelectItem value="B2">B2 (Maestro - 16h)</SelectItem>
+                            <SelectItem value="B3">B3 (Maestro - 8h)</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    {formData.condicion === "EXTRAORDINARIO" && (
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Tipo Extraordinario</Label>
+                        <Select value={formData.tipoExtraordinario} onValueChange={(val) => setFormData({ ...formData, tipoExtraordinario: val })}>
+                          <SelectTrigger className="page-modal-input">
+                            <SelectValue placeholder="Seleccione tipo" />
+                          </SelectTrigger>
+                          <SelectContent position="popper">
+                            <SelectItem value="HONORIS_CAUSA">Honoris Causa</SelectItem>
+                            <SelectItem value="EMERITO">Emérito</SelectItem>
+                            <SelectItem value="HONORARIO">Honorario</SelectItem>
+                            <SelectItem value="INVESTIGADOR">Investigador</SelectItem>
+                            <SelectItem value="VISITANTE">Visitante</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    )}
+                    
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Grado Académico</Label>
                       <Select value={formData.grado_academico} onValueChange={(val) => setFormData({ ...formData, grado_academico: val })}>
-                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -507,22 +639,103 @@ export function DocenteList() {
                         </SelectContent>
                       </Select>
                     </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Categoría</Label>
+                      <Select value={formData.categoriaDocente} onValueChange={(val) => setFormData({ ...formData, categoriaDocente: val })}>
+                        <SelectTrigger className="page-modal-input">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          <SelectItem value="PRINCIPAL">Principal</SelectItem>
+                          <SelectItem value="ASOCIADO">Asociado</SelectItem>
+                          <SelectItem value="AUXILIAR">Auxiliar</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Facultad</Label>
+                      <Select value={formData.facultadId} onValueChange={(val) => {
+                        setFormData({ ...formData, facultadId: val, departamentoId: "" });
+                      }} required>
+                        <SelectTrigger className="page-modal-input w-full min-w-0">
+                          <SelectValue placeholder="Seleccione facultad" className="truncate" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {facultades.map((facultad) => (
+                            <SelectItem key={facultad.id} value={facultad.id}>{facultad.codigo} - {facultad.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Departamento Académico</Label>
+                      <Select value={formData.departamentoId} onValueChange={(val) => setFormData({ ...formData, departamentoId: val })} disabled={!formData.facultadId} required>
+                        <SelectTrigger className="page-modal-input w-full min-w-0">
+                          <SelectValue placeholder="Seleccione departamento" className="truncate" />
+                        </SelectTrigger>
+                        <SelectContent position="popper">
+                          {departamentos.map((depto) => (
+                            <SelectItem key={depto.id} value={depto.id}>{depto.nombre}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">DNI</Label>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Input className="page-modal-input min-w-0 flex-1" value={formData.dni} onChange={(e) => setFormData({ ...formData, dni: e.target.value })} />
+                        <SimulacionBadge tipo="PERSONAL_ACADEMICO" />
+                      </div>
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nivel RENACYT</Label>
+                      <Input className="page-modal-input" value={formData.nivelRenacyt} onChange={(e) => setFormData({ ...formData, nivelRenacyt: e.target.value })} placeholder="Ej: V" />
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Investigador RENACYT</Label>
+                      <div className="flex items-center gap-2 h-9">
+                        <Checkbox 
+                          checked={formData.esInvestigadorAcreditado} 
+                          onCheckedChange={(checked) => setFormData({ ...formData, esInvestigadorAcreditado: checked === true })} 
+                          id="investigador-acreditado"
+                        />
+                        <label htmlFor="investigador-acreditado" className="text-xs text-muted-foreground font-medium cursor-pointer">
+                          Sí <SimulacionBadge tipo="RENACYT" />
+                        </label>
+                      </div>
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Especialidad</Label>
+                      <Input className="page-modal-input" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} />
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Fecha de Ingreso</Label>
+                      <Input className="page-modal-input" type="date" value={formData.fecha_ingreso} onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} required />
+                    </div>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Sanción Activa</Label>
+                      <div className="flex items-center gap-2 h-9">
+                        <Checkbox 
+                          checked={formData.sancionActiva} 
+                          onCheckedChange={(checked) => setFormData({ ...formData, sancionActiva: checked === true })} 
+                          id="sancion-activa"
+                        />
+                        <label htmlFor="sancion-activa" className="text-xs text-muted-foreground font-medium cursor-pointer">
+                          Sí <SimulacionBadge tipo="SANCIONES" />
+                        </label>
+                      </div>
+                    </div>
+                    {formData.sancionActiva && (
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Sanción Hasta</Label>
+                        <Input className="page-modal-input" type="date" value={formData.sancionHasta} onChange={(e) => setFormData({ ...formData, sancionHasta: e.target.value })} />
+                      </div>
+                    )}
                   </div>
 
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Especialidad</Label>
-                      <Input className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} />
-                    </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Fecha de Ingreso</Label>
-                      <Input type="date" className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" value={formData.fecha_ingreso} onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} required />
-                    </div>
-                  </div>
-
-                  <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
-                    <Button type="button" variant="ghost" onClick={() => setIsDocenteDialogOpen(false)} className="h-9 rounded-lg font-bold text-muted-foreground hover:bg-muted px-6 text-[11px]">Cancelar</Button>
-                    <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                  <div className="page-actions-row justify-end pt-4 border-t border-border/50">
+                    <Button type="button" variant="ghost" onClick={() => setIsDocenteDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                    <Button type="submit" className="page-modal-btn-submit">
                       {editingDocente ? "Actualizar" : "Registrar"}
                     </Button>
                   </div>
@@ -532,46 +745,46 @@ export function DocenteList() {
           </div>
         </div>
 
-        {/* Barra de Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 pt-2 border-t border-border/50">
+        <div className="page-filters">
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Categoría</Label>
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Categoría</Label>
             <Select value={filtroCategoria} onValueChange={setFiltroCategoria}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
-              <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todas las categorías</SelectItem>
-                <SelectItem value="PRINCIPAL" className="text-[10px] font-bold">Principal</SelectItem>
-                <SelectItem value="ASOCIADO" className="text-[10px] font-bold">Asociado</SelectItem>
-                <SelectItem value="AUXILIAR" className="text-[10px] font-bold">Auxiliar</SelectItem>
-                <SelectItem value="EXTRAORDINARIO" className="text-[10px] font-bold">Extraordinario</SelectItem>
+              <SelectContent position="popper">
+                <SelectItem value="todos">Todas las categorías</SelectItem>
+                <SelectItem value="PRINCIPAL">Principal</SelectItem>
+                <SelectItem value="ASOCIADO">Asociado</SelectItem>
+                <SelectItem value="AUXILIAR">Auxiliar</SelectItem>
+                <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Condición</Label>
             <Select value={filtroModalidad} onValueChange={setFiltroModalidad}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Todas" />
               </SelectTrigger>
-              <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todas las modalidades</SelectItem>
-                <SelectItem value="NOMBRADO" className="text-[10px] font-bold">Nombrado</SelectItem>
-                <SelectItem value="CONTRATADO" className="text-[10px] font-bold">Contratado</SelectItem>
+              <SelectContent position="popper">
+                <SelectItem value="todos">Todas las condiciones</SelectItem>
+                <SelectItem value="ORDINARIO">Ordinario</SelectItem>
+                <SelectItem value="CONTRATADO">Contratado</SelectItem>
+                <SelectItem value="EXTRAORDINARIO">Extraordinario</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
             <Select value={filtroCiclo} onValueChange={setFiltroCiclo}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
-              <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todos los ciclos</SelectItem>
+              <SelectContent position="popper">
+                <SelectItem value="todos">Todos los ciclos</SelectItem>
                 {ciclos
                   .filter(c => {
                     if (semestre === 0) return true;
@@ -579,7 +792,7 @@ export function DocenteList() {
                     return (semestre === 1 && !isPar) || (semestre === 2 && isPar);
                   })
                   .map(c => (
-                    <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="text-[10px] font-bold">
+                    <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
                       {c.nombre}
                     </SelectItem>
                   ))}
@@ -588,87 +801,95 @@ export function DocenteList() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Grado Académico</Label>
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Grado Académico</Label>
             <Select value={filtroGrado} onValueChange={setFiltroGrado}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
-              <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todos los grados</SelectItem>
-                <SelectItem value="DOCTOR" className="text-[10px] font-bold">Doctor</SelectItem>
-                <SelectItem value="MAESTRO" className="text-[10px] font-bold">Maestro</SelectItem>
-                <SelectItem value="INGENIERO" className="text-[10px] font-bold">Ingeniero</SelectItem>
-                <SelectItem value="LICENCIADO" className="text-[10px] font-bold">Licenciado</SelectItem>
+              <SelectContent position="popper">
+                <SelectItem value="todos">Todos los grados</SelectItem>
+                <SelectItem value="DOCTOR">Doctor</SelectItem>
+                <SelectItem value="MAESTRO">Maestro</SelectItem>
+                <SelectItem value="INGENIERO">Ingeniero</SelectItem>
+                <SelectItem value="LICENCIADO">Licenciado</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Orden por Antigüedad</Label>
+            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Orden por Antigüedad</Label>
             <Select value={filtroAntiguedad} onValueChange={setFiltroAntiguedad}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Sin orden" />
               </SelectTrigger>
-              <SelectContent position="popper" className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Sin orden</SelectItem>
-                <SelectItem value="asc" className="text-[10px] font-bold">Menor a Mayor antigüedad</SelectItem>
-                <SelectItem value="desc" className="text-[10px] font-bold">Mayor a Menor antigüedad</SelectItem>
+              <SelectContent position="popper">
+                <SelectItem value="todos">Sin orden</SelectItem>
+                <SelectItem value="asc">Menor a Mayor antigüedad</SelectItem>
+                <SelectItem value="desc">Mayor a Menor antigüedad</SelectItem>
               </SelectContent>
             </Select>
           </div>
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="page-table-card">
         <div className="overflow-x-auto">
-          <Table className="min-w-[1000px] w-full">
+          <Table className="w-full">
             <TableHeader className="bg-muted/50">
               <TableRow className="border-b border-border hover:bg-transparent">
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Cód.</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Apellidos y Nombres</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Grado</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Antigüedad</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Modalidad</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Categoría</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Cód.</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Apellidos y Nombres</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Grado</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Facultad</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Departamento</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Antigüedad</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Modalidad</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Categoría</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={7} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={9} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((docente) => (
                   <TableRow key={docente.id_docente} className="group hover:bg-muted/50 transition-colors">
                     <TableCell className="px-4 py-2">
-                      <span className="font-mono text-[9px] font-bold text-muted-foreground">{docente.codigo_docente}</span>
+                      <span className="font-mono text-xs font-bold text-muted-foreground">{docente.codigo_docente}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-[9px]">
+                        <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-xs">
                           {docente.nombres.charAt(0)}{docente.apellidos.charAt(0)}
                         </div>
-                        <span className="font-semibold text-foreground text-[11px]">{docente.apellidos}, {docente.nombres}</span>
+                        <span className="font-semibold text-foreground text-sm">{docente.apellidos}, {docente.nombres}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <GraduationCap className="h-3 w-3 text-muted-foreground/40" />
-                        <span className="text-[10px] font-medium">{docente.grado_academico || '-'}</span>
+                        <span className="text-xs font-medium">{docente.grado_academico || '-'}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-xs font-medium text-muted-foreground">{docente.facultad?.codigo || '-'}</span>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-xs font-medium text-muted-foreground">{docente.departamento?.nombre || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-2 text-muted-foreground">
                         <CalendarDays className="h-3 w-3 text-muted-foreground/40" />
-                        <span className="text-[10px] font-medium">{calculateAntiquity(docente.fecha_ingreso)} años</span>
+                        <span className="text-xs font-medium">{calculateAntiquity(docente.fecha_ingreso)} años</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-widest border border-border">{docente.modalidad}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-xs font-bold uppercase tracking-widest border border-border">{docente.condicion}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-[8px] font-bold uppercase tracking-widest border border-primary/20">{docente.categoria}</span>
+                      <span className="px-1.5 py-0.5 rounded-md bg-primary/10 text-primary text-xs font-bold uppercase tracking-widest border border-primary/20">{docente.categoriaDocente}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center justify-end gap-1">
@@ -683,11 +904,21 @@ export function DocenteList() {
                               codigo_docente: docente.codigo_docente || "",
                               correo_electronico: docente.correo_electronico || "",
                               telefono: docente.telefono || "",
-                              modalidad: docente.modalidad || "NOMBRADO",
-                              categoria: docente.categoria || "PRINCIPAL",
                               grado_academico: docente.grado_academico || "INGENIERO",
-                              especialidad: (docente as any).especialidad || "",
+                              especialidad: docente.especialidad || "",
                               fecha_ingreso: docente.fecha_ingreso ? new Date(docente.fecha_ingreso).toISOString().split("T")[0] : new Date().toISOString().split("T")[0],
+                              facultadId: docente.facultadId || "",
+                              departamentoId: docente.departamentoId || "",
+                              dni: docente.dni || "",
+                              esInvestigadorAcreditado: docente.esInvestigadorAcreditado || false,
+                              nivelRenacyt: docente.nivelRenacyt || "",
+                              sancionActiva: docente.sancionActiva || false,
+                              sancionHasta: docente.sancionHasta ? new Date(docente.sancionHasta).toISOString().split("T")[0] : "",
+                              condicion: docente.condicion || "ORDINARIO",
+                              categoriaDocente: docente.categoriaDocente || "PRINCIPAL",
+                              regimenDedicacion: docente.regimenDedicacion || "",
+                              tipoContrato: docente.tipoContrato || "",
+                              tipoExtraordinario: docente.tipoExtraordinario || "",
                             });
                             setIsDocenteDialogOpen(true);
                           }}
