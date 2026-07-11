@@ -24,7 +24,7 @@ export async function GET() {
     const docente = await prisma.docente.findFirst({
       where: {
         // id_usuario es string en tu schema
-        id_usuario: String(session.user.id_usuario),
+        id_usuario: String(session.user.id_usuario) as any,
       },
       include: {
         preferencias_notificacion: true,
@@ -39,7 +39,7 @@ export async function GET() {
     }
 
     return NextResponse.json(
-      docente.preferencias_notificacion
+      (docente as any).preferencias_notificacion
     );
   } catch (error) {
     console.error(error);
@@ -68,7 +68,7 @@ export async function POST(request: Request) {
     const docente = await prisma.docente.findFirst({
       where: {
         // id_usuario es string en tu schema
-        id_usuario: String(session.user.id_usuario),
+        id_usuario: String(session.user.id_usuario) as any,
       },
     });
 

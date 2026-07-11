@@ -181,8 +181,8 @@ export async function POST(request: Request) {
             fecha: fechaPeruMidnight,
             hora_inicio: horaInicioVentana,
             hora_fin: horaFinVentana,
-            modalidad: docente.condicion,
-            categoria: docente.categoriaDocente,
+            modalidad: docente.condicion || '',
+            categoria: docente.categoriaDocente || '',
             orden_prioridad: ordenPrioridad++,
             intervalo_minutos: intervalo_minutos || 15,
             cantidad_docentes: 1,
@@ -267,7 +267,7 @@ export async function POST(request: Request) {
           const grupoSeleccionado = grupos[0];
 
           // Para carga lectiva, usamos las horas que ya están definidas en la carga lectiva
-          const horasRequeridas = cargaLectiva.horas_semanales * cargaLectiva.grupos_asignados;
+          const horasRequeridas = cargaLectiva.horas_semanales * (cargaLectiva.grupos_asignados ?? 1);
 
           console.log(`    ⏱️ Horas requeridas: ${horasRequeridas}`);
           

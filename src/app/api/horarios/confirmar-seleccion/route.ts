@@ -146,7 +146,7 @@ export async function POST(request: Request) {
           if (!idHorario) continue;
 
           const horarioCompleto = await prisma.horarioAsignado.findUnique({
-            where: { id_horario: idHorario },
+            where: { id_asignacion: idHorario },
             include: { docente: true, curso: true, grupo: true, ambiente: true, periodo: true }
           });
 

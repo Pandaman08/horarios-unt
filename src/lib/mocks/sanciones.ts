@@ -37,7 +37,7 @@ export async function consultarSanciones(dni: string) {
         fecha: '2025-03-15',
         motivo: 'Retraso en entrega de notas',
         activo: true,
-        hasta: docente.sancionHasta || null
+        hasta: docente.sancionHasta?.toISOString() || null
       }
     ];
   }

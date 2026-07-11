@@ -695,7 +695,7 @@ async function generarExcelHorarioAmbiente(
       for (let d = 0; d < 6; d++) {
         const bloque = horarios.find((h: any) => h.dia_semana === d && horaEnRango(hora, h.hora_inicio, h.hora_fin));
         if (bloque) {
-          const tipoKey = bloque.curso?.tipo_clase || 'teoria';
+          const tipoKey = bloque.tipo_clase || 'teoria';
           const col = TIPO_COLORES[tipoKey] || TIPO_COLORES.teoria;
           const docente = `${bloque.docente.apellidos}`;
           const curso = bloque.curso.nombre;
