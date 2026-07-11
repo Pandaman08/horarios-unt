@@ -130,7 +130,24 @@ export async function GET(request: Request) {
     const cursosLeyenda = Array.from(cursosMap.values());
 
     // Formatear respuesta
-    const horariosFormato = horarios.map((h: any) => ({
+    const horariosFormato: Array<{
+      id_carga_no_lectiva?: number;
+      id_asignacion: number | null;
+      id_curso: number | null;
+      id_grupo: number | null;
+      id_ambiente: number | null;
+      curso_codigo: string;
+      curso_nombre: string;
+      grupo_codigo: string;
+      ambiente_codigo: string;
+      ambiente_nombre: string;
+      tipo_clase: string;
+      dia_semana: number;
+      hora_inicio: string;
+      hora_fin: string;
+      ciclo_nombre: string;
+      is_no_lectiva: boolean;
+    }> = horarios.map((h: any) => ({
       id_asignacion: h.id_asignacion,
       id_curso: h.id_curso,
       id_grupo: h.id_grupo,
@@ -181,7 +198,7 @@ export async function GET(request: Request) {
         (carga.horarios || []).forEach((horario: any) => {
           horariosFormato.push({
             id_carga_no_lectiva: carga.id_carga_no_lectiva,
-            id_asignacion: undefined,
+            id_asignacion: null,
             id_curso: null,
             id_grupo: null,
             id_ambiente: null,

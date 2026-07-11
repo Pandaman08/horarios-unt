@@ -1791,7 +1791,7 @@ export async function GET(request: Request) {
       if (searchParams.get('incluirNoLectivas')) {
         try {
           const cargas = await prisma.cargaNoLectiva.findMany({
-            where: { id_docente: parseInt(docenteId), id_periodo: parseInt(id_periodo) },
+            where: { declaracion: { id_docente: parseInt(docenteId), id_periodo: parseInt(id_periodo) } },
             include: { horarios: true }
           });
 

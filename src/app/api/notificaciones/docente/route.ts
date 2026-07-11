@@ -11,14 +11,15 @@ export async function GET(request: NextRequest) {
     }
 
     const usuario = await prisma.usuario.findUnique({
-      where: { correo_electronico: session.user.email }
+      where: { correo_electronico: session.user.email },
+      include: { docente: true }
     });
 
     if (!usuario?.docente) {
       return NextResponse.json({ error: 'No es un docente' }, { status: 403 });
     }
 
-    const idDocente = usuario.docente;
+    const idDocente = usuario.docente.id_docente;
 
     // Obtener notificaciones de la cola (pendientes) y del historial (enviadas)
     const cola = await prisma.colaNotificaciones.findMany({

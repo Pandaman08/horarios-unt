@@ -170,7 +170,7 @@ export async function GET(request: Request) {
 
     // Obtener las ventanas con los docentes correspondientes
     const ventanasConDocentes = ventanasExistentes.map(
-      (ventana: { id: number; id_periodo: number; activo: boolean; orden_prioridad: number; [key: string]: unknown }, index: number) => ({
+      (ventana: any, index: number) => ({
         ...ventana,
         docente: docentes[index] || null
       })

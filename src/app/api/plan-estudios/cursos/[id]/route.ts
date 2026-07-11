@@ -23,9 +23,9 @@ export async function PUT(
       select: { id_curso: true }
     }) : [];
 
-    const curso = await prisma.$transaction(async (tx: Parameters<typeof prisma.$transaction>[0]) => {
+    const curso = await prisma.$transaction(async (tx) => {
       // Update course
-      const updatedCurso = await (tx as typeof prisma).curso.update({
+      const updatedCurso = await tx.curso.update({
         where: { id_curso: id },
         data: {
           codigo: data.codigo,
@@ -45,13 +45,13 @@ export async function PUT(
       });
 
       // Delete old prerequisites
-      await (tx as typeof prisma).prerequisito.deleteMany({
+      await tx.prerequisito.deleteMany({
         where: { id_curso: id }
       });
 
       // Create new prerequisites
       if (prerequisiteCourses.length > 0) {
-        await (tx as typeof prisma).prerequisito.createMany({
+        await tx.prerequisito.createMany({
           data: prerequisiteCourses.map((pc: { id_curso: number }) => ({
             id_curso: id,
             id_prerequisito_curso: pc.id_curso
@@ -60,7 +60,7 @@ export async function PUT(
       }
 
       // Return updated course with prerequisites
-      return (tx as typeof prisma).curso.findUnique({
+      return tx.curso.findUnique({
         where: { id_curso: id },
         include: {
           prerequisitos_rel: {
@@ -116,14 +116,14 @@ export async function DELETE(
     }
 
     // Delete the course and its prerequisites
-    await prisma.$transaction(async (tx: Parameters<typeof prisma.$transaction>[0]) => {
+    await prisma.$transaction(async (tx) => {
       // Delete prerequisites where this course is the one requiring them
-      await (tx as typeof prisma).prerequisito.deleteMany({
+      await tx.prerequisito.deleteMany({
         where: { id_curso: id }
       });
 
       // Delete the course
-      await (tx as typeof prisma).curso.delete({
+      await tx.curso.delete({
         where: { id_curso: id }
       });
     });
