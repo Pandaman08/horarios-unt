@@ -209,8 +209,8 @@ function DashboardLayoutInner({
         ],
       },
       {
-        title: "Asignación Carga Lectiva",
-        href: "/dashboard/carga-lectiva-asignacion",
+        title: "Asignar Cursos",
+        href: "/dashboard/asignar-cursos",
         icon: Briefcase,
         roles: ["administrador_sistema", "operador_horarios"],
       },
@@ -221,8 +221,8 @@ function DashboardLayoutInner({
         roles: ["administrador_sistema", "operador_horarios"],
       },
       {
-        title: "Asignación Horaria (Secretaría)",
-        href: "/dashboard/secretaria/asignacion-horaria",
+        title: "Asignar Carga Lectiva",
+        href: "/dashboard/secretaria/asignar-carga-lectiva",
         icon: Calendar,
         roles: ["administrador_sistema", "operador_horarios", "secretaria"],
       },

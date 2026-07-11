@@ -369,7 +369,7 @@ export function DisponibilidadList() {
 
       {/* Modal de Matriz de Disponibilidad */}
       <Dialog open={!!editingDocente} onOpenChange={(open) => !open && setEditingDocente(null)}>
-        <DialogContent className="max-w-[80vw] md:max-w-[65vw] lg:max-w-[700px] max-h-[85vh] p-0 border-none shadow-2xl overflow-hidden rounded-xl">
+        <DialogContent className="page-modal-lg max-w-[95vw] md:max-w-[85vw] max-h-[85vh] overflow-hidden">
           <DialogTitle className="sr-only">
             Editar Disponibilidad de {editingDocente?.nombres} {editingDocente?.apellidos}
           </DialogTitle>

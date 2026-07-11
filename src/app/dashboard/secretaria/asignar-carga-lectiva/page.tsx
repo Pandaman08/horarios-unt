@@ -4,6 +4,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useCallback } from "react";
 import { MatrizDisponibilidad } from "@/components/horarios/MatrizDisponibilidad";
+import { MatrizAmbientesSecretaria } from "@/components/horarios/MatrizAmbientesSecretaria";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -24,7 +25,10 @@ import {
   Calendar,
   X,
   PauseCircle,
+  Building2,
+  ArrowLeft,
 } from "lucide-react";
+import { useLocale } from "@/contexts/LocaleContext";
 
 type VentanaInfo = {
   id_ventana: number;
@@ -78,6 +82,7 @@ type Ambiente = {
 export default function AsignacionHorariaSecretariaPage() {
   const { data: session } = useSession();
   const router = useRouter();
+  const { t } = useLocale();
 
   const [periodos, setPeriodos] = useState<Periodo[]>([]);
   const [idPeriodo, setIdPeriodo] = useState<number>(0);
@@ -90,10 +95,14 @@ export default function AsignacionHorariaSecretariaPage() {
   const [cursoSeleccionado, setCursoSeleccionado] = useState<CursoItem | null>(null);
 
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
+  const [ambientesFiltrados, setAmbientesFiltrados] = useState<Ambiente[]>([]);
   const [idAmbiente, setIdAmbiente] = useState<string>("");
-
+  const [vistaAmbientes, setVistaAmbientes] = useState(false);
+  const [ambientesAll, setAmbientesAll] = useState<Ambiente[]>([]);
   const [grupos, setGrupos] = useState<any[]>([]);
   const [idGrupo, setIdGrupo] = useState<string>("");
+  const [numSubgrupos, setNumSubgrupos] = useState<number>(1);
+  const [subgrupoActivo, setSubgrupoActivo] = useState<number>(1);
 
   const [sinVentanas, setSinVentanas] = useState(false);
   const [isConfirming, setIsConfirming] = useState(false);
@@ -121,6 +130,18 @@ export default function AsignacionHorariaSecretariaPage() {
       })
       .catch(() => {});
   }, []);
+
+  useEffect(() => {
+    if (!idPeriodo) return;
+    fetch('/api/ambientes')
+      .then(r => r.json())
+      .then(data => {
+        const list = Array.isArray(data) ? data : (data.ambientes || []);
+        const activos = list.filter((a: any) => a.activo === true);
+        setAmbientesAll(activos);
+      })
+      .catch(() => {});
+  }, [idPeriodo]);
 
   const fetchDocentes = useCallback(async () => {
     if (!idPeriodo) return;
@@ -176,6 +197,20 @@ export default function AsignacionHorariaSecretariaPage() {
     }
   };
 
+  const filtrarAmbientesPorTipo = (tipoClase: string) => {
+    let filtrados: Ambiente[] = [];
+    if (tipoClase === "laboratorio") {
+      filtrados = ambientes.filter(a => a.tipo === "laboratorio");
+    } else if (tipoClase === "practica") {
+      filtrados = ambientes.filter(a => a.tipo === "teoria" || a.tipo === "taller");
+    } else {
+      filtrados = ambientes.filter(a => a.tipo === "teoria");
+    }
+    setAmbientesFiltrados(filtrados);
+    if (filtrados.length > 0) setIdAmbiente(filtrados[0].id_ambiente.toString());
+    else setIdAmbiente("");
+  };
+
   const handleCursoChange = async (value: string) => {
     if (!value) {
       setCursoSeleccionado(null);
@@ -187,6 +222,8 @@ export default function AsignacionHorariaSecretariaPage() {
     const curso = cursos.find(c => c.id_curso === cursoId && c.tipo_clase === tipoClase);
     setCursoSeleccionado(curso || null);
     setIdGrupo("");
+
+    filtrarAmbientesPorTipo(tipoClase);
 
     if (curso?.id_grupo) {
       setIdGrupo(curso.id_grupo.toString());
@@ -222,7 +259,7 @@ export default function AsignacionHorariaSecretariaPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setMensaje(`Carga lectiva confirmada para ${docenteSeleccionado.nombres} ${docenteSeleccionado.apellidos}`);
+        setMensaje(`${t("confirmLectiveSuccess")} ${docenteSeleccionado.nombres} ${docenteSeleccionado.apellidos}`);
         await fetchDocentes();
         setDocenteSeleccionado(null);
         setCursoSeleccionado(null);
@@ -230,7 +267,7 @@ export default function AsignacionHorariaSecretariaPage() {
         setIdGrupo("");
         setCursos([]);
       } else {
-        setMensaje(`Error: ${data.error || 'No se pudo confirmar'}`);
+        setMensaje(`Error: ${data.error || t('confirmLectiveError')}`);
       }
     } catch (err: any) {
       setMensaje(`Error: ${err.message}`);
@@ -250,10 +287,10 @@ export default function AsignacionHorariaSecretariaPage() {
       });
       const data = await res.json();
       if (data.success) {
-        setMensaje('Intervalo saltado. Las ventanas restantes se han ajustado.');
+        setMensaje(t('intervalSkipped'));
         await fetchDocentes();
       } else {
-        setMensaje(`Error: ${data.error || 'No se pudo saltar el intervalo'}`);
+        setMensaje(`Error: ${data.error || t('skipIntervalError')}`);
       }
     } catch (err: any) {
       setMensaje(`Error: ${err.message}`);
@@ -275,13 +312,41 @@ export default function AsignacionHorariaSecretariaPage() {
   return (
     <div className="space-y-4 p-4">
       <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-bold">Asignación Horaria (Secretaría)</h1>
-          <p className="text-muted-foreground text-sm">
-            Gestione la carga lectiva de los docentes según el orden de prioridad
-          </p>
+        <div className="flex items-center gap-3">
+          {vistaAmbientes && (
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setVistaAmbientes(false)}
+              className="gap-1.5"
+            >
+              <ArrowLeft className="h-4 w-4" />
+              {t("assign")}
+            </Button>
+          )}
+          <div>
+            <h1 className="text-2xl font-bold">
+              {vistaAmbientes ? t("environmentAvailability") : t("assignLectiveTitle")}
+            </h1>
+            <p className="text-muted-foreground text-sm">
+              {vistaAmbientes
+                ? t("environmentAvailabilitySubtitle")
+                : t("assignLectiveSubtitle")}
+            </p>
+          </div>
         </div>
         <div className="flex items-center gap-2">
+          {!vistaAmbientes && (
+            <Button
+              variant={vistaAmbientes ? "default" : "outline"}
+              size="sm"
+              onClick={() => setVistaAmbientes(true)}
+              className="gap-1.5"
+            >
+              <Building2 className="h-4 w-4" />
+              {t("viewEnvironments")}
+            </Button>
+          )}
           <Calendar className="h-4 w-4 text-muted-foreground" />
           <select
             className="border rounded px-3 py-1.5 text-sm bg-background"
@@ -297,9 +362,18 @@ export default function AsignacionHorariaSecretariaPage() {
         </div>
       </div>
 
+      {vistaAmbientes ? (
+        <div className="bg-card rounded-xl border border-border p-4">
+          <MatrizAmbientesSecretaria
+            id_periodo={idPeriodo}
+            ambientes={ambientesAll}
+          />
+        </div>
+      ) : (
+      <>
       {sinVentanas && (
         <div className="bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-800 rounded-lg p-3 text-sm text-amber-800 dark:text-amber-200">
-          No se han generado ventanas de atención para este período. Para habilitar la asignación horaria, primero debe generar las ventanas desde la gestión de ventanas.
+          {t("noWindowsWarning")}
         </div>
       )}
 
@@ -309,10 +383,10 @@ export default function AsignacionHorariaSecretariaPage() {
             <CardHeader className="pb-2">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Users className="h-4 w-4" />
-                Docentes
+                {t("navTeachers")}
                 {!isLoadingDocentes && (
                   <Badge variant="outline" className="ml-auto text-xs">
-                    {docentes.filter(d => !estadosSinDocente.includes(d.estadoVentana)).length} pendientes
+                    {docentes.filter(d => !estadosSinDocente.includes(d.estadoVentana)).length} {t("pending")}
                   </Badge>
                 )}
               </CardTitle>
@@ -324,11 +398,11 @@ export default function AsignacionHorariaSecretariaPage() {
                 </div>
               ) : docentes.length === 0 ? (
                 <p className="text-sm text-muted-foreground p-4">
-                  No hay docentes con carga lectiva en este período
+                  {t("noTeachersWithLoad")}
                 </p>
               ) : sinVentanas ? (
                 <div className="p-4 text-sm text-muted-foreground">
-                  No se han generado ventanas de atención para este período. La asignación horaria no está disponible.
+                  {t("noWindowsUnavailable")}
                 </div>
               ) : (
                 <div className="divide-y">
@@ -356,7 +430,7 @@ export default function AsignacionHorariaSecretariaPage() {
                           )}
                         </div>
                         <div className="shrink-0">
-                          <EstadoBadge estado={d.estadoVentana} />
+                          <EstadoBadge estado={d.estadoVentana} t={t} />
                         </div>
                       </div>
                     </button>
@@ -379,7 +453,7 @@ export default function AsignacionHorariaSecretariaPage() {
               ) : (
                 <SkipForward className="h-4 w-4 mr-1" />
               )}
-              Saltar Intervalo
+              {t("skipInterval")}
             </Button>
             <Button
               variant="outline"
@@ -389,7 +463,7 @@ export default function AsignacionHorariaSecretariaPage() {
               disabled={isLoadingDocentes}
             >
               <Loader2 className={`h-4 w-4 mr-1 ${isLoadingDocentes ? 'animate-spin' : ''}`} />
-              Recargar
+              {t("reload")}
             </Button>
           </div>
         </div>
@@ -399,8 +473,8 @@ export default function AsignacionHorariaSecretariaPage() {
             <Card>
               <CardContent className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                 <Users className="h-12 w-12 mb-3 opacity-30" />
-                <p className="text-lg font-medium">Seleccione un docente</p>
-                <p className="text-sm">Elija un docente de la lista para gestionar su carga lectiva</p>
+                <p className="text-lg font-medium">{t("selectTeacher")}</p>
+                <p className="text-sm">{t("selectTeacherDesc")}</p>
               </CardContent>
             </Card>
           ) : (
@@ -418,7 +492,7 @@ export default function AsignacionHorariaSecretariaPage() {
                       </p>
                     </div>
                     <div className="flex items-center gap-2">
-                      <EstadoBadge estado={docenteSeleccionado.estadoVentana} />
+                      <EstadoBadge estado={docenteSeleccionado.estadoVentana} t={t} />
                       {docenteSeleccionado.ventana && (
                         <Badge variant="outline" className="text-xs">
                           {docenteSeleccionado.ventana.hora_inicio} - {docenteSeleccionado.ventana.hora_fin}
@@ -429,14 +503,14 @@ export default function AsignacionHorariaSecretariaPage() {
 
                   <div className="flex flex-wrap gap-3 mt-4">
                     <div className="flex-1 min-w-[180px]">
-                      <label className="text-xs font-medium mb-1 block">Curso</label>
+                      <label className="text-xs font-medium mb-1 block">{t("course")}</label>
                       <select
                         className="w-full border rounded px-3 py-1.5 text-sm bg-background"
                         value={cursoSeleccionado ? `${cursoSeleccionado.id_curso}:${cursoSeleccionado.tipo_clase}` : ''}
                         onChange={e => handleCursoChange(e.target.value)}
                         disabled={isLoadingCursos}
                       >
-                        <option value="">Seleccionar curso...</option>
+                        <option value="">{t("selectCourse")}</option>
                         {cursos.map(c => (
                           <option key={`${c.id_curso}-${c.tipo_clase}`} value={`${c.id_curso}:${c.tipo_clase}`}>
                             {c.nombre} ({c.tipo_clase}) - {c.horas_requeridas}h
@@ -446,11 +520,15 @@ export default function AsignacionHorariaSecretariaPage() {
                     </div>
 
                     <div className="w-[140px]">
-                      <label className="text-xs font-medium mb-1 block">Grupo</label>
+                      <label className="text-xs font-medium mb-1 block">{t("group")}</label>
                       <select
                         className="w-full border rounded px-3 py-1.5 text-sm bg-background"
                         value={idGrupo}
-                        onChange={e => setIdGrupo(e.target.value)}
+                        onChange={e => {
+                          setIdGrupo(e.target.value);
+                          setNumSubgrupos(1);
+                          setSubgrupoActivo(1);
+                        }}
                         disabled={!cursoSeleccionado}
                       >
                         {grupos.length > 0 ? grupos.map(g => (
@@ -462,24 +540,68 @@ export default function AsignacionHorariaSecretariaPage() {
                             Grupo {cursoSeleccionado.id_grupo}
                           </option>
                         ) : (
-                          <option value="">Sin grupo</option>
+                          <option value="">{t("noGroup")}</option>
                         )}
                       </select>
                     </div>
 
+                    {cursoSeleccionado?.tipo_clase === "laboratorio" && idGrupo && (
+                      <div className="w-[220px]">
+                        <label className="text-xs font-medium mb-1 block">
+                          {t("subgroups")}
+                          <span className="text-muted-foreground text-[9px] ml-1">
+                            {numSubgrupos > 1 ? `${t("subgroupInterval")}: ${Math.floor(60 / numSubgrupos)}min c/u` : t("fullGroup")}
+                          </span>
+                        </label>
+                        <div className="flex gap-1">
+                          <select
+                            className="flex-1 border rounded px-2 py-1.5 text-xs bg-background"
+                            value={numSubgrupos}
+                            onChange={e => {
+                              const n = parseInt(e.target.value);
+                              setNumSubgrupos(n);
+                              if (subgrupoActivo > n) setSubgrupoActivo(1);
+                            }}
+                          >
+                            <option value="1">{t("splitNone")}</option>
+                            <option value="2">{t("split2")}</option>
+                            <option value="3">{t("split3")}</option>
+                            <option value="4">{t("split4")}</option>
+                          </select>
+                          {numSubgrupos > 1 && (
+                            <select
+                              className="w-[90px] border rounded px-2 py-1.5 text-xs bg-background"
+                              value={subgrupoActivo}
+                              onChange={e => setSubgrupoActivo(parseInt(e.target.value))}
+                            >
+                              {Array.from({ length: numSubgrupos }, (_, i) => i + 1).map(n => (
+                                <option key={n} value={n}>{t("subgroup")} {n}</option>
+                              ))}
+                            </select>
+                          )}
+                        </div>
+                      </div>
+                    )}
+
                     <div className="w-[180px]">
-                      <label className="text-xs font-medium mb-1 block">Ambiente</label>
+                      <label className="text-xs font-medium mb-1 block">{t("environment")}</label>
                       <select
                         className="w-full border rounded px-3 py-1.5 text-sm bg-background"
                         value={idAmbiente}
                         onChange={e => setIdAmbiente(e.target.value)}
+                        disabled={!cursoSeleccionado}
                       >
-                        {ambientes.map(a => (
+                        {ambientesFiltrados.length > 0 ? ambientesFiltrados.map(a => (
                           <option key={a.id_ambiente} value={a.id_ambiente.toString()}>
                             {a.nombre} ({a.tipo})
                           </option>
-                        ))}
+                        )) : (
+                          <option value="">{t("noEnvironments")}</option>
+                        )}
                       </select>
+                      {cursoSeleccionado && ambientesFiltrados.length === 0 && (
+                        <p className="text-[9px] text-amber-600 mt-0.5">{t("noEnvironmentsForType")} {cursoSeleccionado.tipo_clase}</p>
+                      )}
                     </div>
                   </div>
                 </CardContent>
@@ -490,7 +612,7 @@ export default function AsignacionHorariaSecretariaPage() {
                   {!cursoSeleccionado ? (
                     <div className="flex flex-col items-center justify-center py-16 text-muted-foreground">
                       <Calendar className="h-10 w-10 mb-2 opacity-30" />
-                      <p className="text-sm">Seleccione un curso para ver la matriz de disponibilidad</p>
+                      <p className="text-sm">{t("selectCourseForMatrix")}</p>
                     </div>
                   ) : (
                     <MatrizDisponibilidad
@@ -502,6 +624,10 @@ export default function AsignacionHorariaSecretariaPage() {
                       tipo_clase_actual={cursoSeleccionado.tipo_clase}
                       soloLectura={false}
                       onSelectionChange={fetchDocentes}
+                      rol_viewer="secretaria"
+                      cursoActivoId={cursoSeleccionado.id_curso}
+                      numSubgrupos={numSubgrupos}
+                      subgrupoActivo={subgrupoActivo}
                     />
                   )}
                 </CardContent>
@@ -519,7 +645,7 @@ export default function AsignacionHorariaSecretariaPage() {
                   ) : (
                     <CheckCircle2 className="h-4 w-4 mr-2" />
                   )}
-                  Confirmar y Siguiente
+                  {t("confirmNext")}
                 </Button>
 
                 <Button
@@ -535,7 +661,7 @@ export default function AsignacionHorariaSecretariaPage() {
                   }}
                 >
                   <X className="h-4 w-4 mr-2" />
-                  Cancelar
+                  {t("cancel")}
                 </Button>
 
                 {mensaje && (
@@ -551,18 +677,20 @@ export default function AsignacionHorariaSecretariaPage() {
           )}
         </div>
       </div>
+      </>
+      )}
     </div>
   );
 }
 
-function EstadoBadge({ estado }: { estado: string }) {
+function EstadoBadge({ estado, t }: { estado: string; t: (key: "statusActive" | "statusPending" | "statusCompleted" | "statusExpired" | "statusNoWindow" | "statusPaused") => string }) {
   const config: Record<string, { label: string; className: string }> = {
-    activo: { label: 'Activo', className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
-    pendiente: { label: 'Pendiente', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
-    completado: { label: 'Completado', className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
-    vencido: { label: 'Vencido', className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
-    sin_ventana: { label: 'Sin ventana', className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
-    pausado: { label: 'Pausado', className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+    activo: { label: t('statusActive'), className: 'bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400' },
+    pendiente: { label: t('statusPending'), className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
+    completado: { label: t('statusCompleted'), className: 'bg-blue-100 text-blue-700 dark:bg-blue-900/30 dark:text-blue-400' },
+    vencido: { label: t('statusExpired'), className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
+    sin_ventana: { label: t('statusNoWindow'), className: 'bg-gray-100 text-gray-500 dark:bg-gray-800 dark:text-gray-400' },
+    pausado: { label: t('statusPaused'), className: 'bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400' },
   };
   const c = config[estado] || { label: estado, className: 'bg-gray-100 text-gray-500' };
   return (

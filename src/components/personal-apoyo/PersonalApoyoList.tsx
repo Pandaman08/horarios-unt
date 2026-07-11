@@ -216,31 +216,31 @@ export function PersonalApoyoList() {
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Personal
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-xl rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-6">
+              <DialogContent className="page-modal-lg">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
-                      <UserCircle2 className="h-5 w-5 text-primary" />
+                    <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                      <UserCircle2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                      <DialogTitle className="text-base font-bold text-foreground">
                         {editingItem ? "Actualizar Personal" : "Registrar Personal de Apoyo"}
                       </DialogTitle>
-                      <p className="text-muted-foreground text-xs mt-1 font-medium">Complete la información</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Complete la información</p>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre Completo</Label>
-                    <Input className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required />
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Nombre Completo</Label>
+                    <Input className="page-modal-input" value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} required />
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Tipo</Label>
                       <Select value={formData.tipo} onValueChange={(val) => setFormData({ ...formData, tipo: val })}>
-                        <SelectTrigger className="rounded-lg border-input bg-muted/50 font-bold">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -248,10 +248,10 @@ export function PersonalApoyoList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Modalidad</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Modalidad</Label>
                       <Select value={formData.modalidad} onValueChange={(val) => setFormData({ ...formData, modalidad: val })}>
-                        <SelectTrigger className="rounded-lg border-input bg-muted/50 font-bold">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -264,10 +264,10 @@ export function PersonalApoyoList() {
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento Académico</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Departamento Académico</Label>
                     <Select value={formData.departamentoId} onValueChange={(val) => setFormData({ ...formData, departamentoId: val })} required>
-                      <SelectTrigger className="rounded-lg border-input bg-muted/50 font-bold">
+                      <SelectTrigger className="page-modal-input">
                         <SelectValue placeholder="Seleccione departamento" />
                       </SelectTrigger>
                       <SelectContent position="popper">
@@ -278,11 +278,13 @@ export function PersonalApoyoList() {
                     </Select>
                   </div>
 
-                  <div className="page-actions-row justify-end pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-lg font-bold text-muted-foreground hover:bg-muted px-6">Cancelar</Button>
-                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold shadow-sm transition-all active:scale-95">
-                      {editingItem ? "Actualizar" : "Registrar"}
-                    </Button>
+                  <div className="page-modal-footer border-t border-border pt-4">
+                    <div className="page-actions-row justify-end gap-2">
+                      <Button type="button" variant="ghost" className="page-modal-btn-cancel" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
+                      <Button type="submit" className="page-modal-btn-submit">
+                        {editingItem ? "Actualizar" : "Registrar"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </DialogContent>

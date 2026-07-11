@@ -257,16 +257,24 @@ export default function CargaAdicionalPage() {
               Nuevo CLAD
             </Button>
           </DialogTrigger>
-          <DialogContent className="max-w-3xl">
-            <DialogHeader>
-              <DialogTitle>{editingClad ? 'Editar CLAD' : 'Nuevo CLAD'}</DialogTitle>
+          <DialogContent className="page-modal-lg">
+            <DialogHeader className="page-modal-header">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                  <Briefcase className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold text-foreground">{editingClad ? 'Editar CLAD' : 'Nuevo CLAD'}</DialogTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Complete la información de la carga lectiva adicional</p>
+                </div>
+              </div>
             </DialogHeader>
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Dependencia</Label>
-                  <Select 
-                    value={formData.dependencia} 
+            <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="page-modal-field">
+                  <Label className="page-modal-label">Dependencia</Label>
+                  <Select
+                    value={formData.dependencia}
                     onValueChange={val => setFormData({ ...formData, dependencia: val })}
                     required
                   >
@@ -280,10 +288,10 @@ export default function CargaAdicionalPage() {
                     </SelectContent>
                   </Select>
                 </div>
-                <div className="space-y-2">
-                  <Label>Sede</Label>
-                  <Select 
-                    value={formData.sedeId} 
+                <div className="page-modal-field">
+                  <Label className="page-modal-label">Sede</Label>
+                  <Select
+                    value={formData.sedeId}
                     onValueChange={val => setFormData({ ...formData, sedeId: val })}
                     required
                   >
@@ -299,48 +307,53 @@ export default function CargaAdicionalPage() {
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <div className="space-y-2">
-                  <Label>Curso</Label>
-                  <Input 
-                    value={formData.curso} 
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
+                <div className="page-modal-field">
+                  <Label className="page-modal-label">Curso</Label>
+                  <Input
+                    className="page-modal-input"
+                    value={formData.curso}
                     onChange={e => setFormData({ ...formData, curso: e.target.value })}
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Número de Resolución (opcional)</Label>
-                  <Input 
-                    value={formData.numeroResolucion} 
+                <div className="page-modal-field">
+                  <Label className="page-modal-label">Número de Resolución (opcional)</Label>
+                  <Input
+                    className="page-modal-input"
+                    value={formData.numeroResolucion}
                     onChange={e => setFormData({ ...formData, numeroResolucion: e.target.value })}
                   />
                 </div>
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                <div className="space-y-2">
-                  <Label>Fecha Inicio</Label>
-                  <Input 
-                    type="date" 
-                    value={formData.fechaInicio} 
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                <div className="page-modal-field">
+                  <Label className="page-modal-label">Fecha Inicio</Label>
+                  <Input
+                    className="page-modal-input"
+                    type="date"
+                    value={formData.fechaInicio}
                     onChange={e => setFormData({ ...formData, fechaInicio: e.target.value })}
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Fecha Fin</Label>
-                  <Input 
-                    type="date" 
-                    value={formData.fechaFin} 
+                <div className="page-modal-field">
+                  <Label className="page-modal-label">Fecha Fin</Label>
+                  <Input
+                    className="page-modal-input"
+                    type="date"
+                    value={formData.fechaFin}
                     onChange={e => setFormData({ ...formData, fechaFin: e.target.value })}
                     required
                   />
                 </div>
-                <div className="space-y-2">
-                  <Label>Total Horas</Label>
-                  <Input 
-                    type="number" 
-                    value={formData.totalHoras} 
+                <div className="page-modal-field">
+                  <Label className="page-modal-label">Total Horas</Label>
+                  <Input
+                    className="page-modal-input"
+                    type="number"
+                    value={formData.totalHoras}
                     onChange={e => setFormData({ ...formData, totalHoras: parseInt(e.target.value) || 0 })}
                     min={1}
                     required
@@ -350,14 +363,14 @@ export default function CargaAdicionalPage() {
 
               <div className="space-y-2">
                 <div className="flex justify-between items-center">
-                  <Label>Horarios</Label>
+                  <Label className="page-modal-label">Horarios</Label>
                   <Button type="button" size="sm" variant="outline" onClick={addHorario}>
                     <Plus className="w-4 h-4 mr-1" />
                     Agregar Horario
                   </Button>
                 </div>
                 <div className="space-y-2">
-                  {formData.horarios.map((horario, idx) => (
+                  {formData.horarios.map((horario) => (
                     <div key={horario.id} className="flex items-center gap-3 p-3 bg-muted rounded-lg">
                       <div className="flex items-center gap-2">
                         <Select
@@ -403,8 +416,8 @@ export default function CargaAdicionalPage() {
                 </div>
               </div>
 
-              <div className="space-y-2">
-                <Label>Observaciones (opcional)</Label>
+              <div className="page-modal-field">
+                <Label className="page-modal-label">Observaciones (opcional)</Label>
                 <textarea
                   className="w-full p-2 border rounded-md bg-background"
                   value={formData.observaciones}
@@ -413,17 +426,19 @@ export default function CargaAdicionalPage() {
                 />
               </div>
 
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => {
-                  setIsDialogOpen(false);
-                  setEditingClad(null);
-                  resetForm();
-                }}>
-                  Cancelar
-                </Button>
-                <Button type="submit">
-                  {editingClad ? 'Actualizar' : 'Crear'}
-                </Button>
+              <div className="page-modal-footer border-t border-border pt-4">
+                <div className="page-actions-row justify-end gap-2">
+                  <Button type="button" variant="ghost" className="page-modal-btn-cancel" onClick={() => {
+                    setIsDialogOpen(false);
+                    setEditingClad(null);
+                    resetForm();
+                  }}>
+                    Cancelar
+                  </Button>
+                  <Button type="submit" className="page-modal-btn-submit">
+                    {editingClad ? 'Actualizar' : 'Crear'}
+                  </Button>
+                </div>
               </div>
             </form>
           </DialogContent>

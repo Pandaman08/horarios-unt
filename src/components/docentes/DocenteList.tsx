@@ -520,46 +520,46 @@ export function DocenteList() {
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Docente
                 </Button>
               </DialogTrigger>
-              <DialogContent className="!max-w-4xl border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-4 sm:mb-6">
+              <DialogContent className="page-modal-lg">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
                     <div className="page-icon-box">
                       <UserCircle2 className="page-icon" />
                     </div>
                     <div>
-                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                      <DialogTitle className="text-base font-bold text-foreground">
                         {editingDocente ? "Actualizar Docente" : "Registrar Docente"}
                       </DialogTitle>
-                      <p className="text-muted-foreground text-xs mt-1 font-medium">Complete la información del catedrático</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Complete la información del catedrático</p>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleDocenteSubmit} className="space-y-4 sm:space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nombres</Label>
-                      <Input value={formData.nombres} onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} required />
+                <form onSubmit={handleDocenteSubmit} className="page-modal-body space-y-4 overflow-hidden">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nombres</Label>
+                      <Input className="page-modal-input" value={formData.nombres} onChange={(e) => setFormData({ ...formData, nombres: e.target.value })} required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Apellidos</Label>
-                      <Input value={formData.apellidos} onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} required />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Apellidos</Label>
+                      <Input className="page-modal-input" value={formData.apellidos} onChange={(e) => setFormData({ ...formData, apellidos: e.target.value })} required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Código</Label>
-                      <Input value={formData.codigo_docente} onChange={(e) => setFormData({ ...formData, codigo_docente: e.target.value })} placeholder="Auto-generado" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Código</Label>
+                      <Input className="page-modal-input" value={formData.codigo_docente} onChange={(e) => setFormData({ ...formData, codigo_docente: e.target.value })} placeholder="Auto-generado" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Correo Electrónico</Label>
-                      <Input type="email" value={formData.correo_electronico} onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} required />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Correo Electrónico</Label>
+                      <Input className="page-modal-input" type="email" value={formData.correo_electronico} onChange={(e) => setFormData({ ...formData, correo_electronico: e.target.value })} required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Teléfono</Label>
-                      <Input value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Teléfono</Label>
+                      <Input className="page-modal-input" value={formData.telefono} onChange={(e) => setFormData({ ...formData, telefono: e.target.value })} />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Condición</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Condición</Label>
                       <Select value={formData.condicion} onValueChange={(val) => setFormData({ ...formData, condicion: val })}>
-                        <SelectTrigger>
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue placeholder="Seleccione condición" />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -571,10 +571,10 @@ export function DocenteList() {
                     </div>
                     
                     {formData.condicion === "ORDINARIO" && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Régimen de Dedicación</Label>
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Régimen de Dedicación</Label>
                         <Select value={formData.regimenDedicacion} onValueChange={(val) => setFormData({ ...formData, regimenDedicacion: val })}>
-                          <SelectTrigger>
+                          <SelectTrigger className="page-modal-input">
                             <SelectValue placeholder="Seleccione régimen" />
                           </SelectTrigger>
                           <SelectContent position="popper">
@@ -589,10 +589,10 @@ export function DocenteList() {
                     )}
                     
                     {formData.condicion === "CONTRATADO" && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tipo de Contrato</Label>
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Tipo de Contrato</Label>
                         <Select value={formData.tipoContrato} onValueChange={(val) => setFormData({ ...formData, tipoContrato: val })}>
-                          <SelectTrigger>
+                          <SelectTrigger className="page-modal-input">
                             <SelectValue placeholder="Seleccione tipo" />
                           </SelectTrigger>
                           <SelectContent position="popper">
@@ -608,10 +608,10 @@ export function DocenteList() {
                     )}
                     
                     {formData.condicion === "EXTRAORDINARIO" && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tipo Extraordinario</Label>
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Tipo Extraordinario</Label>
                         <Select value={formData.tipoExtraordinario} onValueChange={(val) => setFormData({ ...formData, tipoExtraordinario: val })}>
-                          <SelectTrigger>
+                          <SelectTrigger className="page-modal-input">
                             <SelectValue placeholder="Seleccione tipo" />
                           </SelectTrigger>
                           <SelectContent position="popper">
@@ -625,10 +625,10 @@ export function DocenteList() {
                       </div>
                     )}
                     
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Grado Académico</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Grado Académico</Label>
                       <Select value={formData.grado_academico} onValueChange={(val) => setFormData({ ...formData, grado_academico: val })}>
-                        <SelectTrigger>
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -639,10 +639,10 @@ export function DocenteList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Categoría</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Categoría</Label>
                       <Select value={formData.categoriaDocente} onValueChange={(val) => setFormData({ ...formData, categoriaDocente: val })}>
-                        <SelectTrigger>
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -652,13 +652,13 @@ export function DocenteList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Facultad</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Facultad</Label>
                       <Select value={formData.facultadId} onValueChange={(val) => {
                         setFormData({ ...formData, facultadId: val, departamentoId: "" });
                       }} required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione facultad" />
+                        <SelectTrigger className="page-modal-input w-full min-w-0">
+                          <SelectValue placeholder="Seleccione facultad" className="truncate" />
                         </SelectTrigger>
                         <SelectContent position="popper">
                           {facultades.map((facultad) => (
@@ -667,11 +667,11 @@ export function DocenteList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Departamento Académico</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Departamento Académico</Label>
                       <Select value={formData.departamentoId} onValueChange={(val) => setFormData({ ...formData, departamentoId: val })} disabled={!formData.facultadId} required>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Seleccione departamento" />
+                        <SelectTrigger className="page-modal-input w-full min-w-0">
+                          <SelectValue placeholder="Seleccione departamento" className="truncate" />
                         </SelectTrigger>
                         <SelectContent position="popper">
                           {departamentos.map((depto) => (
@@ -680,19 +680,19 @@ export function DocenteList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">DNI</Label>
-                      <div className="flex items-center gap-2">
-                        <Input value={formData.dni} onChange={(e) => setFormData({ ...formData, dni: e.target.value })} />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">DNI</Label>
+                      <div className="flex items-center gap-2 min-w-0">
+                        <Input className="page-modal-input min-w-0 flex-1" value={formData.dni} onChange={(e) => setFormData({ ...formData, dni: e.target.value })} />
                         <SimulacionBadge tipo="PERSONAL_ACADEMICO" />
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nivel RENACYT</Label>
-                      <Input value={formData.nivelRenacyt} onChange={(e) => setFormData({ ...formData, nivelRenacyt: e.target.value })} placeholder="Ej: V" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nivel RENACYT</Label>
+                      <Input className="page-modal-input" value={formData.nivelRenacyt} onChange={(e) => setFormData({ ...formData, nivelRenacyt: e.target.value })} placeholder="Ej: V" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Investigador RENACYT</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Investigador RENACYT</Label>
                       <div className="flex items-center gap-2 h-9">
                         <Checkbox 
                           checked={formData.esInvestigadorAcreditado} 
@@ -704,16 +704,16 @@ export function DocenteList() {
                         </label>
                       </div>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Especialidad</Label>
-                      <Input value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Especialidad</Label>
+                      <Input className="page-modal-input" value={formData.especialidad} onChange={(e) => setFormData({ ...formData, especialidad: e.target.value })} />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Fecha de Ingreso</Label>
-                      <Input type="date" value={formData.fecha_ingreso} onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} required />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Fecha de Ingreso</Label>
+                      <Input className="page-modal-input" type="date" value={formData.fecha_ingreso} onChange={(e) => setFormData({ ...formData, fecha_ingreso: e.target.value })} required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sanción Activa</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Sanción Activa</Label>
                       <div className="flex items-center gap-2 h-9">
                         <Checkbox 
                           checked={formData.sancionActiva} 
@@ -726,16 +726,16 @@ export function DocenteList() {
                       </div>
                     </div>
                     {formData.sancionActiva && (
-                      <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Sanción Hasta</Label>
-                        <Input type="date" value={formData.sancionHasta} onChange={(e) => setFormData({ ...formData, sancionHasta: e.target.value })} />
+                      <div className="page-modal-field">
+                        <Label className="page-modal-label">Sanción Hasta</Label>
+                        <Input className="page-modal-input" type="date" value={formData.sancionHasta} onChange={(e) => setFormData({ ...formData, sancionHasta: e.target.value })} />
                       </div>
                     )}
                   </div>
 
                   <div className="page-actions-row justify-end pt-4 border-t border-border/50">
-                    <Button type="button" variant="ghost" onClick={() => setIsDocenteDialogOpen(false)}>Cancelar</Button>
-                    <Button type="submit">
+                    <Button type="button" variant="ghost" onClick={() => setIsDocenteDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                    <Button type="submit" className="page-modal-btn-submit">
                       {editingDocente ? "Actualizar" : "Registrar"}
                     </Button>
                   </div>

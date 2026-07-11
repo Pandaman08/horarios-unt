@@ -617,6 +617,130 @@ async function generarExcelHorarioDocente(
 }
 
 // ─────────────────────────────────────────────────────────────────────────────
+// HORARIO AMBIENTE — matriz semanal con docentes y colores por tipo
+// ─────────────────────────────────────────────────────────────────────────────
+const TIPO_COLORES: Record<string, { bg: string; text: string }> = {
+  teoria:     { bg: 'FFdbeafe', text: 'FF1d4ed8' },
+  practica:   { bg: 'FFd1fae5', text: 'FF059669' },
+  laboratorio:{ bg: 'FFede9fe', text: 'FF7c3aed' },
+};
+
+async function generarExcelHorarioAmbiente(
+  id_ambiente: number,
+  id_periodo: number,
+  periodo: any,
+) {
+  const ambiente = await prisma.ambiente.findUnique({ where: { id_ambiente } });
+  if (!ambiente) throw new Error('Ambiente no encontrado');
+
+  const horarios = await prisma.horarioAsignado.findMany({
+    where: { id_periodo, id_ambiente },
+    include: { docente: true, curso: true, grupo: true },
+    orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],
+  });
+
+  const workbook = new ExcelJS.Workbook();
+  workbook.creator = 'Sistema de Gestión de Horarios UNT';
+  workbook.created = new Date();
+
+  const ws = workbook.addWorksheet(`${ambiente.codigo}`, {
+    pageSetup: {
+      paperSize: 9, orientation: 'portrait', fitToPage: true, fitToWidth: 1, fitToHeight: 0,
+      margins: { left: 0.25, right: 0.25, top: 0.35, bottom: 0.35, header: 0.15, footer: 0.15 },
+    },
+    views: [{ showGridLines: false }],
+  });
+
+  const COL_W = { 1: 12, 2: 22, 3: 22, 4: 22, 5: 22, 6: 22, 7: 22 };
+  for (const [col, w] of Object.entries(COL_W)) ws.getColumn(Number(col)).width = w;
+
+  const sem = periodo?.semestre === 1 ? 'I' : 'II';
+  const TC = 7;
+  let R = 1;
+
+  // Header institucional
+  wc(ws, R, 1, { value: 'UNIVERSIDAD NACIONAL DE TRUJILLO — FACULTAD DE INGENIERÍA TRUJILLO', mergeEnd: TC, bg: NAVY, color: WHITE, bold: true, size: 11, align: ctr });
+  ws.getRow(R).height = 22; R++;
+
+  wc(ws, R, 1, { value: `HORARIO SEMANAL DEL AMBIENTE — ${ambiente.nombre.toUpperCase()} (${ambiente.codigo})`, mergeEnd: TC, bg: NAVY2, color: WHITE, bold: true, size: 10, align: ctr });
+  ws.getRow(R).height = 18; R++;
+
+  const numDocentes = new Set(horarios.map((h: any) => h.id_docente)).size;
+  wc(ws, R, 1, { value: `Periodo: ${periodo?.nombre ?? ''}  •  Tipo: ${ambiente.tipo}  •  ${horarios.length} bloque(s)  •  ${numDocentes} docente(s)`, mergeEnd: TC, bg: SLATE100, color: TEXTMID, bold: true, size: 8, align: ctr, border: { bottom: bThin() } });
+  ws.getRow(R).height = 16; R++;
+
+  for (let c = 1; c <= TC; c++) ws.getCell(R, c).fill = fill(SLATE50);
+  ws.getRow(R).height = 4; R++;
+
+  // Grid header
+  const gridStart = R;
+  wc(ws, R, 1, { value: 'HORA', bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr, border: { right: bThin(WHITE), bottom: bMed(WHITE) } });
+  for (let d = 0; d < 6; d++) {
+    wc(ws, R, d + 2, { value: DIAS_MATRIZ[d], bg: NAVY, color: WHITE, bold: true, size: 9, align: ctr, border: { right: bThin(WHITE), bottom: bMed(WHITE) } });
+  }
+  ws.getRow(R).height = 18; R++;
+
+  // Grid body
+  for (let idx = 0; idx < RANGOS_HORARIOS.length; idx++) {
+    const hora = RANGOS_HORARIOS[idx];
+    const label = RANGOS_LABELS[idx];
+    const esAlm = hora === '13:00';
+    ws.getRow(R).height = esAlm ? 14 : 40;
+
+    wc(ws, R, 1, { value: label, bg: SLATE100, color: NAVY, bold: true, size: 8, align: ctr, border: { bottom: bThin(), right: bThin() } });
+
+    if (esAlm) {
+      wc(ws, R, 2, { value: '—   A L M U E R Z O   —', mergeEnd: TC, bg: SLATE100, color: TEXTMID, bold: true, italic: true, size: 8, align: ctr, border: { top: bMed(), bottom: bMed(), right: bThin() } });
+    } else {
+      for (let d = 0; d < 6; d++) {
+        const bloque = horarios.find((h: any) => h.dia_semana === d && horaEnRango(hora, h.hora_inicio, h.hora_fin));
+        if (bloque) {
+          const tipoKey = bloque.curso?.tipo_clase || 'teoria';
+          const col = TIPO_COLORES[tipoKey] || TIPO_COLORES.teoria;
+          const docente = `${bloque.docente.apellidos}`;
+          const curso = bloque.curso.nombre;
+          const grupo = bloque.grupo?.codigo_grupo || '';
+          wc(ws, R, d + 2, { value: `${docente}\n${curso}\n${grupo}`, bg: col.bg, color: col.text, bold: true, size: 8, align: { horizontal: 'center', vertical: 'middle', wrapText: true }, border: { bottom: bThin(), right: bThin() } });
+        } else {
+          wc(ws, R, d + 2, { value: '', bg: WHITE, align: ctr, border: { bottom: bThin(), right: bThin() } });
+        }
+      }
+    }
+    R++;
+  }
+
+  outerBorder(ws, gridStart, R - 1, 1, TC, bThick());
+
+  // Leyenda de colores
+  for (let c = 1; c <= TC; c++) ws.getCell(R, c).fill = fill(SLATE50);
+  ws.getRow(R).height = 6; R++;
+
+  wc(ws, R, 1, { value: 'LEYENDA DE COLORES', mergeEnd: TC, bg: NAVY, color: WHITE, bold: true, size: 8, align: ctr });
+  ws.getRow(R).height = 14; R++;
+
+  const legendItems = [
+    { label: 'Teoría', col: TIPO_COLORES.teoria },
+    { label: 'Práctica', col: TIPO_COLORES.practica },
+    { label: 'Laboratorio', col: TIPO_COLORES.laboratorio },
+  ];
+  for (const item of legendItems) {
+    wc(ws, R, 1, { value: '', bg: item.col.bg, border: { bottom: bThin(), right: bThin() } });
+    wc(ws, R, 2, { value: item.label, mergeEnd: 3, bg: item.col.bg, color: item.col.text, bold: true, size: 8, align: lft, border: { bottom: bThin() } });
+    R++;
+  }
+
+  // Footer
+  for (let c = 1; c <= TC; c++) ws.getCell(R, c).fill = fill(SLATE50);
+  ws.getRow(R).height = 4; R++;
+  wc(ws, R, 1, { value: `Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT`, mergeEnd: TC, bg: SLATE50, color: TEXTMID, italic: true, size: 7, align: rgt });
+  ws.getRow(R).height = 12;
+
+  const buffer = await workbook.xlsx.writeBuffer();
+  const filename = `Horario_Ambiente_${ambiente.codigo}_${periodo?.codigo ?? 'periodo'}.xlsx`;
+  return { buffer, filename };
+}
+
+// ─────────────────────────────────────────────────────────────────────────────
 // HANDLER
 // ─────────────────────────────────────────────────────────────────────────────
 export async function GET(request: Request) {
@@ -653,6 +777,21 @@ export async function GET(request: Request) {
     if (id_docente && !id_ambiente && !id_ciclo) {
       const { buffer, filename } = await generarExcelHorarioDocente(
         id_docente,
+        parseInt(id_periodo),
+        periodo,
+      );
+      return new Response(buffer, {
+        headers: {
+          'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
+          'Content-Disposition': `attachment; filename="${filename}"`,
+        },
+      });
+    }
+
+    // Horario de ambiente: matriz semanal con docentes y colores por tipo
+    if (tipo === 'ambiente' && id_ambiente) {
+      const { buffer, filename } = await generarExcelHorarioAmbiente(
+        id_ambiente,
         parseInt(id_periodo),
         periodo,
       );
@@ -704,7 +843,7 @@ export async function GET(request: Request) {
       if (id_docente) where.id_docente = id_docente;
       if (id_ambiente) where.id_ambiente = id_ambiente;
 
-      const horarios = await prisma.horarioAsignado.findMany({
+  const horarios: any[] = await prisma.horarioAsignado.findMany({
         where,
         include: { docente: true, curso: true, ambiente: true, grupo: true },
         orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }],

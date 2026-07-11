@@ -174,8 +174,8 @@ export function CargoAcademicoAdministrativoList() {
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Cargo
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-6">
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
                       <Briefcase className="h-5 w-5 text-primary" />
@@ -188,50 +188,50 @@ export function CargoAcademicoAdministrativoList() {
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre del Cargo</Label>
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Nombre del Cargo</Label>
                     <Input 
-                      className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all" 
+                      className="page-modal-input" 
                       value={formData.nombre} 
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
                       required 
                     />
                   </div>
                   <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">CHLM</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">CHLM</Label>
                       <Input 
                         type="number"
                         min="0"
                         step="1"
-                        className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all" 
+                        className="page-modal-input" 
                         value={formData.chlm} 
                         onChange={(e) => setFormData({ ...formData, chlm: parseInt(e.target.value) || 0 })} 
                         required 
                       />
                       <p className="text-xs text-muted-foreground">Carga Lectiva Mínima (horas semanales que debe tener el docente que ocupa este cargo)</p>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">CHNLPE</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">CHNLPE</Label>
                       <Input 
                         type="number"
                         min="0"
                         step="1"
-                        className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all" 
+                        className="page-modal-input" 
                         value={formData.chnlpe} 
                         onChange={(e) => setFormData({ ...formData, chnlpe: parseInt(e.target.value) || 0 })} 
                         required 
                       />
                       <p className="text-xs text-muted-foreground">Carga No Lectiva de Preparación y Evaluación (horas máximas semanales)</p>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">CHNLA</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">CHNLA</Label>
                       <Input 
                         type="number"
                         min="0"
                         step="1"
-                        className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all" 
+                        className="page-modal-input" 
                         value={formData.chnla} 
                         onChange={(e) => setFormData({ ...formData, chnla: parseInt(e.target.value) || 0 })} 
                         required 
@@ -240,8 +240,8 @@ export function CargoAcademicoAdministrativoList() {
                     </div>
                   </div>
                   <div className="page-actions-row justify-end pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-lg font-bold text-muted-foreground hover:bg-muted px-6">Cancelar</Button>
-                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold shadow-sm transition-all active:scale-95">
+                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                    <Button type="submit" className="page-modal-btn-submit">
                       {editingCargo ? 'Actualizar' : 'Registrar'}
                     </Button>
                   </div>

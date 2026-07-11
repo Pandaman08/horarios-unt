@@ -28,16 +28,70 @@ import {
 } from "@/components/ui/select";
 
 import { Button } from "@/components/ui/button";
+import { useLocale } from "@/contexts/LocaleContext";
+import type { TranslationKey } from "@/lib/i18n/translations";
+
+function getTipoColor(tipo?: string) {
+  switch (tipo) {
+    case "teoria":
+      return {
+        own: "bg-blue-500/15 border-blue-400/60",
+        ownRing: "ring-blue-400/30",
+        text: "text-blue-800 dark:text-blue-200",
+        textMuted: "text-blue-600/80 dark:text-blue-400/80",
+        badge: "bg-blue-500/20 text-blue-700 dark:text-blue-300",
+        blocked: "bg-blue-50/80 dark:bg-blue-950/40 border-blue-200/60 dark:border-blue-800/50",
+        blockedText: "text-blue-700/70 dark:text-blue-400/70",
+        td: "bg-blue-500/8",
+      };
+    case "practica":
+      return {
+        own: "bg-emerald-500/15 border-emerald-400/60",
+        ownRing: "ring-emerald-400/30",
+        text: "text-emerald-800 dark:text-emerald-200",
+        textMuted: "text-emerald-600/80 dark:text-emerald-400/80",
+        badge: "bg-emerald-500/20 text-emerald-700 dark:text-emerald-300",
+        blocked: "bg-emerald-50/80 dark:bg-emerald-950/40 border-emerald-200/60 dark:border-emerald-800/50",
+        blockedText: "text-emerald-700/70 dark:text-emerald-400/70",
+        td: "bg-emerald-500/8",
+      };
+    case "laboratorio":
+      return {
+        own: "bg-violet-500/15 border-violet-400/60",
+        ownRing: "ring-violet-400/30",
+        text: "text-violet-800 dark:text-violet-200",
+        textMuted: "text-violet-600/80 dark:text-violet-400/80",
+        badge: "bg-violet-500/20 text-violet-700 dark:text-violet-300",
+        blocked: "bg-violet-50/80 dark:bg-violet-950/40 border-violet-200/60 dark:border-violet-800/50",
+        blockedText: "text-violet-700/70 dark:text-violet-400/70",
+        td: "bg-violet-500/8",
+      };
+    default:
+      return {
+        own: "bg-slate-500/15 border-slate-400/60",
+        ownRing: "ring-slate-400/30",
+        text: "text-slate-800 dark:text-slate-200",
+        textMuted: "text-slate-600/80 dark:text-slate-400/80",
+        badge: "bg-slate-500/20 text-slate-700 dark:text-slate-300",
+        blocked: "bg-slate-50/80 dark:bg-slate-900/40 border-slate-200/60 dark:border-slate-700/50",
+        blockedText: "text-slate-500",
+        td: "bg-slate-500/5",
+      };
+  }
+}
 
 interface CeldaInfo {
   id_asignacion?: number;
   id_seleccion?: number;
   id_carga_no_lectiva?: number;
   id_docente?: number;
+  id_curso?: number;
   docente_nombre?: string;
   curso_nombre?: string;
   ambiente_nombre?: string;
   tipo_clase?: string;
+  grupo_nombre?: string;
+  subgrupo_label?: string;
 
   estado:
     | "disponible"
@@ -51,6 +105,17 @@ interface CeldaInfo {
 }
 
 const DIAS_CODIGO = ["LU", "MA", "MI", "JU", "VI", "SA"];
+
+function getDias(t: (key: TranslationKey) => string) {
+  return [
+    { id: 0, nombre: t("dayMonday") },
+    { id: 1, nombre: t("dayTuesday") },
+    { id: 2, nombre: t("dayWednesday") },
+    { id: 3, nombre: t("dayThursday") },
+    { id: 4, nombre: t("dayFriday") },
+    { id: 5, nombre: t("daySaturday") },
+  ];
+}
 
 const TIPO_NO_LECTIVA_LABELS: Record<string, string> = {
   PREPARACION_EVALUACION: 'Prep. y Evaluación',
@@ -210,16 +275,15 @@ interface Props {
   onSelectionChange?: () => void;
 
   soloLectura?: boolean;
-}
 
-const DIAS = [
-  { id: 0, nombre: "Lunes" },
-  { id: 1, nombre: "Martes" },
-  { id: 2, nombre: "Miércoles" },
-  { id: 3, nombre: "Jueves" },
-  { id: 4, nombre: "Viernes" },
-  { id: 5, nombre: "Sábado" },
-];
+  rol_viewer?: "docente" | "secretaria";
+
+  cursoActivoId?: number;
+
+  numSubgrupos?: number;
+
+  subgrupoActivo?: number;
+}
 
 export function MatrizDisponibilidad({
   id_periodo,
@@ -237,7 +301,13 @@ export function MatrizDisponibilidad({
   onRangeRemove,
   onSelectionChange,
   soloLectura: propSoloLectura,
+  rol_viewer,
+  cursoActivoId,
+  numSubgrupos = 1,
+  subgrupoActivo = 1,
 }: Props) {
+  const { t } = useLocale();
+  const DIAS = getDias(t);
   const [disponibilidad, setDisponibilidad] =
     useState<Record<string, CeldaInfo>>(
       {}
@@ -303,6 +373,13 @@ export function MatrizDisponibilidad({
 
     return slots;
   }, [intervalo]);
+
+  useEffect(() => {
+    if (numSubgrupos > 1) {
+      const nuevoIntervalo = Math.floor(60 / numSubgrupos);
+      setIntervalo(nuevoIntervalo);
+    }
+  }, [numSubgrupos]);
 
   useEffect(() => {
     fetchDisponibilidad();
@@ -491,6 +568,9 @@ export function MatrizDisponibilidad({
                 id_docente:
                   asig.id_docente,
 
+                id_curso:
+                  asig.id_curso,
+
                 docente_nombre: `${asig.docente.nombres} ${asig.docente.apellidos}`,
 
                 curso_nombre:
@@ -502,6 +582,9 @@ export function MatrizDisponibilidad({
 
                 tipo_clase:
                   asig.tipo_clase,
+
+                grupo_nombre:
+                  asig.grupo?.codigo_grupo || "",
 
                 estado:
                   tipoVista === "no-lectiva" && esMia
@@ -530,6 +613,9 @@ export function MatrizDisponibilidad({
                 id_docente:
                   temp.id_docente,
 
+                id_curso:
+                  temp.id_curso,
+
                 docente_nombre: `${temp.docente.nombres} ${temp.docente.apellidos}`,
 
                 curso_nombre:
@@ -541,6 +627,9 @@ export function MatrizDisponibilidad({
 
                 tipo_clase:
                   temp.tipo_clase,
+
+                grupo_nombre:
+                  temp.grupo?.codigo_grupo || "",
 
                 estado:
                   tipoVista === "no-lectiva" && esMia
@@ -597,9 +686,7 @@ export function MatrizDisponibilidad({
       } catch (error) {
         console.error(error);
 
-        toast.error(
-          "Error al cargar disponibilidad"
-        );
+        toast.error(t("errorLoadingData"));
       } finally {
         setLoading(false);
       }
@@ -610,17 +697,18 @@ export function MatrizDisponibilidad({
     hora: string
   ) => {
     if (soloLectura) {
-      toast.info(
-        "Modo solo lectura"
-      );
+        toast.info(t("soloLectura"));
 
       return;
     }
 
     const key = `${dia}-${hora}`;
-
-    const celda =
-      disponibilidad[key];
+    const celda = disponibilidad[key];
+    const esDeOtraAsignacion = cursoActivoId && celda?.id_curso && (
+      celda.id_curso !== cursoActivoId ||
+      (tipo_clase_actual && celda.tipo_clase && celda.tipo_clase !== tipo_clase_actual)
+    );
+    if (esDeOtraAsignacion) return;
 
     const esMia =
       celda?.id_docente ===
@@ -643,9 +731,7 @@ export function MatrizDisponibilidad({
         });
 
         if (res.ok) {
-          toast.success(
-            "Horario liberado"
-          );
+          toast.success(t("scheduleReleased"));
 
           fetchDisponibilidad();
 
@@ -656,9 +742,7 @@ export function MatrizDisponibilidad({
           );
         }
       } catch (error) {
-        toast.error(
-          "Error al eliminar"
-        );
+        toast.error(t("errorDeleting"));
       }
 
       return;
@@ -679,7 +763,7 @@ export function MatrizDisponibilidad({
       celda?.estado === "ocupado"
     ) {
       if (celda?.estado === "bloqueado_lectivo" && onCellClick) {
-        toast.info("Este bloque está reservado por su carga lectiva");
+          toast.info(t("lectureBlockReserved"));
       }
       return;
     }
@@ -691,33 +775,25 @@ export function MatrizDisponibilidad({
     }
 
     if (!id_docente_actual) {
-      toast.warning(
-        "Seleccione docente"
-      );
+      toast.warning(t("selectDocente"));
 
       return;
     }
 
     if (!id_curso_actual) {
-      toast.warning(
-        "Seleccione curso"
-      );
+      toast.warning(t("selectCourseFirst"));
 
       return;
     }
 
     if (!id_grupo_actual) {
-      toast.warning(
-        "Seleccione grupo"
-      );
+      toast.warning(t("selectGroupFirst"));
 
       return;
     }
 
     if (!id_ambiente) {
-      toast.warning(
-        "Seleccione ambiente"
-      );
+      toast.warning(t("selectEnvFirst"));
 
       return;
     }
@@ -785,9 +861,7 @@ export function MatrizDisponibilidad({
         res.ok &&
         result.valido
       ) {
-        toast.success(
-          "Reserva creada"
-        );
+        toast.success(t("reservationCreated"));
 
         fetchDisponibilidad();
 
@@ -800,9 +874,7 @@ export function MatrizDisponibilidad({
         toast.error(obtenerMensajeErrorValidacion(result));
       }
     } catch (error) {
-      toast.error(
-        "Error de conexión"
-      );
+      toast.error(t("connectionError"));
     } finally {
       setProcessingCell(null);
     }
@@ -834,6 +906,12 @@ export function MatrizDisponibilidad({
     const esMia = celda?.id_docente === id_docente_actual;
     const esOwned = celda?.id_seleccion || celda?.id_asignacion;
     const esBloqueado = celda?.estado === 'bloqueado' || celda?.estado === 'bloqueado_lectivo' || celda?.estado === 'ocupado';
+    const esDeOtraAsignacion = cursoActivoId && celda?.id_curso && (
+      celda.id_curso !== cursoActivoId ||
+      (tipo_clase_actual && celda.tipo_clase && celda.tipo_clase !== tipo_clase_actual)
+    );
+
+    if (esDeOtraAsignacion) return;
 
     if (tipoVista === 'no-lectiva' && actividadSeleccionadaId) {
       if (e.ctrlKey && celda?.id_carga_no_lectiva === actividadSeleccionadaId) {
@@ -920,6 +998,11 @@ export function MatrizDisponibilidad({
       const key = `${cell.dia}-${cell.hora}`;
       const celda = disponibilidad[key];
 
+      if (cursoActivoId && celda?.id_curso && (
+        celda.id_curso !== cursoActivoId ||
+        (tipo_clase_actual && celda.tipo_clase && celda.tipo_clase !== tipo_clase_actual)
+      )) return false;
+
       if (isRemoveDragRef.current) {
         return tipoVista === 'no-lectiva'
           ? celda?.id_carga_no_lectiva === actividadSeleccionadaId
@@ -955,7 +1038,7 @@ export function MatrizDisponibilidad({
               await fetch(`/api/horarios/seleccionar-celda?id_asignacion=${celda.id_asignacion}`, { method: 'DELETE' });
             }
           }
-          toast.success('Reservas eliminadas');
+          toast.success(t('reservationsDeleted'));
           fetchDisponibilidad();
           onSelectionChange?.();
           getSocket().emit('horario-actualizado');
@@ -993,17 +1076,15 @@ export function MatrizDisponibilidad({
             });
             const result = await res.json();
             if (!res.ok || !result.valido) {
-              toast.error(result.error || result.mensaje || "Error al crear reserva");
+              toast.error(result.error || result.mensaje || t("errorCreatingReservation"));
               hasError = true;
               break;
             }
           } catch {
-            toast.error("Error de conexión");
-            hasError = true;
-            break;
+            toast.error(t("connectionError"));
           }
         }
-        if (!hasError) toast.success("Reservas creadas");
+        if (!hasError) toast.success(t("reservationsCreated"));
         fetchDisponibilidad();
         onSelectionChange?.();
         getSocket().emit("horario-actualizado");
@@ -1026,7 +1107,7 @@ export function MatrizDisponibilidad({
         </div>
 
         <p className="text-muted-foreground font-bold uppercase tracking-widest text-xs">
-          Cargando Matriz...
+          {t("loadingMatrix")}
         </p>
       </div>
     );
@@ -1038,7 +1119,7 @@ export function MatrizDisponibilidad({
         <div className="flex flex-wrap items-center gap-3">
           <div className="flex items-center gap-2">
             <Clock className="h-4 w-4 text-primary shrink-0" />
-            <span className="text-xs font-bold uppercase text-muted-foreground">Intervalo</span>
+            <span className="text-xs font-bold uppercase text-muted-foreground">{t("interval")}</span>
             <Select
               value={intervalo.toString()}
               onValueChange={(v) => setIntervalo(Number(v))}
@@ -1047,56 +1128,56 @@ export function MatrizDisponibilidad({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="15">15 min</SelectItem>
-                <SelectItem value="30">30 min</SelectItem>
-                <SelectItem value="60">1 hora</SelectItem>
+                <SelectItem value="15">{t("interval15")}</SelectItem>
+                <SelectItem value="30">{t("interval30")}</SelectItem>
+                <SelectItem value="60">{t("interval60")}</SelectItem>
               </SelectContent>
             </Select>
           </div>
           <div className="hidden sm:block h-4 w-px bg-border" />
           <div className="flex flex-wrap items-center gap-3 text-xs">
-            <span className="flex items-center gap-1.5">
+              <span className="flex items-center gap-1.5">
               <span className="w-3 h-3 rounded border border-border bg-background" />
-              Libre
+              {t("free")}
             </span>
             {tipoVista === "no-lectiva" ? (
               <>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-amber-400/50 border border-amber-400/60" />
-                  Mi carga no lectiva
+                  {t("myNonLective")}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-blue-500/20 border border-blue-400/50" />
-                  Carga lectiva (bloqueado)
+                  {t("lectiveBlocked")}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-200" />
-                  Ocupado
+                  {t("occupied")}
                 </span>
               </>
             ) : (
               <>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-amber-400/50 border border-amber-400/60" />
-                  Mi reserva
+                  {t("myReservation")}
                 </span>
                 <span className="flex items-center gap-1.5">
                   <span className="w-3 h-3 rounded bg-rose-500/15 border border-rose-200" />
-                  Ocupado
+                  {t("occupied")}
                 </span>
               </>
             )}
             <span className="flex items-center gap-1.5">
               <Lock className="h-3 w-3 text-muted-foreground" />
-              Receso
+              {t("breakLabel")}
             </span>
           </div>
         </div>
         <p className="text-xs text-muted-foreground flex items-center gap-1.5 shrink-0">
           <Info className="h-3.5 w-3.5" />
           {tipoVista === "no-lectiva"
-            ? "Use la matriz para ubicar su carga no lectiva sin cruzar horarios lectivos"
-            : "Receso 12:00 – 13:00"}
+            ? t("useMatrixHelp")
+            : t("breakTime")}
         </p>
       </div>
 
@@ -1105,7 +1186,7 @@ export function MatrizDisponibilidad({
           <thead>
             <tr className="bg-primary/90">
               <th className="w-16 py-2.5 px-2 text-xs font-bold text-primary-foreground sticky left-0 bg-primary/90 z-10">
-                Hora
+                {t("hour")}
               </th>
               {DIAS.map((dia) => (
                 <th
@@ -1135,6 +1216,17 @@ export function MatrizDisponibilidad({
                     info?.id_docente ===
                     id_docente_actual;
 
+                  const esDelCursoActivo = cursoActivoId && tipo_clase_actual
+                    ? info?.id_curso === cursoActivoId && info?.tipo_clase === tipo_clase_actual
+                    : cursoActivoId
+                      ? info?.id_curso === cursoActivoId
+                      : true;
+
+                  const esDeOtraAsignacion = cursoActivoId && info?.id_curso && (
+                    info.id_curso !== cursoActivoId ||
+                    (tipo_clase_actual && info.tipo_clase && info.tipo_clase !== tipo_clase_actual)
+                  );
+
                   const isProcessing =
                     processingCell ===
                     key;
@@ -1152,8 +1244,9 @@ export function MatrizDisponibilidad({
                       className={cn(
                         "relative h-12 border-b border-r border-border/60 cursor-pointer transition-colors select-none",
                         !info && !isInDragPreview && "hover:bg-emerald-500/10",
-                        info?.estado === "ocupado" && !esMia && "bg-rose-500/10 cursor-not-allowed",
-                        esMia && info?.estado !== "bloqueado_lectivo" && "bg-amber-400/35 ring-1 ring-inset ring-amber-500/40",
+                        esDeOtraAsignacion && `${getTipoColor(info?.tipo_clase).td} cursor-not-allowed`,
+                        info?.estado === "ocupado" && !esMia && !esDeOtraAsignacion && "bg-rose-500/10 cursor-not-allowed",
+                        esMia && info?.estado !== "bloqueado_lectivo" && !esDeOtraAsignacion && `${getTipoColor(info?.tipo_clase).td} ring-1 ring-inset ${getTipoColor(info?.tipo_clase).ownRing}`,
                         info?.estado === "bloqueado_lectivo" && "bg-blue-500/15 cursor-not-allowed ring-1 ring-inset ring-blue-400/40",
                         info?.estado === "bloqueado" && "bg-muted/60 cursor-not-allowed",
                         isInDragPreview && isRemoveDragRef.current && "bg-rose-400/30 ring-2 ring-inset ring-rose-500",
@@ -1177,18 +1270,18 @@ export function MatrizDisponibilidad({
                         info.estado === "bloqueado_lectivo" && (
                           <div className="absolute inset-1 rounded-lg bg-blue-500/10 border border-blue-300/40 dark:border-blue-700/50 p-1 text-xs flex flex-col justify-between">
                             <div>
-                              <p className="font-black truncate text-blue-800 dark:text-blue-300">
+                              <p className="font-black truncate text-[10px] leading-tight text-blue-800 dark:text-blue-200">
                                 {info.curso_nombre}
                               </p>
-                              <p className="truncate text-blue-700/80 dark:text-blue-400/80">
-                                {info.ambiente_nombre || "Sin ambiente"}
+                              <p className="truncate text-[9px] text-blue-600/80 dark:text-blue-400/80 leading-tight">
+                                {info.ambiente_nombre || t("noEnvironment")}
                               </p>
                             </div>
                             <div className="flex items-center justify-between">
-                              <span className="text-xs uppercase font-bold text-blue-700 dark:text-blue-400">
+                              <span className="text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full bg-blue-500/20 text-blue-700 dark:text-blue-300">
                                 {info.tipo_clase}
                               </span>
-                              <Lock className="h-3 w-3 text-blue-500" />
+                              <Lock className="h-3 w-3 text-blue-500/60" />
                             </div>
                           </div>
                         )}
@@ -1200,56 +1293,107 @@ export function MatrizDisponibilidad({
                             <div className={cn(
                               "absolute inset-1 rounded-lg border p-1 flex flex-col justify-between overflow-hidden transition-all",
                               esMia
-                                ? "bg-amber-400/20 border-amber-500/60 shadow-sm"
-                                : "bg-rose-500/10 border-rose-300/60"
+                                ? `${getTipoColor(info.tipo_clase).own} shadow-sm`
+                                : `${getTipoColor(info.tipo_clase).blocked} border-dashed`
                             )}>
                               <div className="min-w-0">
-                                <p className="font-bold truncate text-xs leading-tight text-amber-800 dark:text-amber-300">
+                                <p className={cn("font-bold truncate text-[10px] leading-tight", getTipoColor(info.tipo_clase).text)}>
                                   {info.curso_nombre}
                                 </p>
                                 {info.docente_nombre && (
-                                  <p className="truncate text-xs text-muted-foreground leading-tight mt-0.5">
+                                  <p className={cn("truncate text-[9px] leading-tight mt-0.5", getTipoColor(info.tipo_clase).textMuted)}>
                                     {info.docente_nombre}
                                   </p>
                                 )}
                               </div>
                               {info.ambiente_nombre && (
                                 <div className="flex items-center gap-1 mt-0.5">
-                                  <div className="w-1.5 h-1.5 rounded-full bg-amber-500 shrink-0" />
-                                  <span className="text-[7px] truncate text-muted-foreground">{info.ambiente_nombre}</span>
+                                  <div className={cn("w-1.5 h-1.5 rounded-full shrink-0", esMia ? "bg-current opacity-60" : "bg-current opacity-30", getTipoColor(info.tipo_clase).textMuted)} />
+                                  <span className={cn("text-[7px] truncate", getTipoColor(info.tipo_clase).textMuted)}>{info.ambiente_nombre}</span>
                                 </div>
                               )}
                               {esMia && (
-                                <CheckCircle2 className="absolute top-0.5 right-0.5 h-2.5 w-2.5 text-amber-600" />
+                                <CheckCircle2 className={cn("absolute top-0.5 right-0.5 h-2.5 w-2.5", getTipoColor(info.tipo_clase).textMuted)} />
                               )}
                             </div>
-                          ) : (
-                            <div className="absolute inset-1 rounded-lg bg-card border border-border p-1 text-xs flex flex-col justify-between">
+                          ) : esDeOtraAsignacion ? (
+                            <div className={cn(
+                              "absolute inset-1 rounded-lg border border-dashed p-1 text-xs flex flex-col justify-center overflow-hidden",
+                              getTipoColor(info.tipo_clase).blocked
+                            )}>
+                              <p className={cn("font-bold truncate text-[10px] leading-tight", getTipoColor(info.tipo_clase).blockedText)}>
+                                {info.docente_nombre}
+                              </p>
+                              <p className={cn("truncate text-[9px] leading-tight", getTipoColor(info.tipo_clase).blockedText, "opacity-70")}>
+                                {info.curso_nombre}
+                                {info.tipo_clase && ` (${info.tipo_clase})`}
+                              </p>
+                              <p className={cn("truncate text-[9px] leading-tight", getTipoColor(info.tipo_clase).blockedText, "opacity-50")}>
+                                {info.ambiente_nombre}
+                              </p>
+                            </div>
+                          ) : rol_viewer === "secretaria" ? (
+                            <div className={cn(
+                              "absolute inset-1 rounded-lg border p-1 text-xs flex flex-col justify-between",
+                              esMia
+                                ? `${getTipoColor(info.tipo_clase).own} shadow-sm`
+                                : `${getTipoColor(info.tipo_clase).blocked}`
+                            )}>
                               <div>
-                                <p className="font-black truncate">
-                                  {
-                                    info.curso_nombre
-                                  }
+                                <p className={cn("font-black truncate text-[10px] leading-tight", getTipoColor(info.tipo_clase).text)}>
+                                  {info.docente_nombre}
                                 </p>
-
-                                <p className="truncate text-muted-foreground">
-                                  {
-                                    info.docente_nombre
-                                  }
+                                <p className={cn("truncate text-[9px] leading-tight", getTipoColor(info.tipo_clase).textMuted)}>
+                                  {info.curso_nombre}
+                                  {info.grupo_nombre && ` — G${info.grupo_nombre}`}
+                                  {info.subgrupo_label && ` — ${info.subgrupo_label}`}
+                                </p>
+                                <p className={cn("truncate text-[9px] leading-tight", getTipoColor(info.tipo_clase).textMuted, "opacity-70")}>
+                                  {info.ambiente_nombre}
                                 </p>
                               </div>
-
                               <div className="flex items-center justify-between">
-                                <span className="text-xs uppercase font-bold">
-                                  {
-                                    info.tipo_clase
-                                  }
+                                <span className={cn("text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full", getTipoColor(info.tipo_clase).badge)}>
+                                  {info.tipo_clase}
                                 </span>
-
                                 {esMia ? (
-                                  <CheckCircle2 className="h-3 w-3 text-primary" />
+                                  <CheckCircle2 className={cn("h-3 w-3", getTipoColor(info.tipo_clase).text)} />
                                 ) : (
-                                  <Lock className="h-3 w-3 text-muted-foreground" />
+                                  <Lock className={cn("h-3 w-3", getTipoColor(info.tipo_clase).textMuted, "opacity-50")} />
+                                )}
+                              </div>
+                            </div>
+                          ) : (
+                            <div className={cn(
+                              "absolute inset-1 rounded-lg border p-1 text-xs flex flex-col justify-between",
+                              esMia
+                                ? `${getTipoColor(info.tipo_clase).own} shadow-sm`
+                                : `${getTipoColor(info.tipo_clase).blocked}`
+                            )}>
+                              <div>
+                                <p className={cn("font-black truncate text-[10px] leading-tight", getTipoColor(info.tipo_clase).text)}>
+                                  {info.curso_nombre}
+                                </p>
+                                {info.grupo_nombre && (
+                                  <p className={cn("truncate font-bold text-[9px] leading-tight", getTipoColor(info.tipo_clase).text)}>
+                                    Grupo {info.grupo_nombre}
+                                    {info.subgrupo_label && (
+                                      <span className={cn("font-normal opacity-70", getTipoColor(info.tipo_clase).textMuted)}> — {info.subgrupo_label}</span>
+                                    )}
+                                  </p>
+                                )}
+                                <p className={cn("truncate text-[9px] leading-tight opacity-70", getTipoColor(info.tipo_clase).textMuted)}>
+                                  {info.ambiente_nombre}
+                                </p>
+                              </div>
+                              <div className="flex items-center justify-between">
+                                <span className={cn("text-[9px] uppercase font-bold px-1.5 py-0.5 rounded-full", getTipoColor(info.tipo_clase).badge)}>
+                                  {info.tipo_clase}
+                                </span>
+                                {esMia ? (
+                                  <CheckCircle2 className={cn("h-3 w-3", getTipoColor(info.tipo_clase).text)} />
+                                ) : (
+                                  <Lock className={cn("h-3 w-3", getTipoColor(info.tipo_clase).textMuted, "opacity-50")} />
                                 )}
                               </div>
                             </div>
@@ -1279,7 +1423,7 @@ export function MatrizDisponibilidad({
               <AlertCircle className="h-4 w-4 text-destructive" />
 
               <p className="text-sm font-bold text-destructive">
-                Conflictos detectados
+                {t("conflictsDetected")}
               </p>
             </div>
 

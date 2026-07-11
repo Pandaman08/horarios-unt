@@ -490,7 +490,7 @@ export function DisponibilidadDocenteView() {
 
       {/* Alert Dialog para confirmación */}
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-6 bg-card max-w-[400px]">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <div className="h-10 w-10 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg flex items-center justify-center mb-4">
               <Save className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -500,13 +500,13 @@ export function DisponibilidadDocenteView() {
               ¿Estás seguro de que deseas guardar tu nueva disponibilidad? Esta información será utilizada por el sistema para la generación de horarios del periodo.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 mt-6">
-            <AlertDialogCancel className="h-10 rounded-lg font-bold border-border text-foreground hover:bg-muted text-xs uppercase">
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+            <AlertDialogCancel className="page-modal-alert-btn">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleSave} 
-              className="h-10 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-bold px-6 text-xs uppercase shadow-md shadow-emerald-100"
+              className="page-modal-alert-btn bg-emerald-600 text-white hover:bg-emerald-700"
             >
               Sí, Guardar Cambios
             </AlertDialogAction>

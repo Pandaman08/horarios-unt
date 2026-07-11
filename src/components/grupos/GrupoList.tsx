@@ -262,46 +262,46 @@ export function GrupoList() {
                 <Plus className="mr-2 h-4 w-4" /> Nuevo Grupo
               </Button>
             </DialogTrigger>
-            <DialogContent className="sm:max-w-2xl rounded-2xl p-8 border-none shadow-2xl overflow-y-auto max-h-[90vh] bg-card">
-              <DialogHeader className="mb-8">
-                <div className="flex items-center gap-4">
-                  <div className="h-14 w-14 bg-primary/10 rounded-xl flex items-center justify-center border border-primary/20">
-                    <Layers className="h-8 w-8 text-primary" />
+            <DialogContent className="page-modal-lg">
+              <DialogHeader className="page-modal-header">
+                <div className="flex items-center gap-3">
+                  <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                    <Layers className="h-4 w-4 text-primary" />
                   </div>
                   <div>
-                    <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">
+                    <DialogTitle className="text-base font-bold text-foreground">
                       {editingGrupo ? "Actualizar Grupo" : "Registrar Grupo"}
                     </DialogTitle>
-                    <p className="text-muted-foreground text-sm font-bold uppercase tracking-widest mt-0.5">
+                    <p className="text-xs text-muted-foreground mt-0.5">
                       Defina la sección y capacidad para el curso seleccionado
                     </p>
                   </div>
                 </div>
               </DialogHeader>
-              <form onSubmit={handleSubmit} className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Periodo Académico</Label>
+              <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Periodo Académico</Label>
                     <Select value={formData.id_periodo} onValueChange={(v) => setFormData(p => ({ ...p, id_periodo: v }))}>
-                      <SelectTrigger className="h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="Seleccionar periodo" /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-border shadow-xl">
-                        {periodos.map(p => <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-xs py-2">{p.codigo}</SelectItem>)}
+                      <SelectTrigger className="page-modal-input"><SelectValue placeholder="Seleccionar periodo" /></SelectTrigger>
+                      <SelectContent className="rounded-lg border-border shadow-xl">
+                        {periodos.map(p => <SelectItem key={p.id_periodo} value={p.id_periodo.toString()} className="font-bold text-sm">{p.codigo}</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Curso</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Curso</Label>
                     <Select value={formData.id_curso} onValueChange={(v) => setFormData(p => ({ ...p, id_curso: v }))}>
-                      <SelectTrigger className="h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all"><SelectValue placeholder="Seleccionar curso" /></SelectTrigger>
-                      <SelectContent className="rounded-xl border-border shadow-xl">
-                        {cursos.map(c => <SelectItem key={c.id_curso} value={c.id_curso.toString()} className="font-bold text-xs py-2">{c.nombre} ({c.codigo})</SelectItem>)}
+                      <SelectTrigger className="page-modal-input"><SelectValue placeholder="Seleccionar curso" /></SelectTrigger>
+                      <SelectContent className="rounded-lg border-border shadow-xl">
+                        {cursos.map(c => <SelectItem key={c.id_curso} value={c.id_curso.toString()} className="font-bold text-sm">{c.nombre} ({c.codigo})</SelectItem>)}
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Código de Grupo</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Código de Grupo</Label>
                     <Input 
-                      className={cn("h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all", editingGrupo && "bg-muted/30")} 
+                      className={cn("page-modal-input", editingGrupo && "bg-muted/30")} 
                       value={formData.codigo_grupo}
                       onChange={(e) => setFormData(p => ({ ...p, codigo_grupo: e.target.value.toUpperCase().slice(0, 5) }))}
                       required 
@@ -309,11 +309,11 @@ export function GrupoList() {
                       placeholder="Ej: A, B, C..."
                     />
                   </div>
-                  <div className="space-y-2">
-                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Máxima</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Capacidad Máxima</Label>
                     <Input 
                       type="number" 
-                      className="h-11 rounded-xl border-border bg-muted/50 font-bold text-xs focus:ring-2 focus:ring-primary/10 transition-all" 
+                      className="page-modal-input" 
                       value={formData.capacidad_maxima} 
                       onChange={(e) => {
                         const val = Math.max(1, Math.min(100, parseInt(e.target.value) || 1));
@@ -325,11 +325,13 @@ export function GrupoList() {
                     />
                   </div>
                 </div>
-                <div className="page-actions-row justify-end pt-6 border-t">
-                  <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-muted-foreground hover:bg-muted px-8 text-xs">Cancelar</Button>
-                  <Button type="submit" className="h-11 bg-primary hover:bg-primary/90 text-primary-foreground rounded-xl px-10 font-bold text-xs shadow-lg shadow-primary/10 transition-all active:scale-95">
-                    {editingGrupo ? "Guardar Cambios" : "Crear Grupo"}
-                  </Button>
+                <div className="page-modal-footer border-t border-border pt-4">
+                  <div className="page-actions-row justify-end gap-2">
+                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                    <Button type="submit" className="page-modal-btn-submit">
+                      {editingGrupo ? "Guardar Cambios" : "Crear Grupo"}
+                    </Button>
+                  </div>
                 </div>
               </form>
             </DialogContent>
@@ -426,7 +428,7 @@ export function GrupoList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 bg-card max-w-[400px]">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <div className="h-14 w-14 bg-destructive/10 rounded-2xl flex items-center justify-center mb-4 border border-destructive/20">
               <Trash2 className="h-8 w-8 text-destructive" />
@@ -435,8 +437,8 @@ export function GrupoList() {
             <AlertDialogDescription className="text-sm font-medium text-muted-foreground mt-2 leading-relaxed">Esta acción no se puede deshacer y afectará a la programación asociada.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8 gap-3">
-            <AlertDialogCancel className="h-11 rounded-xl font-bold border-border hover:bg-muted">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold px-6 shadow-lg shadow-destructive/10">
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="page-modal-alert-btn bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/10">
               Confirmar Eliminación
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -444,7 +446,7 @@ export function GrupoList() {
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl p-8 max-w-[450px] bg-card">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <div className="h-14 w-14 bg-amber-500/10 rounded-2xl flex items-center justify-center mb-4 border border-amber-500/20">
               <Layers className="h-8 w-8 text-amber-500" />
@@ -453,7 +455,7 @@ export function GrupoList() {
             <AlertDialogDescription className="text-sm font-medium text-muted-foreground bg-amber-500/5 p-4 rounded-xl border border-amber-500/10 mt-4 leading-relaxed">{errorMessage}</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-8">
-            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-10 rounded-xl bg-primary hover:bg-primary/90 text-primary-foreground font-bold text-xs px-10 shadow-lg shadow-primary/10">Entendido</AlertDialogAction>
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="page-modal-alert-btn bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/10">Entendido</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

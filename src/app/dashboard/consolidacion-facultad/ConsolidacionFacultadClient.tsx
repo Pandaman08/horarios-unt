@@ -421,7 +421,7 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                                 Revisar
                               </Button>
                             </DialogTrigger>
-                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-8">
+                          <DialogContent className="page-modal-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                 <User className="text-purple-600 dark:text-purple-400" size={20} />

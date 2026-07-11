@@ -358,31 +358,36 @@ export function AmbienteList() {
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Ambiente
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
-                <DialogHeader className="bg-primary p-6 text-primary-foreground">
-                  <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                    {editingAmbiente ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-                    {editingAmbiente ? "Editar Ambiente" : "Nuevo Ambiente"}
-                  </DialogTitle>
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                      {editingAmbiente ? <Edit className="h-4 w-4 text-primary" /> : <Plus className="h-4 w-4 text-primary" />}
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-bold text-foreground">{editingAmbiente ? "Editar Ambiente" : "Nuevo Ambiente"}</DialogTitle>
+                      <p className="text-xs text-muted-foreground mt-0.5">{editingAmbiente ? "Modificar datos del ambiente" : "Registrar un nuevo ambiente"}</p>
+                    </div>
+                  </div>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
-                      <Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold" placeholder="A101" required />
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Código</Label>
+                      <Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} className="page-modal-input" placeholder="A101" required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
-                      <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold" placeholder="Aula Magna" required />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nombre</Label>
+                      <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="page-modal-input" placeholder="Aula Magna" required />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Tipo</Label>
                       <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
-                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -393,16 +398,16 @@ export function AmbienteList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad</Label>
-                      <Input type="number" value={formData.capacidad} onChange={(e) => setFormData({ ...formData, capacidad: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Capacidad</Label>
+                      <Input type="number" value={formData.capacidad} onChange={(e) => setFormData({ ...formData, capacidad: e.target.value })} className="page-modal-input" />
                     </div>
                   </div>
 
-                  <div className="space-y-1.5">
-                    <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad / Sede</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Facultad / Sede</Label>
                     <Select value={formData.facultadId} onValueChange={(v) => setFormData({ ...formData, facultadId: v })}>
-                      <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold">
+                      <SelectTrigger className="page-modal-input">
                         <SelectValue placeholder="Seleccione facultad" />
                       </SelectTrigger>
                       <SelectContent className="rounded-xl border-border">
@@ -412,22 +417,24 @@ export function AmbienteList() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Pabellón</Label>
-                      <Input value={formData.pabellon} onChange={(e) => setFormData({ ...formData, pabellon: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold" placeholder="Pabellón A" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Pabellón</Label>
+                      <Input value={formData.pabellon} onChange={(e) => setFormData({ ...formData, pabellon: e.target.value })} className="page-modal-input" placeholder="Pabellón A" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Piso</Label>
-                      <Input value={formData.piso} onChange={(e) => setFormData({ ...formData, piso: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold" placeholder="1er Piso" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Piso</Label>
+                      <Input value={formData.piso} onChange={(e) => setFormData({ ...formData, piso: e.target.value })} className="page-modal-input" placeholder="1er Piso" />
                     </div>
                   </div>
 
-                  <div className="page-actions-row justify-end pt-4 border-t border-border/50">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold px-6">Cancelar</Button>
-                    <Button type="submit" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold px-8 shadow-lg shadow-primary/20 transition-all">
-                      {editingAmbiente ? "Actualizar" : "Crear"}
-                    </Button>
+                  <div className="page-modal-footer border-t border-border pt-4">
+                    <div className="page-actions-row justify-end gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                      <Button type="submit" className="page-modal-btn-submit">
+                        {editingAmbiente ? "Actualizar" : "Crear"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </DialogContent>
@@ -556,7 +563,7 @@ export function AmbienteList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold">¿Está completamente seguro?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-medium">
@@ -564,7 +571,7 @@ export function AmbienteList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3 mt-6">
-            <AlertDialogCancel className="h-11 rounded-xl font-bold border-border hover:bg-muted text-foreground">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold shadow-lg shadow-destructive/20 transition-all">
               Confirmar Eliminación
             </AlertDialogAction>
@@ -573,7 +580,7 @@ export function AmbienteList() {
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <div className="flex items-center gap-3 text-destructive mb-2">
               <AlertCircle className="h-6 w-6" />
@@ -584,7 +591,7 @@ export function AmbienteList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6">
-            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-11 rounded-xl bg-muted text-foreground hover:bg-muted/80 font-bold px-8 transition-all">
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="page-modal-alert-btn">
               Entendido
             </AlertDialogAction>
           </AlertDialogFooter>

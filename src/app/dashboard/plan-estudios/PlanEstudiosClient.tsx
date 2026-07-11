@@ -299,15 +299,15 @@ export function PlanEstudiosClient() {
   const getTipoBadge = (tipo: string) => {
     switch (tipo) {
       case "especializacion":
-        return <Badge variant="secondary" className="text-xs font-semibold">S</Badge>;
+        return <Badge variant="secondary" className="text-[11px] font-semibold px-1.5 py-0">S</Badge>;
       case "obligatorio":
-        return <Badge className="text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/15">OB</Badge>;
+        return <Badge className="text-[11px] font-semibold px-1.5 py-0 bg-primary/10 text-primary hover:bg-primary/15">OB</Badge>;
       case "opcional":
-        return <Badge variant="outline" className="text-xs font-semibold">OP</Badge>;
+        return <Badge variant="outline" className="text-[11px] font-semibold px-1.5 py-0">OP</Badge>;
       case "electivo":
-        return <Badge variant="secondary" className="text-xs font-semibold">EL</Badge>;
+        return <Badge variant="secondary" className="text-[11px] font-semibold px-1.5 py-0">EL</Badge>;
       default:
-        return <Badge variant="outline" className="text-xs">{tipo}</Badge>;
+        return <Badge variant="outline" className="text-[11px] px-1.5 py-0">{tipo}</Badge>;
     }
   };
 
@@ -539,7 +539,7 @@ export function PlanEstudiosClient() {
             </div>
           </div>
 
-          <div className="page-toolbar">
+          <div className="page-toolbar gap-2 sm:gap-3">
             <Button
               onClick={() => {
                 const url = new URL('/api/reportes/pdf', window.location.origin);
@@ -552,20 +552,20 @@ export function PlanEstudiosClient() {
               variant="outline"
               className="page-btn border-primary/20 text-primary hover:bg-primary/5"
             >
-              <FileDown className="mr-2 h-3.5 w-3.5" />
+              <FileDown className="mr-1.5 h-3.5 w-3.5" />
               Descargar PDF
             </Button>
             {isAdminOrSecretaria && (
               <>
                 {selectedMalla !== "all" && mallas.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 bg-muted/50 rounded-lg border border-border min-w-0 h-9 sm:h-10">
-                    <span className="text-sm font-bold text-foreground truncate">
+                  <div className="flex items-center gap-1.5 px-2.5 bg-muted/50 rounded-lg border border-border min-w-0 h-8 sm:h-9">
+                    <span className="text-xs sm:text-sm font-bold text-foreground truncate">
                       {mallas.find(m => m.id_malla.toString() === selectedMalla)?.nombre}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="size-7 shrink-0 hover:bg-muted"
+                      className="size-6 shrink-0 hover:bg-muted"
                       onClick={() => {
                         const malla = mallas.find(m => m.id_malla.toString() === selectedMalla);
                         if (malla) handleEditMalla(malla);
@@ -579,19 +579,19 @@ export function PlanEstudiosClient() {
                 <Dialog open={isMallaDialogOpen} onOpenChange={(open) => { setIsMallaDialogOpen(open); if (!open) { setEditingMalla(null); resetMallaForm(); } }}>
                   <DialogTrigger asChild>
                     <Button variant="outline" className="page-btn">
-                      <Plus className="mr-2 h-3.5 w-3.5" /> Nueva Malla
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Nueva Malla
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="!max-w-xl border-none shadow-2xl bg-card text-foreground">
-                    <DialogHeader className="mb-4">
-                      <DialogTitle className="text-lg font-bold">
+                  <DialogContent className="page-modal">
+                    <DialogHeader className="page-modal-header">
+                      <DialogTitle className="text-base font-bold">
                         {editingMalla ? "Editar Malla Curricular" : "Nueva Malla Curricular"}
                       </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleMallaSubmit} className="space-y-4">
+                    <form onSubmit={handleMallaSubmit} className="page-modal-body space-y-4">
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
                         <Input
                           value={mallaFormData.nombre}
                           onChange={(e) => setMallaFormData({ ...mallaFormData, nombre: e.target.value })}
@@ -600,9 +600,9 @@ export function PlanEstudiosClient() {
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Año</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Año</Label>
                           <Input 
                             type="number" 
                             value={mallaFormData.anio} 
@@ -611,7 +611,7 @@ export function PlanEstudiosClient() {
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Facultad</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Facultad</Label>
                           <Select
                             value={mallaFormData.facultadId}
                             onValueChange={(v) => {
@@ -633,9 +633,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Escuela Profesional</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Escuela Profesional</Label>
                           <Select
                             value={mallaFormData.escuelaId}
                             onValueChange={(v) => setMallaFormData({ ...mallaFormData, escuelaId: v })}
@@ -654,7 +654,7 @@ export function PlanEstudiosClient() {
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
                           <Select
                             value={mallaFormData.departamentoId}
                             onValueChange={(v) => setMallaFormData({ ...mallaFormData, departamentoId: v })}
@@ -674,7 +674,7 @@ export function PlanEstudiosClient() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Descripción (opcional)</Label>
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Descripción (opcional)</Label>
                         <Input
                           value={mallaFormData.descripcion}
                           onChange={(e) => setMallaFormData({ ...mallaFormData, descripcion: e.target.value })}
@@ -682,9 +682,9 @@ export function PlanEstudiosClient() {
                         />
                       </div>
 
-                      <div className="page-actions-row justify-end pt-4 border-t">
-                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)}>Cancelar</Button>
-                        <Button type="submit">
+                      <div className="page-actions-row justify-end pt-3 border-t">
+                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                        <Button type="submit" className="page-modal-btn-submit">
                           {editingMalla ? "Actualizar" : "Crear"}
                         </Button>
                       </div>
@@ -695,20 +695,20 @@ export function PlanEstudiosClient() {
                 <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
                   <DialogTrigger asChild>
                     <Button className="page-btn bg-primary text-primary-foreground hover:bg-primary/90">
-                      <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Nuevo Curso
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="!max-w-2xl border-none shadow-2xl bg-card text-foreground">
-                    <DialogHeader className="mb-4">
-                      <DialogTitle className="text-lg font-bold">
+                  <DialogContent className="page-modal-lg">
+                    <DialogHeader className="page-modal-header">
+                      <DialogTitle className="text-base font-bold">
                         {editingCurso ? "Editar Curso" : "Nuevo Curso"}
                       </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                    <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Código</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Código</Label>
                           <Input
                             value={formData.codigo}
                             onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
@@ -716,8 +716,8 @@ export function PlanEstudiosClient() {
                             required
                           />
                         </div>
-                        <div className="space-y-1.5 sm:col-span-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
                           <Input
                             value={formData.nombre}
                             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
@@ -727,9 +727,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
                           <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccionar..." />
@@ -743,8 +743,8 @@ export function PlanEstudiosClient() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
                           <Select value={formData.id_malla} onValueChange={(v) => setFormData({ ...formData, id_malla: v })}>
                             <SelectTrigger>
                               <SelectValue placeholder="Seleccionar malla" />
@@ -758,8 +758,8 @@ export function PlanEstudiosClient() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tipo de Curso</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tipo de Curso</Label>
                           <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
                             <SelectTrigger>
                               <SelectValue />
@@ -774,9 +774,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
                           <Input 
                             type="number" 
                             min="1" 
@@ -790,39 +790,39 @@ export function PlanEstudiosClient() {
                             }} 
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">T</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">T</Label>
                           <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">P</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">P</Label>
                           <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">L</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">L</Label>
                           <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Máx. Docentes</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Máx. Docentes</Label>
                           <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} />
                         </div>
-                        <div className="space-y-2 flex items-center">
-                          <div className="flex items-center gap-3">
+                        <div className="space-y-1 flex items-center">
+                          <div className="flex items-center gap-2">
                             <Switch
                               id="activo"
                               checked={formData.activo}
                               onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
                             />
-                            <Label htmlFor="activo" className="text-xs font-bold uppercase tracking-widest text-muted-foreground cursor-pointer">Activo</Label>
+                            <Label htmlFor="activo" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground cursor-pointer">Activo</Label>
                           </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
                           <Select 
                             value={formData.departamentoId} 
                             onValueChange={(v) => {
@@ -846,8 +846,8 @@ export function PlanEstudiosClient() {
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Depto. Responsable (Texto)</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Depto. Responsable (Texto)</Label>
                           <Input
                             value={formData.departamento_responsable}
                             onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
@@ -856,9 +856,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Prerequisitos</Label>
-                        <div className="space-y-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Prerequisitos</Label>
+                        <div className="space-y-1.5">
                           <SearchableSelect
                             options={allCursos
                               .filter((c) => {
@@ -885,16 +885,16 @@ export function PlanEstudiosClient() {
                             placeholder="Buscar y seleccionar prerequisitos..."
                             emptyMessage="No hay cursos disponibles para esta malla curricular"
                           />
-                          <div className="flex flex-wrap gap-2 mt-2">
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
                             {selectedPrerequisitos.map((codigo) => {
                               const curso = allCursos.find((c) => c.codigo === codigo);
                               return (
-                                <Badge key={codigo} variant="secondary" className="text-xs flex items-center gap-2">
+                                <Badge key={codigo} variant="secondary" className="text-[11px] px-1.5 py-0.5 flex items-center gap-1">
                                   {curso?.nombre || codigo}
                                   <button
                                     type="button"
                                     onClick={() => setSelectedPrerequisitos(selectedPrerequisitos.filter((c) => c !== codigo))}
-                                    className="ml-1 hover:text-red-500"
+                                    className="hover:text-red-500 leading-none"
                                   >
                                     ×
                                   </button>
@@ -905,9 +905,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="page-actions-row justify-end pt-4 border-t">
-                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)}>Cancelar</Button>
-                        <Button type="submit">
+                      <div className="page-actions-row justify-end pt-3 border-t">
+                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                        <Button type="submit" className="page-modal-btn-submit">
                           {editingCurso ? "Actualizar" : "Crear"}
                         </Button>
                       </div>
@@ -920,8 +920,8 @@ export function PlanEstudiosClient() {
         </div>
 
         <div className="page-filters">
-          <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
+          <div className="page-filter-wide space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
             <Select value={selectedMalla} onValueChange={setSelectedMalla}>
               <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Malla Curricular" />
@@ -938,7 +938,7 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Buscar</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Buscar</Label>
             <div className="page-search-wrap">
               <Search className="page-search-icon" />
               <Input
@@ -951,7 +951,7 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
             <Select value={filterCiclo} onValueChange={setFilterCiclo}>
               <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Ciclo" />
@@ -968,7 +968,7 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Tipo</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tipo</Label>
             <Select value={filterTipoCurso} onValueChange={setFilterTipoCurso}>
               <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Tipo" />
@@ -984,7 +984,7 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
             <Select value={filterCreditos} onValueChange={setFilterCreditos}>
               <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Créditos" />
@@ -999,11 +999,11 @@ export function PlanEstudiosClient() {
             </Select>
           </div>
 
-          <div className="space-y-1.5 flex flex-col justify-end">
-            <Label htmlFor="hasPrerequisitos" className="text-xs font-bold uppercase tracking-widest text-muted-foreground">
+          <div className="self-end space-y-1.5">
+            <Label htmlFor="hasPrerequisitos" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Con prerequisitos
             </Label>
-            <div className="flex items-center min-h-[2.25rem]">
+            <div className="flex items-center min-h-[2rem]">
               <Switch
                 id="hasPrerequisitos"
                 checked={filterHasPrerequisitos}
@@ -1015,41 +1015,45 @@ export function PlanEstudiosClient() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         </div>
       ) : (
         <>
           {/* Pagination controls for cycles - only show if no specific cycle selected and no search term */}
           {filterCiclo === "all" && !searchTerm && nonEmptyCiclos.length > 0 && (
             <div className="page-table-card">
-              <div className="flex items-center justify-between p-3 sm:p-4">
+              <div className="flex items-center justify-between px-4 py-1">
                 <Button
                   variant="ghost"
+                  size="sm"
                   onClick={() => setCurrentCycleIndex((prev) => Math.max(0, prev - 1))}
                   disabled={currentCycleIndex === 0}
+                  className="text-xs h-7 px-2"
                 >
-                  <ChevronLeft className="h-3.5 w-3.5 mr-1" />
+                  <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />
                   Anterior
                 </Button>
-                <div className="flex items-center gap-2 min-w-0">
-                  <BookOpen className="h-4 w-4 text-primary shrink-0" />
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
                   <div className="min-w-0 text-center">
-                    <h3 className="text-sm font-bold text-foreground truncate">
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
                       {currentCiclo?.nombre || "Sin resultados"}
                     </h3>
-                    <p className="text-xs text-muted-foreground">
+                    <p className="text-[11px] text-muted-foreground">
                       {currentCiclo ? `${currentCiclo.cursos.length} cursos` : "—"}
                     </p>
                   </div>
                 </div>
                 <Button
                   variant="ghost"
+                  size="sm"
                   onClick={() => setCurrentCycleIndex((prev) => Math.min(nonEmptyCiclos.length - 1, prev + 1))}
                   disabled={currentCycleIndex === nonEmptyCiclos.length - 1}
+                  className="text-xs h-7 px-2"
                 >
                   Siguiente
-                  <ChevronRight className="h-3.5 w-3.5 ml-1" />
+                  <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
                 </Button>
               </div>
             </div>
@@ -1102,35 +1106,44 @@ export function PlanEstudiosClient() {
             return (
               <div className="page-table-card">
                 {displayTitle && (
-                  <div className="bg-muted/50 px-4 py-2 border-b border-border">
-                    <h3 className="text-sm font-bold text-foreground flex items-center gap-2">
+                  <div className="bg-muted/50 px-3 py-1.5 border-b border-border">
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
                       <BookOpen className="h-3.5 w-3.5 text-primary" />
                       {displayTitle}
                     </h3>
                   </div>
                 )}
-                <div className="overflow-x-auto">
-                  <Table className="w-full">
+                <Table className="w-full" style={{ tableLayout: 'fixed' }}>
+                    <colgroup>
+                      <col style={{ width: '32%' }} />
+                      <col style={{ width: '6%' }} />
+                      <col style={{ width: '7%' }} />
+                      <col style={{ width: '16%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '14%' }} />
+                      {isAdminOrSecretaria && <col style={{ width: '10%' }} />}
+                    </colgroup>
                     <TableHeader className="bg-muted/50">
                       <TableRow className="border-b border-border hover:bg-transparent">
-                        <TableHead className="page-table-th w-20">Cód.</TableHead>
-                        <TableHead className="page-table-th">Curso</TableHead>
-                        <TableHead className="page-table-th hidden md:table-cell">Depto.</TableHead>
-                        <TableHead className="page-table-th text-center w-14">Tipo</TableHead>
-                        <TableHead className="page-table-th text-center w-10">T</TableHead>
-                        <TableHead className="page-table-th text-center w-10">P</TableHead>
-                        <TableHead className="page-table-th text-center w-10">L</TableHead>
-                        <TableHead className="page-table-th text-center w-14">Créd.</TableHead>
-                        <TableHead className="page-table-th hidden lg:table-cell">Prereq.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Créd.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Tipo</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Prereq.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">T</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">P</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">L</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Depto.</TableHead>
                         {isAdminOrSecretaria && (
-                          <TableHead className="page-table-th text-right">Acciones</TableHead>
+                          <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                       {displayCursos.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isAdminOrSecretaria ? 10 : 9} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="py-8 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                             No hay cursos para mostrar
                           </TableCell>
                         </TableRow>
@@ -1138,16 +1151,29 @@ export function PlanEstudiosClient() {
                         displayCursos.map((curso) => (
                           <TableRow key={curso.id_curso} className="group hover:bg-muted/50 transition-colors">
                             <TableCell className="page-table-td">
-                              <span className="font-mono text-xs font-bold text-muted-foreground">{curso.codigo}</span>
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-foreground leading-tight truncate">{curso.nombre}</span>
+                                <span className="font-mono text-[11px] text-muted-foreground">{curso.codigo}</span>
+                              </div>
                             </TableCell>
-                            <TableCell className="page-table-td">
-                              <span className="font-bold text-foreground leading-tight">{curso.nombre}</span>
-                            </TableCell>
-                            <TableCell className="page-table-td hidden md:table-cell">
-                              <span className="text-xs font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.creditos}</span>
                             </TableCell>
                             <TableCell className="page-table-td text-center">
                               {getTipoBadge(curso.tipo_curso)}
+                            </TableCell>
+                            <TableCell className="page-table-td hidden lg:table-cell">
+                              <div className="flex flex-wrap gap-1">
+                                {curso.prerequisitos_rel.length === 0 ? (
+                                  <span className="text-[11px] text-muted-foreground italic">Ninguno</span>
+                                ) : (
+                                  curso.prerequisitos_rel.map((p) => (
+                                    <Badge key={p.id_prerequisito_curso} variant="secondary" className="text-[11px] px-1.5 py-0">
+                                      {p.prerequisito.codigo}
+                                    </Badge>
+                                  ))
+                                )}
+                              </div>
                             </TableCell>
                             <TableCell className="page-table-td text-center">
                               <span className="font-bold text-foreground">{curso.horas_teoria}</span>
@@ -1158,29 +1184,20 @@ export function PlanEstudiosClient() {
                             <TableCell className="page-table-td text-center">
                               <span className="font-bold text-foreground">{curso.horas_laboratorio}</span>
                             </TableCell>
-                            <TableCell className="page-table-td text-center">
-                              <span className="font-bold text-foreground">{curso.creditos}</span>
-                            </TableCell>
                             <TableCell className="page-table-td hidden lg:table-cell">
-                              <div className="flex flex-wrap gap-1">
-                                {curso.prerequisitos_rel.length === 0 ? (
-                                  <span className="text-xs text-muted-foreground italic">Ninguno</span>
-                                ) : (
-                                  curso.prerequisitos_rel.map((p) => (
-                                    <Badge key={p.id_prerequisito_curso} variant="secondary" className="text-xs">
-                                      {p.prerequisito.codigo}
-                                    </Badge>
-                                  ))
-                                )}
-                              </div>
+                              <span className="text-[11px] font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
                             </TableCell>
                             {isAdminOrSecretaria && (
-                              <TableCell className="page-table-td">
+                              <TableCell className="page-table-td text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar">
+                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar"
+                                    className="h-7 w-7 rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-all"
+                                  >
                                     <Edit className="h-3.5 w-3.5" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar">
+                                  <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar"
+                                    className="h-7 w-7 rounded-lg hover:bg-red-500/10 hover:text-red-600 transition-all"
+                                  >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
@@ -1191,26 +1208,25 @@ export function PlanEstudiosClient() {
                       )}
                       {displayCursos.length > 0 && (
                         <TableRow className="bg-muted/30 font-bold">
-                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="page-table-td text-right text-xs uppercase tracking-widest text-muted-foreground">
+                          <TableCell colSpan={isAdminOrSecretaria ? 8 : 7} className="page-table-td text-right text-[10px] uppercase tracking-widest text-muted-foreground">
                             Total créditos del ciclo:
                           </TableCell>
                           <TableCell className="page-table-td text-center font-black text-primary">
                             {totalFinal}
                           </TableCell>
-                          {isAdminOrSecretaria && <TableCell></TableCell>}
+                          {isAdminOrSecretaria && <TableCell className="page-table-td"></TableCell>}
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
-                </div>
               </div>
             );
           })()}
 
           {/* If no cycles with courses */}
           {nonEmptyCiclos.length === 0 && (
-            <div className="page-table-card p-8 text-center">
-              <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+            <div className="page-table-card p-6 text-center">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                 No hay cursos con los filtros seleccionados
               </p>
             </div>
@@ -1219,16 +1235,16 @@ export function PlanEstudiosClient() {
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-bold">¿Está completamente seguro?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground text-sm">
+            <AlertDialogTitle className="text-base font-bold">¿Está completamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-xs">
               Esta acción no se puede deshacer. Se eliminará permanentemente el curso y sus relaciones de prerequisitos.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="page-modal-alert-btn bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Confirmar eliminación
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1236,19 +1252,19 @@ export function PlanEstudiosClient() {
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             {dependencias.length > 0 ? (
               <>
-                <div className="flex items-center gap-3 text-destructive mb-2">
-                  <AlertCircle className="h-5 w-5 shrink-0" />
-                  <AlertDialogTitle className="text-lg font-bold">No se puede eliminar este curso</AlertDialogTitle>
+                <div className="flex items-center gap-2 text-destructive mb-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <AlertDialogTitle className="text-base font-bold">No se puede eliminar este curso</AlertDialogTitle>
                 </div>
-                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-4 rounded-xl border border-destructive/10">
+                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-3 rounded-lg border border-destructive/10 text-xs">
                   Este curso es prerequisito de los siguientes cursos:
                   <ul className="mt-2 list-disc list-inside">
                     {dependencias.map((dep, idx) => (
-                      <li key={idx} className="font-bold">
+                      <li key={idx} className="font-bold text-xs">
                         [{dep.codigo}] {dep.nombre}
                       </li>
                     ))}
@@ -1257,18 +1273,18 @@ export function PlanEstudiosClient() {
               </>
             ) : (
               <>
-                <div className="flex items-center gap-3 text-destructive mb-2">
-                  <AlertCircle className="h-5 w-5 shrink-0" />
-                  <AlertDialogTitle className="text-lg font-bold">Error al eliminar</AlertDialogTitle>
+                <div className="flex items-center gap-2 text-destructive mb-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <AlertDialogTitle className="text-base font-bold">Error al eliminar</AlertDialogTitle>
                 </div>
-                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-4 rounded-xl border border-destructive/10">
+                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-3 rounded-lg border border-destructive/10 text-xs">
                   {errorMessage}
                 </AlertDialogDescription>
               </>
             )}
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogAction onClick={() => { setIsErrorDialogOpen(false); setDependencias([]); }} className="bg-muted text-foreground hover:bg-muted/80">
+            <AlertDialogAction onClick={() => { setIsErrorDialogOpen(false); setDependencias([]); }} className="bg-muted text-foreground hover:bg-muted/80 text-xs">
               Entendido
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -585,7 +585,7 @@ export default function AsignacionCargaLectivaPage() {
               <BookOpen className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-foreground tracking-tight leading-none">Asignación de Carga Lectiva</h1>
+              <h1 className="text-base font-bold text-foreground tracking-tight leading-none">Asignar Cursos</h1>
               <p className="text-muted-foreground text-xs mt-1">Gestión de cursos asignados por docente</p>
             </div>
           </div>
@@ -723,10 +723,10 @@ export default function AsignacionCargaLectivaPage() {
       </div>
 
       <Dialog open={!!editingDocente} onOpenChange={(open) => !open && setEditingDocente(null)}>
-        <DialogContent className="max-w-[95vw] md:max-w-[90vw] lg:max-w-[980px] max-h-[90vh] flex flex-col p-6 rounded-xl overflow-hidden">
-          <DialogTitle className="flex items-center gap-2 text-xl font-black">
+        <DialogContent className="page-modal-xl max-w-[98vw] md:max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogTitle className="page-modal-header flex items-center gap-2 text-xl font-black">
             <BookOpen className="h-5 w-5 text-primary" />
-            Asignación de Carga Lectiva
+            Asignar Cursos
           </DialogTitle>
           <DialogDescription>
             {editingDocente?.nombres} {editingDocente?.apellidos} - {editingDocente?.codigo_docente}
@@ -765,7 +765,7 @@ export default function AsignacionCargaLectivaPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+          <div className="page-modal-body flex-1 overflow-y-auto space-y-4 pr-2">
             {loadingModal ? (
               <div className="flex flex-col items-center justify-center h-40 gap-4">
                 <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -777,9 +777,9 @@ export default function AsignacionCargaLectivaPage() {
                 const curso = cursos.find(c => c.id_curso === carga.id_curso);
                 
                 return (
-                <div key={index} className="grid grid-cols-12 gap-3 sm:gap-4 items-end p-4 bg-muted/30 rounded-lg border border-border relative">
-                  <div className="col-span-12 sm:col-span-3 space-y-1">
-                    <Label className="text-xs uppercase font-bold text-muted-foreground">Malla curricular</Label>
+                <div key={index} className="grid grid-cols-12 gap-2 sm:gap-3 items-end p-3 bg-muted/30 rounded-lg border border-border relative">
+                  <div className="col-span-12 sm:col-span-2 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Malla</Label>
                     {esFilaVacia ? (
                       <Select
                         disabled={esLectura}
@@ -815,10 +815,9 @@ export default function AsignacionCargaLectivaPage() {
                         {curso?.malla_rel?.nombre || "—"}
                       </div>
                     )}
-                    <div className="min-h-[18px]"></div>
                   </div>
-                  <div className="col-span-12 sm:col-span-5 space-y-1">
-                    <Label className="text-xs uppercase font-bold text-muted-foreground">Curso</Label>
+                  <div className="col-span-12 sm:col-span-3 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Curso</Label>
                     {esFilaVacia ? (
                       <SearchableSelect
                         disabled={esLectura}
@@ -920,16 +919,9 @@ export default function AsignacionCargaLectivaPage() {
                         className="h-8"
                       />
                     )}
-                    <div className="min-h-[18px]">
-                      {curso && (
-                        <div className="text-[9px] text-amber-700 font-medium">
-                          Máx. {curso.maximo_docentes || 1} docente{curso.maximo_docentes > 1 ? 's' : ''}
-                        </div>
-                      )}
-                    </div>
                   </div>
-                  <div className={`col-span-6 sm:col-span-2 lg:col-span-2 space-y-1 ${esFilaVacia && selectedMalla === "all" ? "" : ""}`}>
-                    <Label className="text-xs uppercase font-bold text-muted-foreground">Tipo</Label>
+                  <div className="col-span-6 sm:col-span-2 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Tipo</Label>
                     <Select
                       disabled={esLectura || !carga.id_curso}
                       value={carga.tipo_clase}
@@ -993,10 +985,9 @@ export default function AsignacionCargaLectivaPage() {
                         )}
                       </SelectContent>
                     </Select>
-                    <div className="min-h-[18px]"></div>
                   </div>
-                  <div className="col-span-6 sm:col-span-2 lg:col-span-2 space-y-1">
-                    <Label className="text-xs uppercase font-bold text-muted-foreground">
+                  <div className="col-span-6 sm:col-span-2 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">
                       {carga.tipo_clase === "laboratorio" ? "Grupos lab." : "Grupos"}
                     </Label>
                     <Select
@@ -1035,21 +1026,9 @@ export default function AsignacionCargaLectivaPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="min-h-[18px]">
-                      {carga.id_curso && carga.tipo_clase === "laboratorio" && (carga.grupos_asignados || 0) > 0 && (
-                        <p className="text-[9px] text-blue-700 font-medium">
-                          El docente elegirá L1–L{carga.grupos_asignados} al armar horario
-                        </p>
-                      )}
-                      {carga.id_curso && carga.tipo_clase !== "laboratorio" && (carga.grupos_asignados || 0) > 0 && (
-                        <p className="text-[9px] text-muted-foreground font-medium">
-                          Sección del curso (A, B…)
-                        </p>
-                      )}
-                    </div>
                   </div>
-                  <div className="col-span-6 sm:col-span-1 lg:col-span-1 space-y-1">
-                    <Label className="text-xs uppercase font-bold text-muted-foreground">Horas</Label>
+                  <div className="col-span-6 sm:col-span-1 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Horas</Label>
                     <Input
                       disabled={esLectura || (curso && curso.maximo_docentes <= 1)}
                       type="number"
@@ -1094,12 +1073,9 @@ export default function AsignacionCargaLectivaPage() {
                         setAllCargasLectivas(updatedAllCargas);
                       }}
                     />
-                    <div className="min-h-[18px]"></div>
                   </div>
-                  {/* Este campo se reemplazó por el selector de grupos, lo ocultamos */}
-                  <div className="col-span-0 hidden"></div>
-                  <div className={`col-span-6 sm:col-span-1 lg:col-span-1 flex flex-col space-y-1 items-center ${esLectura ? "hidden" : ""}`}>
-                    <Label className="text-xs uppercase font-bold text-muted-foreground">Acción</Label>
+                  <div className={`col-span-12 sm:col-span-2 flex flex-col justify-end items-center ${esLectura ? "hidden" : ""}`}>
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground mb-1">Acción</Label>
                     <div className="flex justify-center w-full">
                       {esFilaVacia ? (
                         <Button
@@ -1122,22 +1098,21 @@ export default function AsignacionCargaLectivaPage() {
                         </Button>
                       )}
                     </div>
-                    <div className="min-h-[18px]"></div>
                   </div>
                 </div>
               )})
             )}
           </div>
 
-          <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+          <div className="page-modal-footer mt-6 flex items-center justify-between border-t border-border pt-4">
             <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
               <span className="text-sm font-bold text-primary uppercase tracking-wider">Total horas:</span>
               <span className="text-lg font-black text-primary">{totalHoras}</span>
             </div>
             {!esLectura && (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setEditingDocente(null)}>Cancelar</Button>
-                <Button onClick={handleSave} disabled={loadingModal} className="gap-2 font-bold">
+                <Button variant="outline" onClick={() => setEditingDocente(null)} className="page-modal-btn-cancel">Cancelar</Button>
+                <Button onClick={handleSave} disabled={loadingModal} className="page-modal-btn-submit gap-2 font-bold">
                   <Save className="h-4 w-4" />
                   {loadingModal ? "Guardando..." : "Guardar Asignación"}
                 </Button>

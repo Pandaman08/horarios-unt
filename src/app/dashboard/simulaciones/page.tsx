@@ -92,13 +92,21 @@ export default function SimulacionesPage() {
           <DialogTrigger asChild>
             <Button>Forzar Resultado</Button>
           </DialogTrigger>
-          <DialogContent>
-            <DialogHeader>
-              <DialogTitle>Forzar Resultado de Simulación</DialogTitle>
+          <DialogContent className="page-modal-xl">
+            <DialogHeader className="page-modal-header">
+              <div className="flex items-center gap-3">
+                <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                  <Database className="h-4 w-4 text-primary" />
+                </div>
+                <div>
+                  <DialogTitle className="text-base font-bold text-foreground">Forzar Resultado de Simulación</DialogTitle>
+                  <p className="text-xs text-muted-foreground mt-0.5">Simular integración con sistemas externos</p>
+                </div>
+              </div>
             </DialogHeader>
-            <div className="space-y-4">
-              <div className="space-y-2">
-                <Label>Docente</Label>
+            <form className="page-modal-body space-y-4">
+              <div className="page-modal-field">
+                <Label className="page-modal-label">Docente</Label>
                 <Select value={forzarResultado.docenteId} onValueChange={val => setForzarResultado({ ...forzarResultado, docenteId: val })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione docente" />
@@ -112,8 +120,8 @@ export default function SimulacionesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Tipo de Simulación</Label>
+              <div className="page-modal-field">
+                <Label className="page-modal-label">Tipo de Simulación</Label>
                 <Select value={forzarResultado.tipo} onValueChange={val => setForzarResultado({ ...forzarResultado, tipo: val })}>
                   <SelectTrigger>
                     <SelectValue placeholder="Seleccione tipo" />
@@ -125,19 +133,22 @@ export default function SimulacionesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <div className="space-y-2">
-                <Label>Resultado JSON</Label>
+              <div className="page-modal-field">
+                <Label className="page-modal-label">Resultado JSON</Label>
                 <Input
+                  className="page-modal-input"
                   value={forzarResultado.resultado}
                   onChange={e => setForzarResultado({ ...forzarResultado, resultado: e.target.value })}
                   placeholder='{"validado": false, "observacion": "Informe pendiente"}'
                 />
               </div>
-              <div className="flex justify-end gap-2">
-                <Button variant="secondary" onClick={() => {}}>Cancelar</Button>
-                <Button onClick={handleForzar}>Aplicar</Button>
+              <div className="page-modal-footer border-t border-border pt-4">
+                <div className="page-actions-row justify-end gap-2">
+                  <Button type="button" variant="ghost" className="page-modal-btn-cancel">Cancelar</Button>
+                  <Button type="button" className="page-modal-btn-submit" onClick={handleForzar}>Aplicar</Button>
+                </div>
               </div>
-            </div>
+            </form>
           </DialogContent>
         </Dialog>
       </div>

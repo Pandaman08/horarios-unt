@@ -191,7 +191,7 @@ export default function DashboardOperador() {
 
         {/* Asignación de Carga */}
         <Link
-          href="/dashboard/carga-lectiva-asignacion"
+          href="/dashboard/asignar-cursos"
           className="p-4 bg-card rounded-xl border border-blue-200 dark:border-blue-900/50 shadow-sm flex flex-col group hover:border-blue-400 dark:hover:border-blue-700 transition-all bg-gradient-to-b from-blue-50/50 to-transparent dark:from-blue-950/20"
         >
           <div className="flex items-center gap-3 mb-3">

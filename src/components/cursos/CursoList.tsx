@@ -436,43 +436,48 @@ export function CursoList() {
                   </Button>
                 </DialogTrigger>
               </div>
-              <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
-                <DialogHeader className="bg-primary p-6 text-primary-foreground">
-                  <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                    {editingCurso ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-                    {editingCurso ? "Editar Curso" : "Nuevo Curso"}
-                  </DialogTitle>
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                      {editingCurso ? <Edit className="h-4 w-4 text-primary" /> : <Plus className="h-4 w-4 text-primary" />}
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-bold text-foreground">{editingCurso ? "Editar Curso" : "Nuevo Curso"}</DialogTitle>
+                      <p className="text-xs text-muted-foreground mt-0.5">{editingCurso ? "Modificar datos del curso" : "Registrar un nuevo curso"}</p>
+                    </div>
+                  </div>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Código</Label>
                       <Input
                         value={formData.codigo}
                         onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                        className="rounded-xl bg-muted/50 border-border font-bold text-xs"
+                        className="page-modal-input"
                         placeholder="SIST001"
                         required
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nombre</Label>
                       <Input
                         value={formData.nombre}
                         onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                        className="rounded-xl bg-muted/50 border-border font-bold text-xs"
+                        className="page-modal-input"
                         placeholder="Matemática I"
                         required
                       />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Tipo de Curso</Label>
                       <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
-                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -482,10 +487,10 @@ export function CursoList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Ciclo</Label>
                       <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
-                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue placeholder="Seleccionar..." />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -497,11 +502,11 @@ export function CursoList() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Facultad</Label>
                       <Select value={formData.facultadId} onValueChange={(v) => setFormData({ ...formData, facultadId: v, escuelaId: "" })}>
-                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue placeholder="Seleccionar facultad" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -511,10 +516,10 @@ export function CursoList() {
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Escuela Profesional</Label>
                       <Select value={formData.escuelaId} onValueChange={(v) => setFormData({ ...formData, escuelaId: v })} disabled={!formData.facultadId}>
-                        <SelectTrigger className="rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue placeholder="Seleccionar escuela" />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
@@ -525,31 +530,33 @@ export function CursoList() {
                       </Select>
                     </div>
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
-                      <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Máx. Docentes</Label>
+                      <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="page-modal-input" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Créd.</Label>
-                      <Input type="number" value={formData.creditos} onChange={(e) => setFormData({ ...formData, creditos: e.target.value })} className="rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Créd.</Label>
+                      <Input type="number" value={formData.creditos} onChange={(e) => setFormData({ ...formData, creditos: e.target.value })} className="page-modal-input" />
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-black uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Departamento Responsable</Label>
                     <Input
                       value={formData.departamento_responsable}
                       onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
-                      className="rounded-xl bg-muted/50 border-border font-bold text-xs"
+                      className="page-modal-input"
                       placeholder="Ingeniería de Sistemas"
                     />
                   </div>
 
-                  <div className="page-actions-row justify-end pt-4 border-t border-border/50">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-xl font-bold text-xs px-6">Cancelar</Button>
-                    <Button type="submit" className="rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs px-8 shadow-lg shadow-primary/20 transition-all">
-                      {editingCurso ? "Actualizar" : "Crear"}
-                    </Button>
+                  <div className="page-modal-footer border-t border-border pt-4">
+                    <div className="page-actions-row justify-end gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                      <Button type="submit" className="page-modal-btn-submit">
+                        {editingCurso ? "Actualizar" : "Crear"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </DialogContent>
@@ -675,7 +682,7 @@ export function CursoList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold">¿Está completamente seguro?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-medium">
@@ -683,7 +690,7 @@ export function CursoList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3 mt-6">
-            <AlertDialogCancel className="h-11 rounded-xl font-bold border-border hover:bg-muted text-foreground">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold shadow-lg shadow-destructive/20 transition-all">
               Confirmar Eliminación
             </AlertDialogAction>
@@ -692,7 +699,7 @@ export function CursoList() {
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <div className="flex items-center gap-3 text-destructive mb-2">
               <AlertCircle className="h-6 w-6" />
@@ -703,7 +710,7 @@ export function CursoList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6">
-            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-11 rounded-xl bg-muted text-foreground hover:bg-muted/80 font-bold px-8 transition-all">
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="page-modal-alert-btn">
               Entendido
             </AlertDialogAction>
           </AlertDialogFooter>

@@ -31,12 +31,15 @@ import {
   CheckCircle,
   RefreshCw,
   PauseCircle,
-  PlayCircle
+  PlayCircle,
+  ChevronLeft,
+  ChevronRight
 } from "lucide-react";
 import { format } from "date-fns";
 import { es } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { Pagination } from "@/components/ui/pagination";
 
 interface Ventana {
   id_ventana: number;
@@ -95,9 +98,25 @@ export function ConfiguradorVentanas() {
   const [ventanasDocentes, setVentanasDocentes] = useState<any[]>([]);
   const [isPaused, setIsPaused] = useState(false);
   const [isPausing, setIsPausing] = useState(false);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [currentTip, setCurrentTip] = useState(0);
+  const itemsPerPage = 10;
+
+  const tips = [
+    { text: "Las horas desde/hasta pueden ser modificadas haciendo doble clic. El sistema propagará los cambios automáticamente." },
+    { text: "Si un docente no elige ventana, el sistema le asignará la primera disponible según su prioridad." },
+    { text: "Puedes pausar la venta de ventanas y reanudarla sin perder el progreso de los docentes." },
+    { text: "Al resetear horarios, los docentes deberán volver a confirmar sus horarios asignados." },
+    { text: "El intervalo por docente define cuánto tiempo tiene cada uno para elegir su horario." },
+    { text: "Los docentes solo ven ventanas de su misma modalidad y categoría." },
+  ];
   const pausadoDesdeRef = useRef<number | null>(null);
 
   const ventanaEnCurso = intervaloActivo !== null && tiempoRestante !== null && tiempoRestante > 0;
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [ventanasDocentes.length]);
 
   useEffect(() => {
     fetchStats();
@@ -469,8 +488,7 @@ export function ConfiguradorVentanas() {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-4 gap-3">
-        <div className="lg:col-span-3 space-y-3">
+      <div className="space-y-3">
           {/* Programación de ventanas */}
           <div className="bg-card p-4 rounded-2xl border border-border shadow-sm space-y-3 animate-in fade-in duration-700">
               <div className="flex items-center gap-3">
@@ -492,37 +510,6 @@ export function ConfiguradorVentanas() {
                         : "Asigna horarios automáticamente y crea las ventanas de atención correspondientes."}
                     </p>
                   </div>
-                  {intervaloActivo && tiempoRestante !== null && (
-                    <div className={`flex items-center gap-2.5 px-3 py-1.5 rounded-xl border transition-colors ${
-                      tiempoRestante > 0
-                        ? 'bg-primary/5 border-primary/15 text-primary'
-                        : 'bg-muted/50 border-border/50 text-muted-foreground'
-                    }`}>
-                      <div className="relative">
-                        <Clock className={`h-4 w-4 ${tiempoRestante > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
-                        {tiempoRestante > 0 && (
-                          <span className="absolute -top-0.5 -right-0.5 h-1.5 w-1.5 rounded-full bg-emerald-500 animate-pulse" />
-                        )}
-                      </div>
-                      <div className="text-right">
-                        <div className="text-xs font-black uppercase tracking-[0.15em] text-muted-foreground/70">
-                          {tiempoRestante > 0 ? 'Tiempo restante' : 'Ventana finalizada'}
-                        </div>
-                        <div className={`font-black font-mono tabular-nums tracking-tight ${tiempoRestante > 0 ? 'text-sm' : 'text-xs text-muted-foreground'}`}>
-                          {tiempoRestante > 0 ? (
-                            <>
-                              {Math.floor(tiempoRestante / 86400) > 0 && (
-                                <span>{Math.floor(tiempoRestante / 86400)}d </span>
-                              )}
-                              <span>{String(Math.floor((tiempoRestante % 86400) / 3600)).padStart(2, '0')}:</span>
-                              <span>{String(Math.floor((tiempoRestante % 3600) / 60)).padStart(2, '0')}:</span>
-                              <span className="text-primary/70">{String(tiempoRestante % 60).padStart(2, '0')}</span>
-                            </>
-                          ) : '0d 00:00:00'}
-                        </div>
-                      </div>
-                    </div>
-                  )}
                 </div>
               </div>
             </div>
@@ -735,6 +722,99 @@ export function ConfiguradorVentanas() {
             )}
           </div>
 
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+            <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+              <CardHeader className="p-3 pb-1">
+                <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Estado de Carga Horaria</CardTitle>
+              </CardHeader>
+              <CardContent className="p-3 pt-0 space-y-2">
+                {[
+                  { label: "Docentes con cursos asignados", cantidad: stats?.docentes_con_cursos ?? 0, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+                  { label: "Ventanas activas", cantidad: stats?.ventanas_activas ?? 0, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+                ].map((item, idx) => (
+                  <div key={idx} className="flex items-center justify-between">
+                    <span className="text-muted-foreground text-xs font-medium">{item.label}</span>
+                    <span className={cn("px-2 py-1 rounded-full text-xs font-bold border", item.color)}>
+                      {item.cantidad}
+                    </span>
+                  </div>
+                ))}
+              </CardContent>
+            </Card>
+
+            <Card className="rounded-2xl border-none shadow-xl bg-slate-900 text-white overflow-hidden">
+              <CardHeader className="p-3 pb-1">
+                <div className="flex items-center justify-between">
+                  <CardTitle className="text-xs font-black uppercase tracking-widest text-indigo-200 flex items-center gap-2">
+                    <span className="text-yellow-400">💡</span> TIP {currentTip + 1}/{tips.length}
+                  </CardTitle>
+                  <div className="flex items-center gap-1">
+                    <button onClick={() => setCurrentTip((prev) => (prev === 0 ? tips.length - 1 : prev - 1))} className="h-6 w-6 rounded-md flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                      <ChevronLeft className="h-3.5 w-3.5" />
+                    </button>
+                    <button onClick={() => setCurrentTip((prev) => (prev === tips.length - 1 ? 0 : prev + 1))} className="h-6 w-6 rounded-md flex items-center justify-center text-slate-400 hover:text-white hover:bg-white/10 transition-colors">
+                      <ChevronRight className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+                </div>
+              </CardHeader>
+              <CardContent className="p-3 pt-0">
+                <p className="text-slate-300 text-xs leading-relaxed">
+                  {tips[currentTip].text}
+                </p>
+                <div className="flex justify-center gap-1.5 mt-2">
+                  {tips.map((_, i) => (
+                    <button key={i} onClick={() => setCurrentTip(i)} className={cn("h-1.5 rounded-full transition-all", i === currentTip ? "w-5 bg-yellow-400" : "w-1.5 bg-slate-600 hover:bg-slate-500")} />
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+
+            {intervaloActivo && tiempoRestante !== null ? (
+              <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex flex-col items-center text-center gap-1.5">
+                    <div className="relative">
+                      <Clock className={`h-6 w-6 ${tiempoRestante > 0 ? 'text-primary' : 'text-muted-foreground'}`} />
+                      {tiempoRestante > 0 && <span className="absolute -top-0.5 -right-0.5 h-2 w-2 rounded-full bg-emerald-500 animate-pulse" />}
+                    </div>
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+                      {tiempoRestante > 0 ? 'Tiempo restante' : 'Finalizada'}
+                    </span>
+                    <div className={`font-black font-mono tabular-nums tracking-tight leading-none ${tiempoRestante > 0 ? 'text-3xl text-primary' : 'text-xl text-muted-foreground'}`}>
+                      {tiempoRestante > 0 ? (
+                        <>
+                          {Math.floor(tiempoRestante / 86400) > 0 && <span>{Math.floor(tiempoRestante / 86400)}d </span>}
+                          <span>{String(Math.floor((tiempoRestante % 86400) / 3600)).padStart(2, '0')}</span>
+                          <span className="text-primary/40">:</span>
+                          <span>{String(Math.floor((tiempoRestante % 3600) / 60)).padStart(2, '0')}</span>
+                          <span className="text-primary/40">:</span>
+                          <span>{String(tiempoRestante % 60).padStart(2, '0')}</span>
+                        </>
+                      ) : '00:00:00'}
+                    </div>
+                    <div className="flex items-center gap-1.5">
+                      <div className={cn("h-1.5 w-1.5 rounded-full", tiempoRestante > 0 ? "bg-emerald-500 animate-pulse" : "bg-muted-foreground/30")} />
+                      <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                        {tiempoRestante > 0 ? 'En curso' : 'Finalizada'}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            ) : (
+              <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
+                <CardContent className="p-4">
+                  <div className="flex flex-col items-center text-center gap-1.5">
+                    <Clock className="h-6 w-6 text-muted-foreground" />
+                    <span className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Sin ventana activa</span>
+                    <span className="text-xs text-muted-foreground">Genere ventanas para ver el tiempo</span>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
+
           {loading ? (
             <div className="bg-card rounded-2xl border border-border shadow-sm p-8">
               <div className="flex flex-col items-center gap-2.5">
@@ -761,7 +841,9 @@ export function ConfiguradorVentanas() {
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {ventanasDocentes.map((ventana, idx) => (
+                    {ventanasDocentes
+                      .slice((currentPage - 1) * itemsPerPage, currentPage * itemsPerPage)
+                      .map((ventana, idx) => (
                       <TableRow key={ventana.id_ventana || idx} className="group border-b border-border hover:bg-muted/50 transition-all">
                         <TableCell className="px-4 py-3">
                           <span className="font-bold text-primary text-xs">#{ventana.orden_prioridad}</span>
@@ -796,6 +878,14 @@ export function ConfiguradorVentanas() {
                   </TableBody>
                 </Table>
               </div>
+              {ventanasDocentes.length > itemsPerPage && (
+                <Pagination
+                  currentPage={currentPage}
+                  totalPages={Math.ceil(ventanasDocentes.length / itemsPerPage)}
+                  onPageChange={setCurrentPage}
+                  className="border-t border-border bg-muted/10"
+                />
+              )}
             </div>
           ) : ventanas.length === 0 ? (
             <div className="bg-card rounded-2xl border border-border shadow-sm p-8">
@@ -886,41 +976,6 @@ export function ConfiguradorVentanas() {
               ))}
             </>
           )}
-        </div>
-
-        <div className="space-y-3">
-          <Card className="rounded-2xl border border-border bg-card shadow-sm overflow-hidden">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-xs font-black uppercase tracking-widest text-muted-foreground">Estado de Carga Horaria</CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0 space-y-2.5">
-              {[
-                { label: "Docentes con cursos asignados", cantidad: stats?.docentes_con_cursos ?? 0, color: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
-                { label: "Ventanas activas", cantidad: stats?.ventanas_activas ?? 0, color: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
-              ].map((item, idx) => (
-                <div key={idx} className="flex items-center justify-between">
-                  <span className="text-muted-foreground text-xs font-medium">{item.label}</span>
-                  <span className={cn("px-2 py-1 rounded-full text-xs font-bold border", item.color)}>
-                    {item.cantidad}
-                  </span>
-                </div>
-              ))}
-            </CardContent>
-          </Card>
-
-          <Card className="rounded-2xl border-none shadow-xl bg-slate-900 text-white overflow-hidden">
-            <CardHeader className="p-4 pb-2">
-              <CardTitle className="text-xs font-black uppercase tracking-widest text-indigo-200 flex items-center gap-2">
-                <span className="text-yellow-400">💡</span> TIP
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-4 pt-0">
-              <p className="text-slate-300 text-xs leading-relaxed">
-                Las horas desde/hasta pueden ser modificadas haciendo doble clic. El sistema propagará los cambios automáticamente.
-              </p>
-            </CardContent>
-          </Card>
-        </div>
       </div>
     </div>
   );

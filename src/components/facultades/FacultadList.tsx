@@ -178,33 +178,33 @@ export function FacultadList() {
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nueva Facultad
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-6">
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
-                      <Building2 className="h-5 w-5 text-primary" />
+                    <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                      <Building2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                      <DialogTitle className="text-base font-bold text-foreground">
                         {editingFacultad ? 'Actualizar Facultad' : 'Registrar Facultad'}
                       </DialogTitle>
-                      <p className="text-muted-foreground text-xs mt-1 font-medium">Complete la información de la facultad</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Complete la información de la facultad</p>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Código</Label>
                       <Input 
-                        className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all" 
+                        className="page-modal-input" 
                         value={formData.codigo} 
                         onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} 
                         required 
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Tipo</Label>
                       <Select value={formData.tipo} onValueChange={(val: any) => setFormData({ ...formData, tipo: val })}>
                         <SelectTrigger className="rounded-lg border-input bg-muted/50 font-bold">
                           <SelectValue />
@@ -217,20 +217,22 @@ export function FacultadList() {
                       </Select>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Nombre</Label>
                     <Input 
-                      className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all" 
+                      className="page-modal-input" 
                       value={formData.nombre} 
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
                       required 
                     />
                   </div>
-                  <div className="page-actions-row justify-end pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-lg font-bold text-muted-foreground hover:bg-muted px-6">Cancelar</Button>
-                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold shadow-sm transition-all active:scale-95">
-                      {editingFacultad ? 'Actualizar' : 'Registrar'}
-                    </Button>
+                  <div className="page-modal-footer border-t border-border pt-4">
+                    <div className="page-actions-row justify-end gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                      <Button type="submit" className="page-modal-btn-submit">
+                        {editingFacultad ? 'Actualizar' : 'Registrar'}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </DialogContent>

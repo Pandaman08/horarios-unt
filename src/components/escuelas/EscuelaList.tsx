@@ -207,8 +207,8 @@ export function EscuelaList() {
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nueva Escuela
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-6">
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
                     <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
                       <GraduationCap className="h-5 w-5 text-primary" />
@@ -221,11 +221,11 @@ export function EscuelaList() {
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Facultad</Label>
                     <Select value={formData.facultadId} onValueChange={(val) => setFormData({ ...formData, facultadId: val })} required>
-                      <SelectTrigger className="rounded-lg border-input bg-muted/50 font-bold">
+                      <SelectTrigger className="page-modal-input">
                         <SelectValue placeholder="Seleccionar facultad" />
                       </SelectTrigger>
                       <SelectContent position="popper">
@@ -235,18 +235,18 @@ export function EscuelaList() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-xs font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Nombre</Label>
                     <Input 
-                      className="rounded-lg border-input bg-muted/50 font-bold focus:ring-1 focus:ring-primary transition-all"
+                      className="page-modal-input"
                       value={formData.nombre} 
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
                       required 
                     />
                   </div>
                   <div className="page-actions-row justify-end pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-lg font-bold text-muted-foreground hover:bg-muted px-6">Cancelar</Button>
-                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold shadow-sm transition-all active:scale-95">
+                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                    <Button type="submit" className="page-modal-btn-submit">
                       {editingEscuela ? 'Actualizar' : 'Registrar'}
                     </Button>
                   </div>

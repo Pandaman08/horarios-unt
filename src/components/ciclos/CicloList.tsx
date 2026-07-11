@@ -272,27 +272,27 @@ export function CicloList() {
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Ciclo
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-md rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-6">
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
-                      <Layers className="h-5 w-5 text-primary" />
+                    <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                      <Layers className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                      <DialogTitle className="text-base font-bold text-foreground">
                         {editingCiclo ? "Actualizar Ciclo" : "Registrar Ciclo"}
                       </DialogTitle>
-                      <p className="text-muted-foreground text-xs mt-1 font-medium">Configure los datos básicos del ciclo</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Configure los datos básicos del ciclo</p>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="font-bold uppercase tracking-wider text-muted-foreground">Número</Label>
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Número</Label>
                       <Input
                         type="number"
-                        className="rounded-lg border-input bg-muted/50 font-bold text-sm focus:ring-1 focus:ring-primary transition-all"
+                        className="page-modal-input"
                         value={formData.numero}
                         onChange={(e) => setFormData({ ...formData, numero: e.target.value })}
                         required
@@ -300,10 +300,10 @@ export function CicloList() {
                         max={12}
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="font-bold uppercase tracking-wider text-muted-foreground">Nombre</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nombre</Label>
                       <Input
-                        className="rounded-lg border-input bg-muted/50 font-bold text-sm focus:ring-1 focus:ring-primary transition-all"
+                        className="page-modal-input"
                         value={formData.nombre}
                         onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
                         required
@@ -311,11 +311,13 @@ export function CicloList() {
                       />
                     </div>
                   </div>
-                  <div className="page-actions-row justify-end pt-4 border-t">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="rounded-lg font-bold text-muted-foreground hover:bg-muted px-6 text-sm">Cancelar</Button>
-                    <Button type="submit" className="bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold text-sm shadow-sm transition-all active:scale-95">
-                      {editingCiclo ? "Actualizar" : "Crear"}
-                    </Button>
+                  <div className="page-modal-footer border-t border-border pt-4">
+                    <div className="page-actions-row justify-end gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                      <Button type="submit" className="page-modal-btn-submit">
+                        {editingCiclo ? "Actualizar" : "Crear"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </DialogContent>
@@ -388,7 +390,7 @@ export function CicloList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold">¿Está completamente seguro?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-medium">
@@ -396,8 +398,8 @@ export function CicloList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3 mt-6">
-            <AlertDialogCancel className="h-11 rounded-xl font-bold border-border hover:bg-muted text-foreground">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold shadow-lg shadow-destructive/20 transition-all">
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="page-modal-alert-btn bg-destructive text-destructive-foreground hover:bg-destructive/90 shadow-lg shadow-destructive/20">
               Confirmar Eliminación
             </AlertDialogAction>
           </AlertDialogFooter>

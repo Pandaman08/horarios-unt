@@ -369,7 +369,7 @@ export default function ValidacionDepartamentoClient({ periodos }: { periodos: a
                                 Revisar
                               </Button>
                             </DialogTrigger>
-                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-8">
+                          <DialogContent className="page-modal-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                 <User className="text-blue-600 dark:text-blue-400" size={20} />
