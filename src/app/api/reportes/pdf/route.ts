@@ -25,6 +25,10 @@ const HORAS = [
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
 ];
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const DIAS_ABREVIADOS: Record<string, string> = {
+  LU: 'LU', MA: 'MA', MI: 'MI', JU: 'JU', VI: 'VI', SA: 'SA'
+};
+const ORDEN_DIAS = { LU: 0, MA: 1, MI: 2, JU: 3, VI: 4, SA: 5 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function horaAMinutos(hora: string): number {
@@ -52,6 +56,24 @@ function buildColorMap(horarios: any[]): Map<string, { color: any; index: number
     }
   }
   return map;
+}
+
+function formatearHorariosNoLectivos(carga: any): string {
+  const horarios = Array.isArray(carga?.horarios)
+    ? [...carga.horarios].sort((a, b) => {
+        const diff = (ORDEN_DIAS[a?.dia as keyof typeof ORDEN_DIAS] ?? 99) - (ORDEN_DIAS[b?.dia as keyof typeof ORDEN_DIAS] ?? 99);
+        if (diff !== 0) return diff;
+        return (a?.horaInicio ?? '').localeCompare(b?.horaInicio ?? '');
+      })
+    : [];
+
+  return horarios
+    .map((h: any) => {
+      const dia = String(h?.dia ?? '').toUpperCase();
+      const diaAbreviado = DIAS_ABREVIADOS[dia] ?? dia;
+      return `${diaAbreviado}(${h?.horaInicio ?? '--:--'}-${h?.horaFin ?? '--:--'})`;
+    })
+    .join('<br/>');
 }
 
 // ─── CSS GLOBAL PARA LOS REPORTES VISUALES ───────────────────────────────────
@@ -894,7 +916,12 @@ export async function GET(request: Request) {
     if (id_declaracion && (formato === 'formato1' || formato === 'formato2' || formato === 'formato3' || formato === 'formato4')) {
       const declaracion = await prisma.declaracionHoraria.findUnique({
         where: { id_declaracion: parseInt(id_declaracion) },
-        include: { docente: true, periodo: true, cargas_lectivas: { include: { curso: true, grupo: true } }, cargas_no_lectivas: true }
+        include: {
+          docente: true,
+          periodo: true,
+          cargas_lectivas: { include: { curso: true, grupo: true } },
+          cargas_no_lectivas: { include: { horarios: true } }
+        }
       });
 
       if (!declaracion) {
@@ -1354,7 +1381,7 @@ export async function GET(request: Request) {
           { key: 'COMITES_TECNICOS', label: 'Comités o Comisiones Especiales' }
         ];
         
-        const diasAbreviados = ['LU', 'MA', 'MI', 'JU', 'VI', 'SA'];
+        const cargasNoLectivasConHoras = declaracion.cargas_no_lectivas.filter((c: any) => (c.horas_semanales || 0) > 0);
         
         // Agrupar cargas lectivas por curso
         const cursosMap = new Map();
@@ -1415,7 +1442,7 @@ export async function GET(request: Request) {
           `;
         }).join('');
 
-        const filasVaciasCHL = Array(Math.max(0, 5 - cursosMap.size)).fill(0).map(() => `
+        const filasVaciasCHL = new Array(Math.max(0, 5 - cursosMap.size)).fill(0).map(() => `
           <tr>
             <td style="height: 30px;"></td>
             <td></td>
@@ -1425,21 +1452,16 @@ export async function GET(request: Request) {
           </tr>
         `).join('');
 
-        // Generar filas CHNL
-        const filasCHNL = tiposPredefinidosNoLectivos.map((tipo, idx) => {
+        // Generar filas CHNL usando el horario real que quedó guardado en la declaración
+        const filasCHNL = tiposPredefinidosNoLectivos.map((tipo) => {
           const carga = declaracion.cargas_no_lectivas.find((c: any) => c.tipo === tipo.key);
           const horas = carga?.horas_semanales || 0;
-          
+          const horario = formatearHorariosNoLectivos(carga);
+
           if (horas > 0) {
-            // Generar horario simulado
-            const diaIdx = idx % 6;
-            const horaInicio = 7 + idx;
-            const horaFin = horaInicio + horas;
-            const horario = `${diasAbreviados[diaIdx]}(${String(horaInicio).padStart(2, '0')}:00-${String(horaFin).padStart(2, '0')}:00)`;
-            
             return `
               <tr>
-                <td style="vertical-align: top;">${horario}</td>
+                <td style="vertical-align: top;">${horario || '—'}</td>
                 <td style="vertical-align: top; text-align: left;">${tipo.label}</td>
                 <td style="vertical-align: top; text-align: center;">F11</td>
                 <td style="vertical-align: top; text-align: center;">CUBÍCULO</td>
@@ -1450,7 +1472,7 @@ export async function GET(request: Request) {
           return '';
         }).join('');
 
-        const filasVaciasCHNL = Array(Math.max(0, 8 - declaracion.cargas_no_lectivas.filter((c: any) => (c.horas_semanales || 0) > 0).length)).fill(0).map(() => `
+        const filasVaciasCHNL = new Array(Math.max(0, 8 - cargasNoLectivasConHoras.length)).fill(0).map(() => `
           <tr>
             <td style="height: 30px;"></td>
             <td></td>
@@ -2092,7 +2114,7 @@ export async function GET(request: Request) {
 
       // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
     } else if (tipo === 'estadisticas' || tipo === 'consolidado') {
-      const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
+      const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(Number.parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
 
       const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) } } } });
