@@ -6,15 +6,5 @@
     "src/app/api/cron/**": {
       "maxDuration": 30
     }
-  },
-  "crons": [
-    {
-      "path": "/api/cron/limpieza",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/notificaciones",
-      "schedule": "* * * * *"
-    }
-  ]
+  }
 }
