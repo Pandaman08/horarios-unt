@@ -5,12 +5,7 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { format, parse, addMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import {Select, SelectContent, SelectItem, SelectTrigger,SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
