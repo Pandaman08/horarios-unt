@@ -99,9 +99,11 @@ interface CeldaInfo {
     | "seleccionado_mio"
     | "bloqueado"
     | "bloqueado_lectivo"
+    | "no_disponible"
     | "error";
 
   mensaje_error?: string;
+  disponible?: boolean;
 }
 
 const DIAS_CODIGO = ["LU", "MA", "MI", "JU", "VI", "SA"];
@@ -466,6 +468,8 @@ export function MatrizDisponibilidad({
 
       setLoading(true);
 
+      console.log(`🔍 [FETCH] id_periodo=${id_periodo} id_docente=${id_docente_actual} id_ambiente=${id_ambiente}`);
+
       try {
         let url =
           `/api/horarios/disponibilidad-matriz?id_periodo=${id_periodo}`;
@@ -666,11 +670,43 @@ export function MatrizDisponibilidad({
             if (!map[key]) {
               map[key] = {
                 estado: "bloqueado",
+                disponible: false,
               };
             }
           });
 
           curB = addMinutes(curB, 15);
+        }
+
+        // Sincronizar la matriz con la disponibilidad registrada por el docente
+        if (data.disponibilidad && id_docente_actual !== undefined) {
+          const disponibilidadRows = (data.disponibilidad as Array<{ dia_semana: number; hora_inicio: string; disponible: boolean }>) ?? [];
+          const slotsDisponibles = disponibilidadRows.filter((slot) => slot.disponible);
+          const slotsNoDisponibles = disponibilidadRows.filter((slot) => !slot.disponible);
+
+          console.log(`📊 [MATRIZ] Disponibilidad para docente ${id_docente_actual}: disponibles=${slotsDisponibles.length}, noDisponibles=${slotsNoDisponibles.length}, total=${disponibilidadRows.length}`);
+
+          slotsDisponibles.forEach((slot) => {
+            const startH = Number.parseInt(slot.hora_inicio.split(':')[0], 10);
+            for (let m = 0; m < 60; m += 15) {
+              const slotHora = `${String(startH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+              const key = `${slot.dia_semana}-${slotHora}`;
+              if (!map[key]) {
+                map[key] = { estado: 'disponible', disponible: true };
+              }
+            }
+          });
+
+          slotsNoDisponibles.forEach((slot) => {
+            const startH = Number.parseInt(slot.hora_inicio.split(':')[0], 10);
+            for (let m = 0; m < 60; m += 15) {
+              const slotHora = `${String(startH).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+              const key = `${slot.dia_semana}-${slotHora}`;
+              if (!map[key]) {
+                map[key] = { estado: 'no_disponible', disponible: false };
+              }
+            }
+          });
         }
 
         setDisponibilidad(
@@ -757,13 +793,17 @@ export function MatrizDisponibilidad({
       return;
     }
 
-    if (
-      celda?.estado === "bloqueado" ||
-      celda?.estado === "bloqueado_lectivo" ||
-      celda?.estado === "ocupado"
-    ) {
+                    if (
+                      celda?.estado === "bloqueado" ||
+                      celda?.estado === "bloqueado_lectivo" ||
+                      celda?.estado === "ocupado" ||
+                      celda?.estado === "no_disponible"
+                    ) {
       if (celda?.estado === "bloqueado_lectivo" && onCellClick) {
           toast.info(t("lectureBlockReserved"));
+      }
+      if (celda?.estado === "no_disponible") {
+          toast.info(t("notAvailable"));
       }
       return;
     }
@@ -905,7 +945,7 @@ export function MatrizDisponibilidad({
     const celda = disponibilidad[key];
     const esMia = celda?.id_docente === id_docente_actual;
     const esOwned = celda?.id_seleccion || celda?.id_asignacion;
-    const esBloqueado = celda?.estado === 'bloqueado' || celda?.estado === 'bloqueado_lectivo' || celda?.estado === 'ocupado';
+    const esBloqueado = celda?.estado === 'bloqueado' || celda?.estado === 'bloqueado_lectivo' || celda?.estado === 'ocupado' || celda?.estado === 'no_disponible';
     const esDeOtraAsignacion = cursoActivoId && celda?.id_curso && (
       celda.id_curso !== cursoActivoId ||
       (tipo_clase_actual && celda.tipo_clase && celda.tipo_clase !== tipo_clase_actual)
@@ -1012,7 +1052,8 @@ export function MatrizDisponibilidad({
       return !celda || (
         celda.estado !== 'bloqueado' &&
         celda.estado !== 'bloqueado_lectivo' &&
-        celda.estado !== 'ocupado'
+        celda.estado !== 'ocupado' &&
+        celda.estado !== 'no_disponible'
       );
     });
 
@@ -1054,7 +1095,7 @@ export function MatrizDisponibilidad({
         for (const cell of cells) {
           const key = `${cell.dia}-${cell.hora}`;
           const celda = disponibilidad[key];
-          if (celda?.estado === 'bloqueado' || celda?.estado === 'bloqueado_lectivo' || celda?.estado === 'ocupado') continue;
+          if (celda?.estado === 'bloqueado' || celda?.estado === 'bloqueado_lectivo' || celda?.estado === 'ocupado' || celda?.estado === 'no_disponible') continue;
 
           const hora_fin = format(addMinutes(parse(cell.hora, "HH:mm", new Date()), intervalo || 60), "HH:mm");
           try {
@@ -1168,6 +1209,10 @@ export function MatrizDisponibilidad({
               </>
             )}
             <span className="flex items-center gap-1.5">
+              <span className="w-3 h-3 rounded border border-slate-300/60 dark:border-slate-600/60 bg-slate-100/50 dark:bg-slate-800/30" />
+              {t("notAvailable")}
+            </span>
+            <span className="flex items-center gap-1.5">
               <Lock className="h-3 w-3 text-muted-foreground" />
               {t("breakLabel")}
             </span>
@@ -1248,6 +1293,8 @@ export function MatrizDisponibilidad({
                         info?.estado === "ocupado" && !esMia && !esDeOtraAsignacion && "bg-rose-500/10 cursor-not-allowed",
                         esMia && info?.estado !== "bloqueado_lectivo" && !esDeOtraAsignacion && `${getTipoColor(info?.tipo_clase).td} ring-1 ring-inset ${getTipoColor(info?.tipo_clase).ownRing}`,
                         info?.estado === "bloqueado_lectivo" && "bg-blue-500/15 cursor-not-allowed ring-1 ring-inset ring-blue-400/40",
+                        info?.estado === "disponible" && "bg-emerald-500/10 ring-1 ring-inset ring-emerald-400/40",
+                        info?.estado === "no_disponible" && !info?.id_carga_no_lectiva && "bg-slate-100/50 dark:bg-slate-800/30 cursor-not-allowed ring-1 ring-inset ring-slate-200/60 dark:ring-slate-700/50",
                         info?.estado === "bloqueado" && "bg-muted/60 cursor-not-allowed",
                         isInDragPreview && isRemoveDragRef.current && "bg-rose-400/30 ring-2 ring-inset ring-rose-500",
                         isInDragPreview && !isRemoveDragRef.current && "bg-emerald-400/30 ring-2 ring-inset ring-emerald-500"
@@ -1286,9 +1333,16 @@ export function MatrizDisponibilidad({
                           </div>
                         )}
 
+                      {info && info.estado === "disponible" && (
+                        <div className="absolute inset-1 rounded-lg border border-emerald-300/60 bg-emerald-500/10 dark:bg-emerald-950/20 flex items-center justify-center">
+                          <CheckCircle2 className="h-3.5 w-3.5 text-emerald-600 dark:text-emerald-400" />
+                        </div>
+                      )}
+
                       {info &&
                         info.estado !== "bloqueado" &&
-                        info.estado !== "bloqueado_lectivo" && (
+                        info.estado !== "bloqueado_lectivo" &&
+                        info.estado !== "disponible" && (
                           info.id_carga_no_lectiva ? (
                             <div className={cn(
                               "absolute inset-1 rounded-lg border p-1 flex flex-col justify-between overflow-hidden transition-all",
@@ -1404,6 +1458,12 @@ export function MatrizDisponibilidad({
                         "bloqueado" && (
                         <div className="absolute inset-0 flex items-center justify-center">
                           <Lock className="h-4 w-4 text-muted-foreground/40" />
+                        </div>
+                      )}
+
+                      {info?.estado === "no_disponible" && !info?.id_carga_no_lectiva && (
+                        <div className="absolute inset-0 flex items-center justify-center" title="No disponible en tu horario">
+                          <span className="text-[9px] font-medium text-slate-400/70 dark:text-slate-500/70 select-none">—</span>
                         </div>
                       )}
                     </td>

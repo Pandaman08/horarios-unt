@@ -13,7 +13,9 @@ export class GestorVentanasAtencion {
         declaraciones_horarias: {
           some: {
             id_periodo,
-            estado: 'APROBADO'
+            estado: {
+              in: ['BORRADOR', 'LECTIVA_CONFIRMADA', 'ENVIADO', 'VALIDADO_DEPARTAMENTO', 'APROBADO']
+            }
           }
         }
       }

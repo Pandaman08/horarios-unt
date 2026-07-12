@@ -282,9 +282,45 @@ export async function GET(request: Request) {
       }
     });
 
+    // Obtener slots de disponibilidad del docente actual (si se especificó)
+    let disponibilidadSlots: Array<{ dia_semana: number; hora_inicio: string; disponible: boolean }> = [];
+    if (id_docente) {
+      const docenteId = parseInt(id_docente);
+      const periodoId = parseInt(id_periodo);
+      console.log(`🔍 [API disponibilidad-matriz] Consultando: docente=${docenteId} periodo=${periodoId}`);
+
+      const rawDisponibilidad = await prisma.disponibilidadDocente.findMany({
+        where: {
+          id_docente: docenteId,
+          id_periodo: periodoId,
+        },
+        select: {
+          dia_semana: true,
+          hora_inicio: true,
+          disponible: true,
+        },
+      });
+
+      console.log(`🔍 [API disponibilidad-matriz] Encontrados ${rawDisponibilidad.length} slots para docente=${docenteId} periodo=${periodoId}`);
+      if (rawDisponibilidad.length > 0) {
+        const disponibles = rawDisponibilidad.filter(s => s.disponible).length;
+        const noDisponibles = rawDisponibilidad.filter(s => !s.disponible).length;
+        console.log(`🔍 [API disponibilidad-matriz] Disponibles=${disponibles} NoDisponibles=${noDisponibles}`);
+        console.log(`🔍 [API disponibilidad-matriz] Primeros 3 registros:`, JSON.stringify(rawDisponibilidad.slice(0, 3)));
+      }
+
+      // La BD ya almacena dia_semana como 0-5 (0=Lunes), mismo formato que la matriz
+      disponibilidadSlots = rawDisponibilidad
+        .filter((s: { hora_inicio: string }) => s.hora_inicio !== '12:00')
+        .map((s: { dia_semana: number; hora_inicio: string; disponible: boolean }) => ({
+          ...s
+        }));
+    }
+
     return NextResponse.json({
       asignaciones,
-      temporales
+      temporales,
+      disponibilidad: disponibilidadSlots,
     });
   } catch (error) {
     console.error('Error al obtener disponibilidad:', error);

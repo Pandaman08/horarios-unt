@@ -17,6 +17,8 @@ enum RolUsuario {
   secretaria
 }
 
+
+
 model Usuario {
   id_usuario              Int                   @id @default(autoincrement())
   codigo                  String                @unique

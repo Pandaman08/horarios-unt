@@ -489,7 +489,7 @@ function DashboardLayoutInner({
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen lg:pl-56 xl:pl-60">
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden lg:pl-56 xl:pl-60">
         <header className="min-h-12 bg-card border-b border-border flex items-center gap-2 px-3 sm:px-4 sticky top-0 z-20 flex-wrap">
           <button
             type="button"
@@ -606,7 +606,7 @@ function DashboardLayoutInner({
 
 
 
-        <main className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 min-w-0 overflow-x-hidden overflow-y-auto">
+        <main className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 min-w-0 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain">
           <div className="w-full max-w-full mx-auto">{children}</div>
         </main>
       </div>

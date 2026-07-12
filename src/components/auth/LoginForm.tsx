@@ -24,7 +24,7 @@ export function LoginForm() {
     const creds = {
       admin: { email: 'admin@unitru.edu.pe', pass: '00000000' },
       operador: { email: 'dvalerianorodriguez@unitru.edu.pe', pass: '80000001' },
-      docente: { email: 'eagredagamboa@unitru.edu.pe', pass: '18161457' },
+      docente: { email: 'jsantosfernandez@unitru.edu.pe', pass: '17896289' },
       decano: { email: 'ireyeslopez@unitru.edu.pe', pass: '17898446' },
       director_departamento: { email: 'lboychavil@unitru.edu.pe', pass: '18842081' },
     };

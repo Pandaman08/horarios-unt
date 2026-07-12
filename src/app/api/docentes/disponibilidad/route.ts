@@ -46,8 +46,11 @@ export async function GET(req: NextRequest) {
       }
     });
 
+    // Filtrar slots de receso (12:00) que puedan haber sido creados por seeds antiguos
+    const disponibilidadesFiltradas = disponibilidades.filter(d => d.hora_inicio !== '12:00');
+
     return NextResponse.json({
-      disponibilidades,
+      disponibilidades: disponibilidadesFiltradas,
       horasMaximas: getHorasMaximasSemanales(docente),
       etiquetaRegimen: getEtiquetaRegimenHoras(docente),
       docente: {

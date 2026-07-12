@@ -224,6 +224,11 @@ export function ConfiguradorVentanas() {
       return;
     }
 
+    if (modoGeneracion === "automatico") {
+      toast.error("El modo automático está deshabilitado en esta configuración.");
+      return;
+    }
+
     const hoy = format(new Date(), "yyyy-MM-dd");
     let horaInicio = horaInicioGeneracion;
     if (fechaInicio === hoy) {
@@ -523,7 +528,9 @@ export function ConfiguradorVentanas() {
                   </SelectTrigger>
                   <SelectContent className="rounded-lg border-border">
                     <SelectItem value="intervalo" className="font-bold text-xs">Por ventanas (docente elige horario)</SelectItem>
-                    <SelectItem value="automatico" className="font-bold text-xs">Automático (sistema asigna todo)</SelectItem>
+                    <SelectItem value="automatico" className="font-bold text-xs text-muted-foreground/70" disabled>
+                      Automático (deshabilitado)
+                    </SelectItem>
                   </SelectContent>
                 </Select>
               </div>

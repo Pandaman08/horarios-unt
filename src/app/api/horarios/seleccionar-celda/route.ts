@@ -151,8 +151,72 @@ export async function POST(request: Request) {
     const periodoId = parseInt(data.id_periodo);
     const cursoId = parseInt(data.id_curso);
 
-    // === NUEVAS VALIDACIONES ===
-    
+    // === VALIDACIONES ===
+
+    // 0. Validar disponibilidad del docente para este horario
+    const diaSemana = parseInt(data.dia_semana);
+    const horaInicio = data.hora_inicio;
+    const disponibilidadSlot = await prisma.disponibilidadDocente.findFirst({
+      where: {
+        id_docente: docenteId,
+        id_periodo: periodoId,
+        dia_semana: diaSemana,
+        hora_inicio: horaInicio,
+      },
+    });
+    if (!disponibilidadSlot || !disponibilidadSlot.disponible) {
+      return NextResponse.json({
+        valido: false,
+        error: 'No tienes disponibilidad en este horario. Solo puedes seleccionar horarios dentro de tu disponibilidad registrada.',
+        conflictos: [{
+          tipo: 'DISPONIBILIDAD_INSUFICIENTE',
+          mensaje: 'Este horario no está dentro de tu disponibilidad registrada',
+          severidad: 'ERROR'
+        }]
+      }, { status: 403 });
+    }
+
+    // Validar horas máximas semanales
+    const docente = await prisma.docente.findUnique({
+      where: { id_docente: docenteId },
+    });
+    if (docente) {
+      const { getHorasMaximasSemanales, contarHorasDisponibles } = await import('@/lib/disponibilidad/validarHoras');
+      const horasMaximas = getHorasMaximasSemanales(docente);
+      if (horasMaximas > 0) {
+        // Contar horas ya asignadas/confirmadas + temporales
+        const horasAsignadas = await prisma.horarioAsignado.count({
+          where: {
+            id_docente: docenteId,
+            id_periodo: periodoId,
+          },
+        });
+        const horasTemporales = await prisma.seleccionTemporalHorario.count({
+          where: {
+            id_docente: docenteId,
+            id_periodo: periodoId,
+            fecha_expiracion: { gt: new Date() },
+          },
+        });
+        const horasOcupadas = horasAsignadas + horasTemporales;
+        const horaFin = data.hora_fin;
+        const hInicio = parseInt(horaInicio.split(':')[0]);
+        const hFin = parseInt(horaFin.split(':')[0]);
+        const horasSlot = hFin - hInicio;
+        if (horasOcupadas + horasSlot > horasMaximas) {
+          return NextResponse.json({
+            valido: false,
+            error: `Alcanzaste el límite de ${horasMaximas}h semanales. Tienes ${horasOcupadas}h ocupadas.`,
+            conflictos: [{
+              tipo: 'HORAS_MAXIMAS_EXCEDIDAS',
+              mensaje: `Has excedido el máximo de ${horasMaximas}h semanales`,
+              severidad: 'ERROR'
+            }]
+          }, { status: 403 });
+        }
+      }
+    }
+
     // 1. Verificar que el docente tenga el curso específico en CargaLectiva
     const tieneCurso = await tieneCargoEnCurso(docenteId, cursoId, periodoId);
     if (!tieneCurso) {

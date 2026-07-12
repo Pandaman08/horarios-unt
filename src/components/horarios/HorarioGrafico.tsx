@@ -34,6 +34,7 @@ interface CeldaInfo {
   tipo_clase?: string
   estado: 'disponible' | 'ocupado' | 'seleccionado_mio' | 'bloqueado' | 'bloqueado_lectivo' | 'error'
   mensaje_error?: string
+  disponible?: boolean
 }
 
 interface HorarioGraficoProps {
@@ -226,6 +227,30 @@ export function HorarioGrafico({
           if (!map[key]) map[key] = { estado: 'bloqueado' }
         })
         curB = addMinutes(curB, 15)
+      }
+
+      if (data.disponibilidad && id_docente_actual !== undefined) {
+        const rows = data.disponibilidad as Array<{ dia_semana: number; hora_inicio: string; disponible: boolean }>
+        const slotsDisponibles = rows.filter(slot => slot.disponible)
+        const slotsNoDisponibles = rows.filter(slot => !slot.disponible)
+
+        slotsDisponibles.forEach(slot => {
+          const startH = Number.parseInt(slot.hora_inicio.split(':')[0], 10)
+          for (let m = 0; m < 60; m += 15) {
+            const slotHora = `${String(startH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+            const key = `${slot.dia_semana}-${slotHora}`
+            if (!map[key]) map[key] = { estado: 'disponible', disponible: true }
+          }
+        })
+
+        slotsNoDisponibles.forEach(slot => {
+          const startH = Number.parseInt(slot.hora_inicio.split(':')[0], 10)
+          for (let m = 0; m < 60; m += 15) {
+            const slotHora = `${String(startH).padStart(2, '0')}:${String(m).padStart(2, '0')}`
+            const key = `${slot.dia_semana}-${slotHora}`
+            if (!map[key]) map[key] = { estado: 'bloqueado' }
+          }
+        })
       }
 
       setDisponibilidad(aplicarCapasCargaHoraria(map, horariosLectivosDocente || [], actividadesNoLectivas || [], actividadSeleccionadaId, modo, id_docente_actual))

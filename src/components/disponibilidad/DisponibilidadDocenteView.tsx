@@ -48,12 +48,12 @@ import { cn } from "@/lib/utils";
 import { usePeriodo } from "@/contexts/PeriodoContext";
 
 const DIAS = [
-  { id: 1, nombre: "Lunes" },
-  { id: 2, nombre: "Martes" },
-  { id: 3, nombre: "Miércoles" },
-  { id: 4, nombre: "Jueves" },
-  { id: 5, nombre: "Viernes" },
-  { id: 6, nombre: "Sábado" },
+  { id: 0, nombre: "Lunes" },
+  { id: 1, nombre: "Martes" },
+  { id: 2, nombre: "Miércoles" },
+  { id: 3, nombre: "Jueves" },
+  { id: 4, nombre: "Viernes" },
+  { id: 5, nombre: "Sábado" },
 ];
 
 interface DisponibilidadItem {
@@ -88,8 +88,11 @@ export function DisponibilidadDocenteView() {
     let current = parse("07:00", "HH:mm", new Date());
     const end = parse("22:00", "HH:mm", new Date());
 
-    while (current <= end) {
-      slots.push(format(current, "HH:mm"));
+    while (current < end) {
+      const horaStr = format(current, "HH:mm");
+      if (horaStr !== "12:00") {
+        slots.push(horaStr);
+      }
       current = addMinutes(current, 60);
     }
     return slots;

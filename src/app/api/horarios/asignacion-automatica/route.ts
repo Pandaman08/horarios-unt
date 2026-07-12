@@ -4,6 +4,7 @@ import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
 import { addMinutes } from "date-fns";
 import { GestorVentanasAtencion } from "@/services/ventanas/GestorVentanasAtencion";
+import { getHorasMaximasSemanales } from "@/lib/disponibilidad/validarHoras";
 
 const ROLES_VENTANAS = ['administrador_sistema', 'operador_horarios'];
 
@@ -138,6 +139,12 @@ export async function POST(request: Request) {
     const horariosOcupadosDocente = new Set<string>();
     const horariosOcupadosAmbiente = new Set<string>();
     const horariosPorDiaHora = new Map<string, number>();
+    const horasAsignadasDocente = new Map<number, number>();
+    // Pre-calcular horas máximas por docente
+    const docenteHorasMaximas = new Map<number, number>();
+    docentesConDatos.forEach((d: any) => {
+      docenteHorasMaximas.set(d.id_docente, getHorasMaximasSemanales(d));
+    });
 
     // Paso 2: Crear ventanas solo para docentes aprobados que aún no tienen ventana
     let ventanasCreadas: any[] = [];
@@ -288,6 +295,17 @@ export async function POST(request: Request) {
               break;
             }
 
+            // Validar que el docente no exceda sus horas máximas semanales
+            const horasMaxDocente = docenteHorasMaximas.get(docente.id_docente) || 40;
+            const horasYaAsignadas = horasAsignadasDocente.get(docente.id_docente) || 0;
+            const horaSlot = parseInt(disponibilidad.hora_inicio.split(':')[0]);
+            const horaFinSlot = parseInt(disponibilidad.hora_fin.split(':')[0]);
+            const horasSlot = horaFinSlot - horaSlot;
+            if (horasYaAsignadas + horasSlot > horasMaxDocente) {
+              console.log(`    ⏭️ Docente alcanzó límite de ${horasMaxDocente}h semanales (${horasYaAsignadas}h asignadas), saltando...`);
+              continue;
+            }
+
             const claveDocente = `${docente.id_docente}_${disponibilidad.dia_semana}_${disponibilidad.hora_inicio}`;
             
             if (horariosOcupadosDocente.has(claveDocente)) {
@@ -352,6 +370,9 @@ export async function POST(request: Request) {
               const claveDiaHoraCreado = `${disponibilidad.dia_semana}_${disponibilidad.hora_inicio}`;
               const currentCount = horariosPorDiaHora.get(claveDiaHoraCreado) || 0;
               horariosPorDiaHora.set(claveDiaHoraCreado, currentCount + 1);
+              
+              const horasSlot = horaFinSlot - horaSlot;
+              horasAsignadasDocente.set(docente.id_docente, horasYaAsignadas + horasSlot);
               
               console.log(`    ✅ Horario creado: Día ${disponibilidad.dia_semana} ${disponibilidad.hora_inicio}-${disponibilidad.hora_fin} (Ambiente: ${ambienteSeleccionado.codigo})`);
               totalHorariosCreados++;
