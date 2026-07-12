@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import {
@@ -58,6 +58,13 @@ import {
 } from "@/components/ui/alert-dialog";
 import { Pagination } from "@/components/ui/pagination";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
+
+interface Facultad {
+  id: string;
+  nombre: string;
+  codigo: string;
+}
 
 interface Ambiente {
   id_ambiente: number;
@@ -67,11 +74,14 @@ interface Ambiente {
   capacidad: number;
   piso: string;
   pabellon: string;
+  facultadId?: string;
+  facultad?: Facultad;
 }
 
 export function AmbienteList() {
   const context = usePeriodo();
   const periodoSeleccionado = context?.periodoSeleccionado;
+  const { departamentoSeleccionado, facultadSeleccionada } = useDepartment();
   const [ambientes, setAmbientes] = useState<Ambiente[]>([]);
   const [loading, setLoading] = useState(true);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
@@ -82,6 +92,7 @@ export function AmbienteList() {
   const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
   const [errorMessage, setErrorMessage] = useState("");
   const [generatingReport, setGeneratingReport] = useState<number | null>(null);
+  const [facultades, setFacultades] = useState<Facultad[]>([]);
 
   // Estados de Filtros
   const [filtroTipo, setFiltroTipo] = useState<string>("todos");
@@ -122,15 +133,43 @@ export function AmbienteList() {
     piso: "",
     pabellon: "",
     equipamiento: "",
+    facultadId: "",
   });
+
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch("/api/facultades");
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setFacultades(data);
+      }
+    } catch (error: any) {
+      console.error("Error al cargar facultades:", error);
+    }
+  };
+
+  useEffect(() => {
+    fetchFacultades();
+  }, []);
 
   useEffect(() => {
     fetchAmbientes();
-  }, []);
+  }, [departamentoSeleccionado, facultadSeleccionada]);
 
   const fetchAmbientes = async () => {
     try {
-      const res = await fetch("/api/ambientes");
+      let url = "/api/ambientes";
+      const params = new URLSearchParams();
+      if (facultadSeleccionada) {
+        params.set('facultadId', facultadSeleccionada.id);
+      }
+      if (departamentoSeleccionado) {
+        params.set('departamentoId', departamentoSeleccionado.id);
+      }
+      if (params.toString()) {
+        url = `${url}?${params.toString()}`;
+      }
+      const res = await fetch(url);
       const contentType = res.headers.get("content-type");
 
       if (!res.ok) {
@@ -215,6 +254,7 @@ export function AmbienteList() {
       piso: ambiente.piso || "",
       pabellon: ambiente.pabellon || "",
       equipamiento: "",
+      facultadId: ambiente.facultadId || "",
     });
     setIsDialogOpen(true);
   };
@@ -263,29 +303,30 @@ export function AmbienteList() {
       piso: "",
       pabellon: "",
       equipamiento: "",
+      facultadId: "",
     });
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-              <MapPin className="h-4 w-4 text-primary" />
+    <div className="page-shell">
+      <div className="page-header-card">
+        <div className="page-header-top">
+          <div className="page-header-brand">
+            <div className="page-icon-box">
+              <MapPin className="page-icon" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Ambientes Académicos</h2>
-              <p className="text-muted-foreground text-[10px] mt-1">Gestión de aulas, laboratorios y espacios físicos</p>
+              <h2 className="page-title">Ambientes Académicos</h2>
+              <p className="page-subtitle">Gestión de aulas, laboratorios y espacios físicos</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:min-w-[280px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="page-toolbar">
+            <div className="page-search-wrap">
+              <Search className="page-search-icon" />
               <Input
                 placeholder="Buscar ambiente..."
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                className="page-search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -295,7 +336,7 @@ export function AmbienteList() {
                 onClick={() => handleGenerateConsolidatedReport('pdf')}
                 disabled={generatingReport === 999}
                 variant="outline"
-                className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs transition-all"
+                className="page-btn"
               >
                 {generatingReport === 999 ? (
                   <Download className="mr-2 h-3.5 w-3.5 animate-bounce" />
@@ -313,67 +354,87 @@ export function AmbienteList() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs shadow-lg shadow-primary/20 transition-all active:scale-95">
+                <Button className="page-btn bg-primary text-primary-foreground hover:bg-primary/90 shadow-lg shadow-primary/20 transition-all active:scale-95">
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Ambiente
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-[500px] rounded-2xl border-none shadow-2xl p-0 overflow-hidden bg-card text-foreground">
-                <DialogHeader className="bg-primary p-6 text-primary-foreground">
-                  <DialogTitle className="text-xl font-bold flex items-center gap-2">
-                    {editingAmbiente ? <Edit className="h-5 w-5" /> : <Plus className="h-5 w-5" />}
-                    {editingAmbiente ? "Editar Ambiente" : "Nuevo Ambiente"}
-                  </DialogTitle>
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
+                  <div className="flex items-center gap-3">
+                    <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                      {editingAmbiente ? <Edit className="h-4 w-4 text-primary" /> : <Plus className="h-4 w-4 text-primary" />}
+                    </div>
+                    <div>
+                      <DialogTitle className="text-base font-bold text-foreground">{editingAmbiente ? "Editar Ambiente" : "Nuevo Ambiente"}</DialogTitle>
+                      <p className="text-xs text-muted-foreground mt-0.5">{editingAmbiente ? "Modificar datos del ambiente" : "Registrar un nuevo ambiente"}</p>
+                    </div>
+                  </div>
                 </DialogHeader>
 
-                <form onSubmit={handleSubmit} className="p-6 space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
-                      <Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="A101" required />
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Código</Label>
+                      <Input value={formData.codigo} onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} className="page-modal-input" placeholder="A101" required />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
-                      <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="Aula Magna" required />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Nombre</Label>
+                      <Input value={formData.nombre} onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} className="page-modal-input" placeholder="Aula Magna" required />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Tipo</Label>
                       <Select value={formData.tipo} onValueChange={(v) => setFormData({ ...formData, tipo: v })}>
-                        <SelectTrigger className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs">
+                        <SelectTrigger className="page-modal-input">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent className="rounded-xl border-border">
-                          <SelectItem value="aula" className="font-bold text-xs">Aula Común</SelectItem>
-                          <SelectItem value="laboratorio" className="font-bold text-xs">Laboratorio</SelectItem>
-                          <SelectItem value="taller" className="font-bold text-xs">Taller</SelectItem>
-                          <SelectItem value="auditorio" className="font-bold text-xs">Auditorio</SelectItem>
+                          <SelectItem value="aula" className="font-bold">Aula Común</SelectItem>
+                          <SelectItem value="laboratorio" className="font-bold">Laboratorio</SelectItem>
+                          <SelectItem value="taller" className="font-bold">Taller</SelectItem>
+                          <SelectItem value="auditorio" className="font-bold">Auditorio</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad</Label>
-                      <Input type="number" value={formData.capacidad} onChange={(e) => setFormData({ ...formData, capacidad: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Capacidad</Label>
+                      <Input type="number" value={formData.capacidad} onChange={(e) => setFormData({ ...formData, capacidad: e.target.value })} className="page-modal-input" />
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Pabellón</Label>
-                      <Input value={formData.pabellon} onChange={(e) => setFormData({ ...formData, pabellon: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="Pabellón A" />
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Facultad / Sede</Label>
+                    <Select value={formData.facultadId} onValueChange={(v) => setFormData({ ...formData, facultadId: v })}>
+                      <SelectTrigger className="page-modal-input">
+                        <SelectValue placeholder="Seleccione facultad" />
+                      </SelectTrigger>
+                      <SelectContent className="rounded-xl border-border">
+                        {facultades.map((f) => (
+                          <SelectItem key={f.id} value={f.id} className="font-bold">{f.codigo} - {f.nombre}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Pabellón</Label>
+                      <Input value={formData.pabellon} onChange={(e) => setFormData({ ...formData, pabellon: e.target.value })} className="page-modal-input" placeholder="Pabellón A" />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[10px] font-black uppercase tracking-widest text-muted-foreground ml-1">Piso</Label>
-                      <Input value={formData.piso} onChange={(e) => setFormData({ ...formData, piso: e.target.value })} className="h-10 rounded-xl bg-muted/50 border-border font-bold text-xs" placeholder="1er Piso" />
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Piso</Label>
+                      <Input value={formData.piso} onChange={(e) => setFormData({ ...formData, piso: e.target.value })} className="page-modal-input" placeholder="1er Piso" />
                     </div>
                   </div>
 
-                  <div className="flex justify-end gap-3 pt-4">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-11 rounded-xl font-bold text-xs px-6">Cancelar</Button>
-                    <Button type="submit" className="h-11 rounded-xl bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-xs px-8 shadow-lg shadow-primary/20 transition-all">
-                      {editingAmbiente ? "Actualizar" : "Crear"}
-                    </Button>
+                  <div className="page-modal-footer border-t border-border pt-4">
+                    <div className="page-actions-row justify-end gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                      <Button type="submit" className="page-modal-btn-submit">
+                        {editingAmbiente ? "Actualizar" : "Crear"}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </DialogContent>
@@ -382,94 +443,98 @@ export function AmbienteList() {
         </div>
 
         {/* Barra de Filtros */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 pt-2 border-t border-border/50">
+        <div className="page-filters">
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Ambiente</Label>
+            <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo de Ambiente</Label>
             <Select value={filtroTipo} onValueChange={setFiltroTipo}>
-              <SelectTrigger className="h-8 text-[10px] font-bold rounded-lg bg-muted/30 border-border">
+              <SelectTrigger className="page-filter-select rounded-lg bg-muted/30 border-border">
                 <SelectValue placeholder="Todos" />
               </SelectTrigger>
               <SelectContent className="rounded-xl border-border">
-                <SelectItem value="todos" className="text-[10px] font-bold">Todos los tipos</SelectItem>
-                <SelectItem value="aula" className="text-[10px] font-bold">Aula Común</SelectItem>
-                <SelectItem value="laboratorio" className="text-[10px] font-bold">Laboratorio</SelectItem>
-                <SelectItem value="taller" className="text-[10px] font-bold">Taller</SelectItem>
-                <SelectItem value="auditorio" className="text-[10px] font-bold">Auditorio</SelectItem>
+                <SelectItem value="todos" className="font-bold">Todos los tipos</SelectItem>
+                <SelectItem value="aula" className="font-bold">Aula Común</SelectItem>
+                <SelectItem value="laboratorio" className="font-bold">Laboratorio</SelectItem>
+                <SelectItem value="taller" className="font-bold">Taller</SelectItem>
+                <SelectItem value="auditorio" className="font-bold">Auditorio</SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Mínima</Label>
+            <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Mínima</Label>
             <Input
               type="number"
               value={capacidadMin}
               onChange={(e) => setCapacidadMin(e.target.value)}
-              className="h-8 rounded-lg bg-muted/30 border-border font-bold text-[10px]"
+              className="rounded-lg bg-muted/30 border-border font-bold"
               placeholder="0"
             />
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Máxima</Label>
+            <Label className="font-black uppercase tracking-widest text-muted-foreground ml-1">Capacidad Máxima</Label>
             <Input
               type="number"
               value={capacidadMax}
               onChange={(e) => setCapacidadMax(e.target.value)}
-              className="h-8 rounded-lg bg-muted/30 border-border font-bold text-[10px]"
+              className="rounded-lg bg-muted/30 border-border font-bold"
               placeholder="50"
             />
           </div>
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="page-table-card">
         <div className="overflow-x-auto">
-          <Table className="min-w-[900px] w-full">
+          <Table className="w-full">
             <TableHeader className="bg-muted/50">
               <TableRow className="border-b border-border hover:bg-transparent">
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Ambiente</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Ubicación</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Tipo</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Cap.</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-24">Cód.</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Ambiente</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Facultad</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Ubicación</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-32">Tipo</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-24">Cap.</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={6} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={7} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((ambiente) => (
                   <TableRow key={ambiente.id_ambiente} className="group hover:bg-muted/50 transition-colors">
                     <TableCell className="px-4 py-2">
-                      <span className="font-mono text-[9px] font-bold text-muted-foreground">{ambiente.codigo}</span>
+                      <span className="font-mono text-xs font-bold text-muted-foreground">{ambiente.codigo}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-2">
                         <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary">
                           {ambiente.tipo === 'laboratorio' ? <Monitor className="h-3 w-3" /> : <DoorOpen className="h-3 w-3" />}
                         </div>
-                        <span className="font-semibold text-foreground text-[11px]">{ambiente.nombre}</span>
+                        <span className="font-semibold text-foreground text-sm">{ambiente.nombre}</span>
                       </div>
+                    </TableCell>
+                    <TableCell className="px-4 py-2">
+                      <span className="text-xs font-medium text-muted-foreground">{ambiente.facultad?.codigo || '-'}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-1.5 text-muted-foreground">
                         <Building2 className="h-3 w-3 opacity-40" />
-                        <span className="text-[10px] font-medium">{ambiente.pabellon} - {ambiente.piso}</span>
+                        <span className="text-xs font-medium">{ambiente.pabellon} - {ambiente.piso}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-[8px] font-bold uppercase tracking-widest border border-border">
+                      <span className="px-1.5 py-0.5 rounded-md bg-muted text-muted-foreground text-xs font-bold uppercase tracking-widest border border-border">
                         {ambiente.tipo}
                       </span>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
                       <div className="flex items-center justify-center gap-1.5">
                         <Users className="h-3 w-3 text-muted-foreground/40" />
-                        <span className="text-[10px] font-bold text-foreground">{ambiente.capacidad}</span>
+                        <span className="text-xs font-bold text-foreground">{ambiente.capacidad}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2">
@@ -498,7 +563,7 @@ export function AmbienteList() {
       </div>
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <AlertDialogTitle className="text-xl font-bold">¿Está completamente seguro?</AlertDialogTitle>
             <AlertDialogDescription className="text-muted-foreground font-medium">
@@ -506,7 +571,7 @@ export function AmbienteList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3 mt-6">
-            <AlertDialogCancel className="h-11 rounded-xl font-bold border-border hover:bg-muted text-foreground">Cancelar</AlertDialogCancel>
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-11 rounded-xl bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold shadow-lg shadow-destructive/20 transition-all">
               Confirmar Eliminación
             </AlertDialogAction>
@@ -515,7 +580,7 @@ export function AmbienteList() {
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-[24px] border-none shadow-2xl p-8 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <div className="flex items-center gap-3 text-destructive mb-2">
               <AlertCircle className="h-6 w-6" />
@@ -526,7 +591,7 @@ export function AmbienteList() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-6">
-            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="h-11 rounded-xl bg-muted text-foreground hover:bg-muted/80 font-bold px-8 transition-all">
+            <AlertDialogAction onClick={() => setIsErrorDialogOpen(false)} className="page-modal-alert-btn">
               Entendido
             </AlertDialogAction>
           </AlertDialogFooter>

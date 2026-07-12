@@ -1,0 +1,1295 @@
+﻿"use client";
+
+import { useState, useEffect } from "react";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
+import { Switch } from "@/components/ui/switch";
+import { Badge } from "@/components/ui/badge";
+import { toast } from "sonner";
+import {
+  Plus,
+  Edit,
+  Trash2,
+  Search,
+  BookOpen,
+  AlertCircle,
+  GraduationCap,
+  ChevronLeft,
+  ChevronRight,
+  FileDown
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { SearchableSelect } from "@/components/ui/searchable-select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import { useSession } from "next-auth/react";
+import { useDepartment } from "@/contexts/DepartmentContext";
+
+// Define types based on the API response
+interface Prerequisito {
+  id_prerequisito_curso: number;
+  prerequisito: {
+    id_curso: number;
+    codigo: string;
+    nombre: string;
+  };
+}
+
+interface Curso {
+  id_curso: number;
+  codigo: string;
+  nombre: string;
+  tipo_curso: string;
+  creditos: number;
+  horas_teoria: number;
+  horas_practica: number;
+  horas_laboratorio: number;
+  maximo_docentes: number;
+  activo: boolean;
+  id_ciclo?: number | null;
+  id_malla?: number | null;
+  departamento_responsable?: string;
+  prerequisitos_rel: Prerequisito[];
+}
+
+interface Ciclo {
+  id_ciclo: number;
+  numero: number;
+  nombre: string;
+  activo: boolean;
+  cursos: Curso[];
+}
+
+interface MallaCurricular {
+  id_malla: number;
+  nombre: string;
+  descripcion?: string;
+  anio: number;
+  activo: boolean;
+  cursos: Curso[];
+}
+
+export function PlanEstudiosClient() {
+  const { data: session } = useSession();
+  const { departamentoSeleccionado, facultadSeleccionada, allDepartamentos } = useDepartment();
+  const [ciclos, setCiclos] = useState<Ciclo[]>([]);
+  const [mallas, setMallas] = useState<MallaCurricular[]>([]);
+  const [selectedMalla, setSelectedMalla] = useState<string>("all");
+  const [loading, setLoading] = useState(true);
+  const [isDialogOpen, setIsDialogOpen] = useState(false);
+  const [isMallaDialogOpen, setIsMallaDialogOpen] = useState(false);
+  const [editingCurso, setEditingCurso] = useState<Curso | null>(null);
+  const [editingMalla, setEditingMalla] = useState<MallaCurricular | null>(null);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isErrorDialogOpen, setIsErrorDialogOpen] = useState(false);
+  const [errorMessage, setErrorMessage] = useState("");
+  const [dependencias, setDependencias] = useState<{ codigo: string; nombre: string }[]>([]);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+  const [allCursos, setAllCursos] = useState<Curso[]>([]);
+  const [selectedPrerequisitos, setSelectedPrerequisitos] = useState<string[]>([]);
+  const [allFacultades, setAllFacultades] = useState<any[]>([]);
+  const [allEscuelas, setAllEscuelas] = useState<any[]>([]);
+
+  // Filters
+  const [searchTerm, setSearchTerm] = useState("");
+  const [filterTipoCurso, setFilterTipoCurso] = useState<string>("all");
+  const [filterCiclo, setFilterCiclo] = useState<string>("all");
+  const [filterHasPrerequisitos, setFilterHasPrerequisitos] = useState(false);
+  const [filterCreditos, setFilterCreditos] = useState<string>("all");
+
+  // Pagination by cycle
+  const [currentCycleIndex, setCurrentCycleIndex] = useState(0);
+
+  const [formData, setFormData] = useState({
+    codigo: "",
+    nombre: "",
+    id_ciclo: "",
+    id_malla: "",
+    tipo_curso: "especializacion",
+    creditos: "0",
+    horas_teoria: "0",
+    horas_practica: "0",
+    horas_laboratorio: "0",
+    maximo_docentes: "1",
+    activo: true,
+    departamento_responsable: "",
+    departamentoId: "",
+  });
+
+  const [mallaFormData, setMallaFormData] = useState({
+    nombre: "",
+    descripcion: "",
+    anio: new Date().getFullYear().toString(),
+    departamentoId: "",
+    facultadId: "",
+    escuelaId: ""
+  });
+
+  useEffect(() => {
+    fetchPlanEstudios();
+    fetchMallas();
+    fetchFacultades();
+    if (facultadSeleccionada?.id) {
+      fetchEscuelas(facultadSeleccionada.id);
+    }
+  }, [departamentoSeleccionado, facultadSeleccionada, selectedMalla]);
+
+  const fetchPlanEstudios = async () => {
+    try {
+      setLoading(true);
+      console.log('[PlanEstudiosClient] Fetching plan de estudios...');
+      
+      if (!departamentoSeleccionado) {
+        console.log('[PlanEstudiosClient] No departamento selected, clearing data');
+        setCiclos([]);
+        setAllCursos([]);
+        setLoading(false);
+        return;
+      }
+      
+      let url = '/api/plan-estudios';
+      const params = new URLSearchParams();
+      params.set('departamentoId', departamentoSeleccionado.id);
+      if (selectedMalla && selectedMalla !== "all") {
+        params.set('mallaId', selectedMalla);
+      }
+      if (params.toString()) {
+        url += `?${params.toString()}`;
+      }
+      
+      const res = await fetch(url);
+      console.log('[PlanEstudiosClient] Response status:', res.status);
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        console.error('[PlanEstudiosClient] Failed to parse response as JSON:', parseErr);
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      if (!res.ok) {
+        console.error('[PlanEstudiosClient] Error response:', data);
+        throw new Error(data?.error || 'Error al cargar plan de estudios');
+      }
+
+      console.log('[PlanEstudiosClient] Data received:', data);
+      setCiclos(Array.isArray(data) ? data : []);
+
+      // Collect all courses for prerequisitos selector
+      const courses: Curso[] = [];
+      (Array.isArray(data) ? data : []).forEach((ciclo: Ciclo) => {
+        (ciclo.cursos || []).forEach((curso: Curso) => courses.push(curso));
+      });
+      setAllCursos(courses);
+    } catch (error: any) {
+      console.error('[PlanEstudiosClient] Error al cargar plan de estudios:', error);
+      toast.error(error.message || 'Error al cargar plan de estudios');
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const fetchMallas = async () => {
+    try {
+      console.log('[PlanEstudiosClient] Fetching mallas curriculares...');
+      
+      if (!departamentoSeleccionado) {
+        console.log('[PlanEstudiosClient] No departamento selected, clearing mallas');
+        setMallas([]);
+        setSelectedMalla("all");
+        setFormData(prev => ({ ...prev, id_malla: "" }));
+        return;
+      }
+      
+      let url = '/api/mallas-curriculares';
+      url += `?departamentoId=${departamentoSeleccionado.id}`;
+      const res = await fetch(url);
+      console.log('[PlanEstudiosClient] Response status:', res.status);
+      
+      let data;
+      try {
+        data = await res.json();
+      } catch (parseErr) {
+        console.error('[PlanEstudiosClient] Failed to parse mallas response as JSON:', parseErr);
+        throw new Error('Respuesta inválida del servidor');
+      }
+
+      if (!res.ok) {
+        console.error('[PlanEstudiosClient] Error response from mallas:', data);
+        throw new Error(data?.error || 'Error al cargar mallas curriculares');
+      }
+
+      console.log('[PlanEstudiosClient] Mallas data received:', data);
+      const mallasData = Array.isArray(data) ? data : [];
+      setMallas(mallasData);
+      // Set first malla as selected if available
+      if (mallasData.length > 0) {
+        setSelectedMalla(mallasData[0].id_malla.toString());
+        setFormData(prev => ({ ...prev, id_malla: mallasData[0].id_malla.toString() }));
+      } else {
+        setSelectedMalla("all");
+        setFormData(prev => ({ ...prev, id_malla: "" }));
+      }
+    } catch (error: any) {
+      console.error('[PlanEstudiosClient] Error al cargar mallas curriculares:', error);
+      toast.error(error.message || 'Error al cargar mallas curriculares');
+    }
+  };
+
+  const fetchFacultades = async () => {
+    try {
+      const res = await fetch('/api/facultades');
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAllFacultades(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar facultades:', err);
+    }
+  };
+
+  const fetchEscuelas = async (facultadId?: string) => {
+    try {
+      let url = '/api/escuelas';
+      if (facultadId) {
+        url += `?facultadId=${facultadId}`;
+      }
+      const res = await fetch(url);
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        setAllEscuelas(data);
+      }
+    } catch (err) {
+      console.error('Error al cargar escuelas:', err);
+    }
+  };
+
+  const getTipoBadge = (tipo: string) => {
+    switch (tipo) {
+      case "especializacion":
+        return <Badge variant="secondary" className="text-[11px] font-semibold px-1.5 py-0">S</Badge>;
+      case "obligatorio":
+        return <Badge className="text-[11px] font-semibold px-1.5 py-0 bg-primary/10 text-primary hover:bg-primary/15">OB</Badge>;
+      case "opcional":
+        return <Badge variant="outline" className="text-[11px] font-semibold px-1.5 py-0">OP</Badge>;
+      case "electivo":
+        return <Badge variant="secondary" className="text-[11px] font-semibold px-1.5 py-0">EL</Badge>;
+      default:
+        return <Badge variant="outline" className="text-[11px] px-1.5 py-0">{tipo}</Badge>;
+    }
+  };
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const method = editingCurso ? "PUT" : "POST";
+    const url = editingCurso
+      ? `/api/plan-estudios/cursos/${editingCurso.id_curso}`
+      : "/api/plan-estudios/cursos";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          ...formData,
+          prerequisitos: selectedPrerequisitos,
+        }),
+      });
+
+      if (res.ok) {
+        toast.success(editingCurso ? "Curso actualizado" : "Curso creado");
+        setIsDialogOpen(false);
+        setEditingCurso(null);
+        resetForm();
+        fetchPlanEstudios();
+      } else {
+        toast.error("Error al guardar curso");
+      }
+    } catch (error) {
+      toast.error("Error de conexión");
+    }
+  };
+
+  const handleDelete = async (id: number) => {
+    try {
+      const res = await fetch(`/api/plan-estudios/cursos/${id}`, { method: "DELETE" });
+      const data = await res.json();
+
+      if (res.ok) {
+        toast.success("Curso eliminado");
+        fetchPlanEstudios();
+      } else if (res.status === 409) {
+        setDependencias(data.dependencias || []);
+        setIsErrorDialogOpen(true);
+      } else {
+        setErrorMessage(data.error || "Error al eliminar curso");
+        setIsErrorDialogOpen(true);
+      }
+    } catch (error) {
+      toast.error("Error de conexión");
+    } finally {
+      setIsDeleteDialogOpen(false);
+      setDeletingId(null);
+    }
+  };
+
+  const handleEdit = (curso: any) => {
+    setEditingCurso(curso);
+    const mallaId = curso.id_malla?.toString() || (mallas.length > 0 ? mallas[0].id_malla.toString() : "");
+    setFormData({
+      codigo: curso.codigo,
+      nombre: curso.nombre,
+      id_ciclo: curso.id_ciclo?.toString() || "",
+      id_malla: curso.id_malla?.toString() || "",
+      tipo_curso: curso.tipo_curso,
+      creditos: curso.creditos.toString(),
+      horas_teoria: curso.horas_teoria.toString(),
+      horas_practica: curso.horas_practica.toString(),
+      horas_laboratorio: curso.horas_laboratorio.toString(),
+      maximo_docentes: curso.maximo_docentes.toString(),
+      activo: curso.activo,
+      departamento_responsable: curso.departamento_responsable || "",
+      departamentoId: curso.departamentoId || "",
+    });
+    // Set selected prerequisitos from existing course
+    setSelectedPrerequisitos(
+      curso.prerequisitos_rel.map((p: any) => p.prerequisito.codigo)
+    );
+    setIsDialogOpen(true);
+  };
+
+  const handleMallaSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const method = editingMalla ? "PUT" : "POST";
+    const url = editingMalla
+      ? `/api/mallas-curriculares/${editingMalla.id_malla}`
+      : "/api/mallas-curriculares";
+
+    try {
+      const res = await fetch(url, {
+        method,
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mallaFormData),
+      });
+
+      if (res.ok) {
+        const newMalla = await res.json();
+        toast.success(editingMalla ? "Malla curricular actualizada" : "Malla curricular creada");
+        setIsMallaDialogOpen(false);
+        setEditingMalla(null);
+        resetMallaForm();
+        // Refresh mallas and select the new one
+        await fetchMallas();
+        if (!editingMalla) {
+          setSelectedMalla(newMalla.id_malla.toString());
+        }
+      } else {
+        toast.error("Error al guardar malla curricular");
+      }
+    } catch (error) {
+      toast.error("Error de conexión");
+    }
+  };
+
+  const handleEditMalla = (malla: MallaCurricular) => {
+    setEditingMalla(malla);
+    setMallaFormData({
+      nombre: malla.nombre,
+      descripcion: malla.descripcion || "",
+      anio: malla.anio.toString(),
+      departamentoId: (malla as any).departamentoId || departamentoSeleccionado?.id || "",
+      facultadId: (malla as any).facultadId || "",
+      escuelaId: (malla as any).escuelaId || ""
+    });
+    setIsMallaDialogOpen(true);
+  };
+
+  const resetForm = () => {
+    setFormData({
+      codigo: "",
+      nombre: "",
+      id_ciclo: "",
+      id_malla: "",
+      tipo_curso: "especializacion",
+      creditos: "0",
+      horas_teoria: "0",
+      horas_practica: "0",
+      horas_laboratorio: "0",
+      maximo_docentes: "1",
+      activo: true,
+      departamento_responsable: "",
+      departamentoId: "",
+    });
+    setSelectedPrerequisitos([]);
+    setEditingCurso(null);
+  };
+
+  const resetMallaForm = () => {
+    setMallaFormData({
+      nombre: "",
+      descripcion: "",
+      anio: new Date().getFullYear().toString(),
+      departamentoId: departamentoSeleccionado?.id || "",
+      facultadId: facultadSeleccionada?.id || "",
+      escuelaId: ""
+    });
+    setEditingMalla(null);
+  };
+
+  const isAdminOrSecretaria =
+    session?.user?.rol === "administrador_sistema" ||
+    session?.user?.rol === "operador_horarios";
+
+  // Filter courses for current cycle
+  const filteredCiclos = ciclos.map((ciclo) => {
+    let filteredCursos = ciclo.cursos;
+
+    // Filter by malla
+    if (selectedMalla !== "all") {
+      filteredCursos = filteredCursos.filter((c) => c.id_malla?.toString() === selectedMalla);
+    }
+
+    // Filter by search term (name or code)
+    if (searchTerm) {
+      filteredCursos = filteredCursos.filter((c) =>
+        `${c.nombre} ${c.codigo}`.toLowerCase().includes(searchTerm.toLowerCase())
+      );
+    }
+
+    // Filter by course type
+    if (filterTipoCurso !== "all") {
+      filteredCursos = filteredCursos.filter((c) => c.tipo_curso === filterTipoCurso);
+    }
+
+    // Filter by cycle (if filterCiclo is set, only show that cycle)
+    if (filterCiclo !== "all") {
+      if (ciclo.id_ciclo.toString() !== filterCiclo) {
+        return { ...ciclo, cursos: [] };
+      }
+    }
+
+    // Filter by has prerequisites
+    if (filterHasPrerequisitos) {
+      filteredCursos = filteredCursos.filter((c) => c.prerequisitos_rel.length > 0);
+    }
+
+    // Filter by credits
+    if (filterCreditos !== "all") {
+      const creditos = parseInt(filterCreditos);
+      filteredCursos = filteredCursos.filter((c) => c.creditos === creditos);
+    }
+
+    return { ...ciclo, cursos: filteredCursos };
+  });
+
+  // Get non-empty cycles after filtering for pagination
+  const nonEmptyCiclos = filteredCiclos.filter((c) => 
+    c.cursos.length > 0 || 
+    searchTerm || 
+    filterTipoCurso !== "all" || 
+    filterCiclo !== "all" || 
+    filterHasPrerequisitos || 
+    filterCreditos !== "all"
+  );
+  const currentCiclo = nonEmptyCiclos[currentCycleIndex];
+
+  return (
+    <div className="page-shell">
+      <div className="page-header-card">
+        <div className="page-header-top">
+          <div className="page-header-brand">
+            <div className="page-icon-box">
+              <GraduationCap className="page-icon" />
+            </div>
+            <div className="min-w-0">
+              <h2 className="page-title">Plan de Estudios</h2>
+              <p className="page-subtitle">Malla curricular y prerequisitos</p>
+            </div>
+          </div>
+
+          <div className="page-toolbar gap-2 sm:gap-3">
+            <Button
+              onClick={() => {
+                const url = new URL('/api/reportes/pdf', window.location.origin);
+                url.searchParams.set('tipo', 'plan-estudios');
+                if (selectedMalla !== 'all') {
+                  url.searchParams.set('id_malla', selectedMalla);
+                }
+                window.open(url.toString(), '_blank');
+              }}
+              variant="outline"
+              className="page-btn border-primary/20 text-primary hover:bg-primary/5"
+            >
+              <FileDown className="mr-1.5 h-3.5 w-3.5" />
+              Descargar PDF
+            </Button>
+            {isAdminOrSecretaria && (
+              <>
+                {selectedMalla !== "all" && mallas.length > 0 && (
+                  <div className="flex items-center gap-1.5 px-2.5 bg-muted/50 rounded-lg border border-border min-w-0 h-8 sm:h-9">
+                    <span className="text-xs sm:text-sm font-bold text-foreground truncate">
+                      {mallas.find(m => m.id_malla.toString() === selectedMalla)?.nombre}
+                    </span>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="size-6 shrink-0 hover:bg-muted"
+                      onClick={() => {
+                        const malla = mallas.find(m => m.id_malla.toString() === selectedMalla);
+                        if (malla) handleEditMalla(malla);
+                      }}
+                    >
+                      <Edit className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                )}
+
+                <Dialog open={isMallaDialogOpen} onOpenChange={(open) => { setIsMallaDialogOpen(open); if (!open) { setEditingMalla(null); resetMallaForm(); } }}>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" className="page-btn">
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Nueva Malla
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="page-modal">
+                    <DialogHeader className="page-modal-header">
+                      <DialogTitle className="text-base font-bold">
+                        {editingMalla ? "Editar Malla Curricular" : "Nueva Malla Curricular"}
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    <form onSubmit={handleMallaSubmit} className="page-modal-body space-y-4">
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
+                        <Input
+                          value={mallaFormData.nombre}
+                          onChange={(e) => setMallaFormData({ ...mallaFormData, nombre: e.target.value })}
+                          placeholder="Ej: Plan de Estudios 2024"
+                          required
+                        />
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Año</Label>
+                          <Input 
+                            type="number" 
+                            value={mallaFormData.anio} 
+                            onChange={(e) => setMallaFormData({ ...mallaFormData, anio: e.target.value })} 
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Facultad</Label>
+                          <Select
+                            value={mallaFormData.facultadId}
+                            onValueChange={(v) => {
+                              setMallaFormData({ ...mallaFormData, facultadId: v, escuelaId: "" });
+                              fetchEscuelas(v);
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar facultad" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allFacultades.map((f: any) => (
+                                <SelectItem key={f.id} value={f.id}>
+                                  {f.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Escuela Profesional</Label>
+                          <Select
+                            value={mallaFormData.escuelaId}
+                            onValueChange={(v) => setMallaFormData({ ...mallaFormData, escuelaId: v })}
+                            disabled={!mallaFormData.facultadId}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar escuela" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allEscuelas.map((e: any) => (
+                                <SelectItem key={e.id} value={e.id}>
+                                  {e.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
+                          <Select
+                            value={mallaFormData.departamentoId}
+                            onValueChange={(v) => setMallaFormData({ ...mallaFormData, departamentoId: v })}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar departamento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allDepartamentos.map((d: any) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  {d.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Descripción (opcional)</Label>
+                        <Input
+                          value={mallaFormData.descripcion}
+                          onChange={(e) => setMallaFormData({ ...mallaFormData, descripcion: e.target.value })}
+                          placeholder="Descripción opcional"
+                        />
+                      </div>
+
+                      <div className="page-actions-row justify-end pt-3 border-t">
+                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                        <Button type="submit" className="page-modal-btn-submit">
+                          {editingMalla ? "Actualizar" : "Crear"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+
+                <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
+                  <DialogTrigger asChild>
+                    <Button className="page-btn bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Nuevo Curso
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="page-modal-lg">
+                    <DialogHeader className="page-modal-header">
+                      <DialogTitle className="text-base font-bold">
+                        {editingCurso ? "Editar Curso" : "Nuevo Curso"}
+                      </DialogTitle>
+                    </DialogHeader>
+
+                    <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Código</Label>
+                          <Input
+                            value={formData.codigo}
+                            onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
+                            placeholder="1939"
+                            required
+                          />
+                        </div>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
+                          <Input
+                            value={formData.nombre}
+                            onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
+                            placeholder="Introducción a la Ingeniería de Sistemas"
+                            required
+                          />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
+                          <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ciclos.map((c) => (
+                                <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
+                                  {c.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
+                          <Select value={formData.id_malla} onValueChange={(v) => setFormData({ ...formData, id_malla: v })}>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar malla" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {mallas.map((m) => (
+                                <SelectItem key={m.id_malla} value={m.id_malla.toString()}>
+                                  {m.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tipo de Curso</Label>
+                          <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="especializacion">Especialización (S)</SelectItem>
+                              <SelectItem value="obligatorio">Obligatorio (OB)</SelectItem>
+                              <SelectItem value="opcional">Opcional (OP)</SelectItem>
+                              <SelectItem value="electivo">Electivo (EL)</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
+                          <Input 
+                            type="number" 
+                            min="1" 
+                            max="4" 
+                            value={formData.creditos} 
+                            onChange={(e) => {
+                              const val = e.target.value;
+                              if (val === "" || (parseInt(val) >= 1 && parseInt(val) <= 4)) {
+                                setFormData({ ...formData, creditos: val });
+                              }
+                            }} 
+                          />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">T</Label>
+                          <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">P</Label>
+                          <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} />
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">L</Label>
+                          <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} />
+                        </div>
+                      </div>
+
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Máx. Docentes</Label>
+                          <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} />
+                        </div>
+                        <div className="space-y-1 flex items-center">
+                          <div className="flex items-center gap-2">
+                            <Switch
+                              id="activo"
+                              checked={formData.activo}
+                              onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
+                            />
+                            <Label htmlFor="activo" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground cursor-pointer">Activo</Label>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
+                          <Select 
+                            value={formData.departamentoId} 
+                            onValueChange={(v) => {
+                              const selectedDepto = allDepartamentos.find(d => d.id === v);
+                              setFormData({ 
+                                ...formData, 
+                                departamentoId: v,
+                                departamento_responsable: selectedDepto?.nombre || ""
+                              });
+                            }}
+                          >
+                            <SelectTrigger>
+                              <SelectValue placeholder="Seleccionar departamento" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {allDepartamentos.map((d: any) => (
+                                <SelectItem key={d.id} value={d.id}>
+                                  {d.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Depto. Responsable (Texto)</Label>
+                          <Input
+                            value={formData.departamento_responsable}
+                            onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
+                            placeholder="Ingeniería de Sistemas"
+                          />
+                        </div>
+                      </div>
+
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Prerequisitos</Label>
+                        <div className="space-y-1.5">
+                          <SearchableSelect
+                            options={allCursos
+                              .filter((c) => {
+                                // Filter by selected malla
+                                const matchesMalla = formData.id_malla 
+                                  ? c.id_malla?.toString() === formData.id_malla 
+                                  : true;
+                                // Don't show current course if editing
+                                const notCurrentCourse = !editingCurso || c.id_curso !== editingCurso.id_curso;
+                                // Don't show already selected prerequisitos
+                                const notAlreadySelected = !selectedPrerequisitos.includes(c.codigo);
+                                return matchesMalla && notCurrentCourse && notAlreadySelected;
+                              })
+                              .map((c) => ({
+                                value: c.codigo,
+                                label: `[${c.codigo}] ${c.nombre}`
+                              }))}
+                            value=""
+                            onValueChange={(value) => {
+                              if (value) {
+                                setSelectedPrerequisitos([...selectedPrerequisitos, value]);
+                              }
+                            }}
+                            placeholder="Buscar y seleccionar prerequisitos..."
+                            emptyMessage="No hay cursos disponibles para esta malla curricular"
+                          />
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
+                            {selectedPrerequisitos.map((codigo) => {
+                              const curso = allCursos.find((c) => c.codigo === codigo);
+                              return (
+                                <Badge key={codigo} variant="secondary" className="text-[11px] px-1.5 py-0.5 flex items-center gap-1">
+                                  {curso?.nombre || codigo}
+                                  <button
+                                    type="button"
+                                    onClick={() => setSelectedPrerequisitos(selectedPrerequisitos.filter((c) => c !== codigo))}
+                                    className="hover:text-red-500 leading-none"
+                                  >
+                                    ×
+                                  </button>
+                                </Badge>
+                              );
+                            })}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="page-actions-row justify-end pt-3 border-t">
+                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                        <Button type="submit" className="page-modal-btn-submit">
+                          {editingCurso ? "Actualizar" : "Crear"}
+                        </Button>
+                      </div>
+                    </form>
+                  </DialogContent>
+                </Dialog>
+              </>
+            )}
+          </div>
+        </div>
+
+        <div className="page-filters">
+          <div className="page-filter-wide space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
+            <Select value={selectedMalla} onValueChange={setSelectedMalla}>
+              <SelectTrigger className="page-filter-select">
+                <SelectValue placeholder="Malla Curricular" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas las mallas</SelectItem>
+                {mallas.map((m) => (
+                  <SelectItem key={m.id_malla} value={m.id_malla.toString()}>
+                    {m.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Buscar</Label>
+            <div className="page-search-wrap">
+              <Search className="page-search-icon" />
+              <Input
+                placeholder="Buscar curso..."
+                className="page-search"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
+            <Select value={filterCiclo} onValueChange={setFilterCiclo}>
+              <SelectTrigger className="page-filter-select">
+                <SelectValue placeholder="Ciclo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los ciclos</SelectItem>
+                {ciclos.map((c) => (
+                  <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
+                    {c.nombre}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tipo</Label>
+            <Select value={filterTipoCurso} onValueChange={setFilterTipoCurso}>
+              <SelectTrigger className="page-filter-select">
+                <SelectValue placeholder="Tipo" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos los tipos</SelectItem>
+                <SelectItem value="especializacion">Especialización</SelectItem>
+                <SelectItem value="obligatorio">Obligatorio</SelectItem>
+                <SelectItem value="opcional">Opcional</SelectItem>
+                <SelectItem value="electivo">Electivo</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
+            <Select value={filterCreditos} onValueChange={setFilterCreditos}>
+              <SelectTrigger className="page-filter-select">
+                <SelectValue placeholder="Créditos" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos</SelectItem>
+                <SelectItem value="1">1</SelectItem>
+                <SelectItem value="2">2</SelectItem>
+                <SelectItem value="3">3</SelectItem>
+                <SelectItem value="4">4</SelectItem>
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="self-end space-y-1.5">
+            <Label htmlFor="hasPrerequisitos" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
+              Con prerequisitos
+            </Label>
+            <div className="flex items-center min-h-[2rem]">
+              <Switch
+                id="hasPrerequisitos"
+                checked={filterHasPrerequisitos}
+                onCheckedChange={setFilterHasPrerequisitos}
+              />
+            </div>
+          </div>
+        </div>
+      </div>
+
+      {loading ? (
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        </div>
+      ) : (
+        <>
+          {/* Pagination controls for cycles - only show if no specific cycle selected and no search term */}
+          {filterCiclo === "all" && !searchTerm && nonEmptyCiclos.length > 0 && (
+            <div className="page-table-card">
+              <div className="flex items-center justify-between px-4 py-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentCycleIndex((prev) => Math.max(0, prev - 1))}
+                  disabled={currentCycleIndex === 0}
+                  className="text-xs h-7 px-2"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <div className="min-w-0 text-center">
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
+                      {currentCiclo?.nombre || "Sin resultados"}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      {currentCiclo ? `${currentCiclo.cursos.length} cursos` : "—"}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentCycleIndex((prev) => Math.min(nonEmptyCiclos.length - 1, prev + 1))}
+                  disabled={currentCycleIndex === nonEmptyCiclos.length - 1}
+                  className="text-xs h-7 px-2"
+                >
+                  Siguiente
+                  <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                </Button>
+              </div>
+            </div>
+          )}
+
+          {/* Show all matching courses when searching or specific cycle selected, otherwise show current cycle */}
+          {(() => {
+            let displayCursos: Curso[] = [];
+            let displayTitle = "";
+            let displayCiclo: Ciclo | undefined;
+
+            if (searchTerm) {
+              // Search across all courses
+              filteredCiclos.forEach(ciclo => {
+                displayCursos = [...displayCursos, ...ciclo.cursos];
+              });
+              displayTitle = `Resultados de búsqueda (${displayCursos.length} cursos)`;
+            } else if (filterCiclo !== "all") {
+              const ciclo = filteredCiclos.find(c => c.id_ciclo.toString() === filterCiclo);
+              displayCursos = ciclo?.cursos || [];
+              displayTitle = ciclo?.nombre || "";
+              displayCiclo = ciclo;
+            } else {
+              displayCursos = currentCiclo?.cursos || [];
+              displayTitle = currentCiclo?.nombre || "";
+              displayCiclo = currentCiclo;
+            }
+
+            // Calculate total credits for the cycle
+            let totalCreditos = 0;
+            let electivosContados = 0;
+            displayCursos.forEach(curso => {
+              let creditosCalculados = curso.creditos;
+              if (curso.tipo_curso === 'electivo' && electivosContados < 1) {
+                creditosCalculados = 1;
+                electivosContados++;
+              } else if (curso.tipo_curso === 'electivo') {
+                creditosCalculados = 0;
+              }
+              totalCreditos += creditosCalculados;
+            });
+
+            // Use actual calculated total, no forced values
+            let totalFinal = totalCreditos;
+
+            if (displayCursos.length === 0 && !searchTerm && filterCiclo === "all") {
+              return null;
+            }
+
+            return (
+              <div className="page-table-card">
+                {displayTitle && (
+                  <div className="bg-muted/50 px-3 py-1.5 border-b border-border">
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
+                      <BookOpen className="h-3.5 w-3.5 text-primary" />
+                      {displayTitle}
+                    </h3>
+                  </div>
+                )}
+                <Table className="w-full" style={{ tableLayout: 'fixed' }}>
+                    <colgroup>
+                      <col style={{ width: '32%' }} />
+                      <col style={{ width: '6%' }} />
+                      <col style={{ width: '7%' }} />
+                      <col style={{ width: '16%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '14%' }} />
+                      {isAdminOrSecretaria && <col style={{ width: '10%' }} />}
+                    </colgroup>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow className="border-b border-border hover:bg-transparent">
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Créd.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Tipo</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Prereq.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">T</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">P</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">L</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Depto.</TableHead>
+                        {isAdminOrSecretaria && (
+                          <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+                        )}
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody className="divide-y divide-border">
+                      {displayCursos.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="py-8 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                            No hay cursos para mostrar
+                          </TableCell>
+                        </TableRow>
+                      ) : (
+                        displayCursos.map((curso) => (
+                          <TableRow key={curso.id_curso} className="group hover:bg-muted/50 transition-colors">
+                            <TableCell className="page-table-td">
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-foreground leading-tight truncate">{curso.nombre}</span>
+                                <span className="font-mono text-[11px] text-muted-foreground">{curso.codigo}</span>
+                              </div>
+                            </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.creditos}</span>
+                            </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              {getTipoBadge(curso.tipo_curso)}
+                            </TableCell>
+                            <TableCell className="page-table-td hidden lg:table-cell">
+                              <div className="flex flex-wrap gap-1">
+                                {curso.prerequisitos_rel.length === 0 ? (
+                                  <span className="text-[11px] text-muted-foreground italic">Ninguno</span>
+                                ) : (
+                                  curso.prerequisitos_rel.map((p) => (
+                                    <Badge key={p.id_prerequisito_curso} variant="secondary" className="text-[11px] px-1.5 py-0">
+                                      {p.prerequisito.codigo}
+                                    </Badge>
+                                  ))
+                                )}
+                              </div>
+                            </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.horas_teoria}</span>
+                            </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.horas_practica}</span>
+                            </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.horas_laboratorio}</span>
+                            </TableCell>
+                            <TableCell className="page-table-td hidden lg:table-cell">
+                              <span className="text-[11px] font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
+                            </TableCell>
+                            {isAdminOrSecretaria && (
+                              <TableCell className="page-table-td text-right">
+                                <div className="flex items-center justify-end gap-1">
+                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar"
+                                    className="h-7 w-7 rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-all"
+                                  >
+                                    <Edit className="h-3.5 w-3.5" />
+                                  </Button>
+                                  <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar"
+                                    className="h-7 w-7 rounded-lg hover:bg-red-500/10 hover:text-red-600 transition-all"
+                                  >
+                                    <Trash2 className="h-3.5 w-3.5" />
+                                  </Button>
+                                </div>
+                              </TableCell>
+                            )}
+                          </TableRow>
+                        ))
+                      )}
+                      {displayCursos.length > 0 && (
+                        <TableRow className="bg-muted/30 font-bold">
+                          <TableCell colSpan={isAdminOrSecretaria ? 8 : 7} className="page-table-td text-right text-[10px] uppercase tracking-widest text-muted-foreground">
+                            Total créditos del ciclo:
+                          </TableCell>
+                          <TableCell className="page-table-td text-center font-black text-primary">
+                            {totalFinal}
+                          </TableCell>
+                          {isAdminOrSecretaria && <TableCell className="page-table-td"></TableCell>}
+                        </TableRow>
+                      )}
+                    </TableBody>
+                  </Table>
+              </div>
+            );
+          })()}
+
+          {/* If no cycles with courses */}
+          {nonEmptyCiclos.length === 0 && (
+            <div className="page-table-card p-6 text-center">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
+                No hay cursos con los filtros seleccionados
+              </p>
+            </div>
+          )}
+        </>
+      )}
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent className="page-modal-alert">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-base font-bold">¿Está completamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-xs">
+              Esta acción no se puede deshacer. Se eliminará permanentemente el curso y sus relaciones de prerequisitos.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="page-modal-alert-btn bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Confirmar eliminación
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
+        <AlertDialogContent className="page-modal-alert">
+          <AlertDialogHeader>
+            {dependencias.length > 0 ? (
+              <>
+                <div className="flex items-center gap-2 text-destructive mb-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <AlertDialogTitle className="text-base font-bold">No se puede eliminar este curso</AlertDialogTitle>
+                </div>
+                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-3 rounded-lg border border-destructive/10 text-xs">
+                  Este curso es prerequisito de los siguientes cursos:
+                  <ul className="mt-2 list-disc list-inside">
+                    {dependencias.map((dep, idx) => (
+                      <li key={idx} className="font-bold text-xs">
+                        [{dep.codigo}] {dep.nombre}
+                      </li>
+                    ))}
+                  </ul>
+                </AlertDialogDescription>
+              </>
+            ) : (
+              <>
+                <div className="flex items-center gap-2 text-destructive mb-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <AlertDialogTitle className="text-base font-bold">Error al eliminar</AlertDialogTitle>
+                </div>
+                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-3 rounded-lg border border-destructive/10 text-xs">
+                  {errorMessage}
+                </AlertDialogDescription>
+              </>
+            )}
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { setIsErrorDialogOpen(false); setDependencias([]); }} className="bg-muted text-foreground hover:bg-muted/80 text-xs">
+              Entendido
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </div>
+  );
+}

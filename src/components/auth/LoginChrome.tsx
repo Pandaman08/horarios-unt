@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageSelector } from "@/components/layout/LanguageSelector";

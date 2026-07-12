@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -13,6 +13,7 @@ interface Docente {
   apellidos: string;
   modalidad: string;
   categoria: string;
+  categoriaDocente?: string;
 }
 
 interface Props {
@@ -47,7 +48,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
     <div className="h-full bg-card rounded-2xl border border-border shadow-sm flex flex-col overflow-hidden">
       <div className="p-4 border-b border-border flex items-center justify-between bg-muted/20">
         <h4 className="text-xs font-black text-foreground uppercase tracking-wider">Cola de Espera</h4>
-        <span className="text-[10px] bg-muted text-muted-foreground px-2.5 py-0.5 rounded-full font-bold">
+        <span className="text-xs bg-muted text-muted-foreground px-2.5 py-0.5 rounded-full font-bold">
           {cola.length} en espera
         </span>
       </div>
@@ -56,14 +57,14 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
         {loading ? (
           <div className="p-8 text-center">
             <div className="animate-spin h-5 w-5 border-2 border-primary border-t-transparent rounded-full mx-auto"></div>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mt-4">Cargando cola...</p>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mt-4">Cargando cola...</p>
           </div>
         ) : cola.length === 0 ? (
           <div className="p-12 text-center space-y-4">
             <div className="h-12 w-12 bg-muted rounded-2xl flex items-center justify-center mx-auto shadow-inner">
               <Clock className="h-6 w-6 text-muted-foreground/50" />
             </div>
-            <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">No hay docentes en espera actualmente.</p>
+            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest leading-relaxed">No hay docentes en espera actualmente.</p>
           </div>
         ) : (
           cola.map((docente, index) => {
@@ -88,10 +89,10 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                       {docente.nombres} {docente.apellidos}
                     </h4>
                     <div className="flex items-center gap-1.5 mt-1.5">
-                      <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter font-mono">{docente.codigo_docente}</span>
+                      <span className="text-xs font-bold text-muted-foreground uppercase tracking-tighter font-mono">{docente.codigo_docente}</span>
                       <span className="w-0.5 h-0.5 rounded-full bg-border" />
-                      <span className="text-[9px] font-bold text-primary uppercase tracking-tighter bg-primary/10 px-1.5 py-0.5 rounded">
-                        {docente.categoria.replace("_", " ")}
+                      <span className="text-xs font-bold text-primary uppercase tracking-tighter bg-primary/10 px-1.5 py-0.5 rounded">
+                        {docente.categoriaDocente?.replace("_", " ")}
                       </span>
                     </div>
                   </div>
@@ -99,7 +100,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                 
                 <div className="ml-3 shrink-0">
                   {esActual ? (
-                    <span className="inline-flex items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 px-2 py-0.5 rounded-lg text-[9px] font-bold uppercase tracking-widest border border-emerald-500/20 animate-pulse">
+                    <span className="inline-flex items-center bg-emerald-500/10 text-emerald-600 dark:text-emerald-500 px-2 py-0.5 rounded-lg text-xs font-bold uppercase tracking-widest border border-emerald-500/20 animate-pulse">
                       Atendiendo
                     </span>
                   ) : (
@@ -107,7 +108,7 @@ export function ColaEspera({ id_periodo, onLlamarDocente, docenteActualId }: Pro
                       size="sm" 
                       variant="ghost" 
                       onClick={() => onLlamarDocente(docente)}
-                      className="text-primary hover:text-primary hover:bg-card h-8 px-3 text-[10px] font-bold uppercase tracking-widest rounded-lg border border-transparent hover:border-primary/20 transition-all opacity-100"
+                      className="text-primary hover:text-primary hover:bg-card h-8 px-3 text-xs font-bold uppercase tracking-widest rounded-lg border border-transparent hover:border-primary/20 transition-all opacity-100"
                     >
                       Llamar
                     </Button>

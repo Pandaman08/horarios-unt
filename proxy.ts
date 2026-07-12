@@ -5,6 +5,7 @@ import type { NextRequest } from "next/server";
 
 // Mapa de roles permitidos por ruta
 const rolePermissions: Record<string, string[]> = {
+  "/dashboard/aprobacion-carga-horaria": ["administrador_sistema", "operador_horarios"],
   "/dashboard/horarios/seleccion": ["docente"],
   "/dashboard/horarios/asignacion": ["operador_horarios", "administrador_sistema"],
   "/dashboard/docentes": ["administrador_sistema", "operador_horarios"],

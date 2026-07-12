@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+﻿import { prisma } from '@/lib/prisma';
 import { addMinutes } from 'date-fns';
 
 export class GestorSeleccionTemporal {

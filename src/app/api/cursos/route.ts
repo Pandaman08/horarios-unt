@@ -1,12 +1,47 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    const { searchParams } = new URL(request.url);
+    const departamentoId = searchParams.get('departamentoId');
+    const facultadId = searchParams.get('facultadId');
+
+    const where: any = { activo: true };
+    if (departamentoId) {
+      const depto = await prisma.departamentoAcademico.findUnique({
+        where: { id: departamentoId },
+        select: { id: true, nombre: true, facultadId: true },
+      });
+      if (depto) {
+        where.OR = [
+          { departamentoId },
+          {
+            departamento_responsable: {
+              contains: depto.nombre,
+              mode: 'insensitive',
+            },
+          },
+          { escuela: { facultadId: depto.facultadId } },
+          { departamento: { facultadId: depto.facultadId } },
+        ];
+      } else {
+        where.departamentoId = departamentoId;
+      }
+    } else if (facultadId) {
+      where.OR = [
+        { departamento: { facultadId } },
+        { escuela: { facultadId } },
+      ];
+    }
+
     const cursos = await prisma.curso.findMany({
-      where: { activo: true },
+      where,
       include: {
         ciclo_rel: true,
+        malla_rel: true,
+        escuela: true,
+        departamento: true,
         docente_cursos: {
           where: { activo: true }
         },
@@ -34,9 +69,13 @@ export async function POST(request: Request) {
         maximo_docentes: parseInt(data.maximo_docentes) || 1,
         creditos: parseInt(data.creditos) || 0,
         id_ciclo: data.id_ciclo ? parseInt(data.id_ciclo) : null,
+        id_malla: data.id_malla ? parseInt(data.id_malla) : null,
         tipo_curso: data.tipo_curso || "linea_carrera",
         plan_estudios: data.plan_estudios,
         prerequisitos: data.prerequisitos,
+        departamento_responsable: data.departamento_responsable,
+        escuelaId: data.escuelaId || null,
+        departamentoId: data.departamentoId || null,
         activo: true
       }
     });

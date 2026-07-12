@@ -1,15 +1,17 @@
-"use client";
+﻿"use client";
 
 import { Suspense, useState, useEffect, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
 import Link from "next/link";
-import { usePathname, useSearchParams } from "next/navigation";
+import { usePathname } from "next/navigation";
 import { cn } from "@/lib/utils";
 import { useLocale } from "@/contexts/LocaleContext";
+import { usePeriodo } from "@/contexts/PeriodoContext";
 import { ThemeToggle } from "@/components/layout/ThemeToggle";
 import { LanguageSelector } from "@/components/layout/LanguageSelector";
-import { FontSizeAdjuster } from "@/components/layout/FontSizeAdjuster";
+
 import { PeriodoSelector } from "@/components/layout/PeriodoSelector";
+import { DepartmentSelector } from "@/components/layout/DepartmentSelector";
 import {
   LayoutDashboard,
   Users,
@@ -29,6 +31,10 @@ import {
   Info,
   Briefcase,
   CheckCircle2,
+  GraduationCap,
+  Building2,
+  Database,
+  UserPlus,
 } from "lucide-react";
 
 function DashboardLayoutInner({
@@ -37,13 +43,50 @@ function DashboardLayoutInner({
   children: React.ReactNode;
 }) {
   const { data: session } = useSession();
+  const { periodoSeleccionado, periodoActivo } = usePeriodo();
   const pathname = usePathname();
-  const searchParams = useSearchParams();
   const { t } = useLocale();
   const [isSidebarOpen, setIsSidebarOpen] = useState(false);
   const [userDropdownOpen, setUserDropdownOpen] = useState(false);
   const [gestionAcademicaOpen, setGestionAcademicaOpen] = useState(true);
   const [searchQuery, setSearchQuery] = useState("");
+  const [mostrarSeleccionLectiva, setMostrarSeleccionLectiva] = useState(false);
+
+  useEffect(() => {
+    const verificarLectivaDeclarada = async () => {
+      if (session?.user?.rol !== "docente" || !session?.user?.id_docente) {
+        setMostrarSeleccionLectiva(false);
+        return;
+      }
+      const periodoId =
+        periodoSeleccionado?.id_periodo ?? periodoActivo?.id_periodo;
+      if (!periodoId) {
+        setMostrarSeleccionLectiva(false);
+        return;
+      }
+      try {
+        const res = await fetch(
+          `/api/declaracion-horaria?idDocente=${session.user.id_docente}&idPeriodo=${periodoId}`,
+        );
+        if (!res.ok) {
+          setMostrarSeleccionLectiva(false);
+          return;
+        }
+        const data = await res.json();
+        const estadosConLectiva = [
+          "LECTIVA_CONFIRMADA",
+          "ENVIADO",
+          "VALIDADO_DEPARTAMENTO",
+          "APROBADO",
+          "RECHAZADO",
+        ];
+        setMostrarSeleccionLectiva(estadosConLectiva.includes(data?.estado));
+      } catch {
+        setMostrarSeleccionLectiva(false);
+      }
+    };
+    void verificarLectivaDeclarada();
+  }, [session?.user?.rol, session?.user?.id_docente, periodoSeleccionado, periodoActivo]);
 
   const menuItems = useMemo(
     () => [
@@ -55,6 +98,8 @@ function DashboardLayoutInner({
           "administrador_sistema",
           "docente",
           "operador_horarios",
+          "director_departamento",
+          "decano"
         ],
       },
 
@@ -63,43 +108,88 @@ function DashboardLayoutInner({
         title: t("navAcademic"),
         roles: [
           "administrador_sistema",
+          "operador_horarios",
+          "director_departamento",
+          "decano"
         ],
         items: [
           {
+            title: "Plan de Estudios",
+            href: "/dashboard/plan-estudios",
+            icon: GraduationCap,
+            roles: ["administrador_sistema", "operador_horarios"],
+          },
+          {
             title: t("navTeachers"),
-            href: "/dashboard/catalogos?tab=docentes",
+            href: "/dashboard/docentes",
+            icon: Users,
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
+          },
+          {
+            title: t("navCourses"),
+            href: "/dashboard/cursos",
+            icon: BookOpen,
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
+          },
+          {
+            title: t("navRooms"),
+            href: "/dashboard/ambientes",
+            icon: MapPin,
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
+          },
+          {
+            title: t("navCycles"),
+            href: "/dashboard/ciclos",
+            icon: Layers,
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
+          },
+          {
+            title: t("navPeriods"),
+            href: "/dashboard/periodos",
+            icon: Calendar,
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
+          },
+          {
+            title: "Grupos",
+            href: "/dashboard/grupos",
+            icon: Layers,
+            roles: ["administrador_sistema", "operador_horarios", "director_departamento", "decano"],
+          },
+          {
+            title: "Facultades",
+            href: "/dashboard/facultades",
+            icon: Building2,
+            roles: ["administrador_sistema"],
+          },
+          {
+            title: "Departamentos Académicos",
+            href: "/dashboard/departamentos",
             icon: Users,
             roles: ["administrador_sistema"],
           },
           {
-            title: t("navCourses"),
-            href: "/dashboard/catalogos?tab=cursos",
-            icon: BookOpen,
+            title: "Escuelas Profesionales",
+            href: "/dashboard/escuelas",
+            icon: GraduationCap,
             roles: ["administrador_sistema"],
           },
           {
-            title: t("navRooms"),
-            href: "/dashboard/catalogos?tab=ambientes",
-            icon: MapPin,
+            title: "Personal de Apoyo",
+            href: "/dashboard/personal-apoyo",
+            icon: UserPlus,
             roles: ["administrador_sistema"],
           },
           {
-            title: t("navCycles"),
-            href: "/dashboard/catalogos?tab=ciclos",
-            icon: Layers,
-            roles: ["administrador_sistema"],
-          },
-          {
-            title: t("navPeriods"),
-            href: "/dashboard/catalogos?tab=periodos",
-            icon: Calendar,
+            title: "Cargos Académicos",
+            href: "/dashboard/cargos-academicos-administrativos",
+            icon: Briefcase,
             roles: ["administrador_sistema"],
           },
         ],
       },
       {
         title: t("navWindows"),
-        href: "/dashboard/catalogos?tab=ventanas",
+        href: "/dashboard/ventanas",
         icon: ClipboardList,
         roles: [
           "administrador_sistema",
@@ -114,11 +204,13 @@ function DashboardLayoutInner({
           "administrador_sistema",
           "operador_horarios",
           "docente",
+          "director_departamento",
+          "decano"
         ],
       },
       {
-        title: "Asignación Carga Lectiva",
-        href: "/dashboard/carga-lectiva-asignacion",
+        title: "Asignar Cursos",
+        href: "/dashboard/asignar-cursos",
         icon: Briefcase,
         roles: ["administrador_sistema", "operador_horarios"],
       },
@@ -126,19 +218,56 @@ function DashboardLayoutInner({
         title: "Aprobación Carga Horaria",
         href: "/dashboard/aprobacion-carga-horaria",
         icon: CheckCircle2,
-        roles: ["administrador_sistema"],
+        roles: ["administrador_sistema", "operador_horarios"],
+      },
+      {
+        title: "Asignar Carga Lectiva",
+        href: "/dashboard/secretaria/asignar-carga-lectiva",
+        icon: Calendar,
+        roles: ["administrador_sistema", "operador_horarios", "secretaria"],
+      },
+      {
+        title: "Validación Departamento",
+        href: "/dashboard/validacion-departamento",
+        icon: CheckCircle2,
+        roles: ["director_departamento"],
+      },
+      {
+        title: "Consolidación Facultad",
+        href: "/dashboard/consolidacion-facultad",
+        icon: CheckCircle2,
+        roles: ["decano"],
       },
       {
         title: "Carga Horaria",
         href: "/dashboard/carga-horaria",
         icon: Briefcase,
-        roles: ["docente"],
+        roles: ["docente", "director_departamento", "decano"],
+      },
+      {
+        title: "Carga Adicional",
+        href: "/dashboard/carga-adicional",
+        icon: Briefcase,
+        roles: ["docente", "director_departamento", "decano"],
+      },
+      {
+        title: "CLAD Departamento",
+        href: "/dashboard/clad-departamento",
+        icon: CheckCircle2,
+        roles: ["director_departamento"],
       },
       {
         title: t("navSchedules"),
-        href: "/dashboard/horarios/seleccion",
+        href: "/dashboard/horarios/mi-horario",
         icon: Calendar,
+        roles: ["docente", "director_departamento", "decano"],
+      },
+      {
+        title: "Selección Horarios Lectivos",
+        href: "/dashboard/horarios/seleccion",
+        icon: ClipboardList,
         roles: ["docente"],
+        requiresLectivaDeclarada: true,
       },
       {
         title: t("navReports"),
@@ -157,6 +286,8 @@ function DashboardLayoutInner({
           "administrador_sistema",
           "operador_horarios",
           "docente",
+          "director_departamento",
+          "decano"
         ],
       },
       {
@@ -170,6 +301,12 @@ function DashboardLayoutInner({
             icon: ShieldCheck,
             roles: ["administrador_sistema"],
           },
+          {
+            title: "Simulaciones",
+            href: "/dashboard/simulaciones",
+            icon: Database,
+            roles: ["administrador_sistema"],
+          },
         ],
       },
     ],
@@ -179,7 +316,17 @@ function DashboardLayoutInner({
   const userRol = session?.user?.rol;
 
   const filteredMenu = menuItems
-    .filter((item) => !item.roles || (userRol && item.roles.includes(userRol)))
+    .filter((item) => {
+      if (item.roles && (!userRol || !item.roles.includes(userRol))) return false;
+      if (
+        "requiresLectivaDeclarada" in item &&
+        item.requiresLectivaDeclarada &&
+        !mostrarSeleccionLectiva
+      ) {
+        return false;
+      }
+      return true;
+    })
     .map((item) => {
       if (!("isGroup" in item) || !item.items) return item;
       const items = item.items.filter(
@@ -210,13 +357,7 @@ function DashboardLayoutInner({
 
   const displayMenu = searchQuery.trim() ? filteredBySearch : filteredMenu;
 
-  const isLinkActive = (href: string) => {
-    const [path, query] = href.split("?");
-    if (pathname !== path) return false;
-    if (!query) return true;
-    const tab = new URLSearchParams(query).get("tab");
-    return tab ? (searchParams && searchParams.get("tab") === tab) : true;
-  };
+  const isLinkActive = (href: string) => pathname === href;
 
   const initials =
     session?.user?.name
@@ -235,8 +376,8 @@ function DashboardLayoutInner({
       {/* Sidebar */}
       <aside
         className={cn(
-          "fixed inset-y-0 left-0 z-40 w-[220px] bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-200 ease-out",
-          isSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
+          "fixed inset-y-0 left-0 z-40 w-56 lg:w-60 bg-sidebar text-sidebar-foreground flex flex-col transition-transform duration-200 ease-out shadow-lg",
+          isSidebarOpen ? "translate-x-0" : "-translate-x-full lg:translate-x-0"
         )}
       >
         {/* Perfil */}
@@ -249,7 +390,7 @@ function DashboardLayoutInner({
               <p className="text-sm font-semibold truncate">
                 @{session?.user?.email?.split("@")[0] || "usuario"}
               </p>
-              <p className="text-[11px] text-sidebar-foreground/60 truncate capitalize">
+              <p className="text-sm text-sidebar-foreground/60 truncate capitalize">
                 {userRol?.replace(/_/g, " ") || t("role")}
               </p>
             </div>
@@ -274,7 +415,7 @@ function DashboardLayoutInner({
                     onClick={() =>
                       isGestion && setGestionAcademicaOpen(!gestionAcademicaOpen)
                     }
-                    className="w-full flex items-center justify-between px-3 py-1.5 text-[10px] font-semibold text-sidebar-foreground/45 uppercase tracking-wider hover:text-sidebar-foreground/70"
+                    className="w-full flex items-center justify-between px-3 py-1.5 text-xs font-semibold text-sidebar-foreground/45 uppercase tracking-wider hover:text-sidebar-foreground/70"
                   >
                     <span>{item.title}</span>
                     {isGestion && (
@@ -289,7 +430,7 @@ function DashboardLayoutInner({
                   {isOpen &&
                     item.items?.map((sub) => {
                       const isActive = isLinkActive(sub.href);
-                      const SubIcon = sub.icon;
+                      const SubIcon = sub.icon as React.ComponentType<{ className?: string }>;
                       return (
                         <Link
                           key={sub.title}
@@ -311,7 +452,7 @@ function DashboardLayoutInner({
             }
 
             const isActive = item.href ? isLinkActive(item.href) : false;
-            const ItemIcon = item.icon;
+            const ItemIcon = item.icon as React.ComponentType<{ className?: string }>;
             return (
               <Link
                 key={item.title}
@@ -331,7 +472,7 @@ function DashboardLayoutInner({
         </nav>
 
         <div className="px-4 py-3 border-t border-sidebar-border">
-          <div className="flex items-center gap-2 text-[11px] text-sidebar-foreground/50">
+          <div className="flex items-center gap-2 text-sm text-sidebar-foreground/50">
             <span className="h-1.5 w-1.5 rounded-full bg-emerald-400" />
             <span>{t("online")}</span>
           </div>
@@ -343,17 +484,17 @@ function DashboardLayoutInner({
           type="button"
           aria-label="Cerrar menú"
           onClick={() => setIsSidebarOpen(false)}
-          className="fixed inset-0 z-30 bg-black/50 md:hidden"
+          className="fixed inset-0 z-30 bg-black/50 lg:hidden"
         />
       )}
 
       {/* Main */}
-      <div className="flex-1 flex flex-col min-h-screen md:pl-[220px]">
-        <header className="h-12 bg-card border-b border-border flex items-center gap-3 px-4 sticky top-0 z-20">
+      <div className="flex-1 flex flex-col h-screen min-w-0 overflow-hidden lg:pl-56 xl:pl-60">
+        <header className="min-h-12 bg-card border-b border-border flex items-center gap-2 px-3 sm:px-4 sticky top-0 z-20 flex-wrap">
           <button
             type="button"
             onClick={() => setIsSidebarOpen(true)}
-            className="p-1.5 text-muted-foreground hover:text-foreground md:hidden"
+            className="p-1.5 text-muted-foreground hover:text-foreground lg:hidden"
           >
             <Menu className="h-4 w-4" />
           </button>
@@ -366,13 +507,13 @@ function DashboardLayoutInner({
               <p className="text-sm font-semibold leading-none truncate">
                 {t("appName")}
               </p>
-              <p className="text-[10px] text-muted-foreground truncate">
+              <p className="text-xs text-muted-foreground truncate">
                 {t("appSubtitle")}
               </p>
             </div>
           </div>
 
-          <div className="flex-1 max-w-md mx-auto hidden sm:block">
+          <div className="hidden sm:block flex-1 min-w-0 max-w-md mx-2">
             <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground pointer-events-none" />
               <input
@@ -395,13 +536,13 @@ function DashboardLayoutInner({
           </div>
 
           {userRol !== 'docente' && (
-            <div className="hidden md:block">
+            <div className="hidden xl:flex items-center gap-2">
+              <DepartmentSelector />
               <PeriodoSelector />
             </div>
           )}
 
-          <div className="flex items-center gap-1.5 shrink-0 ml-auto">
-            <FontSizeAdjuster />
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
             <ThemeToggle />
             <LanguageSelector />
             <Link
@@ -418,7 +559,7 @@ function DashboardLayoutInner({
                 onClick={() => setUserDropdownOpen(!userDropdownOpen)}
                 className="flex items-center gap-2 h-8 pl-1 pr-2 rounded-lg hover:bg-muted transition-colors"
               >
-                <div className="h-6 w-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-[10px] font-bold uppercase">
+                <div className="h-6 w-6 rounded-md bg-primary text-primary-foreground flex items-center justify-center text-xs font-bold uppercase">
                   {initials}
                 </div>
                 <ChevronDown
@@ -442,7 +583,7 @@ function DashboardLayoutInner({
                       <p className="font-semibold truncate">
                         {session?.user?.name}
                       </p>
-                      <p className="text-[10px] text-muted-foreground capitalize">
+                      <p className="text-xs text-muted-foreground capitalize">
                         {userRol?.replace(/_/g, " ")}
                       </p>
                     </div>
@@ -465,8 +606,8 @@ function DashboardLayoutInner({
 
 
 
-        <main className="flex-1 p-4 overflow-x-hidden overflow-y-auto">
-          <div className="w-full max-w-full">{children}</div>
+        <main className="flex-1 p-3 sm:p-4 lg:p-5 xl:p-6 min-w-0 min-h-0 overflow-x-hidden overflow-y-auto overscroll-contain">
+          <div className="w-full max-w-full mx-auto">{children}</div>
         </main>
       </div>
     </div>

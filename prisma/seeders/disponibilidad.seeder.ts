@@ -1,6 +1,32 @@
 // prisma/seeders/disponibilidad.seeder.ts
 import { PrismaClient } from '@prisma/client';
 
+const HORAS_POR_REGIMEN: Record<string, number> = {
+  DE: 40, TC: 40, TP1: 20, TP2: 10, TP3: 8,
+};
+
+const HORAS_POR_CONTRATO: Record<string, number> = {
+  A1: 32, A2: 16, A3: 8, B1: 32, B2: 16, B3: 8,
+};
+
+function getHorasMaximasSemanales(docente: {
+  condicion?: string | null;
+  regimenDedicacion?: string | null;
+  tipoContrato?: string | null;
+  horas_maximas_semanales?: number | null;
+}): number {
+  if (docente.condicion === 'CONTRATADO' && docente.tipoContrato) {
+    return HORAS_POR_CONTRATO[docente.tipoContrato] ?? 0;
+  }
+  if (docente.regimenDedicacion) {
+    return HORAS_POR_REGIMEN[docente.regimenDedicacion] ?? 0;
+  }
+  if (docente.horas_maximas_semanales && docente.horas_maximas_semanales > 0) {
+    return docente.horas_maximas_semanales;
+  }
+  return 40;
+}
+
 export async function seedDisponibilidad(prisma: PrismaClient) {
   console.log('🌱 Sembrando Disponibilidad de Docentes...');
 
@@ -8,108 +34,64 @@ export async function seedDisponibilidad(prisma: PrismaClient) {
   const docentes = await prisma.docente.findMany();
   const periodos = await prisma.periodoAcademico.findMany();
 
-  // Rango de horas (07:00 a 21:00, bloques de 1 hora)
+  // Rango de horas (07:00 a 21:00, bloques de 1 hora, excluyendo receso 12:00)
   const horas = [
     '07:00', '08:00', '09:00', '10:00', '11:00',
-    '12:00', '13:00', '14:00', '15:00', '16:00',
+    '13:00', '14:00', '15:00', '16:00',
     '17:00', '18:00', '19:00', '20:00'
   ];
 
   // Días de la semana (0: Lunes a 5: Sábado)
   const dias = [0, 1, 2, 3, 4, 5];
 
-  // Patrones de disponibilidad para cada docente
-  const patronesDisponibilidad = [
-    // Patrón 1: Mañana (07:00-13:00) - Lunes a Viernes
-    (dia: number, hora: string) => {
-      if (dia >= 0 && dia <= 4) { // Lunes-Viernes
-        const h = parseInt(hora.split(':')[0]);
-        return h >= 7 && h <= 12;
-      }
-      return false;
-    },
-    // Patrón 2: Tarde (13:00-19:00) - Lunes a Viernes
-    (dia: number, hora: string) => {
-      if (dia >= 0 && dia <= 4) { // Lunes-Viernes
-        const h = parseInt(hora.split(':')[0]);
-        return h >= 13 && h <= 18;
-      }
-      return false;
-    },
-    // Patrón 3: Mañana + Tarde (07:00-19:00) - Lunes a Viernes
-    (dia: number, hora: string) => {
-      if (dia >= 0 && dia <= 4) { // Lunes-Viernes
-        const h = parseInt(hora.split(':')[0]);
-        return h >= 7 && h <= 18;
-      }
-      return false;
-    },
-    // Patrón 4: Lunes, Miércoles, Viernes (07:00-12:00)
-    (dia: number, hora: string) => {
-      if (dia === 0 || dia === 2 || dia === 4) {
-        const h = parseInt(hora.split(':')[0]);
-        return h >= 7 && h <= 11;
-      }
-      return false;
-    },
-    // Patrón 5: Martes, Jueves (13:00-18:00)
-    (dia: number, hora: string) => {
-      if (dia === 1 || dia === 3) {
-        const h = parseInt(hora.split(':')[0]);
-        return h >= 13 && h <= 17;
-      }
-      return false;
-    },
-    // Patrón 6: Todo el día (07:00-21:00) - Lunes a Sábado
-    (dia: number, hora: string) => {
-      if (dia >= 0 && dia <= 5) { // Lunes a Sábado
-        const h = parseInt(hora.split(':')[0]);
-        return h >= 7 && h <= 20;
-      }
-      return false;
-    },
-    // Patrón 7: Lunes a Viernes + Sábado por la mañana
-    (dia: number, hora: string) => {
-      const h = parseInt(hora.split(':')[0]);
-      if (dia >= 0 && dia <= 4) { // Lunes-Viernes
-        return h >= 8 && h <= 17;
-      }
-      if (dia === 5) { // Sábado
-        return h >= 8 && h <= 12;
-      }
-      return false;
-    },
-  ];
-
   // Asignar disponibilidad para cada docente en cada período
   for (const periodo of periodos) {
-    for (let i = 0; i < docentes.length; i++) {
-      const docente = docentes[i];
-      
-      // Seleccionar un patrón de disponibilidad (rotando entre los patrones)
-      const patron = patronesDisponibilidad[i % patronesDisponibilidad.length];
+    for (const docente of docentes) {
+      const horasMaximas = getHorasMaximasSemanales({
+        condicion: docente.condicion,
+        regimenDedicacion: docente.regimenDedicacion,
+        tipoContrato: docente.tipoContrato,
+        horas_maximas_semanales: docente.horas_maximas_semanales,
+      });
 
-      // Generar disponibilidad para cada día y hora
+      const slotsDisponibles: Array<{ dia: number; horaInicio: string; horaFin: string }> = [];
+
       for (const dia of dias) {
         for (const horaInicio of horas) {
-          const horaFin = `${String(parseInt(horaInicio.split(':')[0]) + 1).padStart(2, '0')}:00`;
-          
-          const disponible = patron(dia, horaInicio);
-
-          await prisma.disponibilidadDocente.create({
-            data: {
-              id_docente: docente.id_docente,
-              id_periodo: periodo.id_periodo,
-              dia_semana: dia,
-              hora_inicio: horaInicio,
-              hora_fin: horaFin,
-              disponible: disponible,
-            },
-          });
+          const h = parseInt(horaInicio.split(':')[0]);
+          if (h >= 7 && h <= 20 && dia >= 0 && dia <= 5) {
+            const horaFin = `${String(h + 1).padStart(2, '0')}:00`;
+            slotsDisponibles.push({ dia, horaInicio, horaFin });
+          }
         }
       }
 
-      console.log(`✅ Disponibilidad para: ${docente.nombres} ${docente.apellidos} (Periodo: ${periodo.codigo})`);
+      const slotsSeleccionados = slotsDisponibles
+        .sort(() => Math.random() - 0.5)
+        .slice(0, Math.min(horasMaximas || 40, slotsDisponibles.length));
+
+      const setSeleccionado = new Set(slotsSeleccionados.map(s => `${s.dia}-${s.horaInicio}`));
+
+      for (const dia of dias) {
+        for (const horaInicio of horas) {
+          const h = parseInt(horaInicio.split(':')[0]);
+          const horaFin = `${String(h + 1).padStart(2, '0')}:00`;
+          if (h >= 7 && h <= 20 && dia >= 0 && dia <= 5) {
+            await prisma.disponibilidadDocente.create({
+              data: {
+                id_docente: docente.id_docente,
+                id_periodo: periodo.id_periodo,
+                dia_semana: dia,
+                hora_inicio: horaInicio,
+                hora_fin: horaFin,
+                disponible: setSeleccionado.has(`${dia}-${horaInicio}`),
+              },
+            });
+          }
+        }
+      }
+
+      console.log(`✅ Disponibilidad para: ${docente.nombres} ${docente.apellidos} (Periodo: ${periodo.codigo}, Máx: ${horasMaximas}h)`);
     }
   }
 

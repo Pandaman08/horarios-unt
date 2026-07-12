@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -10,11 +10,15 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
 import { usePeriodo } from "@/contexts/PeriodoContext";
+import { useDepartment } from "@/contexts/DepartmentContext";
+import { useLocale } from "@/contexts/LocaleContext";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 export function VisorReportes() {
   const { data: session } = useSession();
   const { periodoSeleccionado, periodos } = usePeriodo();
+  const { departamentoSeleccionado } = useDepartment();
+  const { t } = useLocale();
   const isAdmin = session?.user?.rol === 'administrador_sistema';
   const isOperador = session?.user?.rol === 'operador_horarios';
 
@@ -47,62 +51,88 @@ export function VisorReportes() {
     }
   }, [periodoSeleccionado]);
 
-  const handleDownloadExcel = async () => {
-    if (!id_periodo) {
-      toast.warning("Seleccione un período académico");
+  const handleDownloadExcel = async (tipo: string, id?: string) =>  {
+    if (!id_periodo) return;
+    if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
+      toast.warning(t("selectElement"));
       return;
     }
 
-    setGeneratingExcel(true);
+    type TipoExcel = 'docente' | 'aula' | 'ciclo' | 'reporte_general';
+    const loadingMap: Record<TipoExcel, React.Dispatch<React.SetStateAction<boolean>>> = {
+      docente: setGeneratingDocente,
+      aula: setGeneratingAula,
+      ciclo: setGeneratingCiclo,
+      reporte_general: setGeneratingExcel,
+    };
+    const setLoading = loadingMap[tipo as TipoExcel];
+
+    if (setLoading) setLoading(true);
     try {
-      const response = await fetch(`/api/reportes/excel?id_periodo=${id_periodo}`);
+      let url = `/api/reportes/excel?id_periodo=${id_periodo}`;
+      if (id) {
+        if (tipo === 'docente') url += `&id_docente=${id}`;
+        else if (tipo === 'aula') url += `&id_ambiente=${id}&tipo=ambiente`;
+        else if (tipo === 'ciclo') url += `&id_ciclo=${id}`;
+      }
+      if (departamentoSeleccionado) url += `&departamentoId=${departamentoSeleccionado.id}`;
+      const response = await fetch(url);
       if (!response.ok) throw new Error(`Error ${response.status}`);
+
       const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
+      const urlObj = window.URL.createObjectURL(blob);
       const a = document.createElement('a');
-      a.href = url;
+      a.href = urlObj;
       a.download = `horario_institucional_${periodoSeleccionado?.codigo || 'general'}.xlsx`;
       document.body.appendChild(a);
       a.click();
       a.remove();
-      window.URL.revokeObjectURL(url);
-      toast.success("Excel generado correctamente");
+      window.URL.revokeObjectURL(urlObj);
+      toast.success(`Excel ${t("generatedSuccessfully")}`);
+
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || "Error al generar Excel");
+      toast.error(error.message || `${t("errorGenerating")} Excel`);
     } finally {
-      setGeneratingExcel(false);
+      if (setLoading) setLoading(false);
     }
   };
 
   useEffect(() => {
     fetchData();
-  }, []);
+  }, [departamentoSeleccionado?.id]);
 
   const fetchData = async () => {
     try {
+      let docentesUrl = "/api/docentes";
+      let ambientesUrl = "/api/ambientes";
+      if (departamentoSeleccionado) {
+        docentesUrl += `?departamentoId=${departamentoSeleccionado.id}`;
+        ambientesUrl += `?departamentoId=${departamentoSeleccionado.id}`;
+      }
       const [dRes, aRes, cRes] = await Promise.all([
-        fetch("/api/docentes"),
-        fetch("/api/ambientes"),
+        fetch(docentesUrl),
+        fetch(ambientesUrl),
         fetch("/api/ciclos")
       ]);
       setDocentes(await dRes.json());
       setAmbientes(await aRes.json());
       setCiclos(await cRes.json());
     } catch (error) {
-      toast.error("Error al cargar datos de reportes");
+      toast.error(t("errorLoadingReports"));
     }
   };
 
   const handleDownload = async (tipo: string, id?: string, formato: 'pdf' | 'excel' = 'pdf') => {
     if (!id_periodo) return;
     if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
-      toast.warning("Seleccione un elemento de la lista");
+      toast.warning(t("selectElement"));
       return;
     }
 
     let url = `/api/reportes/pdf?tipo=${tipo}&id_periodo=${id_periodo}`;
     if (id) url += `&id=${id}`;
+    if (departamentoSeleccionado) url += `&departamentoId=${departamentoSeleccionado.id}`;
 
     type TipoReporte =
   | 'docente'
@@ -155,26 +185,26 @@ export function VisorReportes() {
       a.click();
       a.remove();
       window.URL.revokeObjectURL(downloadUrl);
-      toast.success(`${formato.toUpperCase()} generado correctamente`);
+      toast.success(`${formato.toUpperCase()} ${t("generatedSuccessfully")}`);
 
       if (tipo === 'docente') setSelectedDocente("");
       else if (tipo === 'aula') setSelectedAmbiente("");
       else if (tipo === 'ciclo') setSelectedCicloReporte("");
     } catch (error: any) {
       console.error(error);
-      toast.error(error.message || `Error al generar ${formato.toUpperCase()}`);
+      toast.error(error.message || `${t("errorGenerating")} ${formato.toUpperCase()}`);
     } finally {
       if (setLoading) setLoading(false);
     }
   };
 
   const reportes = [
-    { id: 'aula', icon: School, title: 'Horario por Aula', description: 'Consolidado de clases de teoría por ambiente', color: 'indigo' },
-    { id: 'dia', icon: Calendar, title: 'Reporte por Día', description: 'Verificar clases, docentes y aulas por cada día de la semana', color: 'emerald' },
-    { id: 'docente', icon: User, title: 'Horario por Docente', description: 'Planes de dictado por investigador', color: 'amber' },
-    { id: 'ciclo', icon: Layers, title: 'Horario por Ciclo', description: 'Consolidado de clases programadas por ciclo académico', color: 'purple' },
-    { id: 'reporte_general', icon: FileText, title: 'Horario Institucional', description: 'Consolidado oficial en formato horizontal por ciclo', color: 'indigo' },
-    { id: 'gestion', icon: TrendingUp, title: 'Reporte de Gestión', description: 'KPIs globales y horas pendientes por asignar', color: 'slate' },
+    { id: 'aula', icon: School, title: t('reportByRoomTitle'), description: t('reportByRoomDesc'), color: 'indigo' },
+    { id: 'dia', icon: Calendar, title: t('reportByDayTitle'), description: t('reportByDayDesc'), color: 'emerald' },
+    { id: 'docente', icon: User, title: t('reportByTeacherTitle'), description: t('reportByTeacherDesc'), color: 'amber' },
+    { id: 'ciclo', icon: Layers, title: t('reportByCycleTitle'), description: t('reportByCycleDesc'), color: 'purple' },
+    { id: 'reporte_general', icon: FileText, title: t('institutionalReportTitle'), description: t('institutionalReportDesc'), color: 'indigo' },
+    { id: 'gestion', icon: TrendingUp, title: t('managementReportTitle'), description: t('managementReportDesc'), color: 'slate' },
   ];
 
   const currentPeriodoObj = periodos.find(p => p.id_periodo === id_periodo);
@@ -185,19 +215,19 @@ export function VisorReportes() {
       <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
         <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div className="flex-1">
-            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">Centro de Reportes Académicos</h2>
+            <h2 className="text-xl md:text-2xl font-bold text-foreground mb-2">{t("reportsTitle")}</h2>
             <p className="text-muted-foreground text-sm">
-              Configure parámetros de aulas, laboratorios y docentes para exportar consolidados oficiales en formato PDF.
+              {t("reportsSubtitle")}
             </p>
           </div>
           {currentPeriodoObj && (
             <div className="flex flex-col gap-1.5 px-4 py-2 bg-primary/5 rounded-xl border border-primary/20">
-              <span className="text-[10px] font-black uppercase tracking-widest text-primary/70 ml-1">Periodo Global</span>
+              <span className="text-xs font-black uppercase tracking-widest text-primary/70 ml-1">{t("globalPeriod")}</span>
               <p className="text-sm font-bold text-primary">
                 {currentPeriodoObj.codigo}
               </p>
-              <p className="text-[9px] text-muted-foreground italic font-medium">
-                Reportes para {currentPeriodoObj.nombre}
+              <p className="text-xs text-muted-foreground italic font-medium">
+                {t("reportsFor")} {currentPeriodoObj.nombre}
               </p>
             </div>
           )}
@@ -244,7 +274,7 @@ export function VisorReportes() {
               </div>
               <p className="text-xs text-muted-foreground mb-4">{reporte.description}</p>
               <button className="text-sm font-bold text-primary flex items-center gap-1">
-                Configurar →
+                {t("configure")}
               </button>
             </div>
           );
@@ -255,9 +285,9 @@ export function VisorReportes() {
       {selectedReporte && (
         <div className="bg-card p-5 md:p-6 rounded-2xl border border-border shadow-sm">
           <div className="flex items-center justify-between mb-4">
-            <h3 className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
-              <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
-              PARÁMETROS DEL REPORTE
+              <h3 className="text-sm font-bold text-foreground uppercase tracking-widest flex items-center gap-2">
+                <div className="h-1.5 w-1.5 rounded-full bg-muted-foreground" />
+                {t("reportParams")}
             </h3>
             <button onClick={() => setSelectedReporte(null)}>
               <X className="h-5 w-5 text-muted-foreground hover:text-foreground" />
@@ -269,7 +299,7 @@ export function VisorReportes() {
               <div className="flex flex-col sm:flex-row gap-4 items-end">
                 <div className="flex-1">
                   <Label className="text-sm font-semibold text-foreground mb-2 block">
-                    {selectedReporte === 'aula' ? 'Seleccionar Aula de Teoría' : 'Seleccionar Laboratorio'}
+                    {selectedReporte === 'aula' ? t('selectTheoryRoom') : t('selectLab')}
                   </Label>
                   <SearchableSelect
                     options={ambientes.map(a => ({
@@ -278,7 +308,7 @@ export function VisorReportes() {
                     }))}
                     value={selectedAmbiente}
                     onValueChange={setSelectedAmbiente}
-                    placeholder="Buscar aula..."
+                    placeholder={t("searchRoom")}
                   />
                 </div>
               <div className="flex gap-2">
@@ -288,7 +318,16 @@ export function VisorReportes() {
                   disabled={generatingAula}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Descargar PDF
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
+                  onClick={() => handleDownloadExcel('aula', selectedAmbiente)}
+                  disabled={generatingAula}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
                 </Button>
               </div>
               </div>
@@ -296,8 +335,8 @@ export function VisorReportes() {
               <div className="pt-4 border-t border-border/50">
                 <div className="flex items-center justify-between p-4 bg-primary/5 rounded-xl border border-primary/10">
                   <div>
-                    <h4 className="text-sm font-bold text-primary mb-1">Reporte Masivo de Ambientes</h4>
-                    <p className="text-xs text-muted-foreground">Genera un solo PDF con los horarios de todos los ambientes registrados.</p>
+                    <h4 className="text-sm font-bold text-primary mb-1">{t("bulkEnvironmentReport")}</h4>
+                    <p className="text-xs text-muted-foreground">{t("bulkEnvironmentDesc")}</p>
                   </div>
                   <Button
                     variant="outline"
@@ -306,7 +345,7 @@ export function VisorReportes() {
                     disabled={generatingTodasAulas}
                   >
                     {generatingTodasAulas ? <RefreshCw className="h-3.5 w-3.5 mr-2 animate-spin" /> : <Layers className="h-3.5 w-3.5 mr-2" />}
-                    Generar todos los ambientes
+                    {t("generateAllEnvironments")}
                   </Button>
                 </div>
               </div>
@@ -314,19 +353,19 @@ export function VisorReportes() {
           ) : selectedReporte === 'dia' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
-                <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Día de la Semana</Label>
+                <Label className="text-sm font-semibold text-foreground mb-2 block">{t("selectDay")}</Label>
                 <SearchableSelect
-                  options={[
-                    { value: "0", label: "Lunes" },
-                    { value: "1", label: "Martes" },
-                    { value: "2", label: "Miércoles" },
-                    { value: "3", label: "Jueves" },
-                    { value: "4", label: "Viernes" },
-                    { value: "5", label: "Sábado" }
+                    options={[
+                    { value: "0", label: t("dayMonday") },
+                    { value: "1", label: t("dayTuesday") },
+                    { value: "2", label: t("dayWednesday") },
+                    { value: "3", label: t("dayThursday") },
+                    { value: "4", label: t("dayFriday") },
+                    { value: "5", label: t("daySaturday") }
                   ]}
                   value={selectedDia}
                   onValueChange={setSelectedDia}
-                  placeholder="Seleccione un día..."
+                  placeholder={t("selectDayPlaceholder")}
                 />
               </div>
               <div className="flex gap-2">
@@ -343,7 +382,7 @@ export function VisorReportes() {
           ) : selectedReporte === 'docente' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
-                <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Docente</Label>
+                <Label className="text-sm font-semibold text-foreground mb-2 block">{t("selectTeacherReport")}</Label>
                 <SearchableSelect
                   options={docentes.map(d => ({
                     value: d.id_docente.toString(),
@@ -351,7 +390,7 @@ export function VisorReportes() {
                   }))}
                   value={selectedDocente}
                   onValueChange={setSelectedDocente}
-                  placeholder="Buscar docente..."
+                  placeholder={t("searchTeacher")}
                 />
               </div>
               <div className="flex gap-2">
@@ -361,14 +400,23 @@ export function VisorReportes() {
                   disabled={generatingDocente}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Descargar PDF
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
+                  onClick={() => handleDownloadExcel('docente', selectedDocente)}
+                  disabled={generatingDocente}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
                 </Button>
               </div>
             </div>
           ) : selectedReporte === 'ciclo' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">
               <div className="flex-1">
-                <Label className="text-sm font-semibold text-foreground mb-2 block">Seleccionar Ciclo Académico</Label>
+                <Label className="text-sm font-semibold text-foreground mb-2 block">{t("selectCycle")}</Label>
                 <SearchableSelect
                   options={ciclos
                     .filter(c => {
@@ -383,7 +431,7 @@ export function VisorReportes() {
                   }
                   value={selectedCicloReporte}
                   onValueChange={setSelectedCicloReporte}
-                  placeholder="Seleccione un ciclo..."
+                  placeholder={t("selectCyclePlaceholder")}
                 />
               </div>
               <div className="flex gap-2">
@@ -393,7 +441,16 @@ export function VisorReportes() {
                   disabled={generatingCiclo}
                 >
                   <FileText className="h-4 w-4 mr-2" />
-                  Descargar PDF
+                  PDF
+                </Button>
+                <Button
+                  variant="outline"
+                  className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
+                  onClick={() => handleDownloadExcel('ciclo', selectedCicloReporte)}
+                  disabled={generatingCiclo}
+                >
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel
                 </Button>
               </div>
             </div>
@@ -401,9 +458,9 @@ export function VisorReportes() {
             <div className="flex flex-col gap-4">
               <div className="p-6 bg-indigo-500/5 rounded-2xl border border-indigo-500/10 text-center">
                 <FileText className="h-12 w-12 text-indigo-600 mx-auto mb-4" />
-                <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">Generar Horario Institucional</h3>
+                <h3 className="text-lg font-bold text-slate-800 mb-2 dark:text-white">{t("generateInstitutional")}</h3>
                 <p className="text-sm text-slate-500 mb-6 max-w-md mx-auto">
-                  Este reporte utiliza el formato oficial para generar un consolidado de todos los ciclos y ambientes del semestre.
+                  {t("institutionalDesc")}
                 </p>
                 <div className="flex justify-center gap-4">
                   <Button
@@ -412,21 +469,21 @@ export function VisorReportes() {
                     disabled={generatingReporteGeneral}
                   >
                     {generatingReporteGeneral ? (
-                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando PDF...</>
+                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> {t("processingPdf")}</>
                     ) : (
-                      <><FileText className="h-5 w-5 mr-2" /> Descargar PDF</>
+                      <><FileText className="h-5 w-5 mr-2" /> {t("downloadPdf")}</>
                     )}
                   </Button>
                   <Button
                     variant="outline"
                     className="h-12 border-indigo-600 text-indigo-600 hover:bg-indigo-50 rounded-xl px-6 font-bold shadow-sm"
-                    onClick={handleDownloadExcel}
+                    onClick={() => handleDownloadExcel('reporte_general')}
                     disabled={generatingExcel}
                   >
                     {generatingReporteGeneral ? (
-                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> Procesando Excel...</>
+                      <><RefreshCw className="h-5 w-5 mr-2 animate-spin" /> {t("processingExcel")}</>
                     ) : (
-                      <><FileSpreadsheet className="h-5 w-5 mr-2" /> Descargar Excel</>
+                      <><FileSpreadsheet className="h-5 w-5 mr-2" /> {t("downloadExcel")}</>
                     )}
                   </Button>
                 </div>
@@ -440,7 +497,7 @@ export function VisorReportes() {
                 disabled={generatingEstadisticas}
               >
                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                Generar PDF Oficial
+                {t("generateOfficialPdf")}
               </Button>
             </div>
           )}

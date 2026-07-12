@@ -1,4 +1,4 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -25,6 +25,10 @@ const HORAS = [
   '13:00', '14:00', '15:00', '16:00', '17:00', '18:00', '19:00'
 ];
 const DIAS = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado'];
+const DIAS_ABREVIADOS: Record<string, string> = {
+  LU: 'LU', MA: 'MA', MI: 'MI', JU: 'JU', VI: 'VI', SA: 'SA'
+};
+const ORDEN_DIAS = { LU: 0, MA: 1, MI: 2, JU: 3, VI: 4, SA: 5 };
 
 // ─── HELPERS ──────────────────────────────────────────────────────────────────
 function horaAMinutos(hora: string): number {
@@ -52,6 +56,24 @@ function buildColorMap(horarios: any[]): Map<string, { color: any; index: number
     }
   }
   return map;
+}
+
+function formatearHorariosNoLectivos(carga: any): string {
+  const horarios = Array.isArray(carga?.horarios)
+    ? [...carga.horarios].sort((a, b) => {
+        const diff = (ORDEN_DIAS[a?.dia as keyof typeof ORDEN_DIAS] ?? 99) - (ORDEN_DIAS[b?.dia as keyof typeof ORDEN_DIAS] ?? 99);
+        if (diff !== 0) return diff;
+        return (a?.horaInicio ?? '').localeCompare(b?.horaInicio ?? '');
+      })
+    : [];
+
+  return horarios
+    .map((h: any) => {
+      const dia = String(h?.dia ?? '').toUpperCase();
+      const diaAbreviado = DIAS_ABREVIADOS[dia] ?? dia;
+      return `${diaAbreviado}(${h?.horaInicio ?? '--:--'}-${h?.horaFin ?? '--:--'})`;
+    })
+    .join('<br/>');
 }
 
 // ─── CSS GLOBAL PARA LOS REPORTES VISUALES ───────────────────────────────────
@@ -579,6 +601,116 @@ function wrapLayout(bodyHtml: string, titulo: string, landscape = false): string
 </html>`;
 }
 
+// ─── GENERAR PLAN DE ESTUDIOS ───────────────────────────────────────────────
+function generarPlanEstudios(ciclos: any[], malla?: any): string {
+  console.log('Generando plan de estudios para malla:', malla?.nombre);
+  const ciclosHtml = ciclos.map((ciclo, index) => {
+    let totalCreditos = 0;
+    let electivosContados = 0;
+    const cursosHtml = ciclo.cursos.map((curso: any) => {
+      let creditosCalculados = curso.creditos;
+      if (curso.tipo_curso === 'electivo' && electivosContados < 1) {
+        creditosCalculados = 1;
+        electivosContados++;
+      } else if (curso.tipo_curso === 'electivo') {
+        creditosCalculados = 0;
+      }
+      totalCreditos += creditosCalculados;
+      
+      console.log(`Curso: ${curso.codigo} - ${curso.nombre}, Creditos calculados: ${creditosCalculados}, Malla: ${curso.malla_rel?.nombre}`);
+
+      let tipoLabel = 'OB';
+      let tipoColor = '#22c55e';
+      if (curso.tipo_curso === 'especializacion') {
+        tipoLabel = 'S';
+        tipoColor = '#3b82f6';
+      } else if (curso.tipo_curso === 'opcional') {
+        tipoLabel = 'OP';
+        tipoColor = '#eab308';
+      } else if (curso.tipo_curso === 'electivo') {
+        tipoLabel = 'EL';
+        tipoColor = '#6b7280';
+      }
+
+      const prerequisitosHtml = curso.prerequisitos_rel?.map((pr: any) =>
+        `* ${pr.prerequisito.codigo} ${pr.prerequisito.nombre} (Ciclo ${pr.prerequisito.ciclo_rel?.numero || ''})`
+      ).join('<br/>') || '';
+      
+      return `
+        <tr>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; font-weight: 600;">${curso.codigo}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; text-align: center;">${ciclo.numero}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center;">
+            <span style="background: ${tipoColor}20; color: ${tipoColor}; padding: 2px 8px; border-radius: 4px; font-size: 10px; font-weight: 700;">${tipoLabel}</span>
+          </td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; font-size: 11px; text-align: left;">${curso.nombre}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 11px;">${curso.horas_teoria}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 11px;">${curso.horas_practica}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 11px;">${curso.horas_laboratorio}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: center; font-size: 11px; font-weight: 700;">${curso.tipo_curso === 'electivo' && electivosContados > 1 ? 0 : creditosCalculados}</td>
+          <td style="border: 1px solid #cbd5e1; padding: 6px 8px; text-align: left; font-size: 11px;">${curso.departamento_responsable || ''}</td>
+        </tr>
+        ${prerequisitosHtml ? `
+        <tr>
+          <td colspan="9" style="border: 1px solid #cbd5e1; padding: 2px 8px; font-size: 9px; color: #444;">${prerequisitosHtml}</td>
+        </tr>` : ''}
+      `;
+    }).join('');
+
+    // Use actual calculated total
+    let totalFinal = totalCreditos;
+    console.log(`Total para ciclo ${ciclo.numero}: ${totalFinal} creditos`);
+
+    return `
+      <div style="margin-bottom: 24px; ${index > 0 ? 'page-break-before: always;' : ''}">
+        <div style="background: #003366; color: white; padding: 12px 16px; border-radius: 8px 8px 0 0; display: flex; justify-content: space-between; align-items: center;">
+          <h3 style="margin: 0; font-size: 16px; font-weight: 800;">${ciclo.nombre}</h3>
+          <span style="font-size: 12px; opacity: 0.9;">${ciclo.cursos.length} cursos</span>
+        </div>
+        <table style="width: 100%; border-collapse: collapse; border: 1px solid #cbd5e1; border-top: none;">
+          <thead>
+            <tr style="background: #f8fafc;">
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Código</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Ciclo</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; width: 80px;">Tipo</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; text-align: left;">Curso</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; width: 60px;">T</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; width: 60px;">P</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; width: 60px;">L</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b; width: 70px;">Créditos</th>
+              <th style="border: 1px solid #cbd5e1; padding: 8px; font-size: 10px; font-weight: 700; text-transform: uppercase; letter-spacing: 0.05em; color: #64748b;">Departamento Responsable</th>
+            </tr>
+          </thead>
+          <tbody>
+            ${cursosHtml}
+            <tr style="background: #e0f2fe; font-weight: 800;">
+              <td colspan="8" style="border: 1px solid #cbd5e1; padding: 8px; text-align: right; font-size: 12px;">TOTAL DE CRÉDITOS:</td>
+              <td style="border: 1px solid #cbd5e1; padding: 8px; text-align: center; font-size: 14px; color: #003366;">${totalFinal}</td>
+            </tr>
+          </tbody>
+        </table>
+      </div>
+    `;
+  }).join('');
+
+  return `
+    <div style="padding: 20px;">
+      <div style="text-align: center; margin-bottom: 30px;">
+        <h1 style="font-size: 22px; font-weight: 900; color: #003366; margin: 0 0 8px 0;">UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
+        <h2 style="font-size: 18px; font-weight: 800; color: #1e293b; margin: 0 0 4px 0;">FACULTAD DE INGENIERÍA</h2>
+        <h3 style="font-size: 16px; font-weight: 700; color: #334155; margin: 0;">ESCUELA PROFESIONAL DE INGENIERÍA DE SISTEMAS</h3>
+        <div style="margin-top: 16px; padding: 10px 20px; background: linear-gradient(135deg, #003366 0%, #0055a5 100%); color: white; border-radius: 8px; display: inline-block;">
+          <span style="font-size: 14px; font-weight: 700; text-transform: uppercase;">
+                ${malla ? malla.nombre : 'Plan de Estudios'}
+              </span>
+        </div>
+        <p style="margin-top: 8px; font-size: 12px; color: #64748b;">Fecha de impresión: ${new Date().toLocaleDateString('es-PE', { day: '2-digit', month: 'long', year: 'numeric' })}</p>
+      </div>
+      ${ciclosHtml}
+    </div>
+  `;
+}
+
 // ═════════════════════════════════════════════════════════════════════════════
 export async function GET(request: Request) {
   try {
@@ -588,12 +720,208 @@ export async function GET(request: Request) {
     const id_periodo = searchParams.get('id_periodo');
     const id_declaracion = searchParams.get('idDeclaracion');
     const formato = searchParams.get('formato') || 'pdf';
+    const departamentoId = searchParams.get('departamentoId');
+
+    // ── PLAN DE ESTUDIOS ─────────────────────────────────────────────────────
+    if (tipo === 'plan-estudios') {
+      const id_malla = searchParams.get('id_malla');
+      console.log('Generando PDF para malla:', id_malla);
+      
+      const ciclos = await prisma.ciclo.findMany({
+        where: { activo: true },
+        orderBy: { numero: 'asc' },
+        include: {
+          cursos: {
+            where: {
+              activo: true,
+              ...(id_malla ? { id_malla: parseInt(id_malla) } : {})
+            },
+            orderBy: { codigo: 'asc' },
+            include: {
+              prerequisitos_rel: {
+                include: {
+                  prerequisito: {
+                    include: {
+                      ciclo_rel: true
+                    }
+                  }
+                }
+              },
+              malla_rel: true
+            }
+          }
+        }
+      });
+      
+      console.log('Ciclos obtenidos:', ciclos.map((c: { numero: number; nombre: string; cursos: any[] }) => ({
+        numero: c.numero, nombre: c.nombre, cursos: c.cursos.length })));
+
+      // Get malla info for filename and title
+      let filename = 'plan-de-estudios';
+      let malla: any = null;
+      if (id_malla) {
+        malla = await prisma.mallaCurricular.findUnique({
+          where: { id_malla: parseInt(id_malla) }
+        });
+        if (malla) {
+          filename = `${malla.nombre.toLowerCase().replace(/\s+/g, '-')}-${malla.anio}`;
+        }
+      }
+
+      const htmlContent = generarPlanEstudios(ciclos, malla);
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
+
+      return new NextResponse(pdfBuffer as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}.pdf"`,
+          'Content-Length': pdfBuffer.length.toString()
+        }
+      });
+    }
+
+    // Handle CLAD (Carga Lectiva Adicional)
+    const cladId = searchParams.get('cladId');
+    if (cladId && formato === 'clad') {
+      const clad = await prisma.cargaLectivaAdicional.findUnique({
+        where: { id: cladId },
+        include: { docente: true, sede: true, horarios: true, validador: true }
+      });
+
+      if (!clad) {
+        return NextResponse.json({ error: 'CLAD no encontrado' }, { status: 404 });
+      }
+
+      const DEPENDENCIAS_LABEL = {
+        FILIAL: 'Filial',
+        POSGRADO: 'Posgrado',
+        'SEGUNDA_ESPECIALIDAD': 'Segunda Especialidad',
+        'CENTRO_PRODUCCION': 'Centro de Producción',
+        'EXTENSION_UNIVERSITARIA': 'Extensión Universitaria'
+      };
+
+      const DIAS_LABEL = {
+        LU: 'Lunes', MA: 'Martes', MI: 'Miércoles', JU: 'Jueves', VI: 'Viernes', SA: 'Sábado'
+      };
+
+      const htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>CARGA LECTIVA ADICIONAL (CLAD)</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 25px; }
+    .header h1 { font-size: 16px; font-weight: 800; text-transform: uppercase; color: #003366; }
+    .docente-info { border: 2px solid #003366; padding: 15px; margin-bottom: 20px; border-radius: 6px; }
+    .docente-info .row { display: flex; gap: 20px; margin-bottom: 10px; }
+    .docente-info .label { font-weight: 700; color: #003366; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
+    table td, table th { border: 1px solid #003366; padding: 8px; text-align: center; font-size: 11px; }
+    table th { background-color: #003366; color: white; font-weight: 700; }
+    .firmas { margin-top: 60px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
+    .firma-line { border-top: 1px solid #003366; margin-top: 50px; padding-top: 5px; font-weight: 600; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
+    <h2 style="font-size: 14px; margin-top: 5px; color: #1e4d80;">FACULTAD DE INGENIERÍA</h2>
+    <h2 style="font-size: 15px; margin-top: 8px; font-weight: 800; color: #003366;">CARGA LECTIVA ADICIONAL (CLAD)</h2>
+  </div>
+
+  <div class="docente-info">
+    <div class="row">
+      <div><span class="label">DOCENTE:</span> ${clad.docente.nombres} ${clad.docente.apellidos}</div>
+      <div><span class="label">DNI:</span> ${clad.docente.dni || '—'}</div>
+      <div><span class="label">DPTO. ACADÉMICO:</span> ${clad.docente.departamentoId ? 'Ingeniería de Sistemas' : '—'}</div>
+    </div>
+    <div class="row">
+      <div><span class="label">FACULTAD:</span> ${clad.sede.nombre}</div>
+    </div>
+  </div>
+
+  <table>
+    <thead>
+      <tr>
+        <th>CURSO</th>
+        <th>DEPENDENCIA</th>
+        <th>N° RESOLUCIÓN</th>
+        <th>FECHA INICIO</th>
+        <th>FECHA FIN</th>
+        <th>TOTAL HORAS</th>
+        <th>HORARIO</th>
+      </tr>
+    </thead>
+    <tbody>
+      <tr>
+        <td>${clad.curso}</td>
+        <td>${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || clad.dependencia}</td>
+        <td>${clad.numeroResolucion || '—'}</td>
+        <td>${new Date(clad.fechaInicio).toLocaleDateString('es-PE')}</td>
+        <td>${new Date(clad.fechaFin).toLocaleDateString('es-PE')}</td>
+        <td>${clad.totalHoras}</td>
+        <td>
+          ${clad.horarios.map((h: { dia: string; horaInicio: string; horaFin: string }) => `${DIAS_LABEL[h.dia as keyof typeof DIAS_LABEL]}: ${h.horaInicio} - ${h.horaFin}`).join('<br/>')}
+        </td>
+      </tr>
+    </tbody>
+  </table>
+
+  ${clad.observaciones ? `<div style="margin-bottom: 20px;"><strong>Observaciones:</strong> ${clad.observaciones}</div>` : ''}
+
+  <div class="firmas">
+    <div>
+      <div class="firma-line">Profesor</div>
+      <div style="margin-top: 3px; font-size: 10px;">${clad.docente.nombres} ${clad.docente.apellidos}</div>
+    </div>
+    <div>
+      <div class="firma-line">Director de Departamento</div>
+      <div style="margin-top: 3px; font-size: 10px;">${clad.validador ? `${clad.validador.nombres} ${clad.validador.apellidos}` : '—'}</div>
+    </div>
+    <div>
+      <div class="firma-line">Decano</div>
+      <div style="margin-top: 3px; font-size: 10px;">—</div>
+    </div>
+    <div>
+      <div class="firma-line">Director de ${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || 'Unidad Académica'}</div>
+      <div style="margin-top: 3px; font-size: 10px;">—</div>
+    </div>
+  </div>
+
+  <div style="margin-top: 20px; text-align: right; font-size: 10px; color: #666;">
+    Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT
+  </div>
+</body>
+</html>`;
+
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
+      const filename = `clad-${clad.docente.apellidos}-${new Date().toISOString().slice(0, 10)}`;
+
+      return new NextResponse(pdfBuffer as unknown as BodyInit, {
+        status: 200,
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': `attachment; filename="${filename}.pdf"`,
+          'Content-Length': pdfBuffer.length.toString()
+        }
+      });
+    }
 
     // Handle new carga horaria declaración formats
-    if (id_declaracion && (formato === 'formato1' || formato === 'formato2' || formato === 'formato3')) {
+    if (id_declaracion && (formato === 'formato1' || formato === 'formato2' || formato === 'formato3' || formato === 'formato4')) {
       const declaracion = await prisma.declaracionHoraria.findUnique({
         where: { id_declaracion: parseInt(id_declaracion) },
-        include: { docente: true, periodo: true, cargas_lectivas: { include: { curso: true, grupo: true } }, cargas_no_lectivas: true }
+        include: {
+          docente: true,
+          periodo: true,
+          cargas_lectivas: { include: { curso: true, grupo: true } },
+          cargas_no_lectivas: { include: { horarios: true } }
+        }
       });
 
       if (!declaracion) {
@@ -1039,6 +1367,226 @@ export async function GET(request: Request) {
   </div>
 </body>
 </html>`;
+      } else if (formato === 'formato4') {
+        // Formato 4: Horario Semanal de la Carga Académica Docente (F04-CAD)
+        const tiposPredefinidosNoLectivos = [
+          { key: 'PREPARACION_EVALUACION', label: 'Preparación y Evaluación' },
+          { key: 'TUTORIA', label: 'Tutoría y Consejería' },
+          { key: 'INVESTIGACION', label: 'Investigación' },
+          { key: 'CAPACITACION', label: 'Formación Académica y Capacitación' },
+          { key: 'GOBIERNO', label: 'Actividades de Gobierno o Autoridad' },
+          { key: 'ADMINISTRACION', label: 'Actividades de Gestión Institucional' },
+          { key: 'ASESORIA', label: 'Asesoría de Tesis y Exámenes Profesionales' },
+          { key: 'RESPONSABILIDAD_SOCIAL', label: 'Responsabilidad Social Universitaria' },
+          { key: 'COMITES_TECNICOS', label: 'Comités o Comisiones Especiales' }
+        ];
+        
+        const cargasNoLectivasConHoras = declaracion.cargas_no_lectivas.filter((c: any) => (c.horas_semanales || 0) > 0);
+        
+        // Agrupar cargas lectivas por curso
+        const cursosMap = new Map();
+        declaracion.cargas_lectivas.forEach((carga: any) => {
+          if (carga.curso) {
+            const cursoId = carga.curso.id_curso;
+            if (!cursosMap.has(cursoId)) {
+              cursosMap.set(cursoId, {
+                curso: carga.curso,
+                cargas: [],
+                HT: 0,
+                HP: 0,
+                gruposL: 0,
+                horasL: 0
+              });
+            }
+            const cursoData = cursosMap.get(cursoId);
+            cursoData.cargas.push(carga);
+            
+            if (carga.tipo_clase === 'teoria') {
+              cursoData.HT = carga.horas_semanales;
+            } else if (carga.tipo_clase === 'practica') {
+              cursoData.HP = carga.horas_semanales;
+            } else if (carga.tipo_clase === 'laboratorio') {
+              cursoData.gruposL = carga.grupos_asignados || 0;
+              cursoData.horasL = carga.horas_semanales || 0;
+            }
+          }
+        });
+
+        // Calcular totales
+        let totalLectivas = 0;
+        cursosMap.forEach((data: any) => {
+          totalLectivas += data.HT + data.HP + (data.gruposL * data.horasL);
+        });
+        const totalNoLectivas = declaracion.cargas_no_lectivas.reduce((sum: number, c: any) => sum + (c.horas_semanales || 0), 0);
+        const totalGeneral = totalLectivas + totalNoLectivas;
+
+        // Generar filas CHL
+        const filasCHL = Array.from(cursosMap.values()).map((data: any) => {
+          const HL = data.gruposL * data.horasL;
+          const total = data.HT + data.HP + HL;
+          
+          // Generar horario simulado (ejemplo)
+          const horario = [];
+          if (data.HT > 0) horario.push('T: LU(07:00-09:00)');
+          if (data.HP > 0) horario.push('P: MA(09:00-11:00)');
+          if (HL > 0) horario.push('L: MI(14:00-17:00)');
+          
+          return `
+            <tr>
+              <td style="vertical-align: top;">${horario.join('<br/>')}</td>
+              <td style="vertical-align: top; text-align: left;">${data.curso?.nombre || '—'}</td>
+              <td style="vertical-align: top; text-align: center;">F11</td>
+              <td style="vertical-align: top; text-align: center;">EPG-209, LAB 4</td>
+              <td style="vertical-align: top; text-align: center; font-weight: 700;">${total}</td>
+            </tr>
+          `;
+        }).join('');
+
+        const filasVaciasCHL = new Array(Math.max(0, 5 - cursosMap.size)).fill(0).map(() => `
+          <tr>
+            <td style="height: 30px;"></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        `).join('');
+
+        // Generar filas CHNL usando el horario real que quedó guardado en la declaración
+        const filasCHNL = tiposPredefinidosNoLectivos.map((tipo) => {
+          const carga = declaracion.cargas_no_lectivas.find((c: any) => c.tipo === tipo.key);
+          const horas = carga?.horas_semanales || 0;
+          const horario = formatearHorariosNoLectivos(carga);
+
+          if (horas > 0) {
+            return `
+              <tr>
+                <td style="vertical-align: top;">${horario || '—'}</td>
+                <td style="vertical-align: top; text-align: left;">${tipo.label}</td>
+                <td style="vertical-align: top; text-align: center;">F11</td>
+                <td style="vertical-align: top; text-align: center;">CUBÍCULO</td>
+                <td style="vertical-align: top; text-align: center; font-weight: 700;">${horas}</td>
+              </tr>
+            `;
+          }
+          return '';
+        }).join('');
+
+        const filasVaciasCHNL = new Array(Math.max(0, 8 - cargasNoLectivasConHoras.length)).fill(0).map(() => `
+          <tr>
+            <td style="height: 30px;"></td>
+            <td></td>
+            <td></td>
+            <td></td>
+            <td></td>
+          </tr>
+        `).join('');
+
+        htmlContent = `
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8"/>
+  <title>FORMATO N° 4 - HORARIO SEMANAL CARGA ACADÉMICA DOCENTE</title>
+  <style>
+    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { font-family: 'Inter', sans-serif; padding: 20px; font-size: 12px; }
+    .header { text-align: center; margin-bottom: 20px; }
+    .header h1 { font-size: 18px; font-weight: 700; text-transform: uppercase; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 15px; }
+    table td, table th { border: 1px solid #000; padding: 8px; }
+    table th { background-color: #d4e5f7; font-weight: 700; text-align: center; }
+    .firmas { margin-top: 60px; display: flex; justify-content: space-around; text-align: center; }
+    .firma-line { border-top: 1px solid #000; width: 200px; margin: 0 auto 5px auto; }
+    .notas { margin-top: 30px; font-size: 10px; }
+  </style>
+</head>
+<body>
+  <div class="header">
+    <h1>HORARIO SEMANAL DE LA CARGA ACADÉMICA DOCENTE (F04-CAD)</h1>
+  </div>
+
+  <table>
+    <tr>
+      <td style="width: 50%;"><strong>Facultad / Filial:</strong> Ingeniería</td>
+      <td style="width: 50%;"><strong>Dpto. Académico:</strong> Ingeniería de Sistemas</td>
+    </tr>
+    <tr>
+      <td><strong>DNI:</strong> ${docente?.dni || '—'}</td>
+      <td><strong>Docente:</strong> ${docente?.nombres || ''} ${docente?.apellidos || ''} <strong>Categoría y Régimen:</strong> ${declaracion.categoria || '—'} ${declaracion.dedicacion?.includes('Tiempo Completo') ? 'TC' : 'TP'}</td>
+    </tr>
+    <tr>
+      <td colspan="2">
+        <strong>AÑO ACADÉMICO:</strong> ${periodo?.anio || '—'} 
+        <strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}
+        <strong>Fecha de Inicio:</strong> ${periodo?.fecha_inicio_clases ? new Date(periodo.fecha_inicio_clases).toLocaleDateString('es-PE') : '—'}
+        <strong>Fecha de término:</strong> ${periodo?.fecha_fin_clases ? new Date(periodo.fecha_fin_clases).toLocaleDateString('es-PE') : '—'}
+      </td>
+    </tr>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 20%;">HORARIO</th>
+        <th style="width: 35%;">CARGA HORARIA LECTIVA (CHL)</th>
+        <th style="width: 15%;">LUGAR</th>
+        <th style="width: 20%;">AULA</th>
+        <th style="width: 10%;">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filasCHL}
+      ${filasVaciasCHL}
+    </tbody>
+  </table>
+
+  <table>
+    <thead>
+      <tr>
+        <th style="width: 20%;">HORARIO</th>
+        <th style="width: 35%;">CARGA HORARIA NO LECTIVA (CHNL)</th>
+        <th style="width: 15%;">LUGAR</th>
+        <th style="width: 20%;">AULA</th>
+        <th style="width: 10%;">TOTAL</th>
+      </tr>
+    </thead>
+    <tbody>
+      ${filasCHNL}
+      ${filasVaciasCHNL}
+    </tbody>
+  </table>
+
+  <table>
+    <tr>
+      <td style="background-color: #d4e5f7; font-weight: 700; text-align: center; font-size: 14px;">TOTAL HORAS CARGA ACADÉMICA</td>
+      <td style="font-weight: 800; text-align: center; font-size: 18px; width: 100px;">${totalGeneral}</td>
+    </tr>
+  </table>
+
+  <div class="notas">
+    <p><strong>T:</strong> TEORÍA - <strong>P:</strong> PRÁCTICA</p>
+    <p><strong>LU</strong> (LUNES); <strong>MA</strong> (MARTES); <strong>MI</strong> (MIÉRCOLES); <strong>JU</strong> (JUEVES); <strong>VI</strong> (VIERNES); TIEMPO EN FORMATO DE 24 HORAS.</p>
+    <p><strong>LUGAR:</strong> (F01: "CC. Agropecuarias", F02: "CC. Biológicas", F03: "CC. Económicas", F04: "CC. Físicas y Matemáticas", F05: "CC. Sociales", F08: "Derecho y Ciencias Políticas", F09: "Educación y Comunicación", F10: "Enfermería", F11: "Ingeniería", F12: "Ingeniería Química", F13: "Ingeniería", F14: "Filial Valle Jequetepeque", F15: "Filial Huamachuco", F16: "Santiago de Chuco", OA: "Oficina Administrativa", SC: "Salida de Campo").</p>
+  </div>
+
+  <div class="firmas">
+    <div>
+      <div class="firma-line"></div>
+      <div style="font-weight: 600;">FIRMA DEL DOCENTE</div>
+    </div>
+    <div>
+      <div class="firma-line"></div>
+      <div style="font-weight: 600;">FIRMA Y SELLO DEL DIRECTOR DE DPTO. ACADÉMICO</div>
+    </div>
+    <div>
+      <div class="firma-line"></div>
+      <div style="font-weight: 600;">V°B° DECANO</div>
+    </div>
+  </div>
+</body>
+</html>`;
       }
 
       const pdfBuffer = await (typeof GeneradorPDF?.generarDesdeHTML === 'function' 
@@ -1081,8 +1629,16 @@ export async function GET(request: Request) {
       if (!id || isNaN(parseInt(id))) return NextResponse.json({ error: 'Falta id de día' }, { status: 400 });
       const diaIndex = parseInt(id);
       const nombreDia = DIAS[diaIndex] ?? 'Desconocido';
+      const where: any = { id_periodo: parseInt(id_periodo), dia_semana: diaIndex };
+      if (departamentoId) {
+        where.OR = [
+          { docente: { departamentoId } },
+          { ambiente: { departamentoId } },
+          { curso: { departamentoId } }
+        ];
+      }
       const horarios = await prisma.horarioAsignado.findMany({
-        where: { id_periodo: parseInt(id_periodo), dia_semana: diaIndex },
+        where,
         include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
         orderBy: [{ hora_inicio: 'asc' }]
       });
@@ -1253,6 +1809,43 @@ export async function GET(request: Request) {
       });
       if (!docente) return NextResponse.json({ error: 'Docente no encontrado' }, { status: 404 });
 
+      // Si se solicita incluir actividades no lectivas, cargarlas y mapear a un formato compatible
+      if (searchParams.get('incluirNoLectivas')) {
+        try {
+          const cargas = await prisma.cargaNoLectiva.findMany({
+            where: { declaracion: { id_docente: parseInt(docenteId), id_periodo: parseInt(id_periodo) } },
+            include: { horarios: true }
+          });
+
+          const diaMap: Record<string, number> = { LU: 0, MA: 1, MI: 2, JU: 3, VI: 4, SA: 5 };
+
+          const mapped: any[] = [];
+          for (const c of cargas) {
+            for (const h of c.horarios || []) {
+              const diaIdx = diaMap[h.dia as string] ?? (typeof h.dia === 'number' ? h.dia : 0);
+              mapped.push({
+                id_asignacion: null,
+                id_curso: null,
+                id_grupo: null,
+                id_ambiente: null,
+                curso: { nombre: c.descripcion || c.tipo || 'No lectiva' },
+                grupo: null,
+                ambiente: null,
+                tipo_clase: c.tipo || 'no_lectiva',
+                dia_semana: diaIdx,
+                hora_inicio: h.horaInicio,
+                hora_fin: h.horaFin,
+                docente: { nombres: docente.nombres, apellidos: docente.apellidos }
+              });
+            }
+          }
+
+          // Fusionar las actividades no lectivas con los horarios asignados
+          docente.horarios_asignados = (docente.horarios_asignados ?? []).concat(mapped);
+        } catch (err) {
+          console.warn('No se pudieron cargar cargas no lectivas para el docente:', err);
+        }
+      }
 
       isLandscape = true;
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
@@ -1280,6 +1873,10 @@ export async function GET(request: Request) {
       if (tipo === 'aula' && (!id || isNaN(parseInt(id)))) return NextResponse.json({ error: 'Falta id de ambiente' }, { status: 400 });
 
       let ambientesRaw: any[] = [];
+      const ambienteWhere: any = {};
+      if (departamentoId) {
+        ambienteWhere.departamentoId = departamentoId;
+      }
       if (tipo === 'aula') {
         const a = await prisma.ambiente.findUnique({
           where: { id_ambiente: parseInt(id!) },
@@ -1288,6 +1885,7 @@ export async function GET(request: Request) {
         ambientesRaw = a ? [a] : [];
       } else {
         ambientesRaw = await prisma.ambiente.findMany({
+          where: ambienteWhere,
           include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) }, include: { curso: { include: { ciclo_rel: true } }, docente: true, grupo: true } } },
           orderBy: { nombre: 'asc' }
         });
@@ -1339,8 +1937,16 @@ export async function GET(request: Request) {
 
       for (const ciclo of ciclosRaw) {
         if (!ciclo) continue;
+        const where: any = { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } };
+        if (departamentoId) {
+          where.OR = [
+            { docente: { departamentoId } },
+            { ambiente: { departamentoId } },
+            { curso: { departamentoId } }
+          ];
+        }
         const horarios = await prisma.horarioAsignado.findMany({
-          where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } },
+          where,
           include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
         });
         if (!horarios.length) continue;
@@ -1381,8 +1987,16 @@ export async function GET(request: Request) {
       const paginas: string[] = [];
 
       for (const ciclo of ciclos) {
+        const where: any = { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } };
+        if (departamentoId) {
+          where.OR = [
+            { docente: { departamentoId } },
+            { ambiente: { departamentoId } },
+            { curso: { departamentoId } }
+          ];
+        }
         const horarios = await prisma.horarioAsignado.findMany({
-          where: { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } },
+          where,
           include: { docente: true, curso: true, ambiente: true, grupo: true },
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }]
         });
@@ -1412,7 +2026,14 @@ export async function GET(request: Request) {
 
       // ── LISTA: DOCENTES ───────────────────────────────────────────────────────
     } else if (tipo === 'reporte_docentes_lista') {
-      const docentes = await prisma.docente.findMany({ orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] });
+      const docenteWhere: any = {};
+      if (departamentoId) {
+        docenteWhere.departamentoId = departamentoId;
+      }
+      const docentes = await prisma.docente.findMany({ 
+        where: docenteWhere, 
+        orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] 
+      });
       reportTitle = 'Catálogo de Docentes';
       htmlContent = generarCabecera('Catálogo de Docentes', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Docentes', valor: String(docentes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
@@ -1429,7 +2050,15 @@ export async function GET(request: Request) {
 
       // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
     } else if (tipo === 'reporte_cursos') {
-      const cursos = await prisma.curso.findMany({ include: { ciclo_rel: true }, orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] });
+      const cursoWhere: any = {};
+      if (departamentoId) {
+        cursoWhere.departamentoId = departamentoId;
+      }
+      const cursos = await prisma.curso.findMany({ 
+        where: cursoWhere, 
+        include: { ciclo_rel: true }, 
+        orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] 
+      });
       reportTitle = 'Catálogo de Cursos';
       htmlContent = generarCabecera('Catálogo de Cursos', `${cursos.length} asignaturas`, periodoNombre, [{ label: 'Cursos', valor: String(cursos.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
@@ -1447,7 +2076,14 @@ export async function GET(request: Request) {
 
       // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
     } else if (tipo === 'reporte_ambientes') {
-      const ambientes = await prisma.ambiente.findMany({ orderBy: { nombre: 'asc' } });
+      const ambienteWhere: any = {};
+      if (departamentoId) {
+        ambienteWhere.departamentoId = departamentoId;
+      }
+      const ambientes = await prisma.ambiente.findMany({ 
+        where: ambienteWhere, 
+        orderBy: { nombre: 'asc' } 
+      });
       reportTitle = 'Catálogo de Ambientes Académicos';
       htmlContent = generarCabecera('Catálogo de Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
       htmlContent += `<div class="list-wrap"><table class="list-table">
@@ -1478,7 +2114,7 @@ export async function GET(request: Request) {
 
       // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
     } else if (tipo === 'estadisticas' || tipo === 'consolidado') {
-      const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(parseInt(id_periodo));
+      const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(Number.parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
 
       const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) } } } });

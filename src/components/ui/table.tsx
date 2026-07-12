@@ -1,4 +1,4 @@
-"use client"
+﻿"use client"
 
 import * as React from "react"
 
@@ -12,7 +12,7 @@ function Table({ className, ...props }: React.ComponentProps<"table">) {
     >
       <table
         data-slot="table"
-        className={cn("w-full caption-bottom text-sm", className)}
+        className={cn("w-full caption-bottom text-sm min-w-0", className)}
         {...props}
       />
     </div>
@@ -70,7 +70,7 @@ function TableHead({ className, ...props }: React.ComponentProps<"th">) {
     <th
       data-slot="table-head"
       className={cn(
-        "h-12 px-4 text-left align-middle font-semibold whitespace-nowrap text-foreground/70 text-[14px] uppercase tracking-wider [&:has([role=checkbox])]:pr-0",
+        "px-3 sm:px-4 py-3 text-left align-middle font-semibold text-foreground/70 text-sm uppercase tracking-wider [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}
@@ -83,7 +83,7 @@ function TableCell({ className, ...props }: React.ComponentProps<"td">) {
     <td
       data-slot="table-cell"
       className={cn(
-        "p-4 align-middle whitespace-nowrap text-[14px] [&:has([role=checkbox])]:pr-0",
+        "p-3 sm:p-4 align-middle text-sm [&:has([role=checkbox])]:pr-0",
         className
       )}
       {...props}

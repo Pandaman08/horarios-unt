@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import { useSession } from "next-auth/react";
@@ -99,7 +99,7 @@ export function PreferenciasNotificacion() {
           <div className="absolute inset-0 border-4 border-primary/20 rounded-full" />
           <div className="absolute inset-0 border-4 border-primary border-t-transparent rounded-full animate-spin" />
         </div>
-        <p className="text-[11px] font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">
+        <p className="text-sm font-black text-muted-foreground uppercase tracking-[0.2em] animate-pulse">
           Cargando Preferencias...
         </p>
       </div>
@@ -197,15 +197,15 @@ export function PreferenciasNotificacion() {
           <div className="p-5 pt-0 space-y-4">
             {/* bg-muted = --muted que en dark es oklch(0.24 0.02 260) */}
             <div className="bg-muted border border-border space-y-2 p-4 rounded-xl">
-              <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-2">
-                <span className="h-4 w-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[9px] font-black shrink-0">
+              <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                <span className="h-4 w-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-black shrink-0">
                   1
                 </span>
                 Abra Telegram y busque:{" "}
                 <span className="font-bold text-primary">@UNT_Horarios_Bot</span>
               </p>
-              <p className="text-[11px] text-muted-foreground font-medium flex items-center gap-2">
-                <span className="h-4 w-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-[9px] font-black shrink-0">
+              <p className="text-sm text-muted-foreground font-medium flex items-center gap-2">
+                <span className="h-4 w-4 rounded-full bg-primary/20 text-primary flex items-center justify-center text-xs font-black shrink-0">
                   2
                 </span>
                 Envíe el comando:{" "}
@@ -242,7 +242,7 @@ export function PreferenciasNotificacion() {
       {/* ── Línea de tiempo ─────────────────────────────────────────────────── */}
       <div className="bg-card text-card-foreground border border-border rounded-2xl shadow-sm overflow-hidden">
         <div className="p-5 md:p-6 pb-4 border-b border-border">
-          <p className="text-[11px] font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <p className="text-sm font-black text-muted-foreground uppercase tracking-widest flex items-center gap-2">
             <span className="h-1.5 w-1.5 rounded-full bg-primary animate-pulse" />
             Línea de tiempo de notificaciones del turno
           </p>
@@ -313,7 +313,7 @@ export function PreferenciasNotificacion() {
           {loadingNotificaciones ? (
             <div className="flex flex-col items-center justify-center p-12 gap-3">
               <div className="h-8 w-8 border-4 border-primary/20 border-t-primary rounded-full animate-spin" />
-              <p className="text-[11px] font-black text-muted-foreground uppercase tracking-widest">
+              <p className="text-sm font-black text-muted-foreground uppercase tracking-widest">
                 Cargando notificaciones...
               </p>
             </div>
@@ -338,7 +338,7 @@ export function PreferenciasNotificacion() {
                     {["Tipo", "Canal", "Estado", "Fecha"].map((h) => (
                       <th
                         key={h}
-                        className="text-[11px] font-black text-muted-foreground uppercase tracking-widest h-10 px-4 text-left"
+                        className="text-sm font-black text-muted-foreground uppercase tracking-widest h-10 px-4 text-left"
                       >
                         {h}
                       </th>
@@ -357,7 +357,7 @@ export function PreferenciasNotificacion() {
                       <td className="px-4 py-3">
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider",
                             notif.canal === "telegram"
                               ? "bg-sky-500/10 text-sky-500 border border-sky-500/20"
                               : "bg-indigo-500/10 text-indigo-500 border border-indigo-500/20"
@@ -374,7 +374,7 @@ export function PreferenciasNotificacion() {
                       <td className="px-4 py-3">
                         <span
                           className={cn(
-                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-[10px] font-black uppercase tracking-wider",
+                            "inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full text-xs font-black uppercase tracking-wider",
                             notif.estado === "Enviado"
                               ? "bg-emerald-500/10 text-emerald-500 border border-emerald-500/20"
                               : notif.estado === "Pendiente"

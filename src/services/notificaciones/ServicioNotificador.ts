@@ -1,4 +1,4 @@
-import { prisma } from '@/lib/prisma';
+﻿import { prisma } from '@/lib/prisma';
 import { ServicioCorreo } from './ServicioCorreo';
 import { ServicioTelegram } from './ServicioTelegram';
 import type { HorarioAsignado, Docente, Curso, Grupo, Ambiente, PeriodoAcademico } from '@prisma/client';
@@ -171,8 +171,8 @@ export class ServicioNotificador {
     const docentes = await prisma.docente.findMany({
       where: { 
         id_docente: ids_docentes_especificos ? { in: ids_docentes_especificos } : undefined,
-        modalidad: ids_docentes_especificos ? undefined : ventana.modalidad, 
-        categoria: ids_docentes_especificos ? undefined : ventana.categoria,
+        condicion: ids_docentes_especificos ? undefined : (ventana.modalidad as any), 
+        categoriaDocente: ids_docentes_especificos ? undefined : (ventana.categoria as any),
         activo: true 
       }
     });
@@ -247,7 +247,7 @@ export class ServicioNotificador {
         `;
         const textoDefault = `📅 <b>VENTANA DE ATENCIÓN CREADA</b>\n\nHola {{nombre_docente}},\nTu ventana de atención está lista:\n\n📆 Fecha: {{fecha_inicio}}\n⏰ Hora: {{hora_inicio}} - {{hora_fin}}\n\nPodrás seleccionar tu horario durante esta ventana.\n\n<i>Sistema de Horarios UNT</i>`;
 
-        const asunto = configCorreo?.configuracion_adicional?.asunto || asuntoDefault;
+        const asunto = (configCorreo as any)?.configuracion_adicional?.asunto || asuntoDefault;
         const html = replacePlaceholders(configCorreo?.plantilla_mensaje || htmlDefault);
         const texto = replacePlaceholders(configTelegram?.plantilla_mensaje || textoDefault);
 
@@ -482,7 +482,7 @@ export class ServicioNotificador {
           canal: 'correo',
           fecha_programada: ahora,
           datos_mensaje: {
-            asunto: configCorreo?.configuracion_adicional?.asunto || asuntoDefault,
+            asunto: (configCorreo as any)?.configuracion_adicional?.asunto || asuntoDefault,
             html: replacePlaceholders(configCorreo?.plantilla_mensaje || htmlDefault)
           }
         }

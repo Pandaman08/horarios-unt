@@ -1,4 +1,4 @@
-export class AIToolDispatcher {
+﻿export class AIToolDispatcher {
   /**
    * Orquestador para ejecutar herramientas basadas en la intención de la IA
    * (Placeholder para futura implementación de Tool Calling)

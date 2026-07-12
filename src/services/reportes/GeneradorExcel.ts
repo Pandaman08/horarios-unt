@@ -1,4 +1,4 @@
-import ExcelJS from 'exceljs';
+﻿import ExcelJS from 'exceljs';
 
 export class GeneradorExcel {
   static async generarHorarioDocente(data: any): Promise<Buffer> {
@@ -151,7 +151,7 @@ export class GeneradorExcel {
       });
     });
 
-    return await workbook.xlsx.writeBuffer() as Buffer;
+    return await workbook.xlsx.writeBuffer() as unknown as Buffer;
   }
 
   static async generarDesdeTabla(data: { title: string, headers: string[], rows: any[] }): Promise<Buffer> {
@@ -202,6 +202,6 @@ export class GeneradorExcel {
       column.width = 20;
     });
 
-    return await workbook.xlsx.writeBuffer() as Buffer;
+    return await workbook.xlsx.writeBuffer() as unknown as Buffer;
   }
 }

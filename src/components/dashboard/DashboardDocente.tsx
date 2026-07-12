@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { useState, useEffect } from "react";
 import Link from "next/link";
@@ -108,8 +108,8 @@ export default function DashboardDocente() {
             </h1>
             <div className="flex items-center gap-2 mt-1.5">
               <span className="h-1.5 w-1.5 rounded-full bg-emerald-500" />
-              <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">
-                Portal Docente - {data?.periodo}
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">
+                Portal Docente - {typeof data?.periodo === 'string' ? data.periodo : '—'}
               </p>
             </div>
           </div>
@@ -118,13 +118,13 @@ export default function DashboardDocente() {
         {/* Alertas Rápidas */}
         <div className="flex flex-col gap-2">
           {alertas?.sinDisponibilidad && (
-            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-lg text-[11px] font-bold">
+            <div className="flex items-center gap-2 bg-amber-50 dark:bg-amber-950/30 text-amber-600 dark:text-amber-400 border border-amber-200 dark:border-amber-800 px-3 py-1.5 rounded-lg text-sm font-bold">
               <AlertTriangle className="h-3.5 w-3.5" />
               <span>Aún no registras tu disponibilidad</span>
             </div>
           )}
           {alertas?.faltaCargaLectiva && (
-            <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg text-[11px] font-bold">
+            <div className="flex items-center gap-2 bg-blue-50 dark:bg-blue-950/30 text-blue-600 dark:text-blue-400 border border-blue-200 dark:border-blue-800 px-3 py-1.5 rounded-lg text-sm font-bold">
               <Clock className="h-3.5 w-3.5" />
               <span>Carga lectiva por debajo del mínimo</span>
             </div>
@@ -145,7 +145,7 @@ export default function DashboardDocente() {
             <span className="text-sm text-muted-foreground font-medium">/ {kpis?.maxHorasLectivas || 0} hrs</span>
           </div>
           <div className="space-y-1.5">
-            <div className="flex justify-between text-[10px] font-bold">
+            <div className="flex justify-between text-xs font-bold">
               <span className="text-blue-700 dark:text-blue-400">Progreso Asignado</span>
               <span>{pctLectivas}%</span>
             </div>
@@ -166,14 +166,14 @@ export default function DashboardDocente() {
               <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-wider">Carga No Lectiva</h3>
             </div>
             {alertas?.declaracionesPendientes && (
-              <span className="bg-amber-100 text-amber-700 text-[9px] px-1.5 py-0.5 rounded font-bold uppercase">Pendiente</span>
+              <span className="bg-amber-100 text-amber-700 text-xs px-1.5 py-0.5 rounded font-bold uppercase">Pendiente</span>
             )}
           </div>
           <div className="flex items-baseline gap-2">
             <span className="text-3xl font-black text-purple-600 dark:text-purple-500">{kpis?.horasNoLectivas || 0}</span>
             <span className="text-sm text-muted-foreground font-medium">horas</span>
           </div>
-          <p className="text-[11px] text-muted-foreground mt-2 font-medium">
+          <p className="text-sm text-muted-foreground mt-2 font-medium">
             Total de horas declaradas en investigación, admin, etc.
           </p>
         </div>
@@ -188,7 +188,7 @@ export default function DashboardDocente() {
             <span className="text-3xl font-black text-emerald-600 dark:text-emerald-500">{kpis?.horasTotales || 0}</span>
             <span className="text-sm text-muted-foreground font-medium">hrs totales</span>
           </div>
-          <div className="flex items-center gap-1.5 text-[11px] font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 px-2 py-1 rounded w-max">
+          <div className="flex items-center gap-1.5 text-sm font-bold text-emerald-700 dark:text-emerald-400 bg-emerald-100/50 dark:bg-emerald-900/30 px-2 py-1 rounded w-max">
             <CalendarDays className="h-3.5 w-3.5" />
             {kpis?.cantidadCursos || 0} Cursos Asignados
           </div>
@@ -208,7 +208,7 @@ export default function DashboardDocente() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Mi Disponibilidad</h3>
-              <p className="text-[11px] text-muted-foreground font-medium">Horarios posibles</p>
+              <p className="text-sm text-muted-foreground font-medium">Horarios posibles</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 flex-1">
@@ -230,11 +230,11 @@ export default function DashboardDocente() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Carga Horaria</h3>
-              <p className="text-[11px] text-muted-foreground font-medium">Declaración oficial</p>
+              <p className="text-sm text-muted-foreground font-medium">Declaración oficial</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 flex-1">
-            Completa y envía tu declaración de carga lectiva y no lectiva para su aprobación.
+            Seleccione sus horarios lectivos y complete su declaración de carga no lectiva para enviarla a aprobación.
           </p>
           <div className="text-xs font-bold text-purple-600 dark:text-purple-400 flex items-center gap-1 group-hover:translate-x-1 transition-transform">
             Ir a declaración <span aria-hidden="true">&rarr;</span>
@@ -252,7 +252,7 @@ export default function DashboardDocente() {
             </div>
             <div>
               <h3 className="text-sm font-bold text-foreground">Mi Horario</h3>
-              <p className="text-[11px] text-muted-foreground font-medium">Horario asignado</p>
+              <p className="text-sm text-muted-foreground font-medium">Horario asignado</p>
             </div>
           </div>
           <p className="text-xs text-muted-foreground mb-4 flex-1">

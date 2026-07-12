@@ -1,4 +1,4 @@
-"use client";
+﻿"use client";
 
 import { DashboardStats } from "@/components/dashboard/DashboardStats";
 import { Toaster } from "@/components/ui/sonner";
