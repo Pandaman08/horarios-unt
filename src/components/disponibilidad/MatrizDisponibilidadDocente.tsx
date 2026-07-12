@@ -37,12 +37,12 @@ interface Props {
 }
 
 const DIAS = [
-  { id: 1, nombre: "Lun" },
-  { id: 2, nombre: "Mar" },
-  { id: 3, nombre: "Mié" },
-  { id: 4, nombre: "Jue" },
-  { id: 5, nombre: "Vie" },
-  { id: 6, nombre: "Sáb" },
+  { id: 0, nombre: "Lun" },
+  { id: 1, nombre: "Mar" },
+  { id: 2, nombre: "Mié" },
+  { id: 3, nombre: "Jue" },
+  { id: 4, nombre: "Vie" },
+  { id: 5, nombre: "Sáb" },
 ];
 
 export function MatrizDisponibilidadDocente({

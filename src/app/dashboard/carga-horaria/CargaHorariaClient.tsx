@@ -1012,7 +1012,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   }
 
   return (
-    <div className="p-6 space-y-4 bg-background min-h-screen">
+    <div className="p-4 md:p-6 space-y-4 bg-background min-h-0 max-w-[1600px] mx-auto">
       {/* Header */}
       <Card className="shadow-sm border-border overflow-hidden">
         <CardContent className="p-0">
