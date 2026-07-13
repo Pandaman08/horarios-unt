@@ -72,7 +72,9 @@ export class GeneradorPDF {
 
           if (execPath) {
             launchOpts.executablePath = execPath;
+            console.log('[GeneradorPDF] Usando ejecutable Chrome local', { execPath });
           } else {
+            console.log('[GeneradorPDF] No hay ejecutable Chrome local, intentando @sparticuz/chromium...');
             try {
               const chromiumImport = await import('@sparticuz/chromium');
               const chromiumModule = chromiumImport.default ?? chromiumImport;
@@ -86,6 +88,11 @@ export class GeneradorPDF {
             } catch (chromiumErr) {
               console.warn('[GeneradorPDF] No se pudo cargar @sparticuz/chromium:', (chromiumErr as any)?.message ?? chromiumErr);
             }
+          }
+
+          if (!launchOpts.executablePath) {
+            console.warn('[GeneradorPDF] launchOpts.executablePath sigue indefinido tras intentar @sparticuz/chromium y Chrome local. No se lanzará puppeteer sin ruta válida.');
+            throw new Error('No se encontró ejecutable de navegador para generar el PDF');
           }
 
           console.log('[GeneradorPDF] Puppeteer launch options:', {
