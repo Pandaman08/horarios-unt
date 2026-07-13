@@ -1591,10 +1591,18 @@ export async function GET(request: Request) {
 
       const pdfBuffer = await (typeof GeneradorPDF?.generarDesdeHTML === 'function' 
         ? GeneradorPDF.generarDesdeHTML(htmlContent, false)
-        : import('puppeteer').then(async (puppeteer) => {
-            const browser = await puppeteer.launch({ headless: true });
+        : Promise.all([
+            import('puppeteer-core'),
+            import('@sparticuz/chromium')
+          ]).then(async ([puppeteer, chromium]) => {
+            const executablePath = await chromium.default.executablePath();
+            const browser = await puppeteer.default.launch({
+              headless: true,
+              executablePath,
+              args: chromium.default.args,
+            });
             const page = await browser.newPage();
-            await page.setContent(htmlContent); // Remove waitUntil since it's static HTML
+            await page.setContent(htmlContent);
             const buffer = await page.pdf({ format: 'A4', printBackground: true });
             await browser.close();
             return buffer;

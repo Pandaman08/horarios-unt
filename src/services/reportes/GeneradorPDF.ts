@@ -1,18 +1,16 @@
-﻿import puppeteer from 'puppeteer';
+﻿import puppeteer from 'puppeteer-core';
+import chromium from '@sparticuz/chromium';
 
 export class GeneradorPDF {
   static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {
     let browser;
 
     try {
+      const executablePath = await chromium.executablePath();
       browser = await puppeteer.launch({
         headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu'
-        ]
+        executablePath,
+        args: chromium.args,
       });
 
       const page = await browser.newPage();
