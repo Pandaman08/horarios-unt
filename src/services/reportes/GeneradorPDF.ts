@@ -43,21 +43,19 @@ export class GeneradorPDF {
       });
 
       let puppeteerModule: any = null;
-      let isPuppeteerCore = false;
       let puppeteerPackage = 'none';
       try {
         // @ts-ignore
-        puppeteerModule = await import('puppeteer');
-        puppeteerPackage = 'puppeteer';
-      } catch (puppeteerErr) {
-        console.warn('[GeneradorPDF] No se pudo importar puppeteer:', (puppeteerErr as any)?.message ?? puppeteerErr);
+        puppeteerModule = await import('puppeteer-core');
+        puppeteerPackage = 'puppeteer-core';
+      } catch (puppeteerCoreErr) {
+        console.warn('[GeneradorPDF] No se pudo importar puppeteer-core:', (puppeteerCoreErr as any)?.message ?? puppeteerCoreErr);
         try {
           // @ts-ignore
-          puppeteerModule = await import('puppeteer-core');
-          isPuppeteerCore = true;
-          puppeteerPackage = 'puppeteer-core';
-        } catch (puppeteerCoreErr) {
-          console.warn('[GeneradorPDF] No se pudo importar puppeteer-core:', (puppeteerCoreErr as any)?.message ?? puppeteerCoreErr);
+          puppeteerModule = await import('puppeteer');
+          puppeteerPackage = 'puppeteer';
+        } catch (puppeteerErr) {
+          console.warn('[GeneradorPDF] No se pudo importar puppeteer:', (puppeteerErr as any)?.message ?? puppeteerErr);
           puppeteerModule = null;
         }
       }
@@ -71,7 +69,17 @@ export class GeneradorPDF {
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
           };
-          if (isPuppeteerCore && execPath) launchOpts.executablePath = execPath;
+
+          if (execPath) {
+            launchOpts.executablePath = execPath;
+          } else {
+            const chromium = await import('@sparticuz/chromium');
+            const chromiumExec = await chromium.default.executablePath();
+            const chromiumArgs = chromium.default.args || ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+            launchOpts.executablePath = chromiumExec;
+            launchOpts.args = chromiumArgs;
+            console.log('[GeneradorPDF] Usando Chromium de @sparticuz/chromium', { chromiumExec, chromiumArgs });
+          }
 
           console.log('[GeneradorPDF] Puppeteer launch options:', {
             package: puppeteerPackage,
@@ -79,25 +87,7 @@ export class GeneradorPDF {
             args: launchOpts.args,
           });
 
-          try {
-            browser = await puppeteer.launch(launchOpts);
-          } catch (launchErr: any) {
-            console.warn('[GeneradorPDF] Launch con puppeteer falló:', (launchErr as any)?.message ?? launchErr);
-            try {
-              const chromium = await import('@sparticuz/chromium');
-              const chromiumExec = await chromium.default.executablePath();
-              const chromiumArgs = chromium.default.args || ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
-              console.log('[GeneradorPDF] Fallback con @sparticuz/chromium', { chromiumExec, chromiumArgs });
-              browser = await puppeteer.launch({
-                headless: true,
-                executablePath: chromiumExec,
-                args: chromiumArgs,
-              });
-            } catch (chromiumErr: any) {
-              console.warn('[GeneradorPDF] Fallback con @sparticuz/chromium falló:', (chromiumErr as any)?.message ?? chromiumErr);
-              throw launchErr;
-            }
-          }
+          browser = await puppeteer.launch(launchOpts);
 
           const browserVersion = typeof browser.version === 'function' ? await browser.version() : 'unknown';
           console.log('[GeneradorPDF] Navegador lanzado con versión:', browserVersion);
