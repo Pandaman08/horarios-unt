@@ -73,12 +73,19 @@ export class GeneradorPDF {
           if (execPath) {
             launchOpts.executablePath = execPath;
           } else {
-            const chromium = await import('@sparticuz/chromium');
-            const chromiumExec = await chromium.default.executablePath();
-            const chromiumArgs = chromium.default.args || ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
-            launchOpts.executablePath = chromiumExec;
-            launchOpts.args = chromiumArgs;
-            console.log('[GeneradorPDF] Usando Chromium de @sparticuz/chromium', { chromiumExec, chromiumArgs });
+            try {
+              const chromiumImport = await import('@sparticuz/chromium');
+              const chromiumModule = chromiumImport.default ?? chromiumImport;
+              const chromiumExec = await chromiumModule.executablePath();
+              const chromiumArgs = Array.isArray(chromiumModule.args)
+                ? chromiumModule.args
+                : ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+              launchOpts.executablePath = chromiumExec;
+              launchOpts.args = chromiumArgs;
+              console.log('[GeneradorPDF] Usando Chromium de @sparticuz/chromium', { chromiumExec, chromiumArgs });
+            } catch (chromiumErr) {
+              console.warn('[GeneradorPDF] No se pudo cargar @sparticuz/chromium:', (chromiumErr as any)?.message ?? chromiumErr);
+            }
           }
 
           console.log('[GeneradorPDF] Puppeteer launch options:', {

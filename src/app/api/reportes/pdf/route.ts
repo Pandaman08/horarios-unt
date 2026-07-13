@@ -1594,16 +1594,21 @@ export async function GET(request: Request) {
         : Promise.all([
             import('puppeteer-core'),
             import('@sparticuz/chromium')
-          ]).then(async ([puppeteer, chromium]) => {
-            const executablePath = await chromium.default.executablePath();
-            const browser = await puppeteer.default.launch({
+          ]).then(async ([puppeteerImport, chromiumImport]) => {
+            const puppeteerModule = puppeteerImport.default ?? puppeteerImport;
+            const chromiumModule = chromiumImport.default ?? chromiumImport;
+            const executablePath = await chromiumModule.executablePath();
+            const args = Array.isArray(chromiumModule.args)
+              ? chromiumModule.args
+              : ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+            const browser = await puppeteerModule.launch({
               headless: true,
               executablePath,
-              args: chromium.default.args,
+              args,
             });
             const page = await browser.newPage();
-            await page.setContent(htmlContent);
-            const buffer = await page.pdf({ format: 'A4', printBackground: true });
+            await page.setContent(htmlContent, { timeout: 60000 });
+            const buffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } });
             await browser.close();
             return buffer;
           }));
