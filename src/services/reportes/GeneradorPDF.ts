@@ -32,15 +32,16 @@ export class GeneradorPDF {
 
       const execPath = getLocalExecutable();
 
-      // Primero intentar puppeteer-core (para usar Chrome del sistema en deploys ligeros)
       let puppeteerModule: any = null;
+      let isPuppeteerCore = false;
       try {
         // @ts-ignore
-        puppeteerModule = await import('puppeteer-core');
+        puppeteerModule = await import('puppeteer');
       } catch (_) {
         try {
           // @ts-ignore
-          puppeteerModule = await import('puppeteer');
+          puppeteerModule = await import('puppeteer-core');
+          isPuppeteerCore = true;
         } catch (__err) {
           puppeteerModule = null;
         }
@@ -54,11 +55,12 @@ export class GeneradorPDF {
             headless: true,
             args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
           };
-          if (execPath) launchOpts.executablePath = execPath;
+          if (isPuppeteerCore && execPath) launchOpts.executablePath = execPath;
 
           browser = await puppeteer.launch(launchOpts);
 
           const page = await browser.newPage();
+          await page.setViewport({ width: 1200, height: 900 });
           await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
 
           const pdf = await page.pdf({ format: 'A4', landscape: landscape, printBackground: true, margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } });
