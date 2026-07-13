@@ -17,8 +17,17 @@ const nextConfig: NextConfig = {
     },
   },
   outputFileTracingIncludes: {
-    "src/app/api/reportes/pdf/route": [
+    "src/app/api/reportes/pdf/route.ts": [
       "node_modules/@sparticuz/chromium/**",
+      "node_modules/@sparticuz/chromium/bin/**",
+      "node_modules/@sparticuz/chromium/build/**",
+      "node_modules/puppeteer-core/**",
+      "node_modules/puppeteer/**"
+    ],
+    "src/services/reportes/GeneradorPDF.ts": [
+      "node_modules/@sparticuz/chromium/**",
+      "node_modules/@sparticuz/chromium/bin/**",
+      "node_modules/@sparticuz/chromium/build/**",
       "node_modules/puppeteer-core/**",
       "node_modules/puppeteer/**"
     ],
