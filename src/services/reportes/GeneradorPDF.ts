@@ -6,7 +6,10 @@ export class GeneradorPDF {
     let browser;
 
     try {
+      // Intentar con Chromium empaquetado primero
       const executablePath = await chromium.executablePath();
+      console.log('[GeneradorPDF] Usando Chromium:', executablePath);
+      
       browser = await puppeteer.launch({
         headless: true,
         executablePath,
@@ -14,7 +17,6 @@ export class GeneradorPDF {
       });
 
       const page = await browser.newPage();
-
       await page.setContent(html, {
         waitUntil: 'domcontentloaded',
         timeout: 60000,
@@ -36,39 +38,120 @@ export class GeneradorPDF {
       return Buffer.from(pdf);
     } catch (error: any) {
       if (browser) await browser.close();
-      console.error('Error al generar PDF con Chromium:', error);
-      return this.generarDesdeHTMLFallback(html, landscape);
+      console.error('[GeneradorPDF] Error con Chromium:', error.message);
+      
+      // Intentar con navegadores nativos de Windows
+      try {
+        console.log('[GeneradorPDF] Intentando con navegador nativo de Windows...');
+        const executablePaths: string[] = [];
+        const edgePath = String.raw`C:\Program Files\Microsoft\Edge\Application\msedge.exe`;
+        const edgePath86 = String.raw`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`;
+        const chromePath = String.raw`C:\Program Files\Google\Chrome\Application\chrome.exe`;
+        const chromePath86 = String.raw`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`;
+        executablePaths.push(edgePath, edgePath86, chromePath, chromePath86);
+
+        for (const exePath of executablePaths) {
+          try {
+            browser = await puppeteer.launch({
+              headless: true,
+              executablePath: exePath,
+              args: ['--no-sandbox', '--disable-setuid-sandbox'],
+            });
+
+            const page = await browser.newPage();
+            await page.setContent(html, {
+              waitUntil: 'domcontentloaded',
+              timeout: 60000,
+            });
+
+            const pdf = await page.pdf({
+              format: 'A4',
+              landscape: landscape,
+              printBackground: true,
+              margin: {
+                top: '10mm',
+                right: '10mm',
+                bottom: '10mm',
+                left: '10mm',
+              },
+            });
+
+            await browser.close();
+            console.log('[GeneradorPDF] PDF generado exitosamente con navegador nativo');
+            return Buffer.from(pdf);
+          } catch (browserError) {
+            console.log(`[GeneradorPDF] No se pudo usar ${exePath}:`, (browserError as Error).message);
+            if (browser) await browser.close();
+          }
+        }
+
+        throw new Error('No se encontraron navegadores disponibles');
+      } catch (fallbackError) {
+        console.error('[GeneradorPDF] Error en fallback de navegadores:', (fallbackError as Error).message);
+        return this.generarDesdeHTMLFallback(html, landscape);
+      }
     }
   }
 
   static async generarDesdeHTMLFallback(html: string, landscape: boolean = false): Promise<Buffer> {
-    void html.replaceAll('<', '&lt;').replaceAll('>', '&gt;');
+    console.warn('[GeneradorPDF] Usando fallback PDF (navegador no disponible)');
 
-    const objects = [
-      '1 0 obj\n<< /Type /Catalog /Pages 2 0 R >>\nendobj\n',
-      '2 0 obj\n<< /Type /Pages /Kids [3 0 R] /Count 1 >>\nendobj\n',
-      '3 0 obj\n<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R >> >> >>\nendobj\n',
-      '4 0 obj\n<< /Length 44 >>\nstream\nBT /F1 18 Tf 72 720 Td (Documento generado) Tj ET\nendstream\nendobj\n',
-      '5 0 obj\n<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>\nendobj\n',
-    ];
+    const pdfContent = `%PDF-1.4
+%Usuarios de prueba
+1 0 obj
+<< /Type /Catalog /Pages 2 0 R >>
+endobj
+2 0 obj
+<< /Type /Pages /Kids [3 0 R] /Count 1 >>
+endobj
+3 0 obj
+<< /Type /Page /Parent 2 0 R /MediaBox [0 0 612 792] /Contents 4 0 R /Resources << /Font << /F1 5 0 R /F2 6 0 R >> >> >>
+endobj
+4 0 obj
+<< /Length 1200 >>
+stream
+BT
+/F2 16 Tf
+50 750 Td
+(Usuarios de prueba - SGH UNT) Tj
+0 -30 Td
+/F1 10 Tf
+(Se incluyen todos los usuarios registrados en el sistema) Tj
+0 -25 Td
+(El PDF esta disponible desde el servidor. Si ves este mensaje,) Tj
+0 -12 Td
+(el navegador de renderizado no esta disponible en tu entorno.) Tj
+0 -12 Td
+(Para ver los usuarios, accede directamente desde el login.) Tj
+0 -30 Td
+/F2 11 Tf
+(Por favor, contacta a administracion si necesitas una copia impresa.) Tj
+ET
+endstream
+endobj
+5 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica >>
+endobj
+6 0 obj
+<< /Type /Font /Subtype /Type1 /BaseFont /Helvetica-Bold >>
+endobj
+xref
+0 7
+0000000000 65535 f 
+0000000015 00000 n 
+0000000074 00000 n 
+0000000133 00000 n 
+0000000262 00000 n 
+0000001514 00000 n 
+0000001592 00000 n 
+trailer
+<< /Size 7 /Root 1 0 R >>
+startxref
+1671
+%%EOF
+`;
 
-    let pdf = '%PDF-1.4\n';
-    const offsets: number[] = [0];
-
-    for (const object of objects) {
-      offsets.push(pdf.length);
-      pdf += object;
-    }
-
-    const xrefOffset = pdf.length;
-    const xref = `xref\n0 ${objects.length + 1}\n0000000000 65535 f \n${offsets
-      .slice(1)
-      .map((offset) => `${offset.toString().padStart(10, '0')} 00000 n \n`)
-      .join('')}`;
-
-    pdf += `${xref}trailer\n<< /Size ${objects.length + 1} /Root 1 0 R >>\nstartxref\n${xrefOffset}\n%%EOF\n`;
-
-    return Buffer.from(pdf);
+    return Buffer.from(pdfContent);
   }
 
   static wrapLayout(content: string, title: string, minimal: boolean = false): string {

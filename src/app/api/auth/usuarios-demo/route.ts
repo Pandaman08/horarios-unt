@@ -3,17 +3,22 @@ import { GeneradorPDF } from '@/services/reportes/GeneradorPDF';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
-  const usuarios = await prisma.usuario.findMany({
-    select: {
-      nombres: true,
-      apellidos: true,
-      correo_electronico: true,
-      rol: true,
-      activo: true,
-      codigo: true,
-    },
-    orderBy: [{ rol: 'asc' }, { apellidos: 'asc' }, { nombres: 'asc' }],
-  });
+  try {
+    console.log('[Usuarios PDF] Iniciando generación de PDF de usuarios...');
+    
+    const usuarios = await prisma.usuario.findMany({
+      select: {
+        nombres: true,
+        apellidos: true,
+        correo_electronico: true,
+        rol: true,
+        activo: true,
+        codigo: true,
+      },
+      orderBy: [{ rol: 'asc' }, { apellidos: 'asc' }, { nombres: 'asc' }],
+    });
+
+    console.log(`[Usuarios PDF] Se encontraron ${usuarios.length} usuarios`);
 
   const contenido = `
     <div style="font-family: Arial, sans-serif; color: #0f172a; padding: 24px;">
@@ -50,14 +55,26 @@ export async function GET() {
     </div>
   `;
 
-  const html = GeneradorPDF.wrapLayout(contenido, 'Usuarios de prueba SGH UNT', true);
-  const pdfBuffer = await GeneradorPDF.generarDesdeHTML(html, false);
+    console.log(`[Usuarios PDF] Generando HTML con tabla de usuarios...`);
+    const html = GeneradorPDF.wrapLayout(contenido, 'Usuarios de prueba SGH UNT', true);
 
-  return new NextResponse(new Uint8Array(pdfBuffer), {
-    headers: {
-      'Content-Type': 'application/pdf',
-      'Content-Disposition': 'attachment; filename="usuarios-demo-sgh-unt.pdf"',
-      'Content-Length': pdfBuffer.length.toString(),
-    },
-  });
+    console.log(`[Usuarios PDF] Llamando a generarDesdeHTML...`);
+    const pdfBuffer = await GeneradorPDF.generarDesdeHTML(html, false);
+
+    console.log(`[Usuarios PDF] PDF generado exitosamente, tamaño: ${pdfBuffer.length} bytes`);
+
+    return new NextResponse(new Uint8Array(pdfBuffer), {
+      headers: {
+        'Content-Type': 'application/pdf',
+        'Content-Disposition': 'attachment; filename="usuarios-demo-sgh-unt.pdf"',
+        'Content-Length': pdfBuffer.length.toString(),
+      },
+    });
+  } catch (error) {
+    console.error('[Usuarios PDF] Error al generar PDF:', error);
+    return NextResponse.json(
+      { error: 'Error al generar PDF de usuarios', details: String(error) },
+      { status: 500 }
+    );
+  }
 }
