@@ -102,6 +102,25 @@ export function VisorReportes() {
     fetchData();
   }, [departamentoSeleccionado?.id]);
 
+  const parseResponseArray = async (response: Response) => {
+    if (!response.ok) {
+      const errorData = await response.json().catch(() => ({ error: "Error al cargar datos" }));
+      throw new Error(errorData.error || "Error al cargar datos");
+    }
+
+    const data = await response.json();
+    if (Array.isArray(data)) return data;
+
+    if (data && typeof data === "object") {
+      const nested = (data as any).data ?? (data as any).items ?? (data as any).results;
+      if (Array.isArray(nested)) return nested;
+      const fallback = (data as any).docentes ?? (data as any).ambientes ?? (data as any).ciclos;
+      if (Array.isArray(fallback)) return fallback;
+    }
+
+    return [];
+  };
+
   const fetchData = async () => {
     try {
       let docentesUrl = "/api/docentes";
@@ -115,10 +134,19 @@ export function VisorReportes() {
         fetch(ambientesUrl),
         fetch("/api/ciclos")
       ]);
-      setDocentes(await dRes.json());
-      setAmbientes(await aRes.json());
-      setCiclos(await cRes.json());
+      const [docentesData, ambientesData, ciclosData] = await Promise.all([
+        parseResponseArray(dRes),
+        parseResponseArray(aRes),
+        parseResponseArray(cRes)
+      ]);
+      setDocentes(docentesData);
+      setAmbientes(ambientesData);
+      setCiclos(ciclosData);
     } catch (error) {
+      console.error(error);
+      setDocentes([]);
+      setAmbientes([]);
+      setCiclos([]);
       toast.error(t("errorLoadingReports"));
     }
   };
