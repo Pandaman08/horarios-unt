@@ -1,95 +1,249 @@
-﻿import puppeteer from 'puppeteer-core';
-import chromium from '@sparticuz/chromium';
+﻿import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 export class GeneradorPDF {
   static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {
-    let browser;
-
+    // Intento de renderizado con puppeteer / puppeteer-core (import dinámico para evitar bundling en cliente)
     try {
-      // Intentar con Chromium empaquetado primero
-      const executablePath = await chromium.executablePath();
-      console.log('[GeneradorPDF] Usando Chromium:', executablePath);
-      
-      browser = await puppeteer.launch({
-        headless: true,
-        executablePath,
-        args: chromium.args,
-      });
+      console.log('[GeneradorPDF] Intentando render con puppeteer-core/puppeteer...');
 
-      const page = await browser.newPage();
-      await page.setContent(html, {
-        waitUntil: 'domcontentloaded',
-        timeout: 60000,
-      });
+      const fs = await import('fs');
 
-      const pdf = await page.pdf({
-        format: 'A4',
-        landscape: landscape,
-        printBackground: true,
-        margin: {
-          top: '10mm',
-          right: '10mm',
-          bottom: '10mm',
-          left: '10mm',
-        },
-      });
+      const getLocalExecutable = () => {
+        const envPath = process.env.CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN;
+        if (envPath && (fs as any).existsSync(envPath)) return envPath;
+        const platform = process.platform;
+        const candidates: string[] = [];
+        if (platform === 'win32') {
+          candidates.push(
+            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
+            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+          );
+        } else if (platform === 'darwin') {
+          candidates.push('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
+        } else {
+          candidates.push('/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/snap/bin/chromium');
+        }
+        for (const p of candidates) {
+          try { if ((fs as any).existsSync(p)) return p; } catch (_) {}
+        }
+        return null;
+      };
 
-      await browser.close();
-      return Buffer.from(pdf);
-    } catch (error: any) {
-      if (browser) await browser.close();
-      console.error('[GeneradorPDF] Error con Chromium:', error.message);
-      
-      // Intentar con navegadores nativos de Windows
+      const execPath = getLocalExecutable();
+
+      // Primero intentar puppeteer-core (para usar Chrome del sistema en deploys ligeros)
+      let puppeteerModule: any = null;
       try {
-        console.log('[GeneradorPDF] Intentando con navegador nativo de Windows...');
-        const executablePaths: string[] = [];
-        const edgePath = String.raw`C:\Program Files\Microsoft\Edge\Application\msedge.exe`;
-        const edgePath86 = String.raw`C:\Program Files (x86)\Microsoft\Edge\Application\msedge.exe`;
-        const chromePath = String.raw`C:\Program Files\Google\Chrome\Application\chrome.exe`;
-        const chromePath86 = String.raw`C:\Program Files (x86)\Google\Chrome\Application\chrome.exe`;
-        executablePaths.push(edgePath, edgePath86, chromePath, chromePath86);
+        // @ts-ignore
+        puppeteerModule = await import('puppeteer-core');
+      } catch (_) {
+        try {
+          // @ts-ignore
+          puppeteerModule = await import('puppeteer');
+        } catch (__err) {
+          puppeteerModule = null;
+        }
+      }
 
-        for (const exePath of executablePaths) {
-          try {
-            browser = await puppeteer.launch({
-              headless: true,
-              executablePath: exePath,
-              args: ['--no-sandbox', '--disable-setuid-sandbox'],
-            });
+      const puppeteer = puppeteerModule ? (puppeteerModule.default ?? puppeteerModule) : null;
+      if (puppeteer) {
+        let browser: any;
+        try {
+          const launchOpts: any = {
+            headless: true,
+            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu']
+          };
+          if (execPath) launchOpts.executablePath = execPath;
 
-            const page = await browser.newPage();
-            await page.setContent(html, {
-              waitUntil: 'domcontentloaded',
-              timeout: 60000,
-            });
+          browser = await puppeteer.launch(launchOpts);
 
-            const pdf = await page.pdf({
-              format: 'A4',
-              landscape: landscape,
-              printBackground: true,
-              margin: {
-                top: '10mm',
-                right: '10mm',
-                bottom: '10mm',
-                left: '10mm',
-              },
-            });
+          const page = await browser.newPage();
+          await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
 
-            await browser.close();
-            console.log('[GeneradorPDF] PDF generado exitosamente con navegador nativo');
-            return Buffer.from(pdf);
-          } catch (browserError) {
-            console.log(`[GeneradorPDF] No se pudo usar ${exePath}:`, (browserError as Error).message);
-            if (browser) await browser.close();
+          const pdf = await page.pdf({ format: 'A4', landscape: landscape, printBackground: true, margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } });
+
+          try { await browser.close(); } catch (_) {}
+          console.log('[GeneradorPDF] PDF renderizado con puppeteer, bytes:', pdf.length);
+          return Buffer.from(pdf);
+        } catch (err: any) {
+          console.warn('[GeneradorPDF] puppeteer falló al generar PDF:', err?.message ?? err);
+          try { if (browser) await browser.close(); } catch (_) {}
+        }
+      } else {
+        console.log('[GeneradorPDF] puppeteer / puppeteer-core no disponibles, usando fallback interno.');
+      }
+    } catch (puppErr) {
+      console.warn('[GeneradorPDF] Error al intentar usar puppeteer dinámico:', (puppErr as any)?.message ?? puppErr);
+    }
+
+    // Si llegamos aquí, usamos la implementación con pdf-lib (fallback)
+    try {
+      console.log('[GeneradorPDF] Generando PDF desde HTML (fallback pdf-lib)...');
+
+      const pdfDoc = await PDFDocument.create();
+      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+
+      const pageSize: [number, number] = landscape ? [792, 612] : [612, 792];
+      let page = pdfDoc.addPage(pageSize);
+      let { width, height } = page.getSize();
+
+      const margin = 40;
+      let x = margin;
+      let y = height - margin;
+      const usableWidth = width - margin * 2;
+
+      // Encabezado simple
+      page.drawText('Reporte - SGH UNT', { x: x, y: y, size: 14, font: helveticaBold, color: rgb(0, 0, 0) });
+      y -= 24;
+
+      // Si el HTML contiene una tabla, intentamos parsearla y dibujarla
+      const tableMatch = html.match(/<table[\s\S]*?<\/table>/i);
+      if (tableMatch) {
+        const tableHtml = tableMatch[0];
+
+        // Extraer filas
+        const rowRegex = /<tr[\s\S]*?>[\s\S]*?<\/tr>/gi;
+        const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
+
+        const rows: string[][] = [];
+        let rowMatch: RegExpExecArray | null;
+        while ((rowMatch = rowRegex.exec(tableHtml))) {
+          const rowHtml = rowMatch[0];
+          const cells: string[] = [];
+          let cellMatch: RegExpExecArray | null;
+          while ((cellMatch = cellRegex.exec(rowHtml))) {
+            let cellText = cellMatch[1]
+              .replace(/<[^>]*>/g, ' ')
+              .replace(/&nbsp;/g, ' ')
+              .replace(/&lt;/g, '<')
+              .replace(/&gt;/g, '>')
+              .replace(/&quot;/g, '"')
+              .replace(/&#39;/g, "'")
+              .replace(/\s+/g, ' ')
+              .trim();
+            cells.push(cellText);
           }
+          if (cells.length) rows.push(cells);
         }
 
-        throw new Error('No se encontraron navegadores disponibles');
-      } catch (fallbackError) {
-        console.error('[GeneradorPDF] Error en fallback de navegadores:', (fallbackError as Error).message);
-        return this.generarDesdeHTMLFallback(html, landscape);
+        if (rows.length) {
+          // Calcular número máximo de columnas
+          const colCount = rows.reduce((max, r) => Math.max(max, r.length), 0);
+
+          // Calcular ancho de cada columna según el contenido (medido en puntos)
+          const colWidths: number[] = new Array(colCount).fill(0);
+          const fontSize = 10;
+          for (const r of rows) {
+            for (let ci = 0; ci < colCount; ci++) {
+              const text = r[ci] ?? '';
+              const w = helvetica.widthOfTextAtSize(text, fontSize) + 8; // padding
+              if (w > colWidths[ci]) colWidths[ci] = w;
+            }
+          }
+
+          // Ajustar anchos para que quepan en la página
+          const totalWidth = colWidths.reduce((a, b) => a + b, 0) || usableWidth;
+          if (totalWidth > usableWidth) {
+            const scale = usableWidth / totalWidth;
+            for (let i = 0; i < colWidths.length; i++) colWidths[i] *= scale;
+          }
+
+          const rowHeight = 18;
+
+          // Dibujar filas
+          for (let ri = 0; ri < rows.length; ri++) {
+            const row = rows[ri];
+
+            // Salto de página si es necesario
+            if (y - rowHeight < margin) {
+              page = pdfDoc.addPage(pageSize);
+              ({ width, height } = page.getSize());
+              x = margin;
+              y = height - margin;
+            }
+
+            // Dibujar celdas
+            let cellX = x;
+            for (let ci = 0; ci < colCount; ci++) {
+              const cw = colWidths[ci] || 50;
+              const text = row[ci] ?? '';
+
+              // Estilo para encabezado (primera fila)
+              const isHeader = ri === 0;
+              const font = isHeader ? helveticaBold : helvetica;
+              const fontColor = isHeader ? rgb(0, 0, 0) : rgb(0.1, 0.1, 0.1);
+
+              // Texto con wrap sencillo
+              const words = text.split(' ');
+              let line = '';
+              let lineY = y;
+              for (const word of words) {
+                const test = line ? `${line} ${word}` : word;
+                const testW = font.widthOfTextAtSize(test, fontSize);
+                if (testW + 8 > cw && line) {
+                  page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font, color: fontColor });
+                  line = word;
+                  lineY -= 12;
+                } else {
+                  line = test;
+                }
+              }
+              if (line) {
+                page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font, color: fontColor });
+              }
+
+              // Borde inferior simple
+              page.drawLine({ start: { x: cellX, y: y - rowHeight }, end: { x: cellX + cw, y: y - rowHeight }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
+
+              cellX += cw;
+            }
+
+            y -= rowHeight + 6; // espacio entre filas
+          }
+        }
+      } else {
+        // Si no hay tablas, se mantiene un renderizado plano de texto (preview)
+        const textContent = html
+          .replace(/<[^>]*>/g, ' ')
+          .replace(/&nbsp;/g, ' ')
+          .replace(/&lt;/g, '<')
+          .replace(/&gt;/g, '>')
+          .replace(/&quot;/g, '"')
+          .replace(/&#39;/g, "'")
+          .replace(/\s+/g, ' ')
+          .trim();
+
+        const words = textContent.split(' ');
+        const fontSize = 10;
+        let line = '';
+        for (const word of words.slice(0, 300)) {
+          const test = line ? `${line} ${word}` : word;
+          const testW = helvetica.widthOfTextAtSize(test, fontSize);
+          if (testW > usableWidth) {
+            if (y - 14 < margin) {
+              page = pdfDoc.addPage(pageSize);
+              ({ width, height } = page.getSize());
+              y = height - margin;
+            }
+            page.drawText(line, { x: x, y: y, size: fontSize, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
+            y -= 14;
+            line = word;
+          } else {
+            line = test;
+          }
+        }
+        if (line) page.drawText(line, { x: x, y: y, size: 10, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
       }
+
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = Buffer.from(pdfBytes);
+      console.log('[GeneradorPDF] PDF generado exitosamente (fallback), tamaño:', pdfBuffer.length, 'bytes');
+      return pdfBuffer;
+    } catch (error: any) {
+      console.error('[GeneradorPDF] Error generando PDF en fallback:', error?.message ?? error);
+      return this.generarDesdeHTMLFallback(html, landscape);
     }
   }
 
