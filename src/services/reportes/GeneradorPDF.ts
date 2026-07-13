@@ -75,9 +75,8 @@ export class GeneradorPDF {
               
               launchOpts = {
                 args: chromium.args,
-                defaultViewport: chromium.defaultViewport,
                 executablePath: executablePath,
-                headless: chromium.headless,
+                headless: true,
               };
               console.log('[GeneradorPDF] Launch options for Vercel:', {
                 args: launchOpts.args?.slice(0, 10),
