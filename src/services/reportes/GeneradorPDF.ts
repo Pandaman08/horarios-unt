@@ -31,22 +31,38 @@ export class GeneradorPDF {
       };
 
       const execPath = getLocalExecutable();
+      console.log('[GeneradorPDF] Entorno de PDF:', {
+        NODE_ENV: process.env.NODE_ENV,
+        VERCEL: process.env.VERCEL,
+        VERCEL_ENV: process.env.VERCEL_ENV,
+        CHROME_PATH: process.env.CHROME_PATH,
+        PUPPETEER_EXECUTABLE_PATH: process.env.PUPPETEER_EXECUTABLE_PATH,
+        CHROME_BIN: process.env.CHROME_BIN,
+        platform: process.platform,
+        execPath,
+      });
 
       let puppeteerModule: any = null;
       let isPuppeteerCore = false;
+      let puppeteerPackage = 'none';
       try {
         // @ts-ignore
         puppeteerModule = await import('puppeteer');
-      } catch (_) {
+        puppeteerPackage = 'puppeteer';
+      } catch (puppeteerErr) {
+        console.warn('[GeneradorPDF] No se pudo importar puppeteer:', (puppeteerErr as any)?.message ?? puppeteerErr);
         try {
           // @ts-ignore
           puppeteerModule = await import('puppeteer-core');
           isPuppeteerCore = true;
-        } catch (__err) {
+          puppeteerPackage = 'puppeteer-core';
+        } catch (puppeteerCoreErr) {
+          console.warn('[GeneradorPDF] No se pudo importar puppeteer-core:', (puppeteerCoreErr as any)?.message ?? puppeteerCoreErr);
           puppeteerModule = null;
         }
       }
 
+      console.log('[GeneradorPDF] Módulo importado de navegador:', puppeteerPackage);
       const puppeteer = puppeteerModule ? (puppeteerModule.default ?? puppeteerModule) : null;
       if (puppeteer) {
         let browser: any;
@@ -57,7 +73,16 @@ export class GeneradorPDF {
           };
           if (isPuppeteerCore && execPath) launchOpts.executablePath = execPath;
 
+          console.log('[GeneradorPDF] Puppeteer launch options:', {
+            package: puppeteerPackage,
+            executablePath: launchOpts.executablePath,
+            args: launchOpts.args,
+          });
+
           browser = await puppeteer.launch(launchOpts);
+
+          const browserVersion = typeof browser.version === 'function' ? await browser.version() : 'unknown';
+          console.log('[GeneradorPDF] Navegador lanzado con versión:', browserVersion);
 
           const page = await browser.newPage();
           await page.setViewport({ width: 1200, height: 900 });
@@ -69,7 +94,7 @@ export class GeneradorPDF {
           console.log('[GeneradorPDF] PDF renderizado con puppeteer, bytes:', pdf.length);
           return Buffer.from(pdf);
         } catch (err: any) {
-          console.warn('[GeneradorPDF] puppeteer falló al generar PDF:', err?.message ?? err);
+          console.warn('[GeneradorPDF] puppeteer falló al generar PDF:', err?.message ?? err, { stack: err?.stack });
           try { if (browser) await browser.close(); } catch (_) {}
         }
       } else {
