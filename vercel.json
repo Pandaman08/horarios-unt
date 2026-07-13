@@ -1,10 +1,18 @@
 {
+  "version": 2,
+  "builds": [
+    {
+      "src": "package.json",
+      "use": "@vercel/next@4"
+    }
+  ],
   "functions": {
-    "src/app/api/reportes/pdf/route.ts": {
-      "maxDuration": 60
-    },
-    "src/app/api/cron/**": {
+    "app/api/reportes/pdf/route.ts": {
+      "memory": 1024,
       "maxDuration": 30
     }
+  },
+  "env": {
+    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
   }
 }
