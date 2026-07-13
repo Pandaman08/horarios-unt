@@ -20,9 +20,9 @@ export async function GET() {
 
     console.log(`[Usuarios PDF] Se encontraron ${usuarios.length} usuarios`);
 
-    // Crear documento PDF
-    const pdfDoc = PDFDocument.create();
-    let page = pdfDoc.addPage([612, 792]); // Tamaño A4
+    // Crear documento PDF en landscape para más espacio
+    const pdfDoc = await PDFDocument.create();
+    let page = pdfDoc.addPage([792, 612]); // Landscape (ancho x alto)
     const { width, height } = page.getSize();
     
     let y = height - 40;
@@ -38,7 +38,7 @@ export async function GET() {
     });
     y -= lineHeight * 1.5;
 
-    page.drawText('Se incluyen todos los usuarios registrados en el sistema con sus datos de acceso.', {
+    page.drawText('Se incluyen todos los usuarios registrados en el sistema con sus datos de acceso para pruebas.', {
       x: margin,
       y: y,
       size: 10,
@@ -46,9 +46,9 @@ export async function GET() {
     });
     y -= lineHeight * 2;
 
-    // Encabezados de tabla
-    const colWidths = [60, 80, 90, 80, 110, 50];
-    const headers = ['Código', 'Nombres', 'Apellidos', 'Rol', 'Correo', 'Estado'];
+    // Encabezados de tabla (ajustados para landscape)
+    const colWidths = [55, 65, 65, 60, 85, 240, 50];
+    const headers = ['Código', 'Nombres', 'Apellidos', 'Rol', 'Contraseña', 'Correo', 'Estado'];
     let x = margin;
 
     // Fondo gris para encabezados
@@ -65,7 +65,7 @@ export async function GET() {
       page.drawText(headers[i], {
         x: x,
         y: y - 10,
-        size: 9,
+        size: 8,
         color: rgb(0, 0, 0),
       });
       x += colWidths[i];
@@ -88,8 +88,8 @@ export async function GET() {
     for (const usuario of usuarios) {
       // Verificar si necesitamos una nueva página
       if (y < margin + 20) {
-        page = pdfDoc.addPage([612, 792]);
-        y = 792 - 40;
+        page = pdfDoc.addPage([792, 612]);
+        y = 612 - 40;
         page.drawText(`Página ${pdfDoc.getPages().length}`, {
           x: width - 100,
           y: 20,
@@ -114,22 +114,26 @@ export async function GET() {
         usuario.nombres || '',
         usuario.apellidos || '',
         usuario.rol || '',
-        usuario.correo_electronico || 'Sin correo',
+        usuario.codigo || 'N/A', // Contraseña = Código/DNI
+        usuario.correo_electronico || 'Sin correo', // Correo completo
         usuario.activo ? 'Activo' : 'Inactivo',
       ];
 
       x = margin;
       for (let i = 0; i < cols.length; i++) {
-        // Truncar texto si es muy largo
         let text = cols[i];
-        if (text.length > 15) {
-          text = text.substring(0, 12) + '...';
+        
+        // Solo truncar texto en columnas pequeñas (no en Correo)
+        if (i !== 5 && text.length > 12) {
+          text = text.substring(0, 9) + '...';
+        } else if (i === 5 && text.length > 35) {
+          text = text.substring(0, 32) + '...';
         }
         
         page.drawText(text, {
           x: x,
           y: y - rowHeight + 2,
-          size: 8,
+          size: 7,
           color: rgb(0, 0, 0),
         });
         x += colWidths[i];
@@ -155,7 +159,7 @@ export async function GET() {
       color: rgb(0.3, 0.3, 0.3),
     });
 
-    page.drawText('Documento generado automáticamente desde el login del sistema.', {
+    page.drawText('NOTA: La contraseña es igual al código del usuario. Correo completo disponible para copiar.', {
       x: margin,
       y: y - 12,
       size: 8,
@@ -163,10 +167,11 @@ export async function GET() {
     });
 
     // Generar buffer
-    const pdfBuffer = await pdfDoc.save();
+    const pdfBytes = await pdfDoc.save();
+    const pdfBuffer = Buffer.from(pdfBytes);
     console.log(`[Usuarios PDF] PDF generado exitosamente, tamaño: ${pdfBuffer.length} bytes`);
 
-    return new NextResponse(Buffer.from(pdfBuffer), {
+    return new NextResponse(pdfBuffer, {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename="usuarios-demo-sgh-unt.pdf"',
