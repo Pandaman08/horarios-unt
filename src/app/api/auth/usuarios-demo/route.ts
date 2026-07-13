@@ -1,10 +1,10 @@
 import { NextResponse } from 'next/server';
-import { GeneradorPDF } from '@/services/reportes/GeneradorPDF';
+import { PDFDocument, rgb } from 'pdf-lib';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    console.log('[Usuarios PDF] Iniciando generación de PDF de usuarios...');
+    console.log('[Usuarios PDF] Iniciando generación de PDF con pdf-lib...');
     
     const usuarios = await prisma.usuario.findMany({
       select: {
@@ -20,50 +20,153 @@ export async function GET() {
 
     console.log(`[Usuarios PDF] Se encontraron ${usuarios.length} usuarios`);
 
-  const contenido = `
-    <div style="font-family: Arial, sans-serif; color: #0f172a; padding: 24px;">
-      <h1 style="margin: 0 0 8px; font-size: 22px;">Usuarios de prueba - SGH UNT</h1>
-      <p style="margin: 0 0 20px; color: #475569;">Se incluyen todos los usuarios registrados en el sistema con sus datos de acceso para pruebas.</p>
-      <table style="width: 100%; border-collapse: collapse; font-size: 11px;">
-        <thead>
-          <tr style="background: #f8fafc; text-align: left;">
-            <th style="border: 1px solid #e2e8f0; padding: 8px;">Código</th>
-            <th style="border: 1px solid #e2e8f0; padding: 8px;">Nombres</th>
-            <th style="border: 1px solid #e2e8f0; padding: 8px;">Apellidos</th>
-            <th style="border: 1px solid #e2e8f0; padding: 8px;">Rol</th>
-            <th style="border: 1px solid #e2e8f0; padding: 8px;">Correo</th>
-            <th style="border: 1px solid #e2e8f0; padding: 8px;">Estado</th>
-          </tr>
-        </thead>
-        <tbody>
-          ${usuarios
-            .map((usuario) => `
-                <tr>
-                  <td style="border: 1px solid #e2e8f0; padding: 8px;">${usuario.codigo}</td>
-                  <td style="border: 1px solid #e2e8f0; padding: 8px;">${usuario.nombres}</td>
-                  <td style="border: 1px solid #e2e8f0; padding: 8px;">${usuario.apellidos}</td>
-                  <td style="border: 1px solid #e2e8f0; padding: 8px;">${usuario.rol}</td>
-                  <td style="border: 1px solid #e2e8f0; padding: 8px;">${usuario.correo_electronico || 'Sin correo'}</td>
-                  <td style="border: 1px solid #e2e8f0; padding: 8px;">${usuario.activo ? 'Activo' : 'Inactivo'}</td>
-                </tr>
-              `)
-            .join('')}
-        </tbody>
-      </table>
-      <p style="margin-top: 18px; font-size: 11px; color: #64748b;">Total de usuarios: ${usuarios.length}</p>
-      <p style="margin-top: 6px; font-size: 11px; color: #64748b;">Documento generado automáticamente desde el login del sistema.</p>
-    </div>
-  `;
+    // Crear documento PDF
+    const pdfDoc = PDFDocument.create();
+    let page = pdfDoc.addPage([612, 792]); // Tamaño A4
+    const { width, height } = page.getSize();
+    
+    let y = height - 40;
+    const margin = 40;
+    const lineHeight = 15;
 
-    console.log(`[Usuarios PDF] Generando HTML con tabla de usuarios...`);
-    const html = GeneradorPDF.wrapLayout(contenido, 'Usuarios de prueba SGH UNT', true);
+    // Título
+    page.drawText('Usuarios de prueba - SGH UNT', {
+      x: margin,
+      y: y,
+      size: 18,
+      color: rgb(0, 0, 0),
+    });
+    y -= lineHeight * 1.5;
 
-    console.log(`[Usuarios PDF] Llamando a generarDesdeHTML...`);
-    const pdfBuffer = await GeneradorPDF.generarDesdeHTML(html, false);
+    page.drawText('Se incluyen todos los usuarios registrados en el sistema con sus datos de acceso.', {
+      x: margin,
+      y: y,
+      size: 10,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+    y -= lineHeight * 2;
 
+    // Encabezados de tabla
+    const colWidths = [60, 80, 90, 80, 110, 50];
+    const headers = ['Código', 'Nombres', 'Apellidos', 'Rol', 'Correo', 'Estado'];
+    let x = margin;
+
+    // Fondo gris para encabezados
+    page.drawRectangle({
+      x: margin,
+      y: y - 12,
+      width: width - margin * 2,
+      height: 15,
+      color: rgb(0.95, 0.95, 0.95),
+    });
+
+    // Dibujar encabezados
+    for (let i = 0; i < headers.length; i++) {
+      page.drawText(headers[i], {
+        x: x,
+        y: y - 10,
+        size: 9,
+        color: rgb(0, 0, 0),
+      });
+      x += colWidths[i];
+    }
+    y -= lineHeight * 1.2;
+
+    // Dibujar línea separadora
+    page.drawLine({
+      start: { x: margin, y: y },
+      end: { x: width - margin, y: y },
+      thickness: 0.5,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+    y -= lineHeight * 0.5;
+
+    // Dibujar filas de usuarios
+    const rowHeight = 12;
+    let rowCount = 0;
+
+    for (const usuario of usuarios) {
+      // Verificar si necesitamos una nueva página
+      if (y < margin + 20) {
+        page = pdfDoc.addPage([612, 792]);
+        y = 792 - 40;
+        page.drawText(`Página ${pdfDoc.getPages().length}`, {
+          x: width - 100,
+          y: 20,
+          size: 8,
+          color: rgb(0.5, 0.5, 0.5),
+        });
+      }
+
+      // Alternar color de fondo para mejor legibilidad
+      if (rowCount % 2 === 0) {
+        page.drawRectangle({
+          x: margin,
+          y: y - rowHeight,
+          width: width - margin * 2,
+          height: rowHeight,
+          color: rgb(0.98, 0.98, 0.98),
+        });
+      }
+
+      const cols = [
+        usuario.codigo || 'N/A',
+        usuario.nombres || '',
+        usuario.apellidos || '',
+        usuario.rol || '',
+        usuario.correo_electronico || 'Sin correo',
+        usuario.activo ? 'Activo' : 'Inactivo',
+      ];
+
+      x = margin;
+      for (let i = 0; i < cols.length; i++) {
+        // Truncar texto si es muy largo
+        let text = cols[i];
+        if (text.length > 15) {
+          text = text.substring(0, 12) + '...';
+        }
+        
+        page.drawText(text, {
+          x: x,
+          y: y - rowHeight + 2,
+          size: 8,
+          color: rgb(0, 0, 0),
+        });
+        x += colWidths[i];
+      }
+
+      y -= rowHeight;
+      rowCount++;
+    }
+
+    // Pie de página en la página actual
+    page.drawLine({
+      start: { x: margin, y: y },
+      end: { x: width - margin, y: y },
+      thickness: 0.5,
+      color: rgb(0.8, 0.8, 0.8),
+    });
+    y -= lineHeight;
+
+    page.drawText(`Total de usuarios: ${usuarios.length}`, {
+      x: margin,
+      y: y,
+      size: 9,
+      color: rgb(0.3, 0.3, 0.3),
+    });
+
+    page.drawText('Documento generado automáticamente desde el login del sistema.', {
+      x: margin,
+      y: y - 12,
+      size: 8,
+      color: rgb(0.5, 0.5, 0.5),
+    });
+
+    // Generar buffer
+    const pdfBuffer = await pdfDoc.save();
     console.log(`[Usuarios PDF] PDF generado exitosamente, tamaño: ${pdfBuffer.length} bytes`);
 
-    return new NextResponse(new Uint8Array(pdfBuffer), {
+    return new NextResponse(Buffer.from(pdfBuffer), {
       headers: {
         'Content-Type': 'application/pdf',
         'Content-Disposition': 'attachment; filename="usuarios-demo-sgh-unt.pdf"',
