@@ -15,6 +15,9 @@ const nextConfig: NextConfig = {
       bodySizeLimit: "10mb",
     },
   },
+  outputFileTracingIncludes: {
+    "src/app/api/reportes/pdf/route": ["node_modules/@sparticuz/chromium/**"],
+  },
 };
 
 export default nextConfig;
