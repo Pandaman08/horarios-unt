@@ -79,7 +79,25 @@ export class GeneradorPDF {
             args: launchOpts.args,
           });
 
-          browser = await puppeteer.launch(launchOpts);
+          try {
+            browser = await puppeteer.launch(launchOpts);
+          } catch (launchErr: any) {
+            console.warn('[GeneradorPDF] Launch con puppeteer falló:', (launchErr as any)?.message ?? launchErr);
+            try {
+              const chromium = await import('@sparticuz/chromium');
+              const chromiumExec = await chromium.default.executablePath();
+              const chromiumArgs = chromium.default.args || ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
+              console.log('[GeneradorPDF] Fallback con @sparticuz/chromium', { chromiumExec, chromiumArgs });
+              browser = await puppeteer.launch({
+                headless: true,
+                executablePath: chromiumExec,
+                args: chromiumArgs,
+              });
+            } catch (chromiumErr: any) {
+              console.warn('[GeneradorPDF] Fallback con @sparticuz/chromium falló:', (chromiumErr as any)?.message ?? chromiumErr);
+              throw launchErr;
+            }
+          }
 
           const browserVersion = typeof browser.version === 'function' ? await browser.version() : 'unknown';
           console.log('[GeneradorPDF] Navegador lanzado con versión:', browserVersion);
