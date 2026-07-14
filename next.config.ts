@@ -2,8 +2,8 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: [
-    "@sparticuz/chromium",
-    "puppeteer-core",
+    "html-to-pdfmake",
+    "pdfmake",
     "exceljs",
     "nodemailer",
     "bcryptjs",
@@ -14,12 +14,6 @@ const nextConfig: NextConfig = {
     serverActions: {
       bodySizeLimit: "10mb",
     },
-  },
-  outputFileTracingIncludes: {
-    "app/api/reportes/pdf/route.ts": [
-      "node_modules/@sparticuz/chromium/**/*",
-      "node_modules/puppeteer-core/**/*",
-    ],
   },
 };
 

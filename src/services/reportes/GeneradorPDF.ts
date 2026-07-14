@@ -1,119 +1,70 @@
 import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import type { TDocumentDefinitions } from 'pdfmake/interfaces';
 
 export class GeneradorPDF {
   static async generarDesdeHTML(
     html: string,
-    landscape: boolean = false
+    landscape: boolean = false,
   ): Promise<Buffer> {
     try {
-      console.log('[GeneradorPDF] Iniciando generación de PDF...');
-      const isVercel = process.env.VERCEL === '1';
-      console.log('[GeneradorPDF] Entorno:', {
-        isVercel,
-        NODE_ENV: process.env.NODE_ENV,
+      console.log('[GeneradorPDF] Iniciando generación de PDF con html-to-pdfmake...');
+
+      // Importar dinámicamente para evitar problemas con Next.js
+      const htmlToPdfmakeModule = await import('html-to-pdfmake');
+      const htmlToPdfmake = htmlToPdfmakeModule.default || htmlToPdfmakeModule;
+
+      // 1. Convertir HTML a la estructura de pdfmake
+      const pdfMakeContent = htmlToPdfmake(html, {
+        defaultStyles: {
+          p: { fontSize: 12 },
+          h1: { fontSize: 24, bold: true, marginBottom: 10 },
+          h2: { fontSize: 20, bold: true, marginBottom: 8 },
+          table: { margin: [0, 5, 0, 15] },
+          th: { bold: true, fillColor: '#f8fafc' },
+        },
       });
 
-      let browser;
-      if (isVercel) {
-        console.log('[GeneradorPDF] Entorno: Vercel - usando @sparticuz/chromium.launch()');
-        const chromiumModule = await import('@sparticuz/chromium');
-        const puppeteerModule = await import('puppeteer-core');
-        const chromium = chromiumModule.default || chromiumModule;
-        const puppeteer = puppeteerModule.default || puppeteerModule;
+      // 2. Crear la definición del documento PDF
+      const docDefinition: TDocumentDefinitions = {
+        pageSize: 'A4',
+        pageOrientation: landscape ? 'landscape' : 'portrait',
+        content: pdfMakeContent as any,
+        defaultStyle: {
+          font: 'Helvetica',
+        },
+      };
 
-        browser = await puppeteer.launch({
-          args: [
-            ...chromium.args,
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-            '--disable-gpu',
-            '--no-zygote',
-            '--no-first-run',
-            '--disable-extensions',
-            '--disable-background-networking',
-            '--disable-default-apps',
-            '--disable-sync',
-            '--disable-translate',
-            '--disable-blink-features=AutomationControlled',
-          ],
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
-          headless: chromium.headless,
-          ignoreHTTPSErrors: true,
+      // 3. Importar pdfmake dinámicamente
+      const pdfmakeModule = await import('pdfmake');
+      const PdfPrinter = pdfmakeModule.default as unknown as new (fonts: any) => any;
+      const printer = new PdfPrinter({
+        Helvetica: {
+          normal: 'Helvetica',
+          bold: 'Helvetica-Bold',
+          italics: 'Helvetica-Oblique',
+          bolditalics: 'Helvetica-BoldOblique',
+        },
+      });
+
+      // 4. Generar el PDF
+      const pdfDoc = printer.createPdfKitDocument(docDefinition);
+      const chunks: Buffer[] = [];
+
+      return new Promise<Buffer>((resolve, reject) => {
+        pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        pdfDoc.on('end', () => {
+          const pdfBuffer = Buffer.concat(chunks);
+          console.log(
+            '[GeneradorPDF] PDF generado con éxito, bytes:',
+            pdfBuffer.length,
+          );
+          resolve(pdfBuffer);
         });
-      } else {
-        console.log('[GeneradorPDF] Entorno: Local - buscando Chrome/Edge');
-        const puppeteerModule = await import('puppeteer-core');
-        const puppeteer = puppeteerModule.default || puppeteerModule;
-        const fs = await import('fs');
-        const platform = process.platform;
-        let executablePath: string | null = null;
-
-        const candidates: string[] = [];
-        if (platform === 'win32') {
-          candidates.push(
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe',
-          );
-        } else if (platform === 'darwin') {
-          candidates.push(
-            '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-          );
-        } else {
-          candidates.push(
-            '/usr/bin/google-chrome',
-            '/usr/bin/chromium-browser',
-            '/usr/bin/chromium',
-          );
-        }
-
-        for (const p of candidates) {
-          try {
-            if (fs.existsSync(p)) {
-              executablePath = p;
-              break;
-            }
-          } catch (_) {}
-        }
-
-        if (!executablePath) {
-          throw new Error('No se encontró Chrome/Edge local');
-        }
-
-        browser = await puppeteer.launch({
-          args: [
-            '--no-sandbox',
-            '--disable-setuid-sandbox',
-            '--disable-dev-shm-usage',
-          ],
-          executablePath,
-          headless: true,
-        });
-      }
-
-      console.log('[GeneradorPDF] Navegador lanzado');
-
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1200, height: 900 });
-      await page.setContent(html, {
-        waitUntil: 'domcontentloaded',
-        timeout: 60000,
+        pdfDoc.on('error', reject);
+        pdfDoc.end();
       });
-
-      const pdf = await page.pdf({
-        format: 'A4',
-        landscape,
-        printBackground: true,
-        margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' },
-      });
-
-      await browser.close();
-      console.log('[GeneradorPDF] PDF generado con éxito, bytes:', pdf.length);
-      return Buffer.from(pdf);
     } catch (error) {
-      console.error('[GeneradorPDF] Error al generar PDF con puppeteer:', error);
+      console.error('[GeneradorPDF] Error al generar PDF:', error);
       return this.generarPDFMinimalista();
     }
   }
@@ -179,7 +130,7 @@ export class GeneradorPDF {
             body {
               font-family: 'Inter', -apple-system, sans-serif;
               margin: 0;
-              padding: 0;
+              padding: 20px;
               color: #1e293b;
               line-height: 1.5;
             }
