@@ -5,129 +5,145 @@ export class GeneradorPDF {
     html: string,
     landscape: boolean = false
   ): Promise<Buffer> {
-    // Intento de renderizado con puppeteer-core y @sparticuz/chromium
     try {
-      console.log("[GeneradorPDF] Iniciando generación de PDF...");
-      const isVercel = process.env.VERCEL === "1";
-      console.log("[GeneradorPDF] Entorno:", {
-        isVercel,
-        NODE_ENV: process.env.NODE_ENV,
+      console.log("[GeneradorPDF] Iniciando generación de PDF con pdf-lib...");
+
+      // 1. Crear un nuevo documento PDF
+      const pdfDoc = await PDFDocument.create();
+
+      // 2. Obtener fuentes estándar
+      const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+      const helveticaBoldFont = await pdfDoc.embedFont(
+        StandardFonts.HelveticaBold
+      );
+
+      // 3. Agregar una página
+      const page = pdfDoc.addPage([
+        595.28, // Ancho (A4)
+        landscape ? 420.94 : 841.89, // Alto
+      ]);
+      const pageSize = page.getSize();
+      const { width, height } = pageSize;
+
+      // 4. Escribir contenido en la página
+      let yPosition = height - 50;
+
+      // Título principal
+      page.drawText("Reporte Generado", {
+        x: 50,
+        y: yPosition,
+        size: 24,
+        font: helveticaBoldFont,
+        color: rgb(0, 0, 0),
       });
+      yPosition -= 30;
 
-      let browser;
-      if (isVercel) {
-        console.log(
-          "[GeneradorPDF] Entorno: Vercel - usando @sparticuz/chromium.launch()"
-        );
-        // Importar módulos dinámicamente para Vercel
-        const chromiumModule = await import("@sparticuz/chromium");
-        const chromium = chromiumModule.default || chromiumModule;
-        const puppeteerModule = await import("puppeteer-core");
-        const puppeteer = puppeteerModule.default || puppeteerModule;
+      // Fecha y universidad
+      page.drawText(new Date().toLocaleString("es-PE"), {
+        x: 50,
+        y: yPosition,
+        size: 14,
+        font: helveticaFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 20;
 
-        browser = await puppeteer.launch({
-          args: [
-            ...chromium.args,
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-            "--disable-gpu",
-            "--no-zygote",
-            "--no-first-run",
-            "--disable-extensions",
-            "--disable-background-networking",
-            "--disable-default-apps",
-            "--disable-sync",
-            "--disable-translate",
-            "--disable-blink-features=AutomationControlled",
-          ],
-          defaultViewport: chromium.defaultViewport,
-          executablePath: await chromium.executablePath(),
-          headless: chromium.headless,
-          ignoreHTTPSErrors: true,
-        });
-      } else {
-        console.log("[GeneradorPDF] Entorno: Local - buscando Chrome/Edge");
-        // Importar módulos dinámicamente para entorno local
-        const puppeteerModule = await import("puppeteer-core");
-        const puppeteer = puppeteerModule.default || puppeteerModule;
+      page.drawText("Universidad Nacional de Trujillo", {
+        x: 50,
+        y: yPosition,
+        size: 14,
+        font: helveticaBoldFont,
+        color: rgb(0, 0, 0.4),
+      });
+      yPosition -= 20;
 
-        // Buscar Chrome/Edge local
-        const fs = await import("fs");
-        const platform = process.platform;
-        let executablePath: string | null = null;
+      page.drawText("Escuela de Ingeniería de Sistemas", {
+        x: 50,
+        y: yPosition,
+        size: 14,
+        font: helveticaFont,
+        color: rgb(0.3, 0.3, 0.3),
+      });
+      yPosition -= 40;
 
-        const candidates: string[] = [];
-        if (platform === "win32") {
-          candidates.push(
-            "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
-            "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
-            "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
-          );
-        } else if (platform === "darwin") {
-          candidates.push(
-            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
-          );
+      // Convertir HTML a texto plano y dividir en líneas
+      const plainText = html.replace(/<[^>]*>/g, "");
+      const words = plainText.split(/\s+/);
+      let currentLine = "";
+
+      for (const word of words) {
+        const testLine = currentLine + (currentLine ? " " : "") + word;
+        const textWidth = helveticaFont.widthOfTextAtSize(testLine, 12);
+
+        if (textWidth > width - 100) {
+          // Dibujar la línea actual
+          page.drawText(currentLine, {
+            x: 50,
+            y: yPosition,
+            size: 12,
+            font: helveticaFont,
+            color: rgb(0, 0, 0),
+          });
+          yPosition -= 20;
+          currentLine = word;
+
+          // Si nos quedamos sin espacio, agregar nueva página
+          if (yPosition < 50) {
+            const newPage = pdfDoc.addPage([width, height]);
+            yPosition = height - 50;
+            page.drawText(currentLine, {
+              x: 50,
+              y: yPosition,
+              size: 12,
+              font: helveticaFont,
+              color: rgb(0, 0, 0),
+            });
+            yPosition -= 20;
+          }
         } else {
-          candidates.push(
-            "/usr/bin/google-chrome",
-            "/usr/bin/chromium-browser",
-            "/usr/bin/chromium"
-          );
+          currentLine = testLine;
         }
+      }
 
-        for (const p of candidates) {
-          try {
-            if (fs.existsSync(p)) {
-              executablePath = p;
-              break;
-            }
-          } catch (_) {}
-        }
-
-        if (!executablePath) {
-          throw new Error("No se encontró Chrome/Edge local");
-        }
-
-        browser = await puppeteer.launch({
-          args: [
-            "--no-sandbox",
-            "--disable-setuid-sandbox",
-            "--disable-dev-shm-usage",
-          ],
-          executablePath,
-          headless: true,
+      // Dibujar la última línea
+      if (currentLine) {
+        page.drawText(currentLine, {
+          x: 50,
+          y: yPosition,
+          size: 12,
+          font: helveticaFont,
+          color: rgb(0, 0, 0),
         });
       }
 
-      console.log("[GeneradorPDF] Navegador lanzado");
+      // 5. Agregar pie de página a todas las páginas
+      const pages = pdfDoc.getPages();
+      for (let i = 0; i < pages.length; i++) {
+        const pageFooter = pages[i];
+        pageFooter.drawText(
+          `Página ${i + 1} de ${pages.length} - © ${new Date().getFullYear()} Sistema de Gestión de Horarios UNT`,
+          {
+            x: 50,
+            y: 30,
+            size: 10,
+            font: helveticaFont,
+            color: rgb(0.5, 0.5, 0.5),
+          }
+        );
+      }
 
-      const page = await browser.newPage();
-      await page.setViewport({ width: 1200, height: 900 });
-      await page.setContent(html, {
-        waitUntil: "domcontentloaded",
-        timeout: 60000,
-      });
+      // 6. Guardar el PDF
+      const pdfBytes = await pdfDoc.save();
+      const pdfBuffer = Buffer.from(pdfBytes);
 
-      const pdf = await page.pdf({
-        format: "A4",
-        landscape,
-        printBackground: true,
-        margin: { top: "10mm", right: "10mm", bottom: "10mm", left: "10mm" },
-      });
-
-      await browser.close();
       console.log(
-        "[GeneradorPDF] PDF generado con éxito, bytes:",
-        pdf.length
+        "[GeneradorPDF] PDF generado con éxito con pdf-lib, bytes:",
+        pdfBuffer.length
       );
-      return Buffer.from(pdf);
+
+      return pdfBuffer;
     } catch (error) {
-      console.error(
-        "[GeneradorPDF] Error al generar PDF con puppeteer:",
-        error
-      );
-      // Usar fallback en caso de error
+      console.error("[GeneradorPDF] Error al generar PDF:", error);
       return this.generarPDFMinimalista();
     }
   }
