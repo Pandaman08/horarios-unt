@@ -18,9 +18,9 @@ const nextConfig: NextConfig = {
   },
   outputFileTracingIncludes: {
     "app/api/reportes/pdf/route.ts": [
-      "node_modules/@sparticuz/chromium/**",
-      "node_modules/puppeteer-core/**",
-      "node_modules/puppeteer/**"
+      "node_modules/@sparticuz/chromium/**/*",
+      "node_modules/puppeteer-core/**/*",
+      "node_modules/puppeteer/**/*"
     ],
   },
 };

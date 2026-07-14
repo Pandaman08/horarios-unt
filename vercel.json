@@ -1,11 +1,11 @@
 {
   "functions": {
     "app/api/reportes/pdf/route.ts": {
-      "memory": 1536,
-      "maxDuration": 60
+      "memory": 2048,
+      "maxDuration": 60,
+      "runtime": "nodejs20.x"
     }
   },
-  "installCommand": "npm install && npm run postinstall",
   "regions": ["sfo1"],
   "env": {
     "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"

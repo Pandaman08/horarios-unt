@@ -8,28 +8,31 @@ export class GeneradorPDF {
       const isVercel = process.env.VERCEL === '1';
       console.log('[GeneradorPDF] Entorno:', { isVercel, NODE_ENV: process.env.NODE_ENV });
 
-      // Importar módulos dinámicamente
-      const puppeteerModule = await import('puppeteer-core');
-      const chromiumModule = await import('@sparticuz/chromium');
-      const puppeteer = puppeteerModule.default || puppeteerModule;
-      const chromium = chromiumModule.default || chromiumModule;
-
-      console.log('[GeneradorPDF] Módulos importados correctamente');
-
-      let executablePath: string | undefined;
-      let args: string[];
-
+      let browser;
       if (isVercel) {
-        console.log('[GeneradorPDF] Entorno: Vercel');
-        executablePath = await chromium.executablePath();
-        args = chromium.args;
-        console.log('[GeneradorPDF] Chromium executablePath:', executablePath);
+        console.log('[GeneradorPDF] Entorno: Vercel - usando @sparticuz/chromium.launch()');
+        // Importar módulos dinámicamente para Vercel
+        const chromiumModule = await import('@sparticuz/chromium');
+        const chromium = chromiumModule.default || chromiumModule;
+        const puppeteerModule = await import('puppeteer-core');
+        const puppeteer = puppeteerModule.default || puppeteerModule;
+        
+        browser = await puppeteer.launch({
+          args: chromium.args,
+          defaultViewport: chromium.defaultViewport,
+          executablePath: await chromium.executablePath(),
+          headless: chromium.headless,
+        });
       } else {
-        console.log('[GeneradorPDF] Entorno: Local');
+        console.log('[GeneradorPDF] Entorno: Local - buscando Chrome/Edge');
+        // Importar módulos dinámicamente para entorno local
+        const puppeteerModule = await import('puppeteer-core');
+        const puppeteer = puppeteerModule.default || puppeteerModule;
+        
         // Buscar Chrome/Edge local
         const fs = await import('fs');
         const platform = process.platform;
-        let foundPath: string | null = null;
+        let executablePath: string | null = null;
         
         const candidates: string[] = [];
         if (platform === 'win32') {
@@ -47,26 +50,22 @@ export class GeneradorPDF {
         for (const p of candidates) {
           try {
             if (fs.existsSync(p)) {
-              foundPath = p;
+              executablePath = p;
               break;
             }
           } catch (_) {}
         }
         
-        if (!foundPath) {
+        if (!executablePath) {
           throw new Error('No se encontró Chrome/Edge local');
         }
-        executablePath = foundPath;
-        args = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'];
+        
+        browser = await puppeteer.launch({
+          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          executablePath,
+          headless: true,
+        });
       }
-
-      console.log('[GeneradorPDF] Launch options:', { executablePath, argsLength: args.length });
-
-      const browser = await puppeteer.launch({
-        args,
-        executablePath,
-        headless: true,
-      });
 
       console.log('[GeneradorPDF] Navegador lanzado');
 
