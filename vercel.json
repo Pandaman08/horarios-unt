@@ -2,8 +2,7 @@
   "functions": {
     "app/api/reportes/pdf/route.ts": {
       "memory": 1536,
-      "maxDuration": 60,
-      "runtime": "nodejs20.x"
+      "maxDuration": 60
     }
   },
   "installCommand": "npm install && npm run postinstall",
