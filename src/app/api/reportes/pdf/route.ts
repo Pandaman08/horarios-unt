@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -1589,29 +1589,7 @@ export async function GET(request: Request) {
 </html>`;
       }
 
-      const pdfBuffer = await (typeof GeneradorPDF?.generarDesdeHTML === 'function' 
-        ? GeneradorPDF.generarDesdeHTML(htmlContent, false)
-        : Promise.all([
-            import('puppeteer-core'),
-            import('@sparticuz/chromium')
-          ]).then(async ([puppeteerImport, chromiumImport]) => {
-            const puppeteerModule = puppeteerImport.default ?? puppeteerImport;
-            const chromiumModule = chromiumImport.default ?? chromiumImport;
-            const executablePath = await chromiumModule.executablePath();
-            const args = Array.isArray(chromiumModule.args)
-              ? chromiumModule.args
-              : ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu'];
-            const browser = await puppeteerModule.launch({
-              headless: true,
-              executablePath,
-              args,
-            });
-            const page = await browser.newPage();
-            await page.setContent(htmlContent, { timeout: 60000 });
-            const buffer = await page.pdf({ format: 'A4', printBackground: true, margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } });
-            await browser.close();
-            return buffer;
-          }));
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
 
       const filename = `${formato}-declaracion-carga-horaria.pdf`;
 
