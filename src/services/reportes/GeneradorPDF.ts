@@ -18,7 +18,7 @@ export class GeneradorPDF {
         const puppeteer = puppeteerModule.default || puppeteerModule;
         
         browser = await puppeteer.launch({
-          args: chromium.args,
+          args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
           defaultViewport: chromium.defaultViewport,
           executablePath: await chromium.executablePath(),
           headless: chromium.headless,
