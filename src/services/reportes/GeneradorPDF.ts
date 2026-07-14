@@ -70,7 +70,37 @@ export class GeneradorPDF {
               const chromium = chromiumModule.default ?? chromiumModule;
               console.log('[GeneradorPDF] Chromium module loaded successfully');
               
-              const executablePath = await chromium.executablePath();
+              // Intenta varias formas de obtener executablePath
+              let executablePath: string | null = null;
+              try {
+                console.log('[GeneradorPDF] Intentando executablePath()...');
+                executablePath = await chromium.executablePath();
+              } catch (e1: any) {
+                console.warn('[GeneradorPDF] executablePath() falló:', e1.message);
+                try {
+                  console.log('[GeneradorPDF] Intentando path local...');
+                  const path = await import('path');
+                  const fs = await import('fs');
+                  // Ruta común en Vercel
+                  const possiblePaths = [
+                    '/opt/render/.cache/puppeteer/chrome',
+                    path.join(process.cwd(), 'node_modules', '@sparticuz', 'chromium', 'bin'),
+                  ];
+                  for (const p of possiblePaths) {
+                    if (fs.existsSync(p)) {
+                      executablePath = p;
+                      break;
+                    }
+                  }
+                } catch (e2: any) {
+                  console.warn('[GeneradorPDF] También falló la búsqueda de path local:', e2.message);
+                }
+              }
+              
+              if (!executablePath) {
+                throw new Error('No se pudo encontrar executablePath para Chromium');
+              }
+              
               console.log('[GeneradorPDF] Chromium executable path:', executablePath);
               
               launchOpts = {
