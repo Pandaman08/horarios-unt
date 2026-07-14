@@ -18,10 +18,25 @@ export class GeneradorPDF {
         const puppeteer = puppeteerModule.default || puppeteerModule;
         
         browser = await puppeteer.launch({
-          args: [...chromium.args, '--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          args: [
+            ...chromium.args,
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+            "--disable-gpu",
+            "--no-zygote",
+            "--no-first-run",
+            "--disable-extensions",
+            "--disable-background-networking",
+            "--disable-default-apps",
+            "--disable-sync",
+            "--disable-translate",
+            "--disable-blink-features=AutomationControlled"
+          ],
           defaultViewport: chromium.defaultViewport,
           executablePath: await chromium.executablePath(),
           headless: chromium.headless,
+          ignoreHTTPSErrors: true,
         });
       } else {
         console.log('[GeneradorPDF] Entorno: Local - buscando Chrome/Edge');
