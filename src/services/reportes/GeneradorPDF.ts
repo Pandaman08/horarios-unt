@@ -85,140 +85,69 @@ export class GeneradorPDF {
       return Buffer.from(pdf);
     } catch (error) {
       console.error('[GeneradorPDF] Error al generar PDF con puppeteer:', error);
-      // Usar fallback en caso de error
+      // Usar fallback mejorado con pdfmake
       return this.generarDesdeHTMLFallback(html, landscape);
     }
   }
 
-  static async generarDesdeHTMLFallback(html: string, landscape: boolean = false): Promise<Buffer> {
-    console.warn('[GeneradorPDF] Usando fallback PDF (navegador no disponible)');
+  private static parseHTMLToPDFMakeContent(html: string): any[] {
+    const content: any[] = [];
+    
+    // Extraer título del reporte
+    const titleMatch = html.match(/<h2[^>]*class="[^"]*report-title[^"]*"[^>]*>([^<]*)<\/h2>/i);
+    if (titleMatch) {
+      content.push({
+        text: titleMatch[1].trim(),
+        style: 'header',
+        margin: [0, 0, 0, 20]
+      });
+    }
 
-    try {
-      const pdfDoc = await PDFDocument.create();
-      const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
-      const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
+    // Extraer todas las tablas
+    const tableRegex = /<table[\s\S]*?<\/table>/gi;
+    let tableMatch: RegExpExecArray | null;
+    while ((tableMatch = tableRegex.exec(html)) !== null) {
+      const tableHtml = tableMatch[0];
+      const tableContent = this.parseTable(tableHtml);
+      if (tableContent) {
+        content.push(tableContent);
+      }
+    }
 
-      const pageSize: [number, number] = landscape ? [792, 612] : [612, 792];
-      let page = pdfDoc.addPage(pageSize);
-      let { width, height } = page.getSize();
+    // Si no hay tablas, extraer texto plano
+    if (content.length === 0) {
+      const textContent = html
+        .replace(/<[^>]*>/g, ' ')
+        .replace(/&nbsp;/g, ' ')
+        .replace(/&lt;/g, '<')
+        .replace(/&gt;/g, '>')
+        .replace(/&quot;/g, '"')
+        .replace(/&#39;/g, "'")
+        .replace(/\s+/g, ' ')
+        .trim();
+      
+      content.push({
+        text: textContent,
+        style: 'normalText'
+      });
+    }
 
-      const margin = 40;
-      let x = margin;
-      let y = height - margin;
-      const usableWidth = width - margin * 2;
+    return content;
+  }
 
-      // Encabezado simple
-      page.drawText('Reporte - SGH UNT', { x: x, y: y, size: 14, font: helveticaBold, color: rgb(0, 0, 0) });
-      y -= 24;
-
-      // Si el HTML contiene una tabla, intentamos parsearla y dibujarla
-      const tableMatch = html.match(/<table[\s\S]*?<\/table>/i);
-      if (tableMatch) {
-        const tableHtml = tableMatch[0];
-
-        // Extraer filas
-        const rowRegex = /<tr[\s\S]*?>[\s\S]*?<\/tr>/gi;
-        const cellRegex = /<(?:td|th)[^>]*>([\s\S]*?)<\/(?:td|th)>/gi;
-
-        const rows: string[][] = [];
-        let rowMatch: RegExpExecArray | null;
-        while ((rowMatch = rowRegex.exec(tableHtml))) {
-          const rowHtml = rowMatch[0];
-          const cells: string[] = [];
-          let cellMatch: RegExpExecArray | null;
-          while ((cellMatch = cellRegex.exec(rowHtml))) {
-            let cellText = cellMatch[1]
-              .replace(/<[^>]*>/g, ' ')
-              .replace(/&nbsp;/g, ' ')
-              .replace(/&lt;/g, '<')
-              .replace(/&gt;/g, '>')
-              .replace(/&quot;/g, '"')
-              .replace(/&#39;/g, "'")
-              .replace(/\s+/g, ' ')
-              .trim();
-            cells.push(cellText);
-          }
-          if (cells.length) rows.push(cells);
-        }
-
-        if (rows.length) {
-          // Calcular número máximo de columnas
-          const colCount = rows.reduce((max, r) => Math.max(max, r.length), 0);
-
-          // Calcular ancho de cada columna según el contenido (medido en puntos)
-          const colWidths: number[] = new Array(colCount).fill(0);
-          const fontSize = 10;
-          for (const r of rows) {
-            for (let ci = 0; ci < colCount; ci++) {
-              const text = r[ci] ?? '';
-              const w = helvetica.widthOfTextAtSize(text, fontSize) + 8; // padding
-              if (w > colWidths[ci]) colWidths[ci] = w;
-            }
-          }
-
-          // Ajustar anchos para que quepan en la página
-          const totalWidth = colWidths.reduce((a, b) => a + b, 0) || usableWidth;
-          if (totalWidth > usableWidth) {
-            const scale = usableWidth / totalWidth;
-            for (let i = 0; i < colWidths.length; i++) colWidths[i] *= scale;
-          }
-
-          const rowHeight = 18;
-
-          // Dibujar filas
-          for (let ri = 0; ri < rows.length; ri++) {
-            const row = rows[ri];
-
-            // Salto de página si es necesario
-            if (y - rowHeight < margin) {
-              page = pdfDoc.addPage(pageSize);
-              ({ width, height } = page.getSize());
-              x = margin;
-              y = height - margin;
-            }
-
-            // Dibujar celdas
-            let cellX = x;
-            for (let ci = 0; ci < colCount; ci++) {
-              const cw = colWidths[ci] || 50;
-              const text = row[ci] ?? '';
-
-              // Estilo para encabezado (primera fila)
-              const isHeader = ri === 0;
-              const font = isHeader ? helveticaBold : helvetica;
-              const fontColor = isHeader ? rgb(0, 0, 0) : rgb(0.1, 0.1, 0.1);
-
-              // Texto con wrap sencillo
-              const words = text.split(' ');
-              let line = '';
-              let lineY = y;
-              for (const word of words) {
-                const test = line ? `${line} ${word}` : word;
-                const testW = font.widthOfTextAtSize(test, fontSize);
-                if (testW + 8 > cw && line) {
-                  page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font: font, color: fontColor });
-                  line = word;
-                  lineY -= 12;
-                } else {
-                  line = test;
-                }
-              }
-              if (line) {
-                page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font: font, color: fontColor });
-              }
-
-              // Borde inferior simple
-              page.drawLine({ start: { x: cellX, y: y - rowHeight }, end: { x: cellX + cw, y: y - rowHeight }, thickness: 0.5, color: rgb(0.85, 0.85, 0.85) });
-
-              cellX += cw;
-            }
-
-            y -= rowHeight + 6; // espacio entre filas
-          }
-        }
-      } else {
-        // Si no hay tablas, se mantiene un renderizado plano de texto (preview)
-        const textContent = html
+  private static parseTable(tableHtml: string): any {
+    const rows: string[][] = [];
+    const rowRegex = /<tr[\s\S]*?>[\s\S]*?<\/tr>/gi;
+    const cellRegex = /<(td|th)[^>]*>([\s\S]*?)<\/(td|th)>/gi;
+    
+    let rowMatch: RegExpExecArray | null;
+    while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
+      const rowHtml = rowMatch[0];
+      const cells: string[] = [];
+      let cellMatch: RegExpExecArray | null;
+      
+      while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
+        let cellText = cellMatch[2]
           .replace(/<[^>]*>/g, ' ')
           .replace(/&nbsp;/g, ' ')
           .replace(/&lt;/g, '<')
@@ -227,38 +156,165 @@ export class GeneradorPDF {
           .replace(/&#39;/g, "'")
           .replace(/\s+/g, ' ')
           .trim();
-
-        const words = textContent.split(' ');
-        const fontSize = 10;
-        let line = '';
-        for (const word of words.slice(0, 300)) {
-          const test = line ? `${line} ${word}` : word;
-          const testW = helvetica.widthOfTextAtSize(test, fontSize);
-          if (testW > usableWidth) {
-            if (y - 14 < margin) {
-              page = pdfDoc.addPage(pageSize);
-              ({ width, height } = page.getSize());
-              y = height - margin;
-            }
-            page.drawText(line, { x: x, y: y, size: fontSize, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
-            y -= 14;
-            line = word;
-          } else {
-            line = test;
-          }
-        }
-        if (line) page.drawText(line, { x: x, y: y, size: 10, font: helvetica, color: rgb(0.1, 0.1, 0.1) });
+        cells.push(cellText);
       }
-
-      const pdfBytes = await pdfDoc.save();
-      const pdfBuffer = Buffer.from(pdfBytes);
-      console.log('[GeneradorPDF] PDF generado exitosamente (fallback), tamaño:', pdfBuffer.length, 'bytes');
-      return pdfBuffer;
-    } catch (error) {
-      console.error('[GeneradorPDF] Error generando PDF en fallback:', error);
-      // Último recurso: PDF minimalista
-      return this.generarPDFMinimalista();
+      
+      if (cells.length > 0) {
+        rows.push(cells);
+      }
     }
+
+    if (rows.length === 0) return null;
+
+    return {
+      table: {
+        headerRows: 1,
+        widths: Array(rows[0].length).fill('*'),
+        body: rows.map((row, index) => 
+          row.map(cell => ({
+            text: cell,
+            style: index === 0 ? 'tableHeader' : 'tableCell'
+          }))
+        )
+      },
+      layout: {
+        fillColor: (rowIndex: number) => rowIndex === 0 ? '#f3f4f6' : null,
+        hLineColor: () => '#e5e7eb',
+        vLineColor: () => '#e5e7eb'
+      },
+      margin: [0, 10, 0, 20]
+    };
+  }
+
+  static async generarDesdeHTMLFallback(html: string, landscape: boolean = false): Promise<Buffer> {
+    console.warn('[GeneradorPDF] Usando fallback PDF con pdfmake');
+
+    return new Promise((resolve, reject) => {
+      try {
+        // Importar pdfmake dinámicamente para evitar conflictos
+        const pdfMake = require('pdfmake');
+        
+        const fonts = {
+          Helvetica: {
+            normal: 'Helvetica',
+            bold: 'Helvetica-Bold',
+            italics: 'Helvetica-Oblique',
+            bolditalics: 'Helvetica-BoldOblique'
+          }
+        };
+
+        pdfMake.setFonts(fonts);
+        
+        const docDefinition = {
+          pageSize: 'A4',
+          pageOrientation: landscape ? 'landscape' : 'portrait',
+          pageMargins: [40, 60, 40, 60],
+          
+          header: {
+            columns: [
+              {
+                stack: [
+                  { text: 'SGH UNT', style: 'logoText' },
+                  { text: 'Gestión de Horarios Académicos', style: 'systemInfo' }
+                ],
+                alignment: 'left'
+              },
+              {
+                stack: [
+                  { text: 'Universidad Nacional de Trujillo', style: 'institutionTitle' },
+                  { text: 'Escuela de Ingeniería de Sistemas', style: 'institutionSubtitle' },
+                  { text: new Date().toLocaleString('es-PE'), style: 'dateText' }
+                ],
+                alignment: 'right'
+              }
+            ],
+            margin: [40, 20, 40, 10]
+          },
+          
+          footer: (currentPage: number, pageCount: number) => ({
+            columns: [
+              { text: `© ${new Date().getFullYear()} Sistema de Gestión de Horarios UNT`, style: 'footerText' },
+              { text: `Página ${currentPage} de ${pageCount}`, style: 'footerText', alignment: 'right' }
+            ],
+            margin: [40, 10, 40, 10]
+          }),
+          
+          content: this.parseHTMLToPDFMakeContent(html),
+          
+          styles: {
+            header: {
+              fontSize: 20,
+              bold: true,
+              color: '#0f172a'
+            },
+            normalText: {
+              fontSize: 12,
+              color: '#1e293b',
+              lineHeight: 1.5
+            },
+            tableHeader: {
+              fontSize: 10,
+              bold: true,
+              color: '#475569',
+              margin: [4, 6, 4, 6]
+            },
+            tableCell: {
+              fontSize: 11,
+              color: '#1e293b',
+              margin: [4, 6, 4, 6]
+            },
+            logoText: {
+              fontSize: 18,
+              bold: true,
+              color: '#003366'
+            },
+            systemInfo: {
+              fontSize: 10,
+              color: '#64748b',
+              marginTop: 2
+            },
+            institutionTitle: {
+              fontSize: 12,
+              bold: true,
+              color: '#0f172a'
+            },
+            institutionSubtitle: {
+              fontSize: 10,
+              color: '#64748b',
+              marginTop: 2
+            },
+            dateText: {
+              fontSize: 9,
+              color: '#94a3b8',
+              marginTop: 6
+            },
+            footerText: {
+              fontSize: 9,
+              color: '#94a3b8'
+            }
+          }
+        };
+
+        const pdfDoc = pdfMake.createPdf(docDefinition);
+        const chunks: Buffer[] = [];
+
+        pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
+        pdfDoc.on('end', () => {
+          const pdfBuffer = Buffer.concat(chunks);
+          console.log('[GeneradorPDF] PDF generado exitosamente (fallback), tamaño:', pdfBuffer.length, 'bytes');
+          resolve(pdfBuffer);
+        });
+        pdfDoc.on('error', (err: Error) => {
+          console.error('[GeneradorPDF] Error en pdfmake:', err);
+          resolve(this.generarPDFMinimalista());
+        });
+
+        pdfDoc.end();
+      } catch (error) {
+        console.error('[GeneradorPDF] Error generando PDF en fallback:', error);
+        resolve(this.generarPDFMinimalista());
+      }
+    });
   }
 
   static async generarPDFMinimalista(): Promise<Buffer> {
