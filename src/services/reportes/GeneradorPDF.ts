@@ -1,22 +1,30 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
+import { PDFDocument, rgb, StandardFonts } from "pdf-lib";
 
 export class GeneradorPDF {
-  static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {
+  static async generarDesdeHTML(
+    html: string,
+    landscape: boolean = false
+  ): Promise<Buffer> {
     // Intento de renderizado con puppeteer-core y @sparticuz/chromium
     try {
-      console.log('[GeneradorPDF] Iniciando generación de PDF...');
-      const isVercel = process.env.VERCEL === '1';
-      console.log('[GeneradorPDF] Entorno:', { isVercel, NODE_ENV: process.env.NODE_ENV });
+      console.log("[GeneradorPDF] Iniciando generación de PDF...");
+      const isVercel = process.env.VERCEL === "1";
+      console.log("[GeneradorPDF] Entorno:", {
+        isVercel,
+        NODE_ENV: process.env.NODE_ENV,
+      });
 
       let browser;
       if (isVercel) {
-        console.log('[GeneradorPDF] Entorno: Vercel - usando @sparticuz/chromium.launch()');
+        console.log(
+          "[GeneradorPDF] Entorno: Vercel - usando @sparticuz/chromium.launch()"
+        );
         // Importar módulos dinámicamente para Vercel
-        const chromiumModule = await import('@sparticuz/chromium');
+        const chromiumModule = await import("@sparticuz/chromium");
         const chromium = chromiumModule.default || chromiumModule;
-        const puppeteerModule = await import('puppeteer-core');
+        const puppeteerModule = await import("puppeteer-core");
         const puppeteer = puppeteerModule.default || puppeteerModule;
-        
+
         browser = await puppeteer.launch({
           args: [
             ...chromium.args,
@@ -31,7 +39,7 @@ export class GeneradorPDF {
             "--disable-default-apps",
             "--disable-sync",
             "--disable-translate",
-            "--disable-blink-features=AutomationControlled"
+            "--disable-blink-features=AutomationControlled",
           ],
           defaultViewport: chromium.defaultViewport,
           executablePath: await chromium.executablePath(),
@@ -39,29 +47,35 @@ export class GeneradorPDF {
           ignoreHTTPSErrors: true,
         });
       } else {
-        console.log('[GeneradorPDF] Entorno: Local - buscando Chrome/Edge');
+        console.log("[GeneradorPDF] Entorno: Local - buscando Chrome/Edge");
         // Importar módulos dinámicamente para entorno local
-        const puppeteerModule = await import('puppeteer-core');
+        const puppeteerModule = await import("puppeteer-core");
         const puppeteer = puppeteerModule.default || puppeteerModule;
-        
+
         // Buscar Chrome/Edge local
-        const fs = await import('fs');
+        const fs = await import("fs");
         const platform = process.platform;
         let executablePath: string | null = null;
-        
+
         const candidates: string[] = [];
-        if (platform === 'win32') {
+        if (platform === "win32") {
           candidates.push(
-            'C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe',
-            'C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe'
+            "C:\\Program Files\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files (x86)\\Google\\Chrome\\Application\\chrome.exe",
+            "C:\\Program Files\\Microsoft\\Edge\\Application\\msedge.exe"
           );
-        } else if (platform === 'darwin') {
-          candidates.push('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
+        } else if (platform === "darwin") {
+          candidates.push(
+            "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome"
+          );
         } else {
-          candidates.push('/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium');
+          candidates.push(
+            "/usr/bin/google-chrome",
+            "/usr/bin/chromium-browser",
+            "/usr/bin/chromium"
+          );
         }
-        
+
         for (const p of candidates) {
           try {
             if (fs.existsSync(p)) {
@@ -70,266 +84,52 @@ export class GeneradorPDF {
             }
           } catch (_) {}
         }
-        
+
         if (!executablePath) {
-          throw new Error('No se encontró Chrome/Edge local');
+          throw new Error("No se encontró Chrome/Edge local");
         }
-        
+
         browser = await puppeteer.launch({
-          args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'],
+          args: [
+            "--no-sandbox",
+            "--disable-setuid-sandbox",
+            "--disable-dev-shm-usage",
+          ],
           executablePath,
           headless: true,
         });
       }
 
-      console.log('[GeneradorPDF] Navegador lanzado');
+      console.log("[GeneradorPDF] Navegador lanzado");
 
       const page = await browser.newPage();
       await page.setViewport({ width: 1200, height: 900 });
-      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+      await page.setContent(html, {
+        waitUntil: "domcontentloaded",
+        timeout: 60000,
+      });
 
       const pdf = await page.pdf({
-        format: 'A4',
+        format: "A4",
         landscape,
         printBackground: true,
-        margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' }
+        margin: { top: "10mm", right: "10mm", bottom: "10mm", left: "10mm" },
       });
 
       await browser.close();
-      console.log('[GeneradorPDF] PDF generado con éxito, bytes:', pdf.length);
+      console.log(
+        "[GeneradorPDF] PDF generado con éxito, bytes:",
+        pdf.length
+      );
       return Buffer.from(pdf);
     } catch (error) {
-      console.error('[GeneradorPDF] Error al generar PDF con puppeteer:', error);
-      // Usar fallback mejorado con pdfmake
-      return this.generarDesdeHTMLFallback(html, landscape);
+      console.error(
+        "[GeneradorPDF] Error al generar PDF con puppeteer:",
+        error
+      );
+      // Usar fallback en caso de error
+      return this.generarPDFMinimalista();
     }
-  }
-
-  private static parseHTMLToPDFMakeContent(html: string): any[] {
-    const content: any[] = [];
-    
-    // Extraer título del reporte
-    const titleMatch = html.match(/<h2[^>]*class="[^"]*report-title[^"]*"[^>]*>([^<]*)<\/h2>/i);
-    if (titleMatch) {
-      content.push({
-        text: titleMatch[1].trim(),
-        style: 'header',
-        margin: [0, 0, 0, 20]
-      });
-    }
-
-    // Extraer todas las tablas
-    const tableRegex = /<table[\s\S]*?<\/table>/gi;
-    let tableMatch: RegExpExecArray | null;
-    while ((tableMatch = tableRegex.exec(html)) !== null) {
-      const tableHtml = tableMatch[0];
-      const tableContent = this.parseTable(tableHtml);
-      if (tableContent) {
-        content.push(tableContent);
-      }
-    }
-
-    // Si no hay tablas, extraer texto plano
-    if (content.length === 0) {
-      const textContent = html
-        .replace(/<[^>]*>/g, ' ')
-        .replace(/&nbsp;/g, ' ')
-        .replace(/&lt;/g, '<')
-        .replace(/&gt;/g, '>')
-        .replace(/&quot;/g, '"')
-        .replace(/&#39;/g, "'")
-        .replace(/\s+/g, ' ')
-        .trim();
-      
-      content.push({
-        text: textContent,
-        style: 'normalText'
-      });
-    }
-
-    return content;
-  }
-
-  private static parseTable(tableHtml: string): any {
-    const rows: string[][] = [];
-    const rowRegex = /<tr[\s\S]*?>[\s\S]*?<\/tr>/gi;
-    const cellRegex = /<(td|th)[^>]*>([\s\S]*?)<\/(td|th)>/gi;
-    
-    let rowMatch: RegExpExecArray | null;
-    while ((rowMatch = rowRegex.exec(tableHtml)) !== null) {
-      const rowHtml = rowMatch[0];
-      const cells: string[] = [];
-      let cellMatch: RegExpExecArray | null;
-      
-      while ((cellMatch = cellRegex.exec(rowHtml)) !== null) {
-        let cellText = cellMatch[2]
-          .replace(/<[^>]*>/g, ' ')
-          .replace(/&nbsp;/g, ' ')
-          .replace(/&lt;/g, '<')
-          .replace(/&gt;/g, '>')
-          .replace(/&quot;/g, '"')
-          .replace(/&#39;/g, "'")
-          .replace(/\s+/g, ' ')
-          .trim();
-        cells.push(cellText);
-      }
-      
-      if (cells.length > 0) {
-        rows.push(cells);
-      }
-    }
-
-    if (rows.length === 0) return null;
-
-    return {
-      table: {
-        headerRows: 1,
-        widths: Array(rows[0].length).fill('*'),
-        body: rows.map((row, index) => 
-          row.map(cell => ({
-            text: cell,
-            style: index === 0 ? 'tableHeader' : 'tableCell'
-          }))
-        )
-      },
-      layout: {
-        fillColor: (rowIndex: number) => rowIndex === 0 ? '#f3f4f6' : null,
-        hLineColor: () => '#e5e7eb',
-        vLineColor: () => '#e5e7eb'
-      },
-      margin: [0, 10, 0, 20]
-    };
-  }
-
-  static async generarDesdeHTMLFallback(html: string, landscape: boolean = false): Promise<Buffer> {
-    console.warn('[GeneradorPDF] Usando fallback PDF con pdfmake');
-
-    return new Promise((resolve, reject) => {
-      try {
-        // Importar pdfmake dinámicamente para evitar conflictos
-        const pdfMake = require('pdfmake');
-        
-        const fonts = {
-          Helvetica: {
-            normal: 'Helvetica',
-            bold: 'Helvetica-Bold',
-            italics: 'Helvetica-Oblique',
-            bolditalics: 'Helvetica-BoldOblique'
-          }
-        };
-
-        pdfMake.setFonts(fonts);
-        
-        const docDefinition = {
-          pageSize: 'A4',
-          pageOrientation: landscape ? 'landscape' : 'portrait',
-          pageMargins: [40, 60, 40, 60],
-          
-          header: {
-            columns: [
-              {
-                stack: [
-                  { text: 'SGH UNT', style: 'logoText' },
-                  { text: 'Gestión de Horarios Académicos', style: 'systemInfo' }
-                ],
-                alignment: 'left'
-              },
-              {
-                stack: [
-                  { text: 'Universidad Nacional de Trujillo', style: 'institutionTitle' },
-                  { text: 'Escuela de Ingeniería de Sistemas', style: 'institutionSubtitle' },
-                  { text: new Date().toLocaleString('es-PE'), style: 'dateText' }
-                ],
-                alignment: 'right'
-              }
-            ],
-            margin: [40, 20, 40, 10]
-          },
-          
-          footer: (currentPage: number, pageCount: number) => ({
-            columns: [
-              { text: `© ${new Date().getFullYear()} Sistema de Gestión de Horarios UNT`, style: 'footerText' },
-              { text: `Página ${currentPage} de ${pageCount}`, style: 'footerText', alignment: 'right' }
-            ],
-            margin: [40, 10, 40, 10]
-          }),
-          
-          content: this.parseHTMLToPDFMakeContent(html),
-          
-          styles: {
-            header: {
-              fontSize: 20,
-              bold: true,
-              color: '#0f172a'
-            },
-            normalText: {
-              fontSize: 12,
-              color: '#1e293b',
-              lineHeight: 1.5
-            },
-            tableHeader: {
-              fontSize: 10,
-              bold: true,
-              color: '#475569',
-              margin: [4, 6, 4, 6]
-            },
-            tableCell: {
-              fontSize: 11,
-              color: '#1e293b',
-              margin: [4, 6, 4, 6]
-            },
-            logoText: {
-              fontSize: 18,
-              bold: true,
-              color: '#003366'
-            },
-            systemInfo: {
-              fontSize: 10,
-              color: '#64748b',
-              marginTop: 2
-            },
-            institutionTitle: {
-              fontSize: 12,
-              bold: true,
-              color: '#0f172a'
-            },
-            institutionSubtitle: {
-              fontSize: 10,
-              color: '#64748b',
-              marginTop: 2
-            },
-            dateText: {
-              fontSize: 9,
-              color: '#94a3b8',
-              marginTop: 6
-            },
-            footerText: {
-              fontSize: 9,
-              color: '#94a3b8'
-            }
-          }
-        };
-
-        const pdfDoc = pdfMake.createPdf(docDefinition);
-        const chunks: Buffer[] = [];
-
-        pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
-        pdfDoc.on('end', () => {
-          const pdfBuffer = Buffer.concat(chunks);
-          console.log('[GeneradorPDF] PDF generado exitosamente (fallback), tamaño:', pdfBuffer.length, 'bytes');
-          resolve(pdfBuffer);
-        });
-        pdfDoc.on('error', (err: Error) => {
-          console.error('[GeneradorPDF] Error en pdfmake:', err);
-          resolve(this.generarPDFMinimalista());
-        });
-
-        pdfDoc.end();
-      } catch (error) {
-        console.error('[GeneradorPDF] Error generando PDF en fallback:', error);
-        resolve(this.generarPDFMinimalista());
-      }
-    });
   }
 
   static async generarPDFMinimalista(): Promise<Buffer> {
@@ -350,19 +150,14 @@ stream
 BT
 /F2 16 Tf
 50 750 Td
-(Usuarios de prueba - SGH UNT) Tj
+(Reporte Generado) Tj
 0 -30 Td
 /F1 10 Tf
-(Se incluyen todos los usuarios registrados en el sistema) Tj
-0 -25 Td
-(El PDF esta disponible desde el servidor. Si ves este mensaje,) Tj
+(El sistema está usando un PDF simple porque el navegador de renderizado) Tj
 0 -12 Td
-(el navegador de renderizado no esta disponible en tu entorno.) Tj
+(no está disponible. Esto es normal en el entorno de producción.) Tj
 0 -12 Td
-(Para ver los usuarios, accede directamente desde el login.) Tj
-0 -30 Td
-/F2 11 Tf
-(Por favor, contacta a administracion si necesitas una copia impresa.) Tj
+(Por favor, contacte a soporte para obtener el reporte completo.) Tj
 ET
 endstream
 endobj
@@ -390,7 +185,11 @@ startxref
     return Buffer.from(pdfContent);
   }
 
-  static wrapLayout(content: string, title: string, minimal: boolean = false): string {
+  static wrapLayout(
+    content: string,
+    title: string,
+    minimal: boolean = false
+  ): string {
     if (minimal) {
       return `
         <!DOCTYPE html>
@@ -574,7 +373,9 @@ startxref
             <div class="institution-info">
               <h1>Universidad Nacional de Trujillo</h1>
               <p>Escuela de Ingeniería de Sistemas</p>
-              <p style="font-size: 10px; color: #94a3b8; margin-top: 8px;">${new Date().toLocaleString('es-PE')}</p>
+              <p style="font-size: 10px; color: #94a3b8; margin-top: 8px;">${new Date().toLocaleString(
+                "es-PE"
+              )}</p>
             </div>
           </div>
           <h2 class="report-title">${title}</h2>

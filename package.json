@@ -33,7 +33,6 @@
     "node-cron": "^4.2.1",
     "nodemailer": "^7.0.13",
     "pdf-lib": "^1.17.1",
-    "pdfmake": "^0.2.15",
     "puppeteer-core": "21.5.0",
     "radix-ui": "^1.4.3",
     "react": "19.2.4",
