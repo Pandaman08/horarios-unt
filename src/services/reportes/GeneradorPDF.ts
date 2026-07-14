@@ -2,18 +2,35 @@ import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
 
 export class GeneradorPDF {
   static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {
-    // Intento de renderizado con puppeteer / puppeteer-core (import dinámico para evitar bundling en cliente)
+    // Intento de renderizado con puppeteer-core y @sparticuz/chromium
     try {
-      console.log('[GeneradorPDF] Intentando render con puppeteer-core/puppeteer...');
-
-      const fs = await import('fs');
+      console.log('[GeneradorPDF] Iniciando generación de PDF...');
       const isVercel = process.env.VERCEL === '1';
       console.log('[GeneradorPDF] Entorno:', { isVercel, NODE_ENV: process.env.NODE_ENV });
 
-      const getLocalExecutable = () => {
-        const envPath = process.env.CHROME_PATH || process.env.PUPPETEER_EXECUTABLE_PATH || process.env.CHROME_BIN;
-        if (envPath && (fs as any).existsSync(envPath)) return envPath;
+      // Importar módulos dinámicamente
+      const puppeteerModule = await import('puppeteer-core');
+      const chromiumModule = await import('@sparticuz/chromium');
+      const puppeteer = puppeteerModule.default || puppeteerModule;
+      const chromium = chromiumModule.default || chromiumModule;
+
+      console.log('[GeneradorPDF] Módulos importados correctamente');
+
+      let executablePath: string | undefined;
+      let args: string[];
+
+      if (isVercel) {
+        console.log('[GeneradorPDF] Entorno: Vercel');
+        executablePath = await chromium.executablePath();
+        args = chromium.args;
+        console.log('[GeneradorPDF] Chromium executablePath:', executablePath);
+      } else {
+        console.log('[GeneradorPDF] Entorno: Local');
+        // Buscar Chrome/Edge local
+        const fs = await import('fs');
         const platform = process.platform;
+        let foundPath: string | null = null;
+        
         const candidates: string[] = [];
         if (platform === 'win32') {
           candidates.push(
@@ -24,150 +41,60 @@ export class GeneradorPDF {
         } else if (platform === 'darwin') {
           candidates.push('/Applications/Google Chrome.app/Contents/MacOS/Google Chrome');
         } else {
-          candidates.push('/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium', '/snap/bin/chromium');
+          candidates.push('/usr/bin/google-chrome', '/usr/bin/chromium-browser', '/usr/bin/chromium');
         }
+        
         for (const p of candidates) {
-          try { if ((fs as any).existsSync(p)) return p; } catch (_) {}
-        }
-        return null;
-      };
-
-      const execPath = isVercel ? null : getLocalExecutable();
-      console.log('[GeneradorPDF] Executable path:', execPath);
-
-      let puppeteerModule: any = null;
-      let puppeteerPackage = 'none';
-      try {
-        // @ts-ignore
-        puppeteerModule = await import('puppeteer-core');
-        puppeteerPackage = 'puppeteer-core';
-      } catch (puppeteerCoreErr) {
-        console.warn('[GeneradorPDF] No se pudo importar puppeteer-core:', (puppeteerCoreErr as any)?.message ?? puppeteerCoreErr);
-        try {
-          // @ts-ignore
-          puppeteerModule = await import('puppeteer');
-          puppeteerPackage = 'puppeteer';
-        } catch (puppeteerErr) {
-          console.warn('[GeneradorPDF] No se pudo importar puppeteer:', (puppeteerErr as any)?.message ?? puppeteerErr);
-          puppeteerModule = null;
-        }
-      }
-
-      console.log('[GeneradorPDF] Módulo importado de navegador:', puppeteerPackage);
-      const puppeteer = puppeteerModule ? (puppeteerModule.default ?? puppeteerModule) : null;
-      if (puppeteer) {
-        let browser: any;
-        try {
-          let launchOpts: any = {
-            headless: true,
-            args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--disable-gpu', '--disable-software-rasterizer']
-          };
-
-          if (isVercel) {
-            console.log('[GeneradorPDF] En Vercel - cargando @sparticuz/chromium...');
-            try {
-              const chromiumModule = await import('@sparticuz/chromium');
-              const chromium = chromiumModule.default ?? chromiumModule;
-              console.log('[GeneradorPDF] Chromium module loaded successfully');
-              
-              // Intenta varias formas de obtener executablePath
-              let executablePath: string | null = null;
-              try {
-                console.log('[GeneradorPDF] Intentando executablePath()...');
-                executablePath = await chromium.executablePath();
-              } catch (e1: any) {
-                console.warn('[GeneradorPDF] executablePath() falló:', e1.message);
-                try {
-                  console.log('[GeneradorPDF] Intentando path local...');
-                  const path = await import('path');
-                  const fs = await import('fs');
-                  // Ruta común en Vercel
-                  const possiblePaths = [
-                    '/opt/render/.cache/puppeteer/chrome',
-                    path.join(process.cwd(), 'node_modules', '@sparticuz', 'chromium', 'bin'),
-                  ];
-                  for (const p of possiblePaths) {
-                    if (fs.existsSync(p)) {
-                      executablePath = p;
-                      break;
-                    }
-                  }
-                } catch (e2: any) {
-                  console.warn('[GeneradorPDF] También falló la búsqueda de path local:', e2.message);
-                }
-              }
-              
-              if (!executablePath) {
-                throw new Error('No se pudo encontrar executablePath para Chromium');
-              }
-              
-              console.log('[GeneradorPDF] Chromium executable path:', executablePath);
-              
-              launchOpts = {
-                args: chromium.args,
-                executablePath: executablePath,
-                headless: true,
-              };
-              console.log('[GeneradorPDF] Launch options for Vercel:', {
-                args: launchOpts.args?.slice(0, 10),
-                executablePath: launchOpts.executablePath,
-              });
-            } catch (chromiumErr: any) {
-              console.error('[GeneradorPDF] Error al cargar @sparticuz/chromium en Vercel:', {
-                message: chromiumErr?.message,
-                stack: chromiumErr?.stack,
-              });
-              throw chromiumErr;
+          try {
+            if (fs.existsSync(p)) {
+              foundPath = p;
+              break;
             }
-          } else if (execPath) {
-            launchOpts.executablePath = execPath;
-            console.log('[GeneradorPDF] Usando ejecutable Chrome local', { execPath });
-          } else {
-            throw new Error('No se encontró ejecutable de navegador');
-          }
-
-          console.log('[GeneradorPDF] Lanzando navegador...');
-          browser = await puppeteer.launch(launchOpts);
-          console.log('[GeneradorPDF] Navegador lanzado');
-
-          const page = await browser.newPage();
-          await page.setViewport({ width: 1200, height: 900 });
-          await page.setContent(html, { waitUntil: 'networkidle0', timeout: 60000 });
-
-          const pdf = await page.pdf({ format: 'A4', landscape: landscape, printBackground: true, margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' } });
-
-          try { await browser.close(); } catch (_) {}
-          console.log('[GeneradorPDF] PDF renderizado con puppeteer, bytes:', pdf.length);
-          return Buffer.from(pdf);
-        } catch (err: any) {
-          console.error('[GeneradorPDF] puppeteer falló al generar PDF:', {
-            message: err?.message,
-            stack: err?.stack,
-          });
-          try { if (browser) await browser.close(); } catch (_) {}
-          // En Vercel, si falla, lanzamos el error para no usar el fallback
-          if (isVercel) {
-            throw err;
-          }
+          } catch (_) {}
         }
-      } else {
-        console.log('[GeneradorPDF] puppeteer / puppeteer-core no disponibles, usando fallback interno.');
+        
+        if (!foundPath) {
+          throw new Error('No se encontró Chrome/Edge local');
+        }
+        executablePath = foundPath;
+        args = ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage'];
       }
-    } catch (puppErr: any) {
-      console.error('[GeneradorPDF] Error al intentar usar puppeteer dinámico:', {
-        message: puppErr?.message,
-        stack: puppErr?.stack,
+
+      console.log('[GeneradorPDF] Launch options:', { executablePath, argsLength: args.length });
+
+      const browser = await puppeteer.launch({
+        args,
+        executablePath,
+        headless: true,
       });
-      // En Vercel, si falla, lanzamos el error para no usar el fallback
-      if (process.env.VERCEL === '1') {
-        throw puppErr;
-      }
+
+      console.log('[GeneradorPDF] Navegador lanzado');
+
+      const page = await browser.newPage();
+      await page.setViewport({ width: 1200, height: 900 });
+      await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 60000 });
+
+      const pdf = await page.pdf({
+        format: 'A4',
+        landscape,
+        printBackground: true,
+        margin: { top: '10mm', right: '10mm', bottom: '10mm', left: '10mm' }
+      });
+
+      await browser.close();
+      console.log('[GeneradorPDF] PDF generado con éxito, bytes:', pdf.length);
+      return Buffer.from(pdf);
+    } catch (error) {
+      console.error('[GeneradorPDF] Error al generar PDF con puppeteer:', error);
+      // Usar fallback en caso de error
+      return this.generarDesdeHTMLFallback(html, landscape);
     }
+  }
 
-    // Si llegamos aquí, usamos la implementación con pdf-lib (fallback)
+  static async generarDesdeHTMLFallback(html: string, landscape: boolean = false): Promise<Buffer> {
+    console.warn('[GeneradorPDF] Usando fallback PDF (navegador no disponible)');
+
     try {
-      console.log('[GeneradorPDF] Generando PDF desde HTML (fallback pdf-lib)...');
-
       const pdfDoc = await PDFDocument.create();
       const helvetica = await pdfDoc.embedFont(StandardFonts.Helvetica);
       const helveticaBold = await pdfDoc.embedFont(StandardFonts.HelveticaBold);
@@ -270,7 +197,7 @@ export class GeneradorPDF {
                 const test = line ? `${line} ${word}` : word;
                 const testW = font.widthOfTextAtSize(test, fontSize);
                 if (testW + 8 > cw && line) {
-                  page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font, color: fontColor });
+                  page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font: font, color: fontColor });
                   line = word;
                   lineY -= 12;
                 } else {
@@ -278,7 +205,7 @@ export class GeneradorPDF {
                 }
               }
               if (line) {
-                page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font, color: fontColor });
+                page.drawText(line, { x: cellX + 4, y: lineY - 12, size: fontSize, font: font, color: fontColor });
               }
 
               // Borde inferior simple
@@ -328,15 +255,14 @@ export class GeneradorPDF {
       const pdfBuffer = Buffer.from(pdfBytes);
       console.log('[GeneradorPDF] PDF generado exitosamente (fallback), tamaño:', pdfBuffer.length, 'bytes');
       return pdfBuffer;
-    } catch (error: any) {
-      console.error('[GeneradorPDF] Error generando PDF en fallback:', error?.message ?? error);
-      return this.generarDesdeHTMLFallback(html, landscape);
+    } catch (error) {
+      console.error('[GeneradorPDF] Error generando PDF en fallback:', error);
+      // Último recurso: PDF minimalista
+      return this.generarPDFMinimalista();
     }
   }
 
-  static async generarDesdeHTMLFallback(html: string, landscape: boolean = false): Promise<Buffer> {
-    console.warn('[GeneradorPDF] Usando fallback PDF (navegador no disponible)');
-
+  static async generarPDFMinimalista(): Promise<Buffer> {
     const pdfContent = `%PDF-1.4
 %Usuarios de prueba
 1 0 obj
@@ -391,7 +317,6 @@ startxref
 1671
 %%EOF
 `;
-
     return Buffer.from(pdfContent);
   }
 
