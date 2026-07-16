@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo, useRef } from "react";
 import { cn } from "@/lib/utils";
@@ -647,13 +647,13 @@ export function MatrizDisponibilidad({
         );
 
         let curB = parse(
-          "12:00",
+          "13:00",
           "HH:mm",
           new Date()
         );
 
         const endB = parse(
-          "13:00",
+          "14:00",
           "HH:mm",
           new Date()
         );
