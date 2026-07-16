@@ -3,7 +3,7 @@ export { generateCladPDF } from './generators/clad';
 export { generateDocenteHorarioPDF } from './generators/docenteHorario';
 export { generateGestionAcademicaPDF } from './generators/gestionAcademica';
 export { generateHorarioConsolidadoPdf } from './generators/horarios';
-export { generateHorarioAulaOCicloPDF } from './generators/horarioAulaCiclo';
+export { generateHorarioAulaOCicloPDF, generateHorarioInstitucionalPdf } from './generators/horarioAulaCiclo';
 export { generateDocentesListPdf, generateCursosListPdf, generateAmbientesListPdf, generatePeriodosListPdf } from './generators/listas';
 export { createDocenteHorarioPdfDto } from './dto/docenteHorario';
 export { createGestionAcademicaPdfDto } from './dto/gestionAcademica';

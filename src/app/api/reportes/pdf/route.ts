@@ -11,6 +11,7 @@ import {
   createGestionAcademicaPdfDto,
   generateHorarioConsolidadoPdf,
   generateHorarioAulaOCicloPDF,
+  generateHorarioInstitucionalPdf,
   generateDocentesListPdf,
   generateCursosListPdf,
   generateAmbientesListPdf,
@@ -497,10 +498,8 @@ function generarReporteUNT(options: {
 
   const filasMatriz = HORAS.map(hora => {
     if (hora === '13:00') return `
-      <tr style="background:#f1f5f9; height:12px;">
-        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
-        <td colspan="6" style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; letter-spacing:5px;">ALMUERZO</td>
-        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
+      <tr style="background:#f3f4f6; height:18px;">
+        <td colspan="8" style="border:1px solid #cbd5e1; text-align:center; font-size:9px; font-weight:800; letter-spacing:8px; color:#6b7280;">ALMUERZO</td>
       </tr>`;
     const horaNum = parseInt(hora.split(':')[0]);
     const horaLabel = `${horaNum}-${horaNum + 1}`;
@@ -557,19 +556,13 @@ function generarReporteUNT(options: {
           </div>
           <div>
             <div style="font-size:9.5px; border-bottom:1px solid #ddd; padding-bottom:1px;"><strong>ESCUELA:</strong> INGENIERÍA DE SISTEMAS</div>
-            ${!isDocente ? `
-              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
-                <div><strong>${etiquetaPrimera}:</strong> ${valorPrimera}</div>
-                <div><strong>SECCIÓN:</strong> A</div>
-              </div>
-            ` : `
-              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
-                <div><strong>SECCIÓN:</strong> A</div>
-              </div>
-            `}
+            <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
+              <div><strong>CICLO:</strong> ${cicloNumero ?? '—'}</div>
+              <div><strong>SECCIÓN:</strong> A</div>
+              <div><strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}</div>
+            </div>
             <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
               <div><strong>AÑO:</strong> ${periodo?.anio ?? 2026}</div>
-              <div><strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}</div>
             </div>
           </div>
           <div style="text-align:right; font-size:8.5px; font-weight:800; margin-top:6px; background:#f8fafc; padding:4px; border:1px solid #cbd5e1; border-radius:3px;">
@@ -1563,7 +1556,7 @@ export async function GET(request: Request) {
         periodo: {
           nombre: periodo?.nombre ?? null,
           anio: periodo?.anio ?? null,
-          semestre: periodo?.semestre === 1 ? 'I' : periodo?.semestre === 2 ? 'II' : null,
+          semestre: periodo?.semestre ?? null,
         },
         groups: [{
           title: nombreDia,
@@ -1656,7 +1649,7 @@ export async function GET(request: Request) {
           id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
           nombre: periodo?.nombre ?? null,
           anio: periodo?.anio ?? null,
-          semestre: typeof periodo?.semestre === 'string' ? periodo.semestre : null,
+          semestre: periodo?.semestre ?? null,
         },
         escuela: {
           nombre: 'Escuela Profesional de Ingeniería de Sistemas',
@@ -1717,7 +1710,7 @@ export async function GET(request: Request) {
           id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
           nombre: periodo?.nombre ?? null,
           anio: periodo?.anio ?? null,
-          semestre: typeof periodo?.semestre === 'string' ? periodo.semestre : null,
+          semestre: periodo?.semestre ?? null,
         },
         escuela: {
           nombre: 'Escuela Profesional de Ingeniería de Sistemas',
@@ -1781,11 +1774,12 @@ export async function GET(request: Request) {
           apellidos: '',
           codigo_docente: null,
         },
+        ciclo: tipo === 'ciclo' ? ciclosRaw[0]?.numero : null,
         periodo: {
           id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
           nombre: periodo?.nombre ?? null,
           anio: periodo?.anio ?? null,
-          semestre: typeof periodo?.semestre === 'string' ? periodo.semestre : null,
+          semestre: periodo?.semestre ?? null,
         },
         escuela: {
           nombre: 'Escuela Profesional de Ingeniería de Sistemas',
@@ -1824,6 +1818,11 @@ export async function GET(request: Request) {
           title: `Horario Semestral Consolidado · Ciclo ${ciclo.numero}`,
           subtitle: `${horarios.length} clases`,
           items: horarios,
+          ciclo: ciclo.numero,
+          periodo: {
+            anio: periodo?.anio ?? null,
+            semestre: periodo?.semestre ?? null,
+          },
         });
       }
 
@@ -1836,28 +1835,18 @@ export async function GET(request: Request) {
         });
       }
 
-      const horariosGeneral = groups.flatMap((group: HorarioReporteGroup) => group.items ?? []);
-      const pdfDto = createDocenteHorarioPdfDto({
-        docente: {
-          id_docente: 0,
-          nombres: reportTitle,
-          apellidos: '',
-          codigo_docente: null,
-        },
+      const pdfDto: HorarioReportePdfDto = {
+        title: reportTitle,
+        subtitle: `${groups.length} ciclos · ${periodoNombre}`,
         periodo: {
-          id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
           nombre: periodo?.nombre ?? null,
           anio: periodo?.anio ?? null,
-          semestre: typeof periodo?.semestre === 'string' ? periodo.semestre : null,
+          semestre: periodo?.semestre ?? null,
         },
-        escuela: {
-          nombre: 'Escuela Profesional de Ingeniería de Sistemas',
-          codigo: 'SYS',
-        },
-        horarios: horariosGeneral,
-      });
+        groups: groups,
+      };
 
-      const pdfBuffer = await generateHorarioAulaOCicloPDF(pdfDto, reportTitle);
+      const pdfBuffer = await generateHorarioInstitucionalPdf(pdfDto);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-general.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });

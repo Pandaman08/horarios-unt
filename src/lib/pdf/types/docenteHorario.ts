@@ -30,11 +30,12 @@ export interface DocenteHorarioPdfDto {
     apellidos: string;
     codigo_docente?: string | null;
   };
+  ciclo?: number | string | null;
   periodo: {
     id_periodo: number;
     nombre?: string | null;
     anio?: number | string | null;
-    semestre?: string | null;
+    semestre?: number | null;
   };
   escuela?: {
     nombre?: string | null;

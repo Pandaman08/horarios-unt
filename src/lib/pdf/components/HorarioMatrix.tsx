@@ -159,6 +159,15 @@ export function HorarioMatrix({ items }: Readonly<{ items: DocenteHorarioPdfItem
       </View>
 
       {rows.map((row) => {
+        if (row.horaInicio === '13:00') {
+          return (
+            <View key={row.horaInicio} style={[styles.row, { minHeight: 18, backgroundColor: '#F3F4F6' }]}>
+              <View style={[styles.cell, { flex: 1, flexDirection: 'row', justifyContent: 'center', alignItems: 'center', borderRightWidth: 0 }]}>
+                <Text style={[styles.hourText, { color: '#6B7280', letterSpacing: 3 }]}>ALMUERZO</Text>
+              </View>
+            </View>
+          );
+        }
         const timeInterval = formatTimeInterval(row.horaInicio);
         return (
           <View key={row.horaInicio} style={styles.row}>
