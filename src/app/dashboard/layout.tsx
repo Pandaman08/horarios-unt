@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { Suspense, useState, useEffect, useMemo } from "react";
 import { useSession, signOut } from "next-auth/react";
@@ -35,6 +35,7 @@ import {
   Building2,
   Database,
   UserPlus,
+  Settings,
 } from "lucide-react";
 
 function DashboardLayoutInner({
@@ -221,11 +222,17 @@ function DashboardLayoutInner({
         roles: ["administrador_sistema", "operador_horarios"],
       },
       {
-        title: "Asignar Carga Lectiva",
-        href: "/dashboard/secretaria/asignar-carga-lectiva",
-        icon: Calendar,
-        roles: ["administrador_sistema", "operador_horarios", "secretaria"],
-      },
+          title: "Asignar Carga Lectiva",
+          href: "/dashboard/secretaria/asignar-carga-lectiva",
+          icon: Calendar,
+          roles: ["administrador_sistema", "operador_horarios", "secretaria"],
+        },
+        {
+          title: "Asignación Manual (Admin)",
+          href: "/dashboard/admin/asignar-carga-lectiva-manual",
+          icon: Settings,
+          roles: ["administrador_sistema", "operador_horarios"],
+        },
       {
         title: "Validación Departamento",
         href: "/dashboard/validacion-departamento",
