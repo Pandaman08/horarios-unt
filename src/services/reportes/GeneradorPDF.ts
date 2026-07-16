@@ -1,242 +1,125 @@
-﻿import puppeteer from 'puppeteer';
+import PDFDocument from 'pdfkit';
+
+type PDFDocumentInstance = InstanceType<typeof PDFDocument>;
 
 export class GeneradorPDF {
-  static async generarDesdeHTML(html: string, landscape: boolean = false): Promise<Buffer> {
-    let browser;
+  static async toBuffer(doc: PDFDocumentInstance): Promise<Buffer> {
+    return new Promise<Buffer>((resolve, reject) => {
+      const chunks: Buffer[] = [];
 
-    try {
-      browser = await puppeteer.launch({
-        headless: true,
-        args: [
-          '--no-sandbox',
-          '--disable-setuid-sandbox',
-          '--disable-dev-shm-usage',
-          '--disable-gpu'
-        ]
-      });
-
-      const page = await browser.newPage();
-      
-      await page.setContent(html, { 
-        waitUntil: 'domcontentloaded',
-        timeout: 60000 
-      });
-      
-      const pdf = await page.pdf({
-        format: 'A4',
-        landscape: landscape,
-        printBackground: true,
-        margin: {
-          top: '10mm',
-          right: '10mm',
-          bottom: '10mm',
-          left: '10mm'
-        }
-      });
-
-      await browser.close();
-      return Buffer.from(pdf);
-    } catch (error: any) {
-      if (browser) await browser.close();
-      throw error;
-    }
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      doc.end();
+    });
   }
 
-  static wrapLayout(content: string, title: string, minimal: boolean = false): string {
-    if (minimal) {
-      return `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>${title}</title>
-            <style>
-              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-              body { 
-                font-family: 'Inter', -apple-system, sans-serif;
-                margin: 0;
-                padding: 0;
-                color: #000;
-                background: white;
-              }
-              @media print {
-                .page-break { page-break-after: always; }
-              }
-            </style>
-          </head>
-          <body>
-            ${content}
-          </body>
-        </html>
-      `;
+  static async generarDocumentoBase(): Promise<PDFDocumentInstance> {
+    return new PDFDocument({
+      size: 'A4',
+      margin: 40,
+      layout: 'portrait',
+    });
+  }
+
+  static wrapLayout(bodyHtml: string, _titulo: string, _landscape = false): string {
+    return bodyHtml;
+  }
+
+  static async generarDesdeHTML(htmlContent: string, landscape = false): Promise<Buffer> {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 40,
+      layout: landscape ? 'landscape' : 'portrait',
+    });
+
+    doc.font('Helvetica').fontSize(9).fillColor('#0f172a');
+
+    const text = this.htmlToPlainText(htmlContent);
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    let cursorY = doc.page.height - 50;
+
+    doc.text('Reporte generado con PDFKit', 40, cursorY, {
+      width: doc.page.width - 80,
+      align: 'center',
+    });
+    cursorY -= 18;
+
+    for (const line of lines) {
+      if (cursorY < 50) {
+        doc.addPage({
+          size: 'A4',
+          margin: 40,
+          layout: landscape ? 'landscape' : 'portrait',
+        });
+        cursorY = doc.page.height - 50;
+      }
+
+      const wrapped = doc.widthOfString(line);
+      if (wrapped > doc.page.width - 80) {
+        const chunks = this.wrapText(line, doc.page.width - 80);
+        for (const chunk of chunks) {
+          doc.text(chunk, 40, cursorY, { width: doc.page.width - 80, lineGap: 3 });
+          cursorY -= 12;
+          if (cursorY < 50) {
+            doc.addPage({
+              size: 'A4',
+              margin: 40,
+              layout: landscape ? 'landscape' : 'portrait',
+            });
+            cursorY = doc.page.height - 50;
+          }
+        }
+        continue;
+      }
+
+      doc.text(line, 40, cursorY, { width: doc.page.width - 80, lineGap: 3 });
+      cursorY -= 12;
     }
 
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>${title}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
+    return this.toBuffer(doc);
+  }
 
-            body { 
-              font-family: 'Inter', -apple-system, sans-serif;
-              margin: 0;
-              padding: 0;
-              color: #1e293b;
-              line-height: 1.5;
-            }
+  private static isDocenteHorarioHtml(htmlContent: string): boolean {
+    return htmlContent.includes('DOCENTE:') && htmlContent.includes('UNIVERSIDAD NACIONAL DE TRUJILLO') && htmlContent.includes('HORA');
+  }
 
-            .header {
-              display: flex;
-              justify-content: space-between;
-              align-items: flex-start;
-              margin-bottom: 30px;
-              padding-bottom: 20px;
-              border-bottom: 2px solid #e2e8f0;
-            }
+  private static htmlToPlainText(html: string): string {
+    return html
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<br\s*\/?\s*>/gi, '\n')
+      .replace(/<\/?(div|p|li|tr|td|th|h[1-6]|table|thead|tbody|tfoot|body|html)[^>]*>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/[\t\r]/g, ' ')
+      .split(/\n+/)
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n');
+  }
 
-            .logo-container {
-              display: flex;
-              align-items: center;
-              gap: 12px;
-            }
+  private static wrapText(text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
 
-            .logo-box {
-              background: #003366;
-              color: white;
-              width: 40px;
-              height: 40px;
-              display: flex;
-              align-items: center;
-              justify-content: center;
-              border-radius: 8px;
-              font-weight: 800;
-              font-size: 20px;
-            }
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (candidate.length <= Math.max(12, Math.floor(maxWidth / 2))) {
+        current = candidate;
+      } else {
+        if (current) lines.push(current);
+        current = word;
+      }
+    }
 
-            .system-info p {
-              margin: 0;
-              font-size: 12px;
-              color: #64748b;
-              font-weight: 600;
-              text-transform: uppercase;
-              letter-spacing: 0.05em;
-            }
-
-            .institution-info {
-              text-align: right;
-            }
-
-            .institution-info h1 {
-              margin: 0;
-              font-size: 16px;
-              color: #0f172a;
-              font-weight: 800;
-            }
-
-            .institution-info p {
-              margin: 4px 0 0 0;
-              font-size: 12px;
-              color: #64748b;
-              font-weight: 500;
-            }
-
-            .report-title {
-              font-size: 28px;
-              font-weight: 800;
-              color: #0f172a;
-              margin-bottom: 25px;
-              letter-spacing: -0.02em;
-            }
-
-            .highlight-card {
-              background: #ffffff;
-              border: 1px solid #e2e8f0;
-              border-radius: 16px;
-              padding: 24px;
-              margin-bottom: 24px;
-              box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
-            }
-
-            .print-table {
-              width: 100%;
-              border-collapse: separate;
-              border-spacing: 0;
-              margin-top: 10px;
-            }
-
-            .print-table th {
-              background: #f8fafc;
-              padding: 12px 16px;
-              text-align: left;
-              font-size: 11px;
-              font-weight: 700;
-              text-transform: uppercase;
-              letter-spacing: 0.05em;
-              color: #64748b;
-              border-bottom: 2px solid #e2e8f0;
-            }
-
-            .print-table td {
-              padding: 14px 16px;
-              font-size: 13px;
-              border-bottom: 1px solid #f1f5f9;
-              vertical-align: middle;
-            }
-
-            .print-table tr:last-child td {
-              border-bottom: none;
-            }
-
-            .badge {
-              display: inline-block;
-              padding: 4px 10px;
-              border-radius: 9999px;
-              font-size: 11px;
-              font-weight: 700;
-              text-transform: uppercase;
-            }
-
-            .footer {
-              margin-top: 40px;
-              padding-top: 20px;
-              border-top: 1px solid #e2e8f0;
-              display: flex;
-              justify-content: space-between;
-              font-size: 10px;
-              color: #94a3b8;
-              font-weight: 500;
-            }
-
-            @media print {
-              .page-break { page-break-after: always; }
-            }
-          </style>
-        </head>
-        <body>
-          <div class="header">
-            <div class="logo-container">
-              <div class="logo-box">U</div>
-              <div class="system-info">
-                <p>Gestión de Horarios Académicos</p>
-              </div>
-            </div>
-            <div class="institution-info">
-              <h1>Universidad Nacional de Trujillo</h1>
-              <p>Escuela de Ingeniería de Sistemas</p>
-              <p style="font-size: 10px; color: #94a3b8; margin-top: 8px;">${new Date().toLocaleString('es-PE')}</p>
-            </div>
-          </div>
-          <h2 class="report-title">${title}</h2>
-          ${content}
-          <div class="footer">
-            <span>© ${new Date().getFullYear()} Sistema de Gestión de Horarios UNT</span>
-            <span>Documento generado automáticamente</span>
-          </div>
-        </body>
-      </html>
-    `;
+    if (current) lines.push(current);
+    return lines;
   }
 }

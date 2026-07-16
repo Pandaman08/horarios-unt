@@ -1,7 +1,29 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import {
+  generatePlanEstudiosPDF,
+  generateCladPDF,
+  generateDocenteHorarioPDF,
+  createDocenteHorarioPdfDto,
+  generateGestionAcademicaPDF,
+  createGestionAcademicaPdfDto,
+  generateHorarioConsolidadoPdf,
+  generateHorarioAulaOCicloPDF,
+  generateHorarioInstitucionalPdf,
+  generateDocentesListPdf,
+  generateCursosListPdf,
+  generateAmbientesListPdf,
+  generatePeriodosListPdf,
+  type ListReportPdfDto,
+  type DocenteListItem,
+  type CursoListItem,
+  type AmbienteListItem,
+  type PeriodoListItem,
+  type HorarioReportePdfDto,
+  type HorarioReporteGroup,
+} from '@/lib/pdf';
 import { GeneradorPDF } from '@/services/reportes/GeneradorPDF';
 import { ServicioEstadisticas } from '@/services/reportes/ServicioEstadisticas';
 
@@ -476,10 +498,8 @@ function generarReporteUNT(options: {
 
   const filasMatriz = HORAS.map(hora => {
     if (hora === '13:00') return `
-      <tr style="background:#f1f5f9; height:12px;">
-        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
-        <td colspan="6" style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800; letter-spacing:5px;">ALMUERZO</td>
-        <td style="border:1px solid #cbd5e1; text-align:center; font-size:8px; font-weight:800;">1-2</td>
+      <tr style="background:#f3f4f6; height:18px;">
+        <td colspan="8" style="border:1px solid #cbd5e1; text-align:center; font-size:9px; font-weight:800; letter-spacing:8px; color:#6b7280;">ALMUERZO</td>
       </tr>`;
     const horaNum = parseInt(hora.split(':')[0]);
     const horaLabel = `${horaNum}-${horaNum + 1}`;
@@ -536,19 +556,13 @@ function generarReporteUNT(options: {
           </div>
           <div>
             <div style="font-size:9.5px; border-bottom:1px solid #ddd; padding-bottom:1px;"><strong>ESCUELA:</strong> INGENIERÍA DE SISTEMAS</div>
-            ${!isDocente ? `
-              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
-                <div><strong>${etiquetaPrimera}:</strong> ${valorPrimera}</div>
-                <div><strong>SECCIÓN:</strong> A</div>
-              </div>
-            ` : `
-              <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
-                <div><strong>SECCIÓN:</strong> A</div>
-              </div>
-            `}
+            <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
+              <div><strong>CICLO:</strong> ${cicloNumero ?? '—'}</div>
+              <div><strong>SECCIÓN:</strong> A</div>
+              <div><strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}</div>
+            </div>
             <div style="display:flex; justify-content:space-between; font-size:9.5px; border-bottom:1px solid #ddd; padding:1px 0;">
               <div><strong>AÑO:</strong> ${periodo?.anio ?? 2026}</div>
-              <div><strong>SEMESTRE:</strong> ${periodo?.semestre === 1 ? 'I' : 'II'}</div>
             </div>
           </div>
           <div style="text-align:right; font-size:8.5px; font-weight:800; margin-top:6px; background:#f8fafc; padding:4px; border:1px solid #cbd5e1; border-radius:3px;">
@@ -754,7 +768,8 @@ export async function GET(request: Request) {
       });
       
       console.log('Ciclos obtenidos:', ciclos.map((c: { numero: number; nombre: string; cursos: any[] }) => ({
-        numero: c.numero, nombre: c.nombre, cursos: c.cursos.length })));
+        numero: c.numero, nombre: c.nombre, cursos: c.cursos.length
+      })));
 
       // Get malla info for filename and title
       let filename = 'plan-de-estudios';
@@ -768,8 +783,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const htmlContent = generarPlanEstudios(ciclos, malla);
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
+      const pdfBuffer = await generatePlanEstudiosPDF(ciclos, malla);
 
       return new NextResponse(pdfBuffer as unknown as BodyInit, {
         status: 200,
@@ -793,113 +807,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'CLAD no encontrado' }, { status: 404 });
       }
 
-      const DEPENDENCIAS_LABEL = {
-        FILIAL: 'Filial',
-        POSGRADO: 'Posgrado',
-        'SEGUNDA_ESPECIALIDAD': 'Segunda Especialidad',
-        'CENTRO_PRODUCCION': 'Centro de Producción',
-        'EXTENSION_UNIVERSITARIA': 'Extensión Universitaria'
-      };
-
-      const DIAS_LABEL = {
-        LU: 'Lunes', MA: 'Martes', MI: 'Miércoles', JU: 'Jueves', VI: 'Viernes', SA: 'Sábado'
-      };
-
-      const htmlContent = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"/>
-  <title>CARGA LECTIVA ADICIONAL (CLAD)</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 12px; }
-    .header { text-align: center; margin-bottom: 25px; }
-    .header h1 { font-size: 16px; font-weight: 800; text-transform: uppercase; color: #003366; }
-    .docente-info { border: 2px solid #003366; padding: 15px; margin-bottom: 20px; border-radius: 6px; }
-    .docente-info .row { display: flex; gap: 20px; margin-bottom: 10px; }
-    .docente-info .label { font-weight: 700; color: #003366; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    table td, table th { border: 1px solid #003366; padding: 8px; text-align: center; font-size: 11px; }
-    table th { background-color: #003366; color: white; font-weight: 700; }
-    .firmas { margin-top: 60px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
-    .firma-line { border-top: 1px solid #003366; margin-top: 50px; padding-top: 5px; font-weight: 600; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
-    <h2 style="font-size: 14px; margin-top: 5px; color: #1e4d80;">FACULTAD DE INGENIERÍA</h2>
-    <h2 style="font-size: 15px; margin-top: 8px; font-weight: 800; color: #003366;">CARGA LECTIVA ADICIONAL (CLAD)</h2>
-  </div>
-
-  <div class="docente-info">
-    <div class="row">
-      <div><span class="label">DOCENTE:</span> ${clad.docente.nombres} ${clad.docente.apellidos}</div>
-      <div><span class="label">DNI:</span> ${clad.docente.dni || '—'}</div>
-      <div><span class="label">DPTO. ACADÉMICO:</span> ${clad.docente.departamentoId ? 'Ingeniería de Sistemas' : '—'}</div>
-    </div>
-    <div class="row">
-      <div><span class="label">FACULTAD:</span> ${clad.sede.nombre}</div>
-    </div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>CURSO</th>
-        <th>DEPENDENCIA</th>
-        <th>N° RESOLUCIÓN</th>
-        <th>FECHA INICIO</th>
-        <th>FECHA FIN</th>
-        <th>TOTAL HORAS</th>
-        <th>HORARIO</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>${clad.curso}</td>
-        <td>${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || clad.dependencia}</td>
-        <td>${clad.numeroResolucion || '—'}</td>
-        <td>${new Date(clad.fechaInicio).toLocaleDateString('es-PE')}</td>
-        <td>${new Date(clad.fechaFin).toLocaleDateString('es-PE')}</td>
-        <td>${clad.totalHoras}</td>
-        <td>
-          ${clad.horarios.map((h: { dia: string; horaInicio: string; horaFin: string }) => `${DIAS_LABEL[h.dia as keyof typeof DIAS_LABEL]}: ${h.horaInicio} - ${h.horaFin}`).join('<br/>')}
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-  ${clad.observaciones ? `<div style="margin-bottom: 20px;"><strong>Observaciones:</strong> ${clad.observaciones}</div>` : ''}
-
-  <div class="firmas">
-    <div>
-      <div class="firma-line">Profesor</div>
-      <div style="margin-top: 3px; font-size: 10px;">${clad.docente.nombres} ${clad.docente.apellidos}</div>
-    </div>
-    <div>
-      <div class="firma-line">Director de Departamento</div>
-      <div style="margin-top: 3px; font-size: 10px;">${clad.validador ? `${clad.validador.nombres} ${clad.validador.apellidos}` : '—'}</div>
-    </div>
-    <div>
-      <div class="firma-line">Decano</div>
-      <div style="margin-top: 3px; font-size: 10px;">—</div>
-    </div>
-    <div>
-      <div class="firma-line">Director de ${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || 'Unidad Académica'}</div>
-      <div style="margin-top: 3px; font-size: 10px;">—</div>
-    </div>
-  </div>
-
-  <div style="margin-top: 20px; text-align: right; font-size: 10px; color: #666;">
-    Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT
-  </div>
-</body>
-</html>`;
-
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
+      const pdfBuffer = await generateCladPDF(clad);
       const filename = `clad-${clad.docente.apellidos}-${new Date().toISOString().slice(0, 10)}`;
 
       return new NextResponse(pdfBuffer as unknown as BodyInit, {
@@ -1589,16 +1497,7 @@ export async function GET(request: Request) {
 </html>`;
       }
 
-      const pdfBuffer = await (typeof GeneradorPDF?.generarDesdeHTML === 'function' 
-        ? GeneradorPDF.generarDesdeHTML(htmlContent, false)
-        : import('puppeteer').then(async (puppeteer) => {
-            const browser = await puppeteer.launch({ headless: true });
-            const page = await browser.newPage();
-            await page.setContent(htmlContent); // Remove waitUntil since it's static HTML
-            const buffer = await page.pdf({ format: 'A4', printBackground: true });
-            await browser.close();
-            return buffer;
-          }));
+      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
 
       const filename = `${formato}-declaracion-carga-horaria.pdf`;
 
@@ -1642,142 +1541,31 @@ export async function GET(request: Request) {
         include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
         orderBy: [{ hora_inicio: 'asc' }]
       });
-      reportTitle = `Reporte de Horarios: ${nombreDia}`;
 
-      const periodoSuffix = `${periodo?.anio ?? ''}-${periodo?.semestre === 1 ? 'I' : 'II'}`;
+      if (!horarios.length) {
+        const fullHTML = wrapLayout(`<div style="text-align:center; padding:40px; color:#64748b;">No hay horarios asignados para ${nombreDia} en este período.</div>`, `Reporte de Horarios: ${nombreDia}`, true);
+        const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+        return new Response(new Uint8Array(pdfBuffer), {
+          headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-dia-${nombreDia.toLowerCase()}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
+        });
+      }
 
-      const horariosSorted = [...horarios].sort((a, b) =>
-        (a.hora_inicio ?? '').localeCompare(b.hora_inicio ?? '')
-      );
+      const dto: HorarioReportePdfDto = {
+        title: `Reporte de Horarios: ${nombreDia}`,
+        subtitle: `${nombreDia} · ${periodoNombre}`,
+        periodo: {
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre ?? null,
+        },
+        groups: [{
+          title: nombreDia,
+          subtitle: `${horarios.length} clases programadas`,
+          items: horarios,
+        }],
+      };
 
-      const content = `
-        <style>
-          .compact-header {
-            display:flex; justify-content:space-between; align-items:center;
-            padding:12px 0; margin-bottom:12px;
-            border-bottom:2px solid #003366;
-          }
-          .compact-title {
-            font-size:20px; font-weight:800; color:#003366; margin:0;
-          }
-          .compact-meta {
-            font-size:12px; color:#64748b; text-align:right;
-          }
-          .compact-summary {
-            display:flex; justify-content:space-between; align-items:center;
-            padding:10px 16px; margin-bottom:12px;
-            background:#f8fafc; border-radius:8px;
-            border:1px solid #e2e8f0;
-          }
-          .compact-summary .day-badge {
-            background:#003366; color:white; padding:6px 14px;
-            border-radius:6px; font-weight:800; text-transform:uppercase;
-            letter-spacing:.05em; font-size:11px;
-          }
-          .compact-summary .count {
-            font-weight:900; font-size:18px; color:#003366;
-          }
-          .compact-summary .count-label {
-            font-size:10px; color:#64748b; text-transform:uppercase;
-            letter-spacing:.05em; font-weight:600;
-          }
-          .compact-table {
-            width:100%; border-collapse:collapse;
-          }
-          .compact-table th {
-            background:#003366; color:white; font-weight:700;
-            font-size:10px; text-transform:uppercase; letter-spacing:.05em;
-            padding:8px 10px; text-align:left;
-          }
-          .compact-table td {
-            padding:8px 10px; font-size:11px;
-            border-bottom:1px solid #e2e8f0;
-            vertical-align:top;
-          }
-          .compact-table tr:last-child td { border-bottom:none; }
-          .compact-badge {
-            display:inline-block; padding:2px 8px;
-            border-radius:4px; font-size:10px; font-weight:700;
-            text-transform:uppercase; letter-spacing:.03em;
-          }
-          .badge-ciclo { background:#f1f5f9; color:#475569; }
-          .badge-ambiente { background:#e2e8f0; color:#334155; }
-          .badge-tipo { background:#dbeafe; color:#1d4ed8; }
-        </style>
-
-        <div class="compact-header">
-          <div>
-            <h1 class="compact-title">UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
-            <div style="font-size:12px; color:#64748b; font-weight:600;">Facultad de Ingeniería - Escuela de Ingeniería de Sistemas</div>
-          </div>
-          <div class="compact-meta">
-            <div>Generado: ${new Date().toLocaleDateString('es-PE')} ${new Date().toLocaleTimeString('es-PE')}</div>
-            <div style="font-weight:700; color:#003366;">${periodo?.nombre ?? ''}</div>
-          </div>
-        </div>
-
-        <h2 style="font-size:16px; font-weight:800; color:#0f172a; margin:0 0 12px 0;">
-          REPORTE DE HORARIOS: ${nombreDia.toUpperCase()} (${periodoSuffix})
-        </h2>
-
-        <div class="compact-summary">
-          <div style="display:flex; align-items:center; gap:12px;">
-            <div class="day-badge">${nombreDia.toUpperCase()}</div>
-            <div>
-              <div class="count-label">Resumen del día</div>
-              <div class="count">${horariosSorted.length} CLASES PROGRAMADAS</div>
-            </div>
-          </div>
-        </div>
-
-        <table class="compact-table">
-          <thead>
-            <tr>
-              <th style="width:80px;">HORARIO</th>
-              <th style="width:60px; text-align:center;">CICLO</th>
-              <th>CURSO / GRUPO</th>
-              <th>DOCENTE</th>
-              <th style="width:120px;">AMBIENTE</th>
-              <th style="width:70px;">TIPO</th>
-            </tr>
-          </thead>
-          <tbody>
-            ${horariosSorted.map((h: any) => {
-        const ciclo = h.curso?.ciclo_rel?.numero ?? '—';
-        const curso = h.curso?.nombre ?? '—';
-        const grupo = h.grupo?.codigo_grupo ?? '—';
-        const docente = h.docente ? `${h.docente.nombres ?? ''} ${h.docente.apellidos ?? ''}`.trim() : '—';
-        const ambiente = h.ambiente?.nombre ?? '—';
-        const tipo = h.tipo_clase ? h.tipo_clase.replace('_', ' ') : 'TEORÍA';
-        return `
-                <tr>
-                  <td style="font-weight:800; color:#003366; font-size:12px;">
-                    ${h.hora_inicio ?? '—'}<br/>
-                    <span style="font-size:10px; color:#64748b; font-weight:500;">- ${h.hora_fin ?? ''}</span>
-                  </td>
-                  <td style="text-align:center;">
-                    <span class="compact-badge badge-ciclo">${ciclo}</span>
-                  </td>
-                  <td>
-                    <div style="font-weight:800; color:#0f172a;">${curso}</div>
-                    <div style="font-size:10px; color:#64748b;">Grupo: ${grupo}</div>
-                  </td>
-                  <td style="font-weight:600; color:#334155;">${docente}</td>
-                  <td>
-                    <span class="compact-badge badge-ambiente">${ambiente}</span>
-                  </td>
-                  <td>
-                    <span class="compact-badge badge-tipo">${tipo}</span>
-                  </td>
-                </tr>
-              `;
-      }).join('')}
-          </tbody>
-        </table>
-      `;
-
-      const fullHTML = GeneradorPDF.wrapLayout(content, reportTitle, true);
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, false);
+      const pdfBuffer = await generateHorarioConsolidadoPdf(dto);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: {
           'Content-Type': 'application/pdf',
@@ -1850,19 +1638,27 @@ export async function GET(request: Request) {
       isLandscape = true;
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
 
-      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
-        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
-        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-        </style></head><body>${generarReporteUNT({
+      const pdfDto = createDocenteHorarioPdfDto({
+        docente: {
+          id_docente: docente.id_docente,
+          nombres: docente.nombres,
+          apellidos: docente.apellidos,
+          codigo_docente: docente.codigo_docente ?? null,
+        },
+        periodo: {
+          id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre ?? null,
+        },
+        escuela: {
+          nombre: 'Escuela Profesional de Ingeniería de Sistemas',
+          codigo: 'SYS',
+        },
         horarios: docente.horarios_asignados ?? [],
-        titulo: reportTitle,
-        subtitulo: docente.codigo_docente ?? '',
-        periodo: periodo,
-        docenteNombre: `${docente.nombres} ${docente.apellidos}`,
-        paginaIndex: 0
-      })}</body></html>`;
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      });
+
+      const pdfBuffer = await generateDocenteHorarioPDF(pdfDto);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-docente-${docenteId}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
@@ -1902,23 +1698,28 @@ export async function GET(request: Request) {
         });
       }
 
-      const paginas = ambientesConH.map((a, idx) =>
-        generarReporteUNT({
-          horarios: a.horarios_asignados,
-          titulo: a.nombre ?? 'Ambiente',
-          subtitulo: `${(a.tipo ?? '').replace('_', ' ')} · Cap. ${a.capacidad ?? 0} est.`,
-          periodo: periodo,
-          ambiente: a.nombre ?? 'Ambiente',
-          paginaIndex: idx
-        })
-      );
+      const horariosAula = ambientesConH.flatMap((ambiente: any) => ambiente.horarios_asignados ?? []);
+      const pdfDto = createDocenteHorarioPdfDto({
+        docente: {
+          id_docente: 0,
+          nombres: reportTitle,
+          apellidos: '',
+          codigo_docente: null,
+        },
+        periodo: {
+          id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre ?? null,
+        },
+        escuela: {
+          nombre: 'Escuela Profesional de Ingeniería de Sistemas',
+          codigo: 'SYS',
+        },
+        horarios: horariosAula,
+      });
 
-      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
-        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
-        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-        </style></head><body>${paginas.join('')}</body></html>`;
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      const pdfBuffer = await generateHorarioAulaOCicloPDF(pdfDto, reportTitle);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
@@ -1933,7 +1734,7 @@ export async function GET(request: Request) {
         : await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
 
       reportTitle = tipo === 'ciclo' ? 'Horario por Ciclo' : 'Consolidado por Ciclos';
-      const paginas: string[] = [];
+      const groups: HorarioReporteGroup[] = [];
 
       for (const ciclo of ciclosRaw) {
         if (!ciclo) continue;
@@ -1950,19 +1751,14 @@ export async function GET(request: Request) {
           include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
         });
         if (!horarios.length) continue;
-        paginas.push(
-          generarReporteUNT({
-            horarios: horarios,
-            titulo: `Ciclo ${ciclo.numero} — ${ciclo.nombre ?? ''}`,
-            subtitulo: `${horarios.length} clases`,
-            periodo: periodo,
-            cicloNumero: ciclo.numero,
-            paginaIndex: paginas.length
-          })
-        );
+        groups.push({
+          title: `Ciclo ${ciclo.numero} — ${ciclo.nombre ?? ''}`,
+          subtitle: `${horarios.length} clases`,
+          items: horarios,
+        });
       }
 
-      if (paginas.length === 0) {
+      if (groups.length === 0) {
         const fullHTML = wrapLayout(`<div style="text-align:center; padding:40px; color:#64748b;">No hay horarios asignados en este período.</div>`, reportTitle, true);
         const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
         return new Response(new Uint8Array(pdfBuffer), {
@@ -1970,12 +1766,29 @@ export async function GET(request: Request) {
         });
       }
 
-      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
-        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
-        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-        </style></head><body>${paginas.join('')}</body></html>`;
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      const horariosCiclo = groups.flatMap((group: HorarioReporteGroup) => group.items ?? []);
+      const pdfDto = createDocenteHorarioPdfDto({
+        docente: {
+          id_docente: 0,
+          nombres: reportTitle,
+          apellidos: '',
+          codigo_docente: null,
+        },
+        ciclo: tipo === 'ciclo' ? ciclosRaw[0]?.numero : null,
+        periodo: {
+          id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre ?? null,
+        },
+        escuela: {
+          nombre: 'Escuela Profesional de Ingeniería de Sistemas',
+          codigo: 'SYS',
+        },
+        horarios: horariosCiclo,
+      });
+
+      const pdfBuffer = await generateHorarioAulaOCicloPDF(pdfDto, reportTitle);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-${tipo}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
@@ -1984,7 +1797,7 @@ export async function GET(request: Request) {
       // ── REPORTE GENERAL (formato UNT, landscape) ──────────────────────────────
     } else if (tipo === 'reporte_general') {
       const ciclos = await prisma.ciclo.findMany({ orderBy: { numero: 'asc' } });
-      const paginas: string[] = [];
+      const groups: HorarioReporteGroup[] = [];
 
       for (const ciclo of ciclos) {
         const where: any = { id_periodo: parseInt(id_periodo), curso: { id_ciclo: ciclo.id_ciclo } };
@@ -1997,29 +1810,43 @@ export async function GET(request: Request) {
         }
         const horarios = await prisma.horarioAsignado.findMany({
           where,
-          include: { docente: true, curso: true, ambiente: true, grupo: true },
+          include: { docente: true, curso: { include: { ciclo_rel: true } }, ambiente: true, grupo: true },
           orderBy: [{ dia_semana: 'asc' }, { hora_inicio: 'asc' }]
         });
         if (!horarios.length) continue;
-        paginas.push(
-          generarReporteUNT({
-            horarios: horarios,
-            titulo: 'Horario Semestral Consolidado',
-            subtitulo: `Ciclo ${ciclo.numero}`,
-            periodo: periodo,
-            cicloNumero: ciclo.numero,
-            paginaIndex: paginas.length
-          })
-        );
+        groups.push({
+          title: `Horario Semestral Consolidado · Ciclo ${ciclo.numero}`,
+          subtitle: `${horarios.length} clases`,
+          items: horarios,
+          ciclo: ciclo.numero,
+          periodo: {
+            anio: periodo?.anio ?? null,
+            semestre: periodo?.semestre ?? null,
+          },
+        });
       }
 
       reportTitle = 'Horario Semestral Consolidado';
-      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
-        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
-        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-        </style></head><body>${paginas.join('')}</body></html>`;
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      if (groups.length === 0) {
+        const fullHTML = wrapLayout(`<div style="text-align:center; padding:40px; color:#64748b;">No hay horarios asignados en este período.</div>`, reportTitle, true);
+        const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+        return new Response(new Uint8Array(pdfBuffer), {
+          headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-general.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
+        });
+      }
+
+      const pdfDto: HorarioReportePdfDto = {
+        title: reportTitle,
+        subtitle: `${groups.length} ciclos · ${periodoNombre}`,
+        periodo: {
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre ?? null,
+        },
+        groups: groups,
+      };
+
+      const pdfBuffer = await generateHorarioInstitucionalPdf(pdfDto);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-general.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
@@ -2030,23 +1857,38 @@ export async function GET(request: Request) {
       if (departamentoId) {
         docenteWhere.departamentoId = departamentoId;
       }
-      const docentes = await prisma.docente.findMany({ 
-        where: docenteWhere, 
-        orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }] 
+      const docentes = await prisma.docente.findMany({
+        where: docenteWhere,
+        orderBy: [{ apellidos: 'asc' }, { nombres: 'asc' }],
       });
-      reportTitle = 'Catálogo de Docentes';
-      htmlContent = generarCabecera('Catálogo de Docentes', `${docentes.length} catedráticos`, periodoNombre, [{ label: 'Docentes', valor: String(docentes.length) }]);
-      htmlContent += `<div class="list-wrap"><table class="list-table">
-        <thead><tr><th>Apellidos y Nombres</th><th>Código</th><th>Grado</th><th>Categoría</th><th>Modalidad</th><th>Correo</th></tr></thead>
-        <tbody>${docentes.map((d: any) => `<tr>
-          <td style="font-weight:700;">${d.apellidos ?? ''}, ${d.nombres ?? ''}</td>
-          <td style="font-family:monospace; font-size:11px;">${d.codigo_docente ?? '—'}</td>
-          <td style="font-size:11px;">${d.grado_academico ?? '—'}</td>
-          <td><span class="badge" style="background:#f1f5f9; color:#475569;">${d.categoria ?? '—'}</span></td>
-          <td><span class="badge badge-teoria">${d.modalidad ?? '—'}</span></td>
-          <td style="font-size:10px; color:#64748b;">${d.correo_electronico ?? '—'}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>`;
+
+      const dto: ListReportPdfDto<DocenteListItem> = {
+        title: 'Catálogo de Docentes',
+        subtitle: `${docentes.length} catedráticos · ${periodoNombre}`,
+        periodo: {
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre === 1 ? 'I' : periodo?.semestre === 2 ? 'II' : null,
+        },
+        items: docentes.map(d => ({
+          apellidos: d.apellidos ?? '',
+          nombres: d.nombres ?? '',
+          codigo_docente: d.codigo_docente,
+          grado_academico: d.grado_academico,
+          categoria: d.categoriaDocente,
+          modalidad: d.condicion,
+          correo_electronico: d.correo_electronico,
+        })),
+      };
+
+      const pdfBuffer = await generateDocentesListPdf(dto);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="catalogo-docentes.pdf"',
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+      });
 
       // ── LISTA: CURSOS ─────────────────────────────────────────────────────────
     } else if (tipo === 'reporte_cursos') {
@@ -2054,25 +1896,38 @@ export async function GET(request: Request) {
       if (departamentoId) {
         cursoWhere.departamentoId = departamentoId;
       }
-      const cursos = await prisma.curso.findMany({ 
-        where: cursoWhere, 
-        include: { ciclo_rel: true }, 
-        orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }] 
+      const cursos = await prisma.curso.findMany({
+        where: cursoWhere,
+        include: { ciclo_rel: true },
+        orderBy: [{ id_ciclo: 'asc' }, { nombre: 'asc' }]
       });
-      reportTitle = 'Catálogo de Cursos';
-      htmlContent = generarCabecera('Catálogo de Cursos', `${cursos.length} asignaturas`, periodoNombre, [{ label: 'Cursos', valor: String(cursos.length) }]);
-      htmlContent += `<div class="list-wrap"><table class="list-table">
-        <thead><tr><th>Ciclo</th><th>Código</th><th>Asignatura</th><th style="text-align:center;">T</th><th style="text-align:center;">P</th><th style="text-align:center;">L</th><th style="text-align:center;">Total</th></tr></thead>
-        <tbody>${cursos.map((c: any) => `<tr>
-          <td style="text-align:center;"><span class="badge" style="background:#f1f5f9;">${c.ciclo_rel?.numero ?? '—'}</span></td>
-          <td style="font-family:monospace; font-weight:600;">${c.codigo ?? '—'}</td>
-          <td style="font-weight:700;">${c.nombre ?? '—'}</td>
-          <td style="text-align:center;">${c.horas_teoria ?? 0}</td>
-          <td style="text-align:center;">${c.horas_practica ?? 0}</td>
-          <td style="text-align:center;">${c.horas_laboratorio ?? 0}</td>
-          <td style="text-align:center; font-weight:800; color:#003366;">${(c.horas_teoria ?? 0) + (c.horas_practica ?? 0) + (c.horas_laboratorio ?? 0)}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>`;
+
+      const dto: ListReportPdfDto<CursoListItem> = {
+        title: 'Catálogo de Cursos',
+        subtitle: `${cursos.length} asignaturas · ${periodoNombre}`,
+        periodo: {
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre === 1 ? 'I' : periodo?.semestre === 2 ? 'II' : null,
+        },
+        items: cursos.map((curso: any) => ({
+          codigo: curso.codigo,
+          nombre: curso.nombre,
+          horas_teoria: curso.horas_teoria ?? 0,
+          horas_practica: curso.horas_practica ?? 0,
+          horas_laboratorio: curso.horas_laboratorio ?? 0,
+          ciclo: curso.ciclo_rel ? { numero: curso.ciclo_rel.numero } : null,
+        })),
+      };
+
+      const pdfBuffer = await generateCursosListPdf(dto);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="catalogo-cursos.pdf"',
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+      });
 
       // ── LISTA: AMBIENTES ──────────────────────────────────────────────────────
     } else if (tipo === 'reporte_ambientes') {
@@ -2080,44 +1935,75 @@ export async function GET(request: Request) {
       if (departamentoId) {
         ambienteWhere.departamentoId = departamentoId;
       }
-      const ambientes = await prisma.ambiente.findMany({ 
-        where: ambienteWhere, 
-        orderBy: { nombre: 'asc' } 
+      const ambientes = await prisma.ambiente.findMany({
+        where: ambienteWhere,
+        orderBy: { nombre: 'asc' }
       });
-      reportTitle = 'Catálogo de Ambientes Académicos';
-      htmlContent = generarCabecera('Catálogo de Ambientes Académicos', `${ambientes.length} espacios`, periodoNombre, [{ label: 'Ambientes', valor: String(ambientes.length) }]);
-      htmlContent += `<div class="list-wrap"><table class="list-table">
-        <thead><tr><th>Nombre / Código</th><th>Tipo</th><th style="text-align:center;">Capacidad</th><th>Pabellón / Piso</th></tr></thead>
-        <tbody>${ambientes.map((a: any) => `<tr>
-          <td><div style="font-weight:700;">${a.nombre ?? '—'}</div><div style="font-size:9px; color:#64748b;">CÓD: ${a.codigo ?? '—'}</div></td>
-          <td><span class="badge" style="background:#f1f5f9; color:#475569;">${(a.tipo ?? '').toUpperCase().replace('_', ' ')}</span></td>
-          <td style="text-align:center; font-weight:700;">${a.capacidad ?? 0} est.</td>
-          <td>${a.pabellon ?? '-'} / ${a.piso ?? '-'}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>`;
+
+      const dto: ListReportPdfDto<AmbienteListItem> = {
+        title: 'Catálogo de Ambientes Académicos',
+        subtitle: `${ambientes.length} espacios · ${periodoNombre}`,
+        periodo: {
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre === 1 ? 'I' : periodo?.semestre === 2 ? 'II' : null,
+        },
+        items: ambientes.map((ambiente: any) => ({
+          nombre: ambiente.nombre,
+          codigo: ambiente.codigo,
+          tipo: ambiente.tipo,
+          capacidad: ambiente.capacidad,
+          pabellon: ambiente.pabellon,
+          piso: ambiente.piso,
+        })),
+      };
+
+      const pdfBuffer = await generateAmbientesListPdf(dto);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="catalogo-ambientes.pdf"',
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+      });
 
       // ── LISTA: PERIODOS ───────────────────────────────────────────────────────
     } else if (tipo === 'reporte_periodos') {
       const periodos = await prisma.periodoAcademico.findMany({ orderBy: { anio: 'desc' } });
-      reportTitle = 'Catálogo de Periodos Académicos';
-      htmlContent = generarCabecera('Catálogo de Periodos Académicos', `${periodos.length} registrados`, periodoNombre, [{ label: 'Periodos', valor: String(periodos.length) }]);
-      htmlContent += `<div class="list-wrap"><table class="list-table">
-        <thead><tr><th>Código</th><th>Nombre</th><th>Año / Sem.</th><th>Estado</th><th>Inicio / Fin</th></tr></thead>
-        <tbody>${periodos.map((p: any) => `<tr>
-          <td style="font-weight:700; color:#003366;">${p.codigo ?? '—'}</td>
-          <td>${p.nombre ?? '—'}</td>
-          <td style="text-align:center;">${p.anio ?? ''} - ${p.semestre === 1 ? 'I' : 'II'}</td>
-          <td><span class="badge" style="background:#f1f5f9;">${(p.estado ?? '').toUpperCase()}</span></td>
-          <td style="font-size:11px;">${p.fecha_inicio?.toLocaleDateString() ?? '—'} al ${p.fecha_fin?.toLocaleDateString() ?? '—'}</td>
-        </tr>`).join('')}</tbody>
-      </table></div>`;
 
+      const dto: ListReportPdfDto<PeriodoListItem> = {
+        title: 'Catálogo de Periodos Académicos',
+        subtitle: `${periodos.length} registrados · ${periodoNombre}`,
+        periodo: {
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre === 1 ? 'I' : periodo?.semestre === 2 ? 'II' : null,
+        },
+        items: periodos.map((periodoItem: any) => ({
+          codigo: periodoItem.codigo,
+          nombre: periodoItem.nombre,
+          anio: periodoItem.anio,
+          semestre: periodoItem.semestre,
+          estado: periodoItem.estado,
+          fecha_inicio: periodoItem.fecha_inicio,
+          fecha_fin: periodoItem.fecha_fin,
+        })),
+      };
+
+      const pdfBuffer = await generatePeriodosListPdf(dto);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="catalogo-periodos.pdf"',
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+      });
       // ── ESTADÍSTICAS ──────────────────────────────────────────────────────────
     } else if (tipo === 'estadisticas' || tipo === 'consolidado') {
       const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(Number.parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
 
-      const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) } } } });
+      const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: Number.parseInt(id_periodo) } } } });
       const cargaDocentes = docentesConCarga.map((d: any) => {
         const horas = (d.horarios_asignados || []).reduce((acc: number, h: any) => {
           if (!h.hora_inicio || !h.hora_fin) return acc;
@@ -2126,25 +2012,24 @@ export async function GET(request: Request) {
         return { nombre: `${d.nombres} ${d.apellidos}`, horas };
       }).sort((a: any, b: any) => b.horas - a.horas);
 
-      reportTitle = 'Gestión Académica';
-      htmlContent = generarCabecera('Reporte de Gestión Académica', 'Consolidado del periodo', periodoNombre);
-      htmlContent += `<div class="stats-grid">
-        <div class="stat-card"><div class="stat-lbl">Total Asignaciones</div><div class="stat-val">${estadisticas.total_asignaciones}</div></div>
-        <div class="stat-card"><div class="stat-lbl">Promedio Horas</div><div class="stat-val">${estadisticas.media_horas}h</div></div>
-      </div>`;
-      htmlContent += `<div class="list-wrap"><table class="list-table">
-        <thead><tr><th>Docente</th><th style="text-align:right;">Total Horas</th></tr></thead>
-        <tbody>${cargaDocentes.map((d: any) => `<tr>
-          <td style="font-weight:600;">${d.nombre}</td>
-          <td style="text-align:right; font-weight:800; color:#003366;">${d.horas} hrs</td>
-        </tr>`).join('')}</tbody>
-      </table></div>`;
-      if (estadisticas.observaciones?.length) {
-        htmlContent += `<div class="list-wrap" style="padding:20px;">
-          <h4 style="font-size:12px; text-transform:uppercase; color:#64748b; margin-bottom:12px;">Observaciones</h4>
-          <ul style="padding-left:18px; color:#334155; font-size:13px;">${estadisticas.observaciones.map((o: string) => `<li style="margin-bottom:8px;">${o}</li>`).join('')}</ul>
-        </div>`;
-      }
+      const pdfDto = createGestionAcademicaPdfDto({
+        periodo: {
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: periodo?.semestre === 1 ? 'I' : periodo?.semestre === 2 ? 'II' : null,
+        },
+        estadisticas,
+        docentes: cargaDocentes,
+      });
+
+      const pdfBuffer = await generateGestionAcademicaPDF(pdfDto);
+      return new Response(new Uint8Array(pdfBuffer), {
+        headers: {
+          'Content-Type': 'application/pdf',
+          'Content-Disposition': 'attachment; filename="reporte-gestion-academica.pdf"',
+          'Content-Length': pdfBuffer.length.toString(),
+        },
+      });
     }
 
 

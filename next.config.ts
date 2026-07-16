@@ -2,7 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: [
-    "puppeteer",
+    "pdfkit",
     "exceljs",
     "nodemailer",
     "bcryptjs",

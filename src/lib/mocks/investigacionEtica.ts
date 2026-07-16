@@ -1,5 +1,5 @@
-﻿import { prisma } from '../prisma';
-import { getForcedResult } from '@/app/api/simulaciones/forzar/route';
+import { prisma } from '../prisma';
+import { getForcedResult } from '@/lib/forcedResults';
 
 export async function verificarInformeInvestigacion(docenteId: number, periodoId: number) {
   // Check if there's a forced result

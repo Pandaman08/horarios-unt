@@ -5,7 +5,7 @@ import { signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import { z } from "zod";
 import { Button } from "@/components/ui/button";
-import { User, ShieldCheck, Headphones, XCircle, Mail, Lock, ArrowRight, Eye, EyeOff } from "lucide-react";
+import { User, ShieldCheck, Headphones, XCircle, Mail, Lock, ArrowRight, Eye, EyeOff, FileDown } from "lucide-react";
 
 const loginSchema = z.object({
   email: z.string().email("Correo electrónico inválido"),
@@ -52,6 +52,27 @@ export function LoginForm() {
       setError("Error de conexión, intente nuevamente");
     } finally {
       setLoading(false);
+    }
+  };
+
+  const handleDownloadUsersPdf = async () => {
+    try {
+      const response = await fetch('/api/auth/usuarios-demo');
+      if (!response.ok) {
+        throw new Error('No se pudo generar el PDF');
+      }
+
+      const blob = await response.blob();
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'usuarios-demo-sgh-unt.pdf';
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+      window.URL.revokeObjectURL(url);
+    } catch (err) {
+      setError('No se pudo descargar el PDF de usuarios de prueba');
     }
   };
 
@@ -223,7 +244,18 @@ export function LoginForm() {
         </Button>
       </form>
 
-      <div className="mt-12 text-center">
+      <div className="mt-6 flex flex-wrap items-center justify-center gap-2">
+        <button
+          type="button"
+          onClick={handleDownloadUsersPdf}
+          className="inline-flex items-center gap-2 rounded-full border border-primary/20 bg-primary/10 px-4 py-2 text-sm font-semibold text-primary transition hover:bg-primary/20"
+        >
+          <FileDown className="h-4 w-4" />
+          Descargar PDF de usuarios
+        </button>
+      </div>
+
+      <div className="mt-6 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
           <p className="text-xs text-primary font-black uppercase tracking-widest">
             Modo demo — SSO institucional simulado

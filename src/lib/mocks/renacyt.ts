@@ -1,5 +1,5 @@
-﻿import { prisma } from '../prisma';
-import { getForcedResult } from '@/app/api/simulaciones/forzar/route';
+import { prisma } from '../prisma';
+import { getForcedResult } from '@/lib/forcedResults';
 
 export async function consultarRenacyt(dni: string) {
   const docente = await prisma.docente.findFirst({ where: { dni } });

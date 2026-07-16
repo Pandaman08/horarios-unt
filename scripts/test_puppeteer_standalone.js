@@ -1,17 +1,15 @@
-const puppeteer = require('puppeteer');
+const puppeteer = require('puppeteer-core');
+const chromium = require('@sparticuz/chromium');
 
 async function testLaunch() {
   console.log('[TEST] Iniciando lanzamiento...');
   let browser;
   try {
+    const executablePath = await chromium.executablePath();
     browser = await puppeteer.launch({
       headless: true,
-      args: [
-        '--no-sandbox',
-        '--disable-setuid-sandbox',
-        '--disable-dev-shm-usage',
-        '--disable-gpu'
-      ]
+      executablePath,
+      args: chromium.args,
     });
     console.log('[TEST] Browser lanzado con éxito!');
     const page = await browser.newPage();

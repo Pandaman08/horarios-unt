@@ -214,7 +214,7 @@ export function MatrizAmbiente({
                   const key = `${dia.id}-${hora}`;
                   const info = disponibilidad[key];
                   const color = getTipoColor(info?.tipo_clase);
-                  const esReceso = hora === "12:00";
+                  const esReceso = hora === "13:00";
 
                   return (
                     <td
@@ -306,10 +306,18 @@ export function MatrizAmbientesSecretaria({
         <MapPin className="h-4 w-4 text-muted-foreground shrink-0" />
         <span className="text-sm font-medium shrink-0">{t("environment")}:</span>
         <div ref={comboRef} className="relative flex-1 max-w-md">
-          <button
+          <div
+            role="button"
+            tabIndex={0}
             onClick={() => setIsOpen(!isOpen)}
+            onKeyDown={(e) => {
+              if (e.key === "Enter" || e.key === " ") {
+                e.preventDefault();
+                setIsOpen(!isOpen);
+              }
+            }}
             className={cn(
-              "w-full flex items-center gap-2 border rounded-lg px-3 py-2 text-sm bg-background text-left transition-colors",
+              "w-full flex items-center gap-2 border rounded-lg px-3 py-2 text-sm bg-background text-left transition-colors cursor-pointer",
               isOpen ? "border-primary ring-1 ring-primary/30" : "border-border hover:border-muted-foreground/50"
             )}
           >
@@ -323,13 +331,14 @@ export function MatrizAmbientesSecretaria({
             )}
             {selectedAmbiente && (
               <button
+                type="button"
                 onClick={(e) => { e.stopPropagation(); setSelectedId(null); setSearchTerm(""); }}
                 className="shrink-0 p-0.5 rounded hover:bg-muted"
               >
                 <X className="h-3.5 w-3.5 text-muted-foreground" />
               </button>
             )}
-          </button>
+          </div>
 
           {isOpen && (
             <div className="absolute z-50 top-full mt-1 w-full bg-background border border-border rounded-lg shadow-lg max-h-72 overflow-hidden">

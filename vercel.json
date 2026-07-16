@@ -1,20 +1,12 @@
 {
   "functions": {
-    "src/app/api/reportes/pdf/route.ts": {
+    "app/api/reportes/pdf/route.ts": {
+      "memory": 2048,
       "maxDuration": 60
-    },
-    "src/app/api/cron/**": {
-      "maxDuration": 30
     }
   },
-  "crons": [
-    {
-      "path": "/api/cron/limpieza",
-      "schedule": "*/5 * * * *"
-    },
-    {
-      "path": "/api/cron/notificaciones",
-      "schedule": "* * * * *"
-    }
-  ]
+  "regions": ["sfo1"],
+  "env": {
+    "PUPPETEER_SKIP_CHROMIUM_DOWNLOAD": "true"
+  }
 }
