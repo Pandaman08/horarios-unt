@@ -172,19 +172,27 @@ export function AsignaturaSummaryTable({ dto }: Readonly<{ dto: DocenteHorarioPd
 
         return (
           <View key={`${row.asignatura}-${row.grupo}-${row.no}`} style={[styles.row, { backgroundColor: bgColor }]}>
-            {['no', 'asignatura', 'te', 'pr', 'lab', 'grupo', 'hrs'].map((key, index) => (
-              <View
-                key={key}
-                style={[
-                  styles.cell,
-                  { width: widths[index], alignItems: key !== 'asignatura' ? 'center' : 'flex-start' },
-                ]}
-              >
-                <Text style={[key === 'hrs' ? styles.textBold : styles.text, styles.center]}>
-                  {row[key as keyof typeof row]}
-                </Text>
-              </View>
-            ))}
+            <View style={[styles.cell, { width: widths[0], alignItems: 'center' }]}>
+              <Text style={[styles.text, styles.center]}>{row.no}</Text>
+            </View>
+            <View style={[styles.cell, { width: widths[1] }]}>
+              <Text style={styles.text}>{row.asignatura}</Text>
+            </View>
+            <View style={[styles.cell, { width: widths[2], alignItems: 'center' }]}>
+              <Text style={[styles.text, styles.center]}>{row.te}</Text>
+            </View>
+            <View style={[styles.cell, { width: widths[3], alignItems: 'center' }]}>
+              <Text style={[styles.text, styles.center]}>{row.pr}</Text>
+            </View>
+            <View style={[styles.cell, { width: widths[4], alignItems: 'center' }]}>
+              <Text style={[styles.text, styles.center]}>{row.lab}</Text>
+            </View>
+            <View style={[styles.cell, { width: widths[5], alignItems: 'center' }]}>
+              <Text style={[styles.text, styles.center]}>{row.grupo}</Text>
+            </View>
+            <View style={[styles.cell, { width: widths[6], alignItems: 'center' }]}>
+              <Text style={[styles.textBold, styles.center]}>{row.hrs}</Text>
+            </View>
             <View style={[styles.cell, { flex: 1, borderRightWidth: 0 }]}>
               <Text style={styles.text}>{row.departamento}</Text>
             </View>
