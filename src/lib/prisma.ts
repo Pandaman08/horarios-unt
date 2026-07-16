@@ -1,9 +1,7 @@
-﻿import pkg from '@prisma/client'
-
-const { PrismaClient } = pkg as any
+﻿import { PrismaClient } from '@prisma/client'
 
 const globalForPrisma = globalThis as unknown as {
-  prisma_v2: any | undefined
+  prisma_v2: PrismaClient | undefined
 }
 
 export const prisma = globalForPrisma.prisma_v2 ?? new PrismaClient()

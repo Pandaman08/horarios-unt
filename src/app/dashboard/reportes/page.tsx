@@ -14,7 +14,7 @@ export default function ReportesPage() {
             <FileText className="h-7 w-7 text-primary" />
           </div>
           <div>
-            <span className="text-[10px] bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Centro de Documentación</span>
+            <span className="text-xs bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Centro de Documentación</span>
             <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight mt-2">Reportes Oficiales</h1>
             <p className="text-muted-foreground text-xs mt-1">Generación y visualización de reportes académicos por periodo</p>
           </div>

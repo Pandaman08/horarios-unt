@@ -1,4 +1,4 @@
-﻿import { prisma } from '@/lib/prisma';
+import { prisma } from '@/lib/prisma';
 import { MAX_HORAS_DIARIAS } from '@/lib/constantes';
 import { emitirEvento } from '@/lib/socket-server';
 import { etiquetaTipoClase } from '@/lib/horarios/mensajesValidacion';
@@ -231,7 +231,12 @@ export class ValidadorHorario {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente elegido ya está ocupado en este horario. Seleccione otro ambiente u otra hora.',
-        severidad: 'ERROR'
+        severidad: 'ERROR',
+        detalle: {
+          id_asignacion: ocupadoAsignado.id_asignacion,
+          id_docente: ocupadoAsignado.id_docente,
+          esTemporal: false
+        }
       });
     }
 
@@ -254,7 +259,12 @@ export class ValidadorHorario {
       conflictos.push({
         tipo: 'OCUPACION_AMBIENTE',
         mensaje: 'El ambiente elegido tiene otra reserva pendiente en este horario. Pruebe otro ambiente u otra hora.',
-        severidad: 'ERROR'
+        severidad: 'ERROR',
+        detalle: {
+          id_seleccion: ocupadoTemporal.id_seleccion,
+          id_docente: ocupadoTemporal.id_docente,
+          esTemporal: true
+        }
       });
     }
 
@@ -396,10 +406,28 @@ export class ValidadorHorario {
     const tipoLabel = etiquetaTipoClase(s.tipoClase);
     const tipo = s.tipoClase.toLowerCase();
 
+    // Buscar la carga lectiva del docente para este curso y tipo de clase
+    const cargaLectiva = await prisma.cargaLectiva.findFirst({
+      where: {
+        id_curso: s.cursoId,
+        tipo_clase: s.tipoClase,
+        declaracion: {
+          id_docente: s.docenteId,
+          id_periodo: s.periodoId
+        }
+      }
+    });
+
+    // Calcular horas tope: usar carga lectiva si existe, sino usar horas del curso
     let horasTope = 0;
-    if (tipo.includes('teoria')) horasTope = curso.horas_teoria;
-    else if (tipo.includes('laboratorio')) horasTope = curso.horas_laboratorio;
-    else if (tipo.includes('practica') || tipo.includes('práctica')) horasTope = curso.horas_practica;
+    if (cargaLectiva) {
+      horasTope = cargaLectiva.horas_semanales * (cargaLectiva.grupos_asignados || 1);
+    } else {
+      // Fallback: usar horas del curso si no hay carga lectiva
+      if (tipo.includes('teoria')) horasTope = curso.horas_teoria;
+      else if (tipo.includes('laboratorio')) horasTope = curso.horas_laboratorio;
+      else if (tipo.includes('practica') || tipo.includes('práctica')) horasTope = curso.horas_practica;
+    }
     
     // Sumar horas ya asignadas (confirmadas)
     const asignados = await prisma.horarioAsignado.findMany({

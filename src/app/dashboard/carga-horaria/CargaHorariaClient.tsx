@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { usePeriodo } from '@/contexts/PeriodoContext';
@@ -28,16 +28,16 @@ import {
   BookOpen, 
   CheckCircle2, 
   User, 
-  XCircle,
-  LayoutGrid,
-  Info,
-  Clock,
+  XCircle, 
+  LayoutGrid, 
+  Info, 
+  Clock, 
   Briefcase,
-  Calendar
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { SimulacionBadge } from '@/components/ui/SimulacionBadge';
 import { parse, format, addMinutes } from 'date-fns';
+
 import { 
   mapCondicionToTexto, 
   mapCategoriaDocenteToTexto, 
@@ -50,6 +50,7 @@ import {
   type TipoContrato as TipoContratoType 
 } from '@/lib/constants/regimenHoras';
 import { MatrizDisponibilidad } from '@/components/horarios/MatrizDisponibilidad';
+
 import {
   actividadPermitidaParaRegimen,
   ETIQUETAS_ART_12_4,
@@ -155,6 +156,18 @@ const DIAS_SEMANA = [
   { value: 'SA', label: 'Sábado' }
 ];
 
+const horarioContieneSlot = (
+  horario: { dia: string; horaInicio: string; horaFin: string },
+  diaCodigo: string,
+  hora: string
+) => {
+  if (horario.dia !== diaCodigo) return false;
+  const inicio = parse(horario.horaInicio, 'HH:mm', new Date());
+  const fin = parse(horario.horaFin, 'HH:mm', new Date());
+  const slot = parse(hora, 'HH:mm', new Date());
+  return slot >= inicio && slot < fin;
+};
+
 export default function CargaHorariaClient({ initialDocente }: { initialDocente: any }) {
   const { periodoActivo } = usePeriodo();
   const router = useRouter();
@@ -162,9 +175,9 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [loading, setLoading] = useState(true);
   const [formData, setFormData] = useState({
     ibm: initialDocente?.codigo_docente || '',
-    condicion: '',
-    categoria: '',
-    dedicacion: '',
+    condicion: initialDocente?.condicion || '',
+    categoria: initialDocente?.categoriaDocente || '',
+    dedicacion: initialDocente?.regimenDedicacion || '',
     horas_dedicacion: 0
   });
   const [cargasLectivas, setCargasLectivas] = useState<any[]>([]);
@@ -176,7 +189,16 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const [horariosLectivosLoading, setHorariosLectivosLoading] = useState(true);
   const [actividadNoLectivaSeleccionada, setActividadNoLectivaSeleccionada] = useState<number | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [redirectingASeleccion, setRedirectingASeleccion] = useState(false);
   const lastSavedSnapshotRef = useRef<string>('');
+
+  const ESTADOS_PASO_LECTIVA_COMPLETO = [
+    'LECTIVA_CONFIRMADA',
+    'ENVIADO',
+    'VALIDADO_DEPARTAMENTO',
+    'APROBADO',
+    'RECHAZADO',
+  ];
 
   // Verificar si los horarios lectivos ya están confirmados
   useEffect(() => {
@@ -218,6 +240,30 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
   }, [periodoActivo, initialDocente]);
 
+  // Paso 1 pendiente: redirigir automáticamente a la matriz de selección lectiva
+  useEffect(() => {
+    if (horariosLectivosLoading || loading) return;
+
+    const horariosLectivosConfirmados = horariosLectivos.filter(
+      (h: { is_no_lectiva?: boolean }) => !h.is_no_lectiva,
+    );
+    const pasoLectivaCompleto =
+      (declaracion?.estado &&
+        ESTADOS_PASO_LECTIVA_COMPLETO.includes(declaracion.estado)) ||
+      horariosLectivosConfirmados.length > 0;
+
+    if (!pasoLectivaCompleto) {
+      setRedirectingASeleccion(true);
+      router.replace('/dashboard/horarios/seleccion');
+    }
+  }, [
+    horariosLectivosLoading,
+    loading,
+    declaracion?.estado,
+    horariosLectivos,
+    router,
+  ]);
+
   const fetchHorariosLectivos = async () => {
     if (!initialDocente?.id_docente || !periodoActivo?.id_periodo) return;
     try {
@@ -225,7 +271,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       const res = await fetch(`/api/docentes/horarios?periodoId=${periodoActivo.id_periodo}`);
       if (res.ok) {
         const data = await res.json();
-        setHorariosLectivos(Array.isArray(data) ? data : []);
+        setHorariosLectivos(Array.isArray(data) ? data : (data.horarios ?? []));
       }
     } catch (err) {
       console.error(err);
@@ -373,6 +419,16 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     if (!initialDocente || !periodoActivo) return;
     if (isSaving) return;
 
+    const actividadesConHorarioSinDescripcion = cargasNoLectivas.filter(carga => {
+      return (carga.horarios?.length > 0) && (!carga.descripcion || carga.descripcion.trim === "");
+    });
+    if (actividadesConHorarioSinDescripcion.length > 0) {
+      const nombresActividades = actividadesConHorarioSinDescripcion
+        .map(c => TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === c.tipo)?.label || c.tipo)
+        .join(', ');
+      toast.error(`Las siguientes actividades con horario asignado requieren una descripción: ${nombresActividades}`);
+      return;
+    }
     const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
     if (lastSavedSnapshotRef.current === currentSnapshot) {
       toast.success('No hay cambios para guardar');
@@ -458,14 +514,20 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
       return;
     }
 
-    // Guardar cambios pendientes antes de enviar para que el backend valide el estado con datos actualizados
+    const actividadesConHorarioSinDescripcion = cargasNoLectivas.filter(carga => {
+      return (carga.horarios?.length > 0) && (!carga.descripcion || carga.descripcion.trim === "");
+    });
+    if (actividadesConHorarioSinDescripcion.length > 0) {
+      const nombresActividades = actividadesConHorarioSinDescripcion
+        .map(c => TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === c.tipo)?.label || c.tipo)
+        .join(', ');
+      toast.error(`Las siguientes actividades con horario asignado requieren una descripción: ${nombresActividades}`);
+      return;
+    }
     const currentSnapshot = getSaveSnapshot(formData, cargasNoLectivas);
-    if (lastSavedSnapshotRef.current !== currentSnapshot) {
-      await handleCreateOrSave();
-      if (lastSavedSnapshotRef.current !== currentSnapshot) {
-        toast.error('Error: No se pudieron guardar los cambios antes de enviar. Intente nuevamente.');
-        return;
-      }
+    if (lastSavedSnapshotRef.current === currentSnapshot) {
+      toast.success('No hay cambios para guardar');
+      return;
     }
 
     // Validación obligatoria de horas totales
@@ -531,6 +593,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
   const claveRegimenDocente = useMemo(
     () => getClaveRegimenHoras(initialDocente),
     [initialDocente]
+  );
+
+  const horariosLectivosSoloLectiva = useMemo(
+    () => horariosLectivos.filter((h) => !h.is_no_lectiva),
+    [horariosLectivos]
   );
 
   const totalLectivas = trabajoLectivo;
@@ -714,14 +781,21 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     const existentes = carga.horarios || [];
 
     // Si ya está asignado, quitar (deseleccionar)
-    const yaAsignadoIdx = existentes.findIndex((h: any) => h.dia === diaCodigo && h.horaInicio === hora);
+    const yaAsignadoIdx = existentes.findIndex((h: any) =>
+      horarioContieneSlot(h, diaCodigo, hora)
+    );
     if (yaAsignadoIdx !== -1) {
       const newCargas = [...cargasNoLectivas];
       const nuevosHorarios = [...(newCargas[idx].horarios || [])];
       nuevosHorarios.splice(yaAsignadoIdx, 1);
-      newCargas[idx] = { ...newCargas[idx], horarios: nuevosHorarios };
+      const nuevasHoras = Math.round(minutosDesdeHorarios(nuevosHorarios) / 60);
+      newCargas[idx] = { ...newCargas[idx], horarios: nuevosHorarios, horas_semanales: nuevasHoras };
       setCargasNoLectivas(newCargas);
 
+      if (autosaveTimerRef.current) {
+        clearTimeout(autosaveTimerRef.current);
+        autosaveTimerRef.current = null;
+      }
       // Persist change immediately for removals to reflect deletion on server
       await autosaveCargas(newCargas);
       return;
@@ -755,16 +829,29 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     }
 
     // Evitar conflicto con otras actividades
-    const conflicto = cargasNoLectivas.some(c => c.id_carga_no_lectiva !== carga.id_carga_no_lectiva && (c.horarios || []).some((h: any) => h.dia === diaCodigo && h.horaInicio === hora));
+    const conflicto = cargasNoLectivas.some(
+      (c) =>
+        c.id_carga_no_lectiva !== carga.id_carga_no_lectiva &&
+        (c.horarios || []).some((h: any) => horarioContieneSlot(h, diaCodigo, hora))
+    );
     if (conflicto) {
       toast.error('El bloque está ocupado por otra actividad no lectiva');
       return;
     }
 
     // Evitar conflicto con horarios lectivos confirmados
-    const lectivoConflicto = horariosLectivos.some((hl: any) => hl.dia_semana === dia && hl.hora_inicio === hora);
+    const lectivoConflicto = horariosLectivos
+      .filter((hl) => !hl.is_no_lectiva)
+      .some((hl) => {
+        if (hl.dia_semana !== dia) return false;
+        return horarioContieneSlot(
+          { dia: diaCodigo, horaInicio: hl.hora_inicio, horaFin: hl.hora_fin },
+          diaCodigo,
+          hora
+        );
+      });
     if (lectivoConflicto) {
-      toast.error('El bloque está ocupado por horario lectivo confirmado');
+      toast.error('El bloque coincide con su horario lectivo confirmado');
       return;
     }
 
@@ -784,28 +871,148 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
     scheduleAutosave(newCargas);
   };
 
-  if (loading) return <div className="p-8">Cargando...</div>;
+  const handleRangeSelect = async (cells: Array<{dia: number; hora: string}>) => {
+    if (!actividadNoLectivaSeleccionada) {
+      toast.error('Seleccione una actividad antes de asignar horarios');
+      return;
+    }
 
-  // Si no hay horarios lectivos confirmados y la declaración no existe o no está en estado LECTIVA_CONFIRMADA, redirigir
-  if (!horariosLectivosLoading && horariosLectivos.length === 0 && declaracion?.estado !== 'LECTIVA_CONFIRMADA') {
-    return (
-      <div className="p-8 text-center">
-        <div className="max-w-md mx-auto space-y-4">
-          <Calendar className="h-16 w-16 text-blue-500 mx-auto" />
-          <h2 className="text-2xl font-bold text-foreground">Horarios Lectivos Pendientes</h2>
-          <p className="text-muted-foreground">
-            Primero debe seleccionar sus horarios lectivos en la ventana de autogestión.
-          </p>
-          <Button onClick={() => router.push('/dashboard/horarios/seleccion')} className="mt-4">
-            Ir a Selección de Horarios
-          </Button>
-        </div>
-      </div>
+    const diasCodigo = ['LU','MA','MI','JU','VI','SA'];
+    const idx = cargasNoLectivas.findIndex(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada);
+    if (idx === -1) return;
+
+    const carga = cargasNoLectivas[idx];
+    const existentes = carga.horarios || [];
+    const minutosAsignados = minutosDesdeHorarios(existentes);
+    const bloqueMinutos = cells.length * 60;
+
+    const maxHorasActividad = getMaxHorasActividadNoLectiva(
+      carga.tipo,
+      initialDocente,
+      trabajoLectivo
     );
+
+    if (maxHorasActividad !== null && maxHorasActividad === 0) {
+      toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
+      return;
+    }
+
+    if (maxHorasActividad !== null && minutosAsignados + bloqueMinutos > maxHorasActividad * 60) {
+      const detalle = carga.tipo === 'PREPARACION_EVALUACION'
+        ? ` (máx. 50% del trabajo lectivo: ${trabajoLectivo}h → ${maxHorasActividad}h)`
+        : ' (Art. 12.4)';
+      const disponibles = Math.max(0, maxHorasActividad - Math.round(minutosAsignados / 60));
+      toast.error(`Límite excedido: máximo ${maxHorasActividad}h — le quedan ${disponibles}h disponibles${detalle}`);
+      return;
+    }
+
+    const nuevosHorarios: Array<{dia: string; horaInicio: string; horaFin: string}> = [];
+    const ocupados: string[] = [];
+
+    for (const cell of cells) {
+      const diaCodigo = diasCodigo[cell.dia];
+      if (!diaCodigo) continue;
+
+      const yaAsignado = existentes.some((h: any) => horarioContieneSlot(h, diaCodigo, cell.hora));
+      if (yaAsignado) continue;
+
+      const conflicto = cargasNoLectivas.some(
+        (c) => c.id_carga_no_lectiva !== carga.id_carga_no_lectiva &&
+          (c.horarios || []).some((h: any) => horarioContieneSlot(h, diaCodigo, cell.hora))
+      );
+      if (conflicto) {
+        ocupados.push(`${diaCodigo} ${cell.hora}`);
+        continue;
+      }
+
+      const lectivoConflicto = horariosLectivos
+        .filter((hl) => !hl.is_no_lectiva)
+        .some((hl) => {
+          if (hl.dia_semana !== cell.dia) return false;
+          return horarioContieneSlot(
+            { dia: diaCodigo, horaInicio: hl.hora_inicio, horaFin: hl.hora_fin },
+            diaCodigo,
+            cell.hora
+          );
+        });
+      if (lectivoConflicto) {
+        ocupados.push(`${diaCodigo} ${cell.hora}`);
+        continue;
+      }
+
+      const inicio = parse(cell.hora, 'HH:mm', new Date());
+      const fin = format(addMinutes(inicio, 60), 'HH:mm');
+      nuevosHorarios.push({ dia: diaCodigo, horaInicio: cell.hora, horaFin: fin });
+    }
+
+    if (nuevosHorarios.length === 0) {
+      toast.error('Ningún bloque disponible en el rango seleccionado');
+      return;
+    }
+
+    const newCargas = [...cargasNoLectivas];
+    newCargas[idx] = {
+      ...newCargas[idx],
+      horarios: [...(newCargas[idx].horarios || []), ...nuevosHorarios]
+    };
+
+    setCargasNoLectivas(newCargas);
+    scheduleAutosave(newCargas);
+
+    if (nuevosHorarios.length > 0) {
+      toast.success(`${nuevosHorarios.length} bloque(s) asignado(s) a ${TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo)?.label || carga.tipo}`);
+    }
+    if (ocupados.length > 0) {
+      toast.warning(`${ocupados.length} bloque(s) no disponible(s) por conflicto de horario`);
+    }
+  };
+
+  const handleRangeRemove = async (cells: Array<{dia: number; hora: string}>) => {
+    if (!actividadNoLectivaSeleccionada) return;
+
+    const diasCodigo = ['LU','MA','MI','JU','VI','SA'];
+    const idx = cargasNoLectivas.findIndex(c => c.id_carga_no_lectiva === actividadNoLectivaSeleccionada);
+    if (idx === -1) return;
+
+    const carga = cargasNoLectivas[idx];
+    const nuevosHorarios = [...(carga.horarios || [])];
+    let removedCount = 0;
+
+    for (const cell of cells) {
+      const diaCodigo = diasCodigo[cell.dia];
+      if (!diaCodigo) continue;
+
+      const idxH = nuevosHorarios.findIndex((h: any) => horarioContieneSlot(h, diaCodigo, cell.hora));
+      if (idxH !== -1) {
+        nuevosHorarios.splice(idxH, 1);
+        removedCount++;
+      }
+    }
+
+    if (removedCount === 0) {
+      toast.error('Ningún bloque seleccionado pertenece a esta actividad');
+      return;
+    }
+
+    const nuevasHoras = Math.round(minutosDesdeHorarios(nuevosHorarios) / 60);
+    const newCargas = [...cargasNoLectivas];
+    newCargas[idx] = { ...newCargas[idx], horarios: nuevosHorarios, horas_semanales: nuevasHoras };
+    setCargasNoLectivas(newCargas);
+
+    if (autosaveTimerRef.current) {
+      clearTimeout(autosaveTimerRef.current);
+      autosaveTimerRef.current = null;
+    }
+    await autosaveCargas(newCargas);
+    toast.success(`${removedCount} bloque(s) deseleccionado(s)`);
+  };
+
+  if (loading || horariosLectivosLoading || redirectingASeleccion) {
+    return <div className="p-8 text-center text-muted-foreground">Cargando...</div>;
   }
 
   return (
-    <div className="p-6 space-y-4 bg-background min-h-screen">
+    <div className="p-4 md:p-6 space-y-4 bg-background min-h-0 max-w-[1600px] mx-auto">
       {/* Header */}
       <Card className="shadow-sm border-border overflow-hidden">
         <CardContent className="p-0">
@@ -815,13 +1022,18 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 <LayoutGrid className="text-blue-600 dark:text-blue-400 w-5 h-5" />
               </div>
               <div>
-                <h1 className="text-lg font-bold text-foreground leading-none">Declaración de Carga Horaria</h1>
-                <p className="text-muted-foreground text-xs mt-1">Complete su carga no lectiva y envíe a aprobación</p>
+                <span className="text-xs bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">
+                  Paso 2/2
+                </span>
+                <h1 className="text-lg font-bold text-foreground leading-none mt-2">Declaración de Carga Horaria</h1>
+                <p className="text-muted-foreground text-xs mt-1">
+                  Complete su carga no lectiva y envíe su declaración al jefe de departamento
+                </p>
               </div>
             </div>
             <div className="flex flex-wrap gap-2">
               {puedeEditarNoLectiva && (
-                <Button 
+                <Button
                   onClick={handleCreateOrSave} 
                   variant="outline" 
                   size="sm"
@@ -843,7 +1055,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               )}
               {declaracion && (
                 <div className="flex items-center gap-2 px-3 py-1.5 bg-muted border border-border rounded-md">
-                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">Estado:</span>
+                  <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">Estado:</span>
                   <Badge 
                     variant="outline" 
                     className={cn(
@@ -892,11 +1104,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             {initialDocente && (
               <div className="grid grid-cols-1 md:grid-cols-2 gap-x-8 gap-y-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Nombre Completo</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Nombre Completo</p>
                   <p className="text-sm font-bold text-foreground">{initialDocente.nombres} {initialDocente.apellidos}</p>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Departamento Académico</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest">Departamento Académico</p>
                   <p className="text-sm font-medium text-foreground">{initialDocente.departamento?.nombre || initialDocente.especialidad || 'Ingeniería de Sistemas'}</p>
                 </div>
               </div>
@@ -905,69 +1117,20 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             <div className="pt-4 border-t border-border">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">IBM / Código</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">IBM / Código</Label>
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{formData.ibm}</div>
-                  ) : (
-                    <Input
-                      value={formData.ibm}
-                      onChange={e => setFormData({ ...formData, ibm: e.target.value })}
-                      className="h-10 bg-background border-border focus:bg-background transition-all text-sm"
-                      disabled={!puedeEditarNoLectiva}
-                    />
-                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">Condición</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">Condición</Label>
                     <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCondicionToTexto(initialDocente.condicion)}</div>
-                  ) : (
-                    <Select value={formData.condicion} onValueChange={v => setFormData({ ...formData, condicion: v })} disabled={!puedeEditarNoLectiva}>
-                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                        <SelectValue placeholder="Seleccionar condición" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CONDICION_OPCIONES.map(c => <SelectItem key={c.value} value={c.value} className="text-sm">{c.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">Categoría</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
-                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCategoriaDocenteToTexto(initialDocente.categoriaDocente)}</div>
-                  ) : (
-                    <Select value={formData.categoria} onValueChange={v => setFormData({ ...formData, categoria: v })} disabled={!puedeEditarNoLectiva}>
-                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                        <SelectValue placeholder="Seleccionar categoría" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CATEGORIA_OPCIONES.map(c => <SelectItem key={c.value} value={c.value} className="text-sm">{c.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">Categoría</Label>
+                  <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapCategoriaDocenteToTexto(initialDocente.categoriaDocente)}</div>
                 </div>
                 <div className="space-y-2">
-                  <Label className="text-[11px] font-bold text-muted-foreground uppercase">Dedicación Horaria</Label>
-                  {declaracion && (declaracion.estado === 'APROBADO' || declaracion.estado === 'RECHAZADO') ? (
-                    <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapRegimenDedicacionToTexto(initialDocente.regimenDedicacion)}</div>
-                  ) : (
-                    <Select
-                      value={formData.dedicacion}
-                      onValueChange={v => {
-                        const newHoras = REGIMEN_DEDICACION[v as RegimenDedicacionType]?.totalHoras || 0;
-                        setFormData({ ...formData, dedicacion: v, horas_dedicacion: newHoras });
-                      }}
-                      disabled={!puedeEditarNoLectiva}
-                    >
-                      <SelectTrigger className="h-10 bg-background border-border focus:bg-background transition-all text-sm">
-                        <SelectValue placeholder="Seleccionar dedicación" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {REGIMEN_OPCIONES.map(d => <SelectItem key={d.value} value={d.value} className="text-sm">{d.label}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                  )}
+                  <Label className="text-sm font-bold text-muted-foreground uppercase">Dedicación Horaria</Label>
+                  <div className="h-10 flex items-center px-3 border border-border rounded-md bg-muted text-sm text-foreground">{mapRegimenDedicacionToTexto(initialDocente.regimenDedicacion)}</div>
                 </div>
               </div>
             </div>
@@ -985,11 +1148,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
           <CardContent className="p-4 space-y-4">
             <div className="space-y-3">
               <div className="flex justify-between items-center p-3 bg-muted rounded-lg border border-border">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">Carga Lectiva</span>
+                <span className="text-sm font-bold text-muted-foreground uppercase tracking-tight">Carga Lectiva</span>
                 <span className="text-lg font-black text-blue-600 dark:text-blue-400">{totalLectivas}h</span>
               </div>
               <div className="flex justify-between items-center p-3 bg-muted rounded-lg border border-border">
-                <span className="text-[11px] font-bold text-muted-foreground uppercase tracking-tight">No Lectiva</span>
+                <span className="text-sm font-bold text-muted-foreground uppercase tracking-tight">No Lectiva</span>
                 <span className="text-lg font-black text-indigo-600 dark:text-indigo-400">{totalNoLectivas}h</span>
               </div>
               <div className={cn(
@@ -1000,7 +1163,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               )}>
                 <div className="flex flex-col">
                   <span className={cn(
-                    "text-[11px] font-bold uppercase tracking-tight",
+                    "text-sm font-bold uppercase tracking-tight",
                     totalGeneral === formData.horas_dedicacion ? "text-emerald-600 dark:text-emerald-400" : "text-rose-600 dark:text-rose-400"
                   )}>Total Registrado</span>
                   <span className="text-[9px] text-muted-foreground font-medium">Meta: {formData.horas_dedicacion}h</span>
@@ -1020,7 +1183,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
             {formData.horas_dedicacion > 0 && totalGeneral !== formData.horas_dedicacion && (
               <div className="p-3 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg flex gap-2 items-start">
                 <Info size={14} className="text-amber-500 dark:text-amber-400 mt-0.5 shrink-0" />
-                <p className="text-[10px] text-amber-700 dark:text-amber-300 leading-tight font-medium">
+                <p className="text-xs text-amber-700 dark:text-amber-300 leading-tight font-medium">
                   La suma total debe coincidir exactamente con las {formData.horas_dedicacion}h de dedicación asignadas.
                 </p>
               </div>
@@ -1050,15 +1213,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Código</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Curso</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">Tipo</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Escuela</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">Ciclo</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HT</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HP</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-center">HL</TableHead>
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-right">Total</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10">Código</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10">Curso</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">Tipo</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10">Escuela</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">Ciclo</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">HT</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">HP</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-center">HL</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 text-right">Total</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -1067,7 +1230,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                       <TableCell className="px-4 py-3 text-xs font-medium text-foreground">{row.codigo}</TableCell>
                       <TableCell className="px-4 py-3 text-xs font-medium text-foreground">{row.nombre}</TableCell>
                       <TableCell className="px-4 py-3 text-center">
-                        <Badge variant="outline" className="text-[10px] font-bold px-2 py-0">
+                        <Badge variant="outline" className="text-xs font-bold px-2 py-0">
                           {getTipoCursoBadge(row.tipo)}
                         </Badge>
                       </TableCell>
@@ -1108,7 +1271,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
         <CardContent className="p-0">
           <div className="p-4 space-y-4">
             <details className="rounded-lg border border-border bg-muted/20 p-3">
-              <summary className="text-[11px] font-bold text-foreground cursor-pointer select-none">
+              <summary className="text-sm font-bold text-foreground cursor-pointer select-none">
                 Límites máximos Art. 12.4 — su régimen: {claveRegimenDocente ?? 'No definido'}
                 {claveRegimenDocente && (
                   <span className="font-normal text-muted-foreground ml-1">
@@ -1117,11 +1280,11 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 )}
               </summary>
               <div className="mt-3 overflow-x-auto">
-                <p className="text-[10px] text-muted-foreground mb-2">
+                <p className="text-xs text-muted-foreground mb-2">
                   Preparación y Evaluación: máx. 50% del trabajo lectivo (redondeo a la baja).
                   «—» o 0 = no puede asignar horas a esa actividad.
                 </p>
-                <table className="w-full min-w-[640px] text-[10px] border-collapse">
+                <table className="w-full min-w-[640px] text-xs border-collapse">
                   <thead>
                     <tr className="bg-muted/50">
                       <th className="border border-border px-2 py-1 text-left font-bold">Actividad</th>
@@ -1162,76 +1325,71 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               </div>
             </details>
 
-            {/* Shared matrix for no-lectiva */}
-            {actividadNoLectivaSeleccionada && (
-              <div className="mb-4">
-                <div className="border rounded-lg p-2 bg-muted/10">
-                  <MatrizDisponibilidad
-                    id_periodo={periodoActivo?.id_periodo || 0}
-                    id_docente_actual={initialDocente?.id_docente}
-                    soloLectura={!puedeEditarNoLectiva}
-                    tipoVista="no-lectiva"
-                    actividadSeleccionadaId={actividadNoLectivaSeleccionada as any}
-                    actividadesNoLectivas={cargasNoLectivas}
-                    onCellClick={handleNoLectivaCellClick}
-                    onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
-                    />
-                </div>
-              </div>
-            )}
+            {/* Panel dividido: izquierda (actividades) + derecha (matriz con arrastre) */}
+            <div className="flex flex-col lg:flex-row gap-4">
+              {/* Panel izquierdo: Tarjetas de actividades */}
+              <div className="w-full lg:w-96 shrink-0 space-y-3 max-h-[700px] overflow-y-auto pr-1">
+                {cargasNoLectivas.map((carga, index) => {
+                  const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
+                  const requiereDocumento = TIPOS_QUE_REQUIEREN_DOCUMENTO.has(carga.tipo);
+                  const actividadPermitida = actividadPermitidaParaRegimen(carga.tipo, initialDocente, trabajoLectivo);
+                  const horasAsignadas = horasDesdeHorarios(carga.horarios || []);
+                  const maxHoras = getMaxHorasActividadNoLectiva(carga.tipo, initialDocente, trabajoLectivo);
+                  const colors = [
+                    { bg: 'bg-rose-50/80 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-200 dark:border-rose-900/50' },
+                    { bg: 'bg-amber-50/80 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-200 dark:border-amber-900/50' },
+                    { bg: 'bg-emerald-50/80 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-200 dark:border-emerald-900/50' },
+                    { bg: 'bg-cyan-50/80 dark:bg-cyan-950/30', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-200 dark:border-cyan-900/50' },
+                    { bg: 'bg-indigo-50/80 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-200 dark:border-indigo-900/50' },
+                    { bg: 'bg-fuchsia-50/80 dark:bg-fuchsia-950/30', text: 'text-fuchsia-700 dark:text-fuchsia-400', border: 'border-fuchsia-200 dark:border-fuchsia-900/50' },
+                    { bg: 'bg-orange-50/80 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-200 dark:border-orange-900/50' },
+                    { bg: 'bg-sky-50/80 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-200 dark:border-sky-900/50' },
+                  ];
+                  const color = colors[index % colors.length];
 
-          <Table>
-            <TableHeader className="bg-muted/30">
-              <TableRow>
-                <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Tipo de Actividad</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10">Descripción de Actividades</TableHead>
-                <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 text-right">Horas/Sem</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {cargasNoLectivas.map((carga, index) => {
-                const tipoInfo = TIPOS_CARGA_NO_LECTIVA_PREDEFINIDOS.find(t => t.value === carga.tipo);
-                const requiereDocumento = TIPOS_QUE_REQUIEREN_DOCUMENTO.has(carga.tipo);
-                const etiquetaLimite = getEtiquetaLimiteActividad(carga.tipo, initialDocente, trabajoLectivo);
-                const actividadPermitida = actividadPermitidaParaRegimen(carga.tipo, initialDocente, trabajoLectivo);
-                const colors = [
-                  { bg: 'bg-rose-50/40 dark:bg-rose-950/30', text: 'text-rose-700 dark:text-rose-400', border: 'border-rose-100 dark:border-rose-900/50' },
-                  { bg: 'bg-amber-50/40 dark:bg-amber-950/30', text: 'text-amber-700 dark:text-amber-400', border: 'border-amber-100 dark:border-amber-900/50' },
-                  { bg: 'bg-emerald-50/40 dark:bg-emerald-950/30', text: 'text-emerald-700 dark:text-emerald-400', border: 'border-emerald-100 dark:border-emerald-900/50' },
-                  { bg: 'bg-cyan-50/40 dark:bg-cyan-950/30', text: 'text-cyan-700 dark:text-cyan-400', border: 'border-cyan-100 dark:border-cyan-900/50' },
-                  { bg: 'bg-indigo-50/40 dark:bg-indigo-950/30', text: 'text-indigo-700 dark:text-indigo-400', border: 'border-indigo-100 dark:border-indigo-900/50' },
-                  { bg: 'bg-fuchsia-50/40 dark:bg-fuchsia-950/30', text: 'text-fuchsia-700 dark:text-fuchsia-400', border: 'border-fuchsia-100 dark:border-fuchsia-900/50' },
-                  { bg: 'bg-orange-50/40 dark:bg-orange-950/30', text: 'text-orange-700 dark:text-orange-400', border: 'border-orange-100 dark:border-orange-900/50' },
-                  { bg: 'bg-sky-50/40 dark:bg-sky-950/30', text: 'text-sky-700 dark:text-sky-400', border: 'border-sky-100 dark:border-sky-900/50' },
-                ];
-                const color = colors[index % colors.length];
-                
-                return (
-                  <TableRow key={carga.id_carga_no_lectiva ?? `no-lectiva-${index}`} className={cn("border-border", color.bg)}>
-                    <TableCell className="px-4 py-3">
-                      <div className="flex items-center gap-2">
-                        <div className={cn("font-bold text-xs", color.text)}>{tipoInfo?.label || carga.tipo}</div>
-                        {carga.tipo === 'INVESTIGACION' && (
-                          <SimulacionBadge tipo="INVESTIGACION_ETICA" />
-                        )}
-                      </div>
-                      <p className="text-[10px] text-muted-foreground leading-tight mt-0.5 line-clamp-2">{tipoInfo?.descripcion}</p>
-                      {etiquetaLimite && (
-                        <p className={cn(
-                          "text-[10px] font-bold mt-1",
-                          etiquetaLimite.includes('No permitida')
-                            ? "text-rose-600 dark:text-rose-400"
-                            : "text-indigo-600 dark:text-indigo-400"
-                        )}>
-                          {etiquetaLimite}
-                        </p>
+                  return (
+                    <div
+                      key={carga.id_carga_no_lectiva ?? `no-lectiva-${index}`}
+                      className={cn(
+                        "p-3 rounded-lg border transition-all cursor-pointer",
+                        color.bg,
+                        color.border,
+                        actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
+                          ? "ring-2 ring-primary ring-offset-2 bg-white dark:bg-card shadow-md"
+                          : "hover:bg-white dark:hover:bg-card"
                       )}
-                    </TableCell>
-                    <TableCell className="px-4 py-3 space-y-3">
-                      {/* Descripción / Documento */}
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                          {requiereDocumento ? 'N° de Resolución/Constancia/Código de Proyecto' : 'Descripción de Actividades'}
+                      onClick={() => {
+                        if (!actividadPermitida) {
+                          toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
+                          return;
+                        }
+                        setActividadNoLectivaSeleccionada(
+                          actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
+                            ? null
+                            : carga.id_carga_no_lectiva
+                        );
+                      }}
+                    >
+                      {/* Nombre + horas */}
+                      <div className="flex items-start justify-between mb-2">
+                        <div className="flex items-center gap-2">
+                          <div className={cn("text-xs font-bold", color.text)}>
+                            {tipoInfo?.label || carga.tipo}
+                          </div>
+                          {carga.tipo === 'INVESTIGACION' && carga.descripcion?.trim() && (
+                            <SimulacionBadge tipo="INVESTIGACION_ETICA" />
+                          )}
+                        </div>
+                        <Badge variant="outline" className={cn("text-xs", color.text)}>
+                          {horasAsignadas}{maxHoras !== null ? `/${maxHoras}` : ''}h
+                        </Badge>
+                      </div>
+
+                      {/* Descripción */}
+                      <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                          {requiereDocumento ? 'N° de Resolución/Constancia/Código de Proyecto' : 'Descripción'}
+                          <span className="text-rose-500 ml-1">*</span>
                         </Label>
                         <Input
                           placeholder={requiereDocumento ? 'Ingrese el documento de sustento...' : 'Describa brevemente la actividad...'}
@@ -1240,73 +1398,15 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           disabled={!puedeEditarNoLectiva}
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
-                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                            newCargas[idx].descripcion = e.target.value;
+                            newCargas[index] = { ...newCargas[index], descripcion: e.target.value };
                             setCargasNoLectivas(newCargas);
                           }}
                         />
                       </div>
 
-                      {/* Cargo (if applicable) */}
-                      {(carga.tipo === 'GOBIERNO' || carga.tipo === 'ADMINISTRACION') && (
-                        <div className="space-y-2">
-                          <div className="space-y-1">
-                            <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                              Cargo Académico/Administrativo
-                            </Label>
-                            <Select
-                              value={carga.cargoId != null ? String(carga.cargoId) : ''}
-                              disabled={!puedeEditarNoLectiva}
-                              onValueChange={val => {
-                                const newCargas = [...cargasNoLectivas];
-                                const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                                if (val === 'none') {
-                                  newCargas[idx].cargoId = null;
-                                  newCargas[idx].horas_semanales = 0;
-                                } else {
-                                  const cargo = cargosAcademicos.find(c => String(c.id) === val);
-                                  if (cargo) {
-                                    newCargas[idx].cargoId = cargo.id;
-                                    newCargas[idx].horas_semanales = cargo.chnla;
-                                  }
-                                }
-                                setCargasNoLectivas(newCargas);
-                              }}
-                            >
-                              <SelectTrigger className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none">
-                                <SelectValue placeholder="Seleccione un cargo..." />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="none" className="text-xs text-muted-foreground">
-                                  Ninguno
-                                </SelectItem>
-                                {cargosAcademicos.map(cargo => (
-                                  <SelectItem key={cargo.id} value={String(cargo.id)} className="text-xs">
-                                    {cargo.nombre}
-                                  </SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                          </div>
-                          {carga.cargoId && (() => {
-                            const cargo = cargosAcademicos.find(c => c.id === carga.cargoId);
-                            return cargo ? (
-                              <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg">
-                                <p className="text-[10px] font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
-                                  Información del Cargo
-                                </p>
-                                <p className="text-[10px] text-amber-700 dark:text-amber-300 mt-1">
-                                  Carga lectiva mínima sugerida: {cargo.chlm}h · Preparación y evaluación sugerida: {cargo.chnlpe}h
-                                </p>
-                              </div>
-                            ) : null;
-                          })()}
-                        </div>
-                      )}
-
-                      {/* Ambiente */}
-                      <div className="space-y-1">
-                        <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                      {/* Ambiente/Aula */}
+                      <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                        <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
                           Ambiente/Aula (opcional)
                         </Label>
                         <Input
@@ -1316,90 +1416,112 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                           disabled={!puedeEditarNoLectiva}
                           onChange={e => {
                             const newCargas = [...cargasNoLectivas];
-                            const idx = newCargas.findIndex(c => c.id_carga_no_lectiva === carga.id_carga_no_lectiva);
-                            newCargas[idx].ambiente = e.target.value;
+                            newCargas[index] = { ...newCargas[index], ambiente: e.target.value };
                             setCargasNoLectivas(newCargas);
                           }}
                         />
                       </div>
 
-                      {/* Horarios - Selector para abrir la matriz compartida */}
-                      <div className="space-y-2">
-                        <div className="flex items-center justify-between">
-                          <Label className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
-                            Horario Semanal (usar la matriz compartida)
+                      {/* Cargo (GOBIERNO/ADMINISTRACION) */}
+                      {(carga.tipo === 'GOBIERNO' || carga.tipo === 'ADMINISTRACION') && (
+                        <div className="space-y-1 mb-2" onClick={(e) => e.stopPropagation()}>
+                          <Label className="text-xs font-bold text-muted-foreground uppercase tracking-widest">
+                            Cargo Académico/Administrativo
                           </Label>
-                          <Badge variant="outline" className="text-[10px]">
-                            {carga.horarios?.length || 0} bloques
-                          </Badge>
-                        </div>
-
-                        <div className="flex items-center gap-2">
-                          {puedeEditarNoLectiva ? (
-                            <>
-                              <Button
-                                size="sm"
-                                variant={actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'destructive' : 'outline'}
-                                disabled={!actividadPermitida}
-                                onClick={() => {
-                                  if (!actividadPermitida) {
-                                    toast.error('Su régimen no permite asignar horas a esta actividad (Art. 12.4)');
-                                    return;
-                                  }
-                                  setActividadNoLectivaSeleccionada(
-                                    actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva
-                                      ? null
-                                      : carga.id_carga_no_lectiva
-                                  );
-                                }}
-                              >
-                                {actividadNoLectivaSeleccionada === carga.id_carga_no_lectiva ? 'Cerrar matriz' : 'Seleccionar actividad'}
-                              </Button>
-                              <div className="text-xs text-muted-foreground">
-                                {actividadPermitida
-                                  ? 'Seleccione la actividad y luego haga clic en los bloques libres de la matriz compartida.'
-                                  : 'Esta actividad no aplica para su régimen horario.'}
+                          <Select
+                            value={carga.cargoId != null ? String(carga.cargoId) : ''}
+                            disabled={!puedeEditarNoLectiva}
+                            onValueChange={val => {
+                              const newCargas = [...cargasNoLectivas];
+                              if (val === 'none') {
+                                newCargas[index].cargoId = null;
+                                newCargas[index].horas_semanales = 0;
+                              } else {
+                                const cargo = cargosAcademicos.find(c => String(c.id) === val);
+                                if (cargo) {
+                                  newCargas[index].cargoId = cargo.id;
+                                  newCargas[index].horas_semanales = cargo.chnla;
+                                }
+                              }
+                              setCargasNoLectivas(newCargas);
+                            }}
+                          >
+                            <SelectTrigger className="bg-background/80 border-border h-8 text-xs focus:bg-background transition-all shadow-none">
+                              <SelectValue placeholder="Seleccione un cargo..." />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="none" className="text-xs text-muted-foreground">
+                                Ninguno
+                              </SelectItem>
+                              {cargosAcademicos.map(cargo => (
+                                <SelectItem key={cargo.id} value={String(cargo.id)} className="text-xs">
+                                  {cargo.nombre}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          {carga.cargoId && (() => {
+                            const cargo = cargosAcademicos.find(c => c.id === carga.cargoId);
+                            return cargo ? (
+                              <div className="p-2 bg-amber-50 dark:bg-amber-950/30 border border-amber-200 dark:border-amber-900/50 rounded-lg mt-1">
+                                <p className="text-xs font-bold text-amber-800 dark:text-amber-400 uppercase tracking-widest">
+                                  Carga lectiva mínima sugerida: {cargo.chlm}h · Prep/eval sugerida: {cargo.chnlpe}h
+                                </p>
                               </div>
-                            </>
-                          ) : (
-                            <div className="text-sm text-muted-foreground">
-                              {carga.horarios?.length > 0 ? (
-                                <div className="space-y-1">
-                                  {carga.horarios.map((h: any, hIdx: number) => (
-                                    <div key={`${carga.id_carga_no_lectiva ?? carga.tipo}-${h.dia}-${h.horaInicio}-${h.horaFin}-${hIdx}`} className="text-xs">
-                                      {['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'][['LU','MA','MI','JU','VI','SA'].indexOf(h.dia)]}: {h.horaInicio} - {h.horaFin}
-                                    </div>
-                                  ))}
-                                </div>
-                              ) : (
-                                <span>No hay horarios asignados</span>
-                              )}
-                            </div>
-                          )}
+                            ) : null;
+                          })()}
                         </div>
-                      </div>
-                    </TableCell>
-                    <TableCell className="px-4 py-3 w-32 text-right align-top pt-3">
-                      <div className="flex items-center justify-end gap-2">
-                        {/* Mostrar horas actualmente asignadas (lectiva/no-lectiva) y no permitir edición manual */}
-                        <Input
-                          type="number"
-                          className={cn("bg-background border-border h-8 w-16 text-center font-black text-sm shadow-none", color.text)}
-                          value={horasDesdeHorarios(carga.horarios || [])}
-                          disabled={true}
-                        />
-                        <span className={cn("text-xs font-bold", color.text)}>h</span>
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-              <TableRow key="total-carga-no-lectiva" className="bg-indigo-50/80 dark:bg-indigo-950/40 hover:bg-indigo-50 dark:hover:bg-indigo-950/50 font-bold border-t border-indigo-200 dark:border-indigo-900/50">
-                <TableCell colSpan={2} className="px-4 py-3 text-[11px] font-bold uppercase text-indigo-700 dark:text-indigo-400 tracking-wider">Total Carga No Lectiva</TableCell>
-                <TableCell className="px-4 py-3 text-right text-sm font-black text-indigo-800 dark:text-indigo-400">{totalNoLectivas}h</TableCell>
-              </TableRow>
-            </TableBody>
-            </Table>
+                      )}
+
+                      {/* Barra de progreso */}
+                      {(maxHoras !== null || actividadNoLectivaSeleccionada !== carga.id_carga_no_lectiva) && (
+                        <div className="mt-2">
+                          <div className="flex items-center justify-between text-xs text-muted-foreground mb-1">
+                            <span>Horas asignadas</span>
+                            <span className="font-bold">{horasAsignadas}h</span>
+                          </div>
+                          <div className="w-full h-1.5 bg-muted rounded-full overflow-hidden">
+                            <div
+                              className={cn("h-full transition-all duration-300", color.text.replace('text-', 'bg-'))}
+                              style={{ width: `${maxHoras !== null ? Math.min(100, (horasAsignadas / Math.max(1, maxHoras)) * 100) : Math.min(100, (horasAsignadas / 40) * 100)}%` }}
+                            />
+                          </div>
+                        </div>
+                      )}
+                    </div>
+                  );
+                })}
+              </div>
+
+              {/* Panel derecho: Matriz con arrastre */}
+              <div className="flex-1 min-w-0">
+                <div className="rounded-lg border border-border bg-muted/10 overflow-hidden min-w-0">
+                  <div className="px-3 py-2 border-b border-border bg-card/80">
+                    <p className="text-sm font-bold text-foreground">Matriz de Horarios</p>
+                    <p className="text-xs text-muted-foreground mt-0.5 leading-relaxed">
+                      {actividadNoLectivaSeleccionada
+                        ? <><span className="font-bold text-primary">✓ Actividad seleccionada.</span> Arrastre sobre la matriz para asignar bloques. Azul = carga lectiva. Los bloques en verde son su selección actual.</>
+                        : 'Haga clic en una actividad del panel izquierdo para seleccionarla, luego arrastre en la matriz para asignar horarios.'}
+                    </p>
+                  </div>
+                  <div className="w-full min-w-0 overflow-x-auto p-2 sm:p-3">
+                    <MatrizDisponibilidad
+                      id_periodo={periodoActivo?.id_periodo || 0}
+                      id_docente_actual={initialDocente?.id_docente}
+                      soloLectura={!puedeEditarNoLectiva}
+                      tipoVista="no-lectiva"
+                      actividadSeleccionadaId={actividadNoLectivaSeleccionada ?? undefined}
+                      actividadesNoLectivas={cargasNoLectivas}
+                      horariosLectivosDocente={horariosLectivosSoloLectiva}
+                      onCellClick={handleNoLectivaCellClick}
+                      onRangeSelect={handleRangeSelect}
+                      onRangeRemove={handleRangeRemove}
+                      onSelectionChange={() => fetchDeclaracion(periodoActivo!.id_periodo, initialDocente.id_docente)}
+                    />
+                  </div>
+                </div>
+              </div>
+            </div>
           </div>
         </CardContent>
       </Card>
@@ -1412,8 +1534,8 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
               <CheckCircle2 className="text-emerald-600 dark:text-emerald-400 w-5 h-5" />
             </div>
             <div>
-              <p className="text-muted-foreground text-[10px] font-bold uppercase tracking-widest">Total General de Carga</p>
-              <p className="text-muted-foreground text-[10px] font-medium uppercase tracking-tight">Carga Lectiva + No Lectiva</p>
+              <p className="text-muted-foreground text-xs font-bold uppercase tracking-widest">Total General de Carga</p>
+              <p className="text-muted-foreground text-xs font-medium uppercase tracking-tight">Carga Lectiva + No Lectiva</p>
             </div>
           </div>
           <div className="flex flex-col items-end">
@@ -1426,7 +1548,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                 "w-2 h-2 rounded-full",
                 totalGeneral === formData.horas_dedicacion ? "bg-emerald-500 animate-pulse" : "bg-rose-500"
               )} />
-              <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight">
+              <span className="text-xs font-bold text-muted-foreground uppercase tracking-tight">
                 {totalGeneral === formData.horas_dedicacion ? "Carga Completa" : `Faltan ${formData.horas_dedicacion - totalGeneral}h`}
               </span>
             </div>
@@ -1466,7 +1588,7 @@ export default function CargaHorariaClient({ initialDocente }: { initialDocente:
                   </div>
                   <div>
                     <p className="text-xs font-bold text-foreground leading-tight">{formato.label}</p>
-                    <p className="text-[10px] text-muted-foreground font-medium">{formato.sub}</p>
+                    <p className="text-xs text-muted-foreground font-medium">{formato.sub}</p>
                   </div>
                 </div>
                 <div className="p-1.5 rounded-full bg-muted group-hover:bg-blue-100 dark:group-hover:bg-blue-900/30 transition-colors">

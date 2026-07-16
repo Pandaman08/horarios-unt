@@ -45,7 +45,7 @@ export function DeclaracionJuradaPanel({ declaracion, docente }: DeclaracionJura
       </h4>
       <p className="text-xs text-amber-800 dark:text-amber-400 leading-relaxed">{texto}</p>
       {declaracion.fechaFirmaJurada && (
-        <p className="text-[10px] text-amber-700/80 dark:text-amber-500 mt-2 font-medium">
+        <p className="text-xs text-amber-700/80 dark:text-amber-500 mt-2 font-medium">
           Firmada al enviar: {new Date(declaracion.fechaFirmaJurada).toLocaleString("es-PE")}
         </p>
       )}

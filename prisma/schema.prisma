@@ -3,8 +3,9 @@ generator client {
 }
 
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider  = "postgresql"
+  url       = env("DATABASE_URL")
+  directUrl = env("DIRECT_URL")
 }
 
 enum RolUsuario {
@@ -13,7 +14,10 @@ enum RolUsuario {
   administrador_sistema
   director_departamento
   decano
+  secretaria
 }
+
+
 
 model Usuario {
   id_usuario              Int                   @id @default(autoincrement())
@@ -291,6 +295,7 @@ model VentanaAtencion {
   cantidad_docentes  Int               @default(0)
   cantidad_atendidos Int               @default(0)
   completado         Boolean           @default(false)
+  pausado            Boolean           @default(false)
   activo             Boolean           @default(true)
   horarios_asignados HorarioAsignado[]
   periodo            PeriodoAcademico  @relation(fields: [id_periodo], references: [id_periodo])

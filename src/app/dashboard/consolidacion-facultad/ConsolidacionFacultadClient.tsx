@@ -127,17 +127,17 @@ const TIPOS_CARGA_NO_LECTIVA_LABELS: Record<string, string> = {
 const getEstadoBadge = (estado: string) => {
   switch (estado) {
     case 'BORRADOR':
-      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">Borrador</Badge>;
+      return <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 dark:bg-amber-900/30 dark:text-amber-400 dark:border-amber-800 px-3 py-1 font-semibold uppercase text-xs tracking-wider">Borrador</Badge>;
     case 'ENVIADO':
-      return <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider animate-pulse">Pendiente</Badge>;
+      return <Badge variant="outline" className="bg-sky-50 text-sky-700 border-sky-200 dark:bg-sky-900/30 dark:text-sky-400 dark:border-sky-800 px-3 py-1 font-semibold uppercase text-xs tracking-wider animate-pulse">Pendiente</Badge>;
     case 'VALIDADO_DEPARTAMENTO':
-      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">Validado</Badge>;
+      return <Badge variant="outline" className="bg-blue-50 text-blue-700 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400 dark:border-blue-800 px-3 py-1 font-semibold uppercase text-xs tracking-wider">Validado</Badge>;
     case 'APROBADO':
-      return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">Aprobado</Badge>;
+      return <Badge variant="outline" className="bg-emerald-50 text-emerald-700 border-emerald-200 dark:bg-emerald-900/30 dark:text-emerald-400 dark:border-emerald-800 px-3 py-1 font-semibold uppercase text-xs tracking-wider">Aprobado</Badge>;
     case 'RECHAZADO':
-      return <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800 px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">Rechazado</Badge>;
+      return <Badge variant="outline" className="bg-rose-50 text-rose-700 border-rose-200 dark:bg-rose-900/30 dark:text-rose-400 dark:border-rose-800 px-3 py-1 font-semibold uppercase text-xs tracking-wider">Rechazado</Badge>;
     default:
-      return <Badge variant="outline" className="px-3 py-1 font-semibold uppercase text-[10px] tracking-wider">{estado}</Badge>;
+      return <Badge variant="outline" className="px-3 py-1 font-semibold uppercase text-xs tracking-wider">{estado}</Badge>;
   }
 };
 
@@ -354,11 +354,11 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
           <Table>
             <TableHeader className="bg-muted/30 border-b border-border">
               <TableRow>
-                <TableHead className="text-[11px] font-bold uppercase text-muted-foreground px-6 py-3">Docente</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase text-muted-foreground px-6 py-3">IBM / Código</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase text-muted-foreground px-6 py-3">Departamento</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase text-muted-foreground px-6 py-3">Categoría</TableHead>
-                <TableHead className="text-[11px] font-bold uppercase text-muted-foreground px-6 py-3 text-right">Acciones</TableHead>
+                <TableHead className="text-sm font-bold uppercase text-muted-foreground px-6 py-3">Docente</TableHead>
+                <TableHead className="text-sm font-bold uppercase text-muted-foreground px-6 py-3">IBM / Código</TableHead>
+                <TableHead className="text-sm font-bold uppercase text-muted-foreground px-6 py-3">Departamento</TableHead>
+                <TableHead className="text-sm font-bold uppercase text-muted-foreground px-6 py-3">Categoría</TableHead>
+                <TableHead className="text-sm font-bold uppercase text-muted-foreground px-6 py-3 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
@@ -382,14 +382,14 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                     <TableRow key={declaracion.id_declaracion} className="hover:bg-muted/50 transition-colors border-b border-border last:border-0">
                       <TableCell className="px-6 py-4">
                         <div className="flex items-center gap-3">
-                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-[10px] font-bold text-foreground border border-border uppercase">
+                          <div className="w-8 h-8 rounded-full bg-muted flex items-center justify-center text-xs font-bold text-foreground border border-border uppercase">
                             {declaracion.docente?.nombres?.charAt(0)}{declaracion.docente?.apellidos?.charAt(0)}
                           </div>
                           <div className="flex flex-col">
                             <span className="font-bold text-foreground text-xs uppercase">
                               {declaracion.docente?.apellidos}, {declaracion.docente?.nombres}
                             </span>
-                            <span className="text-[10px] text-muted-foreground font-medium">{declaracion.docente?.codigo_docente}</span>
+                            <span className="text-xs text-muted-foreground font-medium">{declaracion.docente?.codigo_docente}</span>
                           </div>
                         </div>
                       </TableCell>
@@ -414,14 +414,14 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                               <Button 
                                 variant="default" 
                                 size="sm"
-                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-[10px] font-bold uppercase h-8 px-4 flex items-center gap-2 rounded-md transition-all shadow-sm"
+                                className="bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold uppercase h-8 px-4 flex items-center gap-2 rounded-md transition-all shadow-sm"
                                 onClick={() => setSelectedDeclaracion(declaracion)}
                               >
                                 <Eye size={14} />
                                 Revisar
                               </Button>
                             </DialogTrigger>
-                          <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto p-8">
+                          <DialogContent className="page-modal-lg max-h-[90vh] overflow-y-auto">
                             <DialogHeader>
                               <DialogTitle className="text-xl font-bold flex items-center gap-2">
                                 <User className="text-purple-600 dark:text-purple-400" size={20} />
@@ -435,15 +435,15 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                             <div className="space-y-6 mt-4">
                               <div className="grid grid-cols-3 gap-4">
                                 <div className="p-4 bg-muted/30 rounded-xl border border-border text-center">
-                                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Carga Lectiva</p>
+                                  <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Carga Lectiva</p>
                                   <p className="text-xl font-black text-blue-600 dark:text-blue-400">{totalLectivas}h</p>
                                 </div>
                                 <div className="p-4 bg-muted/30 rounded-xl border border-border text-center">
-                                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">No Lectiva</p>
+                                  <p className="text-xs font-bold text-muted-foreground uppercase mb-1">No Lectiva</p>
                                   <p className="text-xl font-black text-indigo-600 dark:text-indigo-400">{totalNoLectivas}h</p>
                                 </div>
                                 <div className="p-4 bg-muted/30 rounded-xl border border-border text-center">
-                                  <p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Total General</p>
+                                  <p className="text-xs font-bold text-muted-foreground uppercase mb-1">Total General</p>
                                   <p className={`text-xl font-black ${isComplete ? 'text-emerald-600 dark:text-emerald-400' : 'text-amber-600 dark:text-amber-400'}`}>
                                     {totalGeneral} / {declaracion.horas_dedicacion}h
                                   </p>
@@ -460,10 +460,10 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                                     <Table>
                                       <TableHeader className="bg-muted/30">
                                         <TableRow>
-                                          <TableHead className="text-[10px] font-bold uppercase text-muted-foreground">Curso</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase text-muted-foreground text-center">Tipo</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase text-muted-foreground text-center">Grupos</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase text-muted-foreground text-right">Total</TableHead>
+                                          <TableHead className="text-xs font-bold uppercase text-muted-foreground">Curso</TableHead>
+                                          <TableHead className="text-xs font-bold uppercase text-muted-foreground text-center">Tipo</TableHead>
+                                          <TableHead className="text-xs font-bold uppercase text-muted-foreground text-center">Grupos</TableHead>
+                                          <TableHead className="text-xs font-bold uppercase text-muted-foreground text-right">Total</TableHead>
                                         </TableRow>
                                       </TableHeader>
                                       <TableBody>
@@ -495,8 +495,8 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                                     <Table>
                                       <TableHeader className="bg-muted/30">
                                         <TableRow>
-                                          <TableHead className="text-[10px] font-bold uppercase text-muted-foreground">Actividad</TableHead>
-                                          <TableHead className="text-[10px] font-bold uppercase text-muted-foreground text-right">Horas</TableHead>
+                                          <TableHead className="text-xs font-bold uppercase text-muted-foreground">Actividad</TableHead>
+                                          <TableHead className="text-xs font-bold uppercase text-muted-foreground text-right">Horas</TableHead>
                                         </TableRow>
                                       </TableHeader>
                                       <TableBody>
@@ -507,7 +507,7 @@ export default function ConsolidacionFacultadClient({ periodos }: { periodos: an
                                             <TableRow key={carga.id_carga_no_lectiva}>
                                               <TableCell className="py-2 text-xs font-medium text-foreground">
                                                 {TIPOS_CARGA_NO_LECTIVA_LABELS[carga.tipo] || carga.tipo}
-                                                {carga.descripcion && <p className="text-[10px] text-muted-foreground font-normal italic mt-0.5">{carga.descripcion}</p>}
+                                                {carga.descripcion && <p className="text-xs text-muted-foreground font-normal italic mt-0.5">{carga.descripcion}</p>}
                                               </TableCell>
                                               <TableCell className="py-2 text-xs text-right font-bold text-foreground">{carga.horas_semanales || 0}h</TableCell>
                                             </TableRow>

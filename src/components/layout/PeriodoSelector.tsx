@@ -38,7 +38,7 @@ export function PeriodoSelector({ className, variant = "default" }: PeriodoSelec
         <SelectTrigger 
           className={cn(
             "font-bold transition-all border-border shadow-sm",
-            variant === "compact" ? "h-7 text-[10px] w-[140px] px-2" : "h-8 text-xs w-[180px]",
+            variant === "compact" ? "h-7 text-xs w-[140px] px-2" : "h-8 text-xs w-[180px]",
             periodoSeleccionado?.activo 
               ? "bg-primary/5 text-primary border-primary/20 hover:bg-primary/10" 
               : "bg-muted/50 text-muted-foreground hover:bg-muted"
@@ -54,17 +54,17 @@ export function PeriodoSelector({ className, variant = "default" }: PeriodoSelec
             <SelectItem 
               key={p.id_periodo} 
               value={p.id_periodo.toString()}
-              className="text-[10px] font-bold"
+              className="text-xs font-bold"
             >
               <div className="flex items-center gap-2">
                 <span>{p.codigo}</span>
                 {p.activo && (
-                  <span className="text-[8px] bg-emerald-500/10 text-emerald-600 px-1 rounded uppercase tracking-tighter">
+                  <span className="text-xs bg-emerald-500/10 text-emerald-600 px-1 rounded uppercase tracking-tighter">
                     Activo
                   </span>
                 )}
                 {p.estado === 'finalizado' && (
-                  <span className="text-[8px] bg-muted text-muted-foreground px-1 rounded uppercase tracking-tighter">
+                  <span className="text-xs bg-muted text-muted-foreground px-1 rounded uppercase tracking-tighter">
                     Finalizado
                   </span>
                 )}
@@ -75,7 +75,7 @@ export function PeriodoSelector({ className, variant = "default" }: PeriodoSelec
       </Select>
       
       {periodoSeleccionado && !periodoSeleccionado.activo && variant === "default" && (
-        <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 text-amber-600 rounded-md border border-amber-500/20 text-[9px] font-black uppercase tracking-wider animate-in fade-in zoom-in duration-300">
+        <div className="hidden lg:flex items-center gap-1.5 px-2 py-1 bg-amber-500/10 text-amber-600 rounded-md border border-amber-500/20 text-xs font-black uppercase tracking-wider animate-in fade-in zoom-in duration-300">
           <AlertCircle className="h-3 w-3" />
           <span>Modo Lectura</span>
         </div>

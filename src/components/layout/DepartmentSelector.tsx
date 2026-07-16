@@ -48,7 +48,7 @@ export function DepartmentSelector({ className, variant = "default" }: Departmen
         <SelectTrigger 
           className={cn(
             "font-bold transition-all border-border shadow-sm",
-            variant === "compact" ? "h-7 text-[10px] w-[140px] px-2" : "h-8 text-xs w-[160px]"
+            variant === "compact" ? "h-7 text-xs w-[140px] px-2" : "h-8 text-xs w-[160px]"
           )}
         >
           <div className="flex items-center gap-2 truncate">
@@ -61,7 +61,7 @@ export function DepartmentSelector({ className, variant = "default" }: Departmen
             <SelectItem 
               key={f.id} 
               value={f.id}
-              className="text-[10px] font-bold"
+              className="text-xs font-bold"
             >
               <div className="flex items-center gap-2">
                 <span>{f.codigo}</span>
@@ -84,7 +84,7 @@ export function DepartmentSelector({ className, variant = "default" }: Departmen
         <SelectTrigger 
           className={cn(
             "font-bold transition-all border-border shadow-sm",
-            variant === "compact" ? "h-7 text-[10px] w-[180px] px-2" : "h-8 text-xs w-[200px]"
+            variant === "compact" ? "h-7 text-xs w-[180px] px-2" : "h-8 text-xs w-[200px]"
           )}
         >
           <div className="flex items-center gap-2 truncate">
@@ -97,7 +97,7 @@ export function DepartmentSelector({ className, variant = "default" }: Departmen
             <SelectItem 
               key={d.id} 
               value={d.id}
-              className="text-[10px] font-bold"
+              className="text-xs font-bold"
             >
               <span>{d.nombre}</span>
             </SelectItem>

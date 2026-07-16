@@ -585,8 +585,8 @@ export default function AsignacionCargaLectivaPage() {
               <BookOpen className="h-4 w-4 text-primary" />
             </div>
             <div>
-              <h1 className="text-base font-bold text-foreground tracking-tight leading-none">Asignación de Carga Lectiva</h1>
-              <p className="text-muted-foreground text-[10px] mt-1">Gestión de cursos asignados por docente</p>
+              <h1 className="text-base font-bold text-foreground tracking-tight leading-none">Asignar Cursos</h1>
+              <p className="text-muted-foreground text-xs mt-1">Gestión de cursos asignados por docente</p>
             </div>
           </div>
         </div>
@@ -596,31 +596,31 @@ export default function AsignacionCargaLectivaPage() {
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
             <Input 
               placeholder="Buscar por nombre o DNI..." 
-              className="pl-9 h-8 rounded-lg border-border bg-muted/20 font-medium text-[11px]"
+              className="pl-9 h-8 rounded-lg border-border bg-muted/20 font-medium text-sm"
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
           <Select value={categoria} onValueChange={setCategoria}>
-            <MarqueeSelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+            <MarqueeSelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-xs">
               <SelectValue placeholder="Categoría" />
             </MarqueeSelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="todos" className="text-[10px] font-bold">Todas las categorías</SelectItem>
-              <SelectItem value="PRINCIPAL" className="text-[10px] font-bold">Principal</SelectItem>
-              <SelectItem value="ASOCIADO" className="text-[10px] font-bold">Asociado</SelectItem>
-              <SelectItem value="AUXILIAR" className="text-[10px] font-bold">Auxiliar</SelectItem>
-              <SelectItem value="JEFE_PRACTICA" className="text-[10px] font-bold">Jefe de Práctica</SelectItem>
+              <SelectItem value="todos" className="text-xs font-bold">Todas las categorías</SelectItem>
+              <SelectItem value="PRINCIPAL" className="text-xs font-bold">Principal</SelectItem>
+              <SelectItem value="ASOCIADO" className="text-xs font-bold">Asociado</SelectItem>
+              <SelectItem value="AUXILIAR" className="text-xs font-bold">Auxiliar</SelectItem>
+              <SelectItem value="JEFE_PRACTICA" className="text-xs font-bold">Jefe de Práctica</SelectItem>
             </SelectContent>
           </Select>
           <Select value={modalidad} onValueChange={setModalidad}>
-            <MarqueeSelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+            <MarqueeSelectTrigger className="h-8 rounded-lg border-border bg-muted/20 font-bold text-xs">
               <SelectValue placeholder="Modalidad" />
             </MarqueeSelectTrigger>
             <SelectContent className="rounded-xl">
-              <SelectItem value="todos" className="text-[10px] font-bold">Todas las modalidades</SelectItem>
-              <SelectItem value="NOMBRADO" className="text-[10px] font-bold">Nombrado</SelectItem>
-              <SelectItem value="CONTRATADO" className="text-[10px] font-bold">Contratado</SelectItem>
+              <SelectItem value="todos" className="text-xs font-bold">Todas las modalidades</SelectItem>
+              <SelectItem value="NOMBRADO" className="text-xs font-bold">Nombrado</SelectItem>
+              <SelectItem value="CONTRATADO" className="text-xs font-bold">Contratado</SelectItem>
             </SelectContent>
           </Select>
           <Button 
@@ -660,7 +660,7 @@ export default function AsignacionCargaLectivaPage() {
                 <TableCell colSpan={5} className="py-10 text-center">
                   <div className="flex flex-col items-center gap-2 opacity-30">
                     <User className="h-8 w-8 text-muted-foreground" />
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">No se encontraron docentes</p>
+                    <p className="text-xs font-bold text-muted-foreground uppercase">No se encontraron docentes</p>
                   </div>
                 </TableCell>
               </TableRow>
@@ -673,13 +673,13 @@ export default function AsignacionCargaLectivaPage() {
                         {docente.nombres.charAt(0)}{docente.apellidos.charAt(0)}
                       </div>
                       <div>
-                        <p className="font-bold text-foreground text-[11px] leading-tight">{docente.apellidos}, {docente.nombres}</p>
+                        <p className="font-bold text-foreground text-sm leading-tight">{docente.apellidos}, {docente.nombres}</p>
                         <p className="text-[9px] text-muted-foreground font-medium mt-0.5">{docente.codigo_docente}</p>
                       </div>
                     </div>
                   </TableCell>
                   <TableCell className="px-4 py-2">
-                    <span className="font-mono text-[10px] font-bold text-muted-foreground">{docente.dni || 'N/A'}</span>
+                    <span className="font-mono text-xs font-bold text-muted-foreground">{docente.dni || 'N/A'}</span>
                   </TableCell>
                   <TableCell className="px-4 py-2">
                     <Badge variant="outline" className="rounded-md bg-primary/5 text-primary border-primary/20 text-[8px] font-bold uppercase tracking-widest">
@@ -697,7 +697,7 @@ export default function AsignacionCargaLectivaPage() {
                         size="sm"
                         onClick={() => handleEditCarga(docente)}
                         className={cn(
-                          "h-7 px-3 rounded-lg font-bold text-[10px] shadow-sm transition-all active:scale-95 flex items-center gap-1.5",
+                          "h-7 px-3 rounded-lg font-bold text-xs shadow-sm transition-all active:scale-95 flex items-center gap-1.5",
                           esLectura 
                             ? "bg-muted text-muted-foreground hover:bg-muted/80" 
                             : "bg-primary hover:bg-primary/90 text-primary-foreground"
@@ -723,10 +723,10 @@ export default function AsignacionCargaLectivaPage() {
       </div>
 
       <Dialog open={!!editingDocente} onOpenChange={(open) => !open && setEditingDocente(null)}>
-        <DialogContent className="max-w-[95vw] md:max-w-[90vw] lg:max-w-[980px] max-h-[90vh] flex flex-col p-6 rounded-xl overflow-hidden">
-          <DialogTitle className="flex items-center gap-2 text-xl font-black">
+        <DialogContent className="page-modal-xl max-w-[98vw] md:max-w-[95vw] max-h-[90vh] flex flex-col overflow-hidden">
+          <DialogTitle className="page-modal-header flex items-center gap-2 text-xl font-black">
             <BookOpen className="h-5 w-5 text-primary" />
-            Asignación de Carga Lectiva
+            Asignar Cursos
           </DialogTitle>
           <DialogDescription>
             {editingDocente?.nombres} {editingDocente?.apellidos} - {editingDocente?.codigo_docente}
@@ -748,13 +748,13 @@ export default function AsignacionCargaLectivaPage() {
               </div>
               <div className="space-y-0.5">
                 <Select value={selectedMalla} onValueChange={setSelectedMalla}>
-                  <MarqueeSelectTrigger className="w-[200px] h-8 rounded-lg border-border bg-muted/20 font-bold text-[10px]">
+                  <MarqueeSelectTrigger className="w-[200px] h-8 rounded-lg border-border bg-muted/20 font-bold text-xs">
                     <SelectValue placeholder="Filtrar filas por malla" />
                   </MarqueeSelectTrigger>
                   <SelectContent className="rounded-xl">
-                    <SelectItem value="all" className="text-[10px] font-bold">Ver todas las mallas</SelectItem>
+                    <SelectItem value="all" className="text-xs font-bold">Ver todas las mallas</SelectItem>
                     {mallas.map((m) => (
-                      <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[10px] font-bold">
+                      <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-xs font-bold">
                         {m.nombre}
                       </SelectItem>
                     ))}
@@ -765,7 +765,7 @@ export default function AsignacionCargaLectivaPage() {
             </div>
           </div>
 
-          <div className="flex-1 overflow-y-auto space-y-4 pr-2">
+          <div className="page-modal-body flex-1 overflow-y-auto space-y-4 pr-2">
             {loadingModal ? (
               <div className="flex flex-col items-center justify-center h-40 gap-4">
                 <Loader2 className="h-8 w-8 text-primary animate-spin" />
@@ -777,9 +777,9 @@ export default function AsignacionCargaLectivaPage() {
                 const curso = cursos.find(c => c.id_curso === carga.id_curso);
                 
                 return (
-                <div key={index} className="grid grid-cols-12 gap-3 sm:gap-4 items-end p-4 bg-muted/30 rounded-lg border border-border relative">
-                  <div className="col-span-12 sm:col-span-3 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Malla curricular</Label>
+                <div key={index} className="grid grid-cols-12 gap-2 sm:gap-3 items-end p-3 bg-muted/30 rounded-lg border border-border relative">
+                  <div className="col-span-12 sm:col-span-2 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Malla</Label>
                     {esFilaVacia ? (
                       <Select
                         disabled={esLectura}
@@ -795,13 +795,13 @@ export default function AsignacionCargaLectivaPage() {
                           setAllCargasLectivas(nuevasAllCargas);
                         }}
                       >
-                        <MarqueeSelectTrigger className="h-8 w-full min-w-0 rounded-lg border-border bg-muted/50 font-bold text-[10px]">
+                        <MarqueeSelectTrigger className="h-8 w-full min-w-0 rounded-lg border-border bg-muted/50 font-bold text-xs">
                           <SelectValue placeholder="Seleccionar plan" />
                         </MarqueeSelectTrigger>
                         <SelectContent className="rounded-xl">
-                          <SelectItem value="all" className="text-[10px] font-bold">Todos los planes</SelectItem>
+                          <SelectItem value="all" className="text-xs font-bold">Todos los planes</SelectItem>
                           {mallas.map((m) => (
-                            <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[10px] font-bold">
+                            <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-xs font-bold">
                               {m.nombre}
                             </SelectItem>
                           ))}
@@ -809,16 +809,15 @@ export default function AsignacionCargaLectivaPage() {
                       </Select>
                     ) : (
                       <div
-                        className="h-8 px-2 flex items-center rounded-lg border border-border bg-muted/50 text-[10px] font-bold text-muted-foreground truncate"
+                        className="h-8 px-2 flex items-center rounded-lg border border-border bg-muted/50 text-xs font-bold text-muted-foreground truncate"
                         title={curso?.malla_rel?.nombre || "Sin malla"}
                       >
                         {curso?.malla_rel?.nombre || "—"}
                       </div>
                     )}
-                    <div className="min-h-[18px]"></div>
                   </div>
-                  <div className="col-span-12 sm:col-span-5 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Curso</Label>
+                  <div className="col-span-12 sm:col-span-3 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Curso</Label>
                     {esFilaVacia ? (
                       <SearchableSelect
                         disabled={esLectura}
@@ -920,16 +919,9 @@ export default function AsignacionCargaLectivaPage() {
                         className="h-8"
                       />
                     )}
-                    <div className="min-h-[18px]">
-                      {curso && (
-                        <div className="text-[9px] text-amber-700 font-medium">
-                          Máx. {curso.maximo_docentes || 1} docente{curso.maximo_docentes > 1 ? 's' : ''}
-                        </div>
-                      )}
-                    </div>
                   </div>
-                  <div className={`col-span-6 sm:col-span-2 lg:col-span-2 space-y-1 ${esFilaVacia && selectedMalla === "all" ? "" : ""}`}>
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Tipo</Label>
+                  <div className="col-span-6 sm:col-span-2 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Tipo</Label>
                     <Select
                       disabled={esLectura || !carga.id_curso}
                       value={carga.tipo_clase}
@@ -993,10 +985,9 @@ export default function AsignacionCargaLectivaPage() {
                         )}
                       </SelectContent>
                     </Select>
-                    <div className="min-h-[18px]"></div>
                   </div>
-                  <div className="col-span-6 sm:col-span-2 lg:col-span-2 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">
+                  <div className="col-span-6 sm:col-span-2 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">
                       {carga.tipo_clase === "laboratorio" ? "Grupos lab." : "Grupos"}
                     </Label>
                     <Select
@@ -1035,21 +1026,9 @@ export default function AsignacionCargaLectivaPage() {
                         ))}
                       </SelectContent>
                     </Select>
-                    <div className="min-h-[18px]">
-                      {carga.id_curso && carga.tipo_clase === "laboratorio" && (carga.grupos_asignados || 0) > 0 && (
-                        <p className="text-[9px] text-blue-700 font-medium">
-                          El docente elegirá L1–L{carga.grupos_asignados} al armar horario
-                        </p>
-                      )}
-                      {carga.id_curso && carga.tipo_clase !== "laboratorio" && (carga.grupos_asignados || 0) > 0 && (
-                        <p className="text-[9px] text-muted-foreground font-medium">
-                          Sección del curso (A, B…)
-                        </p>
-                      )}
-                    </div>
                   </div>
-                  <div className="col-span-6 sm:col-span-1 lg:col-span-1 space-y-1">
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Horas</Label>
+                  <div className="col-span-6 sm:col-span-1 space-y-1 text-center">
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground">Horas</Label>
                     <Input
                       disabled={esLectura || (curso && curso.maximo_docentes <= 1)}
                       type="number"
@@ -1094,12 +1073,9 @@ export default function AsignacionCargaLectivaPage() {
                         setAllCargasLectivas(updatedAllCargas);
                       }}
                     />
-                    <div className="min-h-[18px]"></div>
                   </div>
-                  {/* Este campo se reemplazó por el selector de grupos, lo ocultamos */}
-                  <div className="col-span-0 hidden"></div>
-                  <div className={`col-span-6 sm:col-span-1 lg:col-span-1 flex flex-col space-y-1 items-center ${esLectura ? "hidden" : ""}`}>
-                    <Label className="text-[10px] uppercase font-bold text-muted-foreground">Acción</Label>
+                  <div className={`col-span-12 sm:col-span-2 flex flex-col justify-end items-center ${esLectura ? "hidden" : ""}`}>
+                    <Label className="text-[10px] uppercase font-black text-center text-muted-foreground mb-1">Acción</Label>
                     <div className="flex justify-center w-full">
                       {esFilaVacia ? (
                         <Button
@@ -1122,22 +1098,21 @@ export default function AsignacionCargaLectivaPage() {
                         </Button>
                       )}
                     </div>
-                    <div className="min-h-[18px]"></div>
                   </div>
                 </div>
               )})
             )}
           </div>
 
-          <div className="mt-6 flex items-center justify-between border-t border-border pt-4">
+          <div className="page-modal-footer mt-6 flex items-center justify-between border-t border-border pt-4">
             <div className="flex items-center gap-2 bg-primary/10 px-4 py-2 rounded-lg border border-primary/20">
-              <span className="text-[11px] font-bold text-primary uppercase tracking-wider">Total horas:</span>
+              <span className="text-sm font-bold text-primary uppercase tracking-wider">Total horas:</span>
               <span className="text-lg font-black text-primary">{totalHoras}</span>
             </div>
             {!esLectura && (
               <div className="flex gap-2">
-                <Button variant="outline" onClick={() => setEditingDocente(null)}>Cancelar</Button>
-                <Button onClick={handleSave} disabled={loadingModal} className="gap-2 font-bold">
+                <Button variant="outline" onClick={() => setEditingDocente(null)} className="page-modal-btn-cancel">Cancelar</Button>
+                <Button onClick={handleSave} disabled={loadingModal} className="page-modal-btn-submit gap-2 font-bold">
                   <Save className="h-4 w-4" />
                   {loadingModal ? "Guardando..." : "Guardar Asignación"}
                 </Button>

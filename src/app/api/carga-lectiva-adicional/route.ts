@@ -23,7 +23,7 @@ const checkConflicts = async (
 
   // Check conflicts with HorarioAsignado (regular carga lectiva)
   const regularHorarios = await prisma.horarioAsignado.findMany({
-    where: { docenteId },
+    where: { id_docente: docenteId },
     include: { grupo: true }
   });
 
@@ -42,7 +42,7 @@ const checkConflicts = async (
   // Check conflicts with CargaNoLectiva's HorarioActividad
   const noLectivaCargas = await prisma.cargaNoLectiva.findMany({
     where: {
-      declaracion: { docenteId: docenteId }
+      declaracion: { id_docente: docenteId }
     },
     include: { horarios: true }
   });

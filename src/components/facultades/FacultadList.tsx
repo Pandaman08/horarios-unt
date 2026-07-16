@@ -143,25 +143,25 @@ export function FacultadList() {
   };
 
   return (
-    <div className="space-y-4 animate-in fade-in duration-500">
-      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-              <Building2 className="h-4 w-4 text-primary" />
+    <div className="page-shell">
+      <div className="page-header-card">
+        <div className="page-header-top">
+          <div className="page-header-brand">
+            <div className="page-icon-box">
+              <Building2 className="page-icon" />
             </div>
             <div>
-              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Facultades</h2>
-              <p className="text-muted-foreground text-[10px] mt-1">Gestión de facultades, filiales y oficinas administrativas</p>
+              <h2 className="page-title">Facultades</h2>
+              <p className="page-subtitle">Gestión de facultades, filiales y oficinas administrativas</p>
             </div>
           </div>
 
-          <div className="flex items-center gap-3 w-full sm:w-auto">
-            <div className="relative flex-1 sm:min-w-[200px]">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="page-toolbar">
+            <div className="page-search-wrap">
+              <Search className="page-search-icon" />
               <Input
                 placeholder="Buscar facultad..."
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                className="page-search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -174,39 +174,39 @@ export function FacultadList() {
               }
             }}>
               <DialogTrigger asChild>
-                <Button className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-4 font-bold text-[11px] shadow-sm transition-all active:scale-95">
+                <Button className="page-btn">
                   <Plus className="mr-2 h-3.5 w-3.5" /> Nueva Facultad
                 </Button>
               </DialogTrigger>
-              <DialogContent className="sm:max-w-lg rounded-xl p-6 border-none shadow-2xl bg-card text-foreground">
-                <DialogHeader className="mb-6">
+              <DialogContent className="page-modal">
+                <DialogHeader className="page-modal-header">
                   <div className="flex items-center gap-3">
-                    <div className="h-10 w-10 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20">
-                      <Building2 className="h-5 w-5 text-primary" />
+                    <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                      <Building2 className="h-4 w-4 text-primary" />
                     </div>
                     <div>
-                      <DialogTitle className="text-lg font-bold text-foreground tracking-tight">
+                      <DialogTitle className="text-base font-bold text-foreground">
                         {editingFacultad ? 'Actualizar Facultad' : 'Registrar Facultad'}
                       </DialogTitle>
-                      <p className="text-muted-foreground text-xs mt-1 font-medium">Complete la información de la facultad</p>
+                      <p className="text-xs text-muted-foreground mt-0.5">Complete la información de la facultad</p>
                     </div>
                   </div>
                 </DialogHeader>
-                <form onSubmit={handleSubmit} className="space-y-6">
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
+                <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Código</Label>
                       <Input 
-                        className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
+                        className="page-modal-input" 
                         value={formData.codigo} 
                         onChange={(e) => setFormData({ ...formData, codigo: e.target.value })} 
                         required 
                       />
                     </div>
-                    <div className="space-y-1.5">
-                      <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
+                    <div className="page-modal-field">
+                      <Label className="page-modal-label">Tipo</Label>
                       <Select value={formData.tipo} onValueChange={(val: any) => setFormData({ ...formData, tipo: val })}>
-                        <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+                        <SelectTrigger className="rounded-lg border-input bg-muted/50 font-bold">
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent position="popper">
@@ -217,20 +217,22 @@ export function FacultadList() {
                       </Select>
                     </div>
                   </div>
-                  <div className="space-y-1.5">
-                    <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                  <div className="page-modal-field">
+                    <Label className="page-modal-label">Nombre</Label>
                     <Input 
-                      className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
+                      className="page-modal-input" 
                       value={formData.nombre} 
                       onChange={(e) => setFormData({ ...formData, nombre: e.target.value })} 
                       required 
                     />
                   </div>
-                  <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
-                    <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-muted-foreground hover:bg-muted px-6 text-[11px]">Cancelar</Button>
-                    <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg px-8 font-bold text-[11px] shadow-sm transition-all active:scale-95">
-                      {editingFacultad ? 'Actualizar' : 'Registrar'}
-                    </Button>
+                  <div className="page-modal-footer border-t border-border pt-4">
+                    <div className="page-actions-row justify-end gap-2">
+                      <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                      <Button type="submit" className="page-modal-btn-submit">
+                        {editingFacultad ? 'Actualizar' : 'Registrar'}
+                      </Button>
+                    </div>
                   </div>
                 </form>
               </DialogContent>
@@ -239,38 +241,38 @@ export function FacultadList() {
         </div>
       </div>
 
-      <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+      <div className="page-table-card">
         <div className="overflow-x-auto">
           <Table className="min-w-full w-full">
             <TableHeader className="bg-muted/50">
               <TableRow className="border-b border-border hover:bg-transparent">
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Código</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Nombre</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Tipo</TableHead>
-                <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Código</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Nombre</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Tipo</TableHead>
+                <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody className="divide-y divide-border">
               {loading ? (
-                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">Cargando...</TableCell></TableRow>
               ) : currentItems.length === 0 ? (
-                <TableRow><TableCell colSpan={4} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
+                <TableRow><TableCell colSpan={4} className="py-10 text-center text-xs font-bold text-muted-foreground uppercase tracking-widest">No se encontraron registros</TableCell></TableRow>
               ) : (
                 currentItems.map((facultad) => (
                   <TableRow key={facultad.id} className="group hover:bg-muted/50 transition-colors">
                     <TableCell className="px-4 py-2">
-                      <span className="font-mono text-[9px] font-bold text-primary">{facultad.codigo}</span>
+                      <span className="font-mono text-xs font-bold text-primary">{facultad.codigo}</span>
                     </TableCell>
                     <TableCell className="px-4 py-2">
                       <div className="flex items-center gap-2">
-                        <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-[9px]">
+                        <div className="h-6 w-6 rounded-md bg-primary/10 flex items-center justify-center border border-primary/20 text-primary font-bold text-xs">
                           {facultad.nombre.charAt(0)}
                         </div>
-                        <span className="font-semibold text-foreground text-[11px]">{facultad.nombre}</span>
+                        <span className="font-semibold text-foreground text-sm">{facultad.nombre}</span>
                       </div>
                     </TableCell>
                     <TableCell className="px-4 py-2 text-center">
-                      <span className={`px-1.5 py-0.5 rounded-md text-[8px] font-bold uppercase tracking-widest border ${
+                      <span className={`px-1.5 py-0.5 rounded-md text-xs font-bold uppercase tracking-widest border ${
                         facultad.tipo === 'FACULTAD' 
                           ? 'bg-primary/10 text-primary border-primary/20' 
                           : facultad.tipo === 'FILIAL' 

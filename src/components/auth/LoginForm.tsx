@@ -24,7 +24,7 @@ export function LoginForm() {
     const creds = {
       admin: { email: 'admin@unitru.edu.pe', pass: '00000000' },
       operador: { email: 'dvalerianorodriguez@unitru.edu.pe', pass: '80000001' },
-      docente: { email: 'eagredagamboa@unitru.edu.pe', pass: '18161457' },
+      docente: { email: 'jsantosfernandez@unitru.edu.pe', pass: '17896289' },
       decano: { email: 'ireyeslopez@unitru.edu.pe', pass: '17898446' },
       director_departamento: { email: 'lboychavil@unitru.edu.pe', pass: '18842081' },
     };
@@ -114,7 +114,7 @@ export function LoginForm() {
             <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
               <ShieldCheck className="h-5 w-5 text-primary" />
             </div>
-            <span className="text-[10px] font-black text-muted-foreground group-hover:text-primary tracking-wider uppercase">ADMIN</span>
+            <span className="text-xs font-black text-muted-foreground group-hover:text-primary tracking-wider uppercase">ADMIN</span>
           </button>
           <button
             onClick={() => fillLogin('operador')}
@@ -123,7 +123,7 @@ export function LoginForm() {
             <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
               <Headphones className="h-5 w-5 text-blue-600 dark:text-blue-400" />
             </div>
-            <span className="text-[10px] font-black text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 tracking-wider uppercase">OPERADOR</span>
+            <span className="text-xs font-black text-muted-foreground group-hover:text-blue-600 dark:group-hover:text-blue-400 tracking-wider uppercase">OPERADOR</span>
           </button>
           <button
             onClick={() => fillLogin('docente')}
@@ -132,7 +132,7 @@ export function LoginForm() {
             <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
               <User className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
             </div>
-            <span className="text-[10px] font-black text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 tracking-wider uppercase">DOCENTE</span>
+            <span className="text-xs font-black text-muted-foreground group-hover:text-emerald-600 dark:group-hover:text-emerald-400 tracking-wider uppercase">DOCENTE</span>
           </button>
           <button
             onClick={() => fillLogin('decano')}
@@ -141,7 +141,7 @@ export function LoginForm() {
             <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
               <ShieldCheck className="h-5 w-5 text-rose-600 dark:text-rose-400" />
             </div>
-            <span className="text-[10px] font-black text-muted-foreground group-hover:text-rose-600 dark:group-hover:text-rose-400 tracking-wider uppercase">DECANO</span>
+            <span className="text-xs font-black text-muted-foreground group-hover:text-rose-600 dark:group-hover:text-rose-400 tracking-wider uppercase">DECANO</span>
           </button>
           <button
             onClick={() => fillLogin('director_departamento')}
@@ -150,7 +150,7 @@ export function LoginForm() {
             <div className="bg-card p-2 rounded-lg mb-1.5 shadow-sm group-hover:scale-110 transition-transform">
               <ShieldCheck className="h-5 w-5 text-violet-600 dark:text-violet-400" />
             </div>
-            <span className="text-[10px] font-black text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 tracking-wider uppercase">JEFE DEPARTAMENTO</span>
+            <span className="text-xs font-black text-muted-foreground group-hover:text-violet-600 dark:group-hover:text-violet-400 tracking-wider uppercase">JEFE DEPARTAMENTO</span>
           </button>
         </div>
       </div>
@@ -225,7 +225,7 @@ export function LoginForm() {
 
       <div className="mt-12 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full border border-primary/20">
-          <p className="text-[10px] text-primary font-black uppercase tracking-widest">
+          <p className="text-xs text-primary font-black uppercase tracking-widest">
             Modo demo — SSO institucional simulado
           </p>
         </div>
@@ -234,7 +234,7 @@ export function LoginForm() {
       <div className="mt-4 text-center">
         <div className="inline-flex items-center gap-2 px-4 py-2 bg-muted rounded-full border border-border">
           <div className="w-1.5 h-1.5 rounded-full bg-emerald-500 animate-pulse" />
-          <p className="text-[10px] text-muted-foreground font-black uppercase tracking-widest">
+          <p className="text-xs text-muted-foreground font-black uppercase tracking-widest">
             Servidores Activos • UNT {new Date().getFullYear()}
           </p>
         </div>

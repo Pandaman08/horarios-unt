@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useRef } from "react";
 import { useSession } from "next-auth/react";
@@ -24,9 +24,10 @@ import {
   Clock,
   Layout as LayoutIcon,
   Calendar,
-  BookOpen
+  BookOpen,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { useLocale } from "@/contexts/LocaleContext";
 
 import {
   Dialog,
@@ -39,9 +40,22 @@ import {
   DialogClose,
 } from "@/components/ui/dialog";
 
+const ESTADOS_LECTIVA_DECLARADA = [
+  "LECTIVA_CONFIRMADA",
+  "ENVIADO",
+  "VALIDADO_DEPARTAMENTO",
+  "APROBADO",
+  "RECHAZADO",
+] as const;
+
+function esLectivaDeclarada(estado?: string | null) {
+  return !!estado && ESTADOS_LECTIVA_DECLARADA.includes(estado as (typeof ESTADOS_LECTIVA_DECLARADA)[number]);
+}
+
 export default function SeleccionHorariosLectivosPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
+  const { t } = useLocale();
   const [periodos, setPeriodos] = useState<any[]>([]);
   const [idPeriodo, setIdPeriodo] = useState<string>("");
   const [ambientes, setAmbientes] = useState<any[]>([]);
@@ -51,6 +65,8 @@ export default function SeleccionHorariosLectivosPage() {
   const [grupos, setGrupos] = useState<any[]>([]);
   const [idGrupo, setIdGrupo] = useState<string>("");
   const [ambientesFiltrados, setAmbientesFiltrados] = useState<any[]>([]);
+  const [numSubgrupos, setNumSubgrupos] = useState<number>(1);
+  const [subgrupoActivo, setSubgrupoActivo] = useState<number>(1);
   const [loadingConfirm, setLoadingConfirm] = useState(false);
   const [soloLectura, setSoloLectura] = useState(false);
   const [tiempoRestante, setTiempoRestante] = useState<string>("");
@@ -123,7 +139,7 @@ export default function SeleccionHorariosLectivosPage() {
         status: res.status
       });
       
-      if (data.soloLectura !== undefined) {
+      if (data.soloLectura !== undefined && !esLectivaDeclarada(declaracion?.estado)) {
         setSoloLectura(!!data.soloLectura);
         console.log('📝 [CHECK-INTERVAL] soloLectura actualizado a:', !!data.soloLectura);
       }
@@ -148,6 +164,12 @@ export default function SeleccionHorariosLectivosPage() {
       }
       
       if (segundosRestantes !== null && segundosRestantes > 0) {
+        // Clear existing timer before starting a new one
+        if (timerIntervalRef.current) {
+          clearInterval(timerIntervalRef.current);
+          timerIntervalRef.current = null;
+        }
+        
         segundosRestantesRef.current = segundosRestantes;
         const min = Math.floor(segundosRestantes / 60);
         const seg = Math.floor(segundosRestantes % 60);
@@ -189,7 +211,7 @@ export default function SeleccionHorariosLectivosPage() {
         setIdPeriodo(periodosActivos[0].id_periodo.toString());
       }
     } catch (error) {
-      toast.error("Error al cargar datos");
+      toast.error(t("errorLoadingData"));
     }
   };
 
@@ -205,10 +227,10 @@ export default function SeleccionHorariosLectivosPage() {
           id_periodo: data?.id_periodo
         });
         setDeclaracion(data);
-        // Si la declaración ya tiene horarios lectivos confirmados, redirigir a carga horaria
-        if (data?.estado === 'LECTIVA_CONFIRMADA' || data?.estado === 'ENVIADO' || data?.estado === 'APROBADO') {
-          console.log('✅ [DECLARACION] Declaración ya confirmada, redirigiendo a carga-horaria');
-          router.push('/dashboard/carga-horaria');
+        if (esLectivaDeclarada(data?.estado)) {
+          console.log('✅ [DECLARACION] Carga lectiva ya confirmada — modo solo lectura');
+          setSoloLectura(true);
+          setYaConfirmo(true);
         }
       } else {
         console.warn('⚠️  [DECLARACION] No se pudo obtener la declaración, status:', res.status);
@@ -224,7 +246,8 @@ export default function SeleccionHorariosLectivosPage() {
       const resConfirmados = await fetch(`/api/docentes/horarios?periodoId=${idPeriodo}`);
       let horariosConfirmados: any[] = [];
       if (resConfirmados.ok) {
-        horariosConfirmados = await resConfirmados.json();
+        const data = await resConfirmados.json();
+        horariosConfirmados = Array.isArray(data) ? data : (data.horarios ?? []);
       }
       
       const resTemporales = await fetch(`/api/horarios/disponibilidad-matriz?id_periodo=${idPeriodo}&id_docente=${session.user.id_docente}`);
@@ -253,10 +276,9 @@ export default function SeleccionHorariosLectivosPage() {
       // yaConfirmo solo debe ser true si:
       // 1. La declaración está en estado LECTIVA_CONFIRMADA o superior
       // 2. O si ya hay horarios confirmados y NO hay temporales (significa que ya pasó por confirmación)
-      const yaConfirmoActual = (declaracion?.estado === 'LECTIVA_CONFIRMADA' || 
-                                 declaracion?.estado === 'ENVIADO' || 
-                                 declaracion?.estado === 'APROBADO') || 
-                               (hayConfirmados && !hayTemporales);
+      const yaConfirmoActual =
+        esLectivaDeclarada(declaracion?.estado) ||
+        (hayConfirmados && !hayTemporales);
       
       setYaConfirmo(yaConfirmoActual);
       console.log('✅ [HORARIOS] yaConfirmo actualizado a:', yaConfirmoActual);
@@ -271,6 +293,16 @@ export default function SeleccionHorariosLectivosPage() {
       const res = await fetch("/api/ambientes");
       const todosAmbientes = await res.json();
       let filtrados = todosAmbientes.filter((a: any) => a.activo === true);
+      
+      const tipoClase = cursoSeleccionado.tipo?.toLowerCase();
+      if (tipoClase === "laboratorio") {
+        filtrados = filtrados.filter((a: any) => a.tipo === "laboratorio");
+      } else if (tipoClase === "practica") {
+        filtrados = filtrados.filter((a: any) => a.tipo === "teoria" || a.tipo === "taller");
+      } else {
+        filtrados = filtrados.filter((a: any) => a.tipo === "teoria");
+      }
+      
       setAmbientesFiltrados(filtrados);
       if (filtrados.length > 0) {
         setIdAmbiente(prev => {
@@ -279,10 +311,10 @@ export default function SeleccionHorariosLectivosPage() {
         });
       } else {
         setIdAmbiente("");
-        toast.warning("No hay ambientes disponibles.");
+        toast.warning(t("noEnvironmentsForClassType"));
       }
     } catch (error) {
-      toast.error("Error al cargar ambientes");
+      toast.error(t("errorLoadingEnvironments"));
     }
   };
 
@@ -322,12 +354,12 @@ export default function SeleccionHorariosLectivosPage() {
         if (res.status !== 404 && res.status !== 400) {
           const errorData = await res.json().catch(() => ({}));
           console.error('❌ [CURSOS] Error del servidor:', errorData.error);
-          toast.error(errorData.error || "Error al cargar cursos");
+          toast.error(errorData.error || t("errorLoadingCourses"));
         }
       }
     } catch (error) {
       console.error("❌ [CURSOS] Error al cargar cursos del docente", error);
-      toast.error("Error al cargar cursos del docente");
+      toast.error(t("errorLoadingCourses"));
       setCursosProgreso([]);
     }
   };
@@ -352,7 +384,7 @@ export default function SeleccionHorariosLectivosPage() {
         }
       }
     } catch (error) {
-      toast.error("Error al cargar grupos");
+      toast.error(t("errorLoadingGroups"));
     }
   };
 
@@ -362,6 +394,47 @@ export default function SeleccionHorariosLectivosPage() {
       fetchAmbientesCurso();
     }
   }, [cursoSeleccionado, idPeriodo]);
+
+  useEffect(() => {
+    const restaurarConfiguracionDesdeHorarios = async () => {
+      if (
+        !yaConfirmo ||
+        !session?.user?.id_docente ||
+        !idPeriodo ||
+        !cursoSeleccionado
+      ) {
+        return;
+      }
+
+      try {
+        const res = await fetch(`/api/docentes/horarios?periodoId=${idPeriodo}`);
+        if (!res.ok) return;
+
+        const data = await res.json();
+        const horarios = Array.isArray(data) ? data : (data.horarios ?? []);
+        const delCurso = horarios.filter(
+          (h: { is_no_lectiva?: boolean; id_curso?: number; tipo_clase?: string; id_grupo?: number | null; id_ambiente?: number | null }) =>
+            !h.is_no_lectiva &&
+            h.id_curso === cursoSeleccionado.id &&
+            h.tipo_clase?.toLowerCase() === cursoSeleccionado.tipo?.toLowerCase(),
+        );
+
+        if (delCurso.length === 0) return;
+
+        const primerHorario = delCurso[0];
+        if (primerHorario.id_grupo) {
+          setIdGrupo(primerHorario.id_grupo.toString());
+        }
+        if (primerHorario.id_ambiente) {
+          setIdAmbiente(primerHorario.id_ambiente.toString());
+        }
+      } catch (error) {
+        console.error("Error al restaurar configuración de horarios", error);
+      }
+    };
+
+    void restaurarConfiguracionDesdeHorarios();
+  }, [yaConfirmo, cursoSeleccionado, idPeriodo, session?.user?.id_docente]);
 
   const confirmarHorariosLectivos = async () => {
     if (!session?.user?.id_docente || !idPeriodo) return;
@@ -381,14 +454,14 @@ export default function SeleccionHorariosLectivosPage() {
     
     if (misTemporales.length === 0 && !hayHorariosGenerados) {
       console.warn('⚠️  [CONFIRMACION] No hay horarios temporales para confirmar');
-      toast.warning("Primero debe seleccionar bloques en la matriz (aparecerán en amarillo) antes de confirmar.");
+      toast.warning(t("confirmFirst"));
       return;
     }
 
     const incompletos = cursosProgreso.filter(c => c.horas_asignadas < c.horas_requeridas);
     if (incompletos.length > 0 && !hayHorariosGenerados) {
       console.warn('⚠️  [CONFIRMACION] Hay cursos incompletos:', incompletos.length);
-      if (!confirm(`Tiene ${incompletos.length} cursos con carga horaria incompleta. ¿Desea confirmar el horario de todas formas?`)) {
+      if (!confirm(`${incompletos.length} ${t("incompleteLoadConfirm")}`)) {
         console.log('❌ [CONFIRMACION] Usuario canceló la confirmación con cursos incompletos');
         return;
       }
@@ -408,37 +481,28 @@ export default function SeleccionHorariosLectivosPage() {
 
       if (res.ok) {
         console.log('✅ [CONFIRMACION] Horarios lectivos confirmados exitosamente');
-        toast.success("Horarios lectivos confirmados con éxito. Ahora complete su carga no lectiva.");
+        toast.success(t("lectiveConfirmedContinue"));
         
-        // Actualizar estado local antes de redirigir
         setYaConfirmo(true);
-        
-        // Redirigir a la vista de carga horaria para completar la no lectiva
-        setTimeout(() => {
-          router.push('/dashboard/carga-horaria');
-        }, 500);
+        setSoloLectura(true);
         
         getSocket().emit("horario-actualizado", { 
           mensaje: `El docente ${session?.user?.name} ha confirmado sus horarios lectivos.` 
         });
+
+        router.replace('/dashboard/carga-horaria');
       } else {
         const data = await res.json();
         console.error('❌ [CONFIRMACION] Error en respuesta del servidor:', data);
-        toast.error(data.error || "Error al confirmar horarios lectivos");
+        toast.error(data.error || t("errorConfirming"));
       }
     } catch (error) {
       console.error("❌ [CONFIRMACION] Error de conexión", error);
-      toast.error("Error de conexión");
+      toast.error(t("connectionError"));
     } finally {
       setLoadingConfirm(false);
     }
   };
-
-  // Si ya se confirmaron los horarios lectivos o la declaración está en un estado posterior, redirigir
-  if (declaracion?.estado === 'LECTIVA_CONFIRMADA' || declaracion?.estado === 'ENVIADO' || declaracion?.estado === 'APROBADO') {
-    console.log('🔄 [RENDER] Redirigiendo - declaración ya confirmada');
-    return null; // El useEffect se encarga de la redirección
-  }
 
   // Log de estado antes del renderizado
   console.log('📊 [RENDER] Estado del componente:', {
@@ -461,9 +525,16 @@ export default function SeleccionHorariosLectivosPage() {
               <BookOpen className="h-7 w-7 text-primary" />
             </div>
             <div>
-              <span className="text-[10px] bg-primary/10 text-primary uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg">Paso 1/2</span>
+              <span className={cn(
+                "text-xs uppercase tracking-wider font-extrabold px-2.5 py-1 rounded-lg",
+                soloLectura && yaConfirmo
+                  ? "bg-muted text-muted-foreground"
+                  : "bg-primary/10 text-primary",
+              )}>
+                {soloLectura && yaConfirmo ? t("readOnly") : t("selectScheduleStep")}
+              </span>
               <h1 className="text-xl md:text-2xl font-bold text-foreground tracking-tight mt-2">
-                Selección de Horarios Lectivos
+                {t("selectScheduleTitle")}
               </h1>
               <div className="flex items-center gap-2 mt-1">
                 {mensajeIntervalo ? (
@@ -473,7 +544,7 @@ export default function SeleccionHorariosLectivosPage() {
                       : 'bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 border-emerald-200 dark:border-emerald-800'
                   }`}>
                     <Clock className="h-3.5 w-3.5" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">{mensajeIntervalo}</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">{mensajeIntervalo}</span>
                     {tiempoRestante && !soloLectura && (
                       <span className="text-xs font-mono font-black ml-2">{tiempoRestante}</span>
                     )}
@@ -481,11 +552,15 @@ export default function SeleccionHorariosLectivosPage() {
                 ) : tiempoRestante ? (
                   <div className="flex items-center gap-2 bg-rose-50 dark:bg-rose-950/30 text-rose-700 dark:text-rose-400 px-3 py-1 rounded-lg border border-rose-200 dark:border-rose-800 shadow-sm">
                     <Clock className="h-3.5 w-3.5 animate-pulse" />
-                    <span className="text-[10px] font-bold uppercase tracking-widest">Tiempo restante:</span>
+                    <span className="text-xs font-bold uppercase tracking-widest">{t("timeLeft")}</span>
                     <span className="text-xs font-mono font-black">{tiempoRestante}</span>
                   </div>
+                ) : soloLectura && yaConfirmo ? (
+                  <p className="text-muted-foreground text-xs">
+                    {t("lectiveScheduleConfirmed")}
+                  </p>
                 ) : (
-                  <p className="text-muted-foreground text-xs">Seleccione los bloques horarios para sus cursos</p>
+                  <p className="text-muted-foreground text-xs">{t("selectTimeBlocks")}</p>
                 )}
               </div>
             </div>
@@ -494,9 +569,9 @@ export default function SeleccionHorariosLectivosPage() {
           <div className="flex items-center gap-4 bg-muted/30 p-3 rounded-2xl border border-border w-full md:w-auto">
             <div className="flex items-center gap-2 px-3">
               <Calendar className="h-4 w-4 text-primary" />
-              <span className="text-xs font-bold text-muted-foreground">Período Lectivo:</span>
+              <span className="text-xs font-bold text-muted-foreground">{t("lectivePeriod")}</span>
               <span className="text-sm font-black text-primary bg-primary/10 px-3 py-1 rounded-lg border border-primary/20">
-                {periodos.find(p => p.id_periodo.toString() === idPeriodo)?.nombre || "Cargando..."}
+                {periodos.find(p => p.id_periodo.toString() === idPeriodo)?.nombre || t("loading")}
               </span>
             </div>
           </div>
@@ -516,12 +591,12 @@ export default function SeleccionHorariosLectivosPage() {
                     {session?.user?.name}
                   </h2>
                   <div className="flex items-center gap-2 mt-2">
-                    <span className="inline-flex items-center bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
-                      Docente UNT
+                      <span className="inline-flex items-center bg-emerald-50 dark:bg-emerald-950/30 text-emerald-700 dark:text-emerald-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-emerald-200 dark:border-emerald-800">
+                        {t("untTeacher")}
                     </span>
                     {yaConfirmo && (
                       <span className="inline-flex items-center bg-indigo-50 dark:bg-indigo-950/30 text-indigo-700 dark:text-indigo-400 font-bold text-[9px] uppercase tracking-widest px-2.5 py-1 rounded-lg border border-indigo-200 dark:border-indigo-800">
-                        Horario Confirmado
+                        {t("scheduleConfirmed")}
                       </span>
                     )}
                   </div>
@@ -535,31 +610,31 @@ export default function SeleccionHorariosLectivosPage() {
                       className="h-10 px-8 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold shadow-lg shadow-emerald-900/10 transition-all hover:scale-[1.02] disabled:opacity-50 disabled:hover:scale-100 text-xs whitespace-nowrap"
                     >
                       <CheckCircle className="mr-2 h-4 w-4" /> 
-                      {soloLectura ? "Finalizada" : (loadingConfirm ? "Confirmando..." : "Confirmar Horarios Lectivos")}
+                      {soloLectura ? t("finished") : (loadingConfirm ? t("confirming") : t("confirmLectiveSchedules"))}
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="bg-card rounded-2xl border-border shadow-2xl sm:max-w-[450px] p-8">
-                    <DialogHeader className="space-y-4">
+                  <DialogContent className="page-modal">
+                    <DialogHeader className="page-modal-header space-y-4">
                       <div className="h-12 w-12 bg-emerald-50 dark:bg-emerald-950/50 rounded-2xl flex items-center justify-center mb-2">
                         <CheckCircle className="h-6 w-6 text-emerald-600 dark:text-emerald-400" />
                       </div>
-                      <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">¿Confirmar Horarios Lectivos?</DialogTitle>
+                      <DialogTitle className="text-2xl font-bold text-foreground tracking-tight">{t("confirmLectiveDialog")}</DialogTitle>
                       <DialogDescription className="text-muted-foreground font-medium text-base leading-relaxed">
-                        Al confirmar, tu horario lectivo se volverá <span className="font-bold text-emerald-600 dark:text-emerald-400">definitivo</span> y podrás continuar con la declaración de tu carga no lectiva.
+                        {t("confirmLectiveDialogDesc")}
                       </DialogDescription>
                     </DialogHeader>
-                    <DialogFooter className="gap-3 sm:justify-end mt-8">
+                    <DialogFooter className="page-modal-footer gap-3 sm:justify-end mt-8">
                       <DialogClose asChild>
-                        <Button type="button" variant="ghost" className="rounded-xl font-bold text-muted-foreground hover:bg-muted">
-                          Revisar de nuevo
+                        <Button type="button" variant="ghost" className="page-modal-btn-cancel rounded-xl font-bold text-muted-foreground hover:bg-muted">
+                          {t("reviewAgain")}
                         </Button>
                       </DialogClose>
                       <DialogClose asChild>
                         <Button 
                           onClick={confirmarHorariosLectivos}
-                          className="bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-8"
+                          className="page-modal-btn-submit bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl font-bold px-8"
                         >
-                          Sí, confirmar ahora
+                          {t("confirmNow")}
                         </Button>
                       </DialogClose>
                     </DialogFooter>
@@ -583,20 +658,24 @@ export default function SeleccionHorariosLectivosPage() {
 
                 {(cursoSeleccionado && (grupos.length > 0 || ambientesFiltrados.length > 0)) && (
                   <div className="rounded-2xl border border-border bg-card shadow-sm p-4 space-y-3">
-                    <p className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground">
-                      Configuración del bloque
+                    <p className="text-xs font-bold uppercase tracking-wider text-muted-foreground">
+                      {t("blockConfig")}
                     </p>
                     {grupos.length > 0 && (
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-semibold text-muted-foreground">
-                          Grupo
+                        <Label className="text-xs font-semibold text-muted-foreground">
+                          {t("group")}
                           {cursoSeleccionado.tipo === "laboratorio" && grupos.length > 1 && (
-                            <span className="text-muted-foreground font-normal"> — asigne horario a cada lab</span>
+                            <span className="text-muted-foreground font-normal"> — {t("assignEachLab")}</span>
                           )}
                         </Label>
-                        <Select value={idGrupo} onValueChange={setIdGrupo} disabled={soloLectura}>
+                        <Select value={idGrupo} onValueChange={(v) => {
+                          setIdGrupo(v);
+                          setNumSubgrupos(1);
+                          setSubgrupoActivo(1);
+                        }} disabled={soloLectura}>
                           <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Seleccionar grupo" />
+                            <SelectValue placeholder={t("selectGroup")} />
                           </SelectTrigger>
                           <SelectContent>
                             {grupos.map((g) => (
@@ -608,12 +687,58 @@ export default function SeleccionHorariosLectivosPage() {
                         </Select>
                       </div>
                     )}
+                    {cursoSeleccionado?.tipo === "laboratorio" && idGrupo && (
+                      <div className="space-y-1.5">
+                        <Label className="text-xs font-semibold text-muted-foreground">
+                          {t("subgroups")}
+                          <span className="text-muted-foreground font-normal ml-1">
+                            {numSubgrupos > 1 ? `${t("subgroupInterval")}: ${Math.floor(60 / numSubgrupos)}min c/u` : t("fullGroup")}
+                          </span>
+                        </Label>
+                        <div className="flex gap-1.5">
+                          <Select value={numSubgrupos.toString()} onValueChange={(v) => {
+                            const n = parseInt(v);
+                            setNumSubgrupos(n);
+                            if (subgrupoActivo > n) setSubgrupoActivo(1);
+                          }} disabled={soloLectura}>
+                            <SelectTrigger className="h-9 text-xs flex-1">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="1" className="text-xs">{t("splitNone")}</SelectItem>
+                              <SelectItem value="2" className="text-xs">{t("split2")}</SelectItem>
+                              <SelectItem value="3" className="text-xs">{t("split3")}</SelectItem>
+                              <SelectItem value="4" className="text-xs">{t("split4")}</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          {numSubgrupos > 1 && (
+                            <Select value={subgrupoActivo.toString()} onValueChange={(v) => setSubgrupoActivo(parseInt(v))} disabled={soloLectura}>
+                              <SelectTrigger className="h-9 text-xs w-[100px]">
+                                <SelectValue />
+                              </SelectTrigger>
+                              <SelectContent>
+                                {Array.from({ length: numSubgrupos }, (_, i) => i + 1).map(n => (
+                                  <SelectItem key={n} value={n.toString()} className="text-xs">
+                                    {t("subgroup")} {n}
+                                  </SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                          )}
+                        </div>
+                        {numSubgrupos > 1 && (
+                          <p className="text-[9px] text-muted-foreground">
+                            {t("subgroupHelp")}
+                          </p>
+                        )}
+                      </div>
+                    )}
                     {ambientesFiltrados.length > 0 && (
                       <div className="space-y-1.5">
-                        <Label className="text-[10px] font-semibold text-muted-foreground">Ambiente</Label>
+                        <Label className="text-xs font-semibold text-muted-foreground">{t("environment")}</Label>
                         <Select value={idAmbiente} onValueChange={setIdAmbiente} disabled={soloLectura}>
                           <SelectTrigger className="h-9 text-xs">
-                            <SelectValue placeholder="Seleccionar ambiente" />
+                            <SelectValue placeholder={t("selectEnvironment")} />
                           </SelectTrigger>
                           <SelectContent>
                             {ambientesFiltrados.map((a) => (
@@ -639,12 +764,12 @@ export default function SeleccionHorariosLectivosPage() {
                         <Info className="h-5 w-5 text-rose-600 shrink-0 mt-0.5" />
                         <div>
                           <p className="text-sm font-bold text-rose-800">
-                            Acceso Restringido
+                            {t("accessRestricted")}
                           </p>
                           <p className="text-xs text-rose-700 mt-1">
                             {mensajeIntervalo 
-                              ? `${mensajeIntervalo} Si crees que esto es un error, contacta a la secretaría académica.`
-                              : "Fuera de tu ventana de atención. Contacta a la secretaría académica si necesitas apoyo."
+                              ? `${mensajeIntervalo} ${t("contactSupport")}`
+                              : t("outsideWindowContact")
                             }
                           </p>
                         </div>
@@ -657,11 +782,10 @@ export default function SeleccionHorariosLectivosPage() {
                         <Info className="h-5 w-5 text-amber-600 shrink-0 mt-0.5" />
                         <div>
                           <p className="text-sm font-bold text-amber-800">
-                            Sin cursos asignados para este período
+                            {t("noCoursesAssigned")}
                           </p>
                           <p className="text-xs text-amber-700 mt-1">
-                            No tienes <strong>cargas lectivas asignadas</strong> para este período académico. 
-                            {' '}<strong>Contacta con la secretaría académica</strong> para que asigne tus cursos antes de continuar con la selección de horarios.
+                            {t("noCoursesAssignedDesc")}
                           </p>
                         </div>
                       </div>
@@ -669,23 +793,26 @@ export default function SeleccionHorariosLectivosPage() {
                   )
                 ) : cursoSeleccionado && idGrupo && idAmbiente && session?.user?.id_docente ? (
                   <div className="space-y-3">
-                    <div className="flex flex-wrap items-center gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border text-xs">
-                      <span className="font-semibold text-foreground">
-                        {cursosProgreso.find(
-                          (c) => c.id_curso === cursoSeleccionado.id && c.tipo_clase === cursoSeleccionado.tipo
-                        )?.nombre || "Curso seleccionado"}
-                      </span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground capitalize">{cursoSeleccionado.tipo}</span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground">
-                        Grupo {grupos.find((g) => g.id_grupo.toString() === idGrupo)?.codigo_grupo || idGrupo}
-                      </span>
-                      <span className="text-muted-foreground">·</span>
-                      <span className="text-muted-foreground">
-                        {ambientesFiltrados.find((a) => a.id_ambiente.toString() === idAmbiente)?.codigo}
-                      </span>
+                    <div className="flex flex-wrap items-center justify-between gap-2 px-4 py-2.5 rounded-xl bg-muted/40 border border-border text-xs">
+                      <div className="flex flex-wrap items-center gap-2">
+                        <span className="font-semibold text-foreground">
+                          {cursosProgreso.find(
+                            (c) => c.id_curso === cursoSeleccionado.id && c.tipo_clase === cursoSeleccionado.tipo
+                          )?.nombre || t("selectedCourse")}
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground capitalize">{cursoSeleccionado.tipo}</span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">
+                          Grupo {grupos.find((g) => g.id_grupo.toString() === idGrupo)?.codigo_grupo || idGrupo}
+                        </span>
+                        <span className="text-muted-foreground">·</span>
+                        <span className="text-muted-foreground">
+                          {ambientesFiltrados.find((a) => a.id_ambiente.toString() === idAmbiente)?.codigo}
+                        </span>
+                      </div>
                     </div>
+
                     <MatrizDisponibilidad
                       id_periodo={parseInt(idPeriodo)}
                       id_ambiente={parseInt(idAmbiente)}
@@ -699,6 +826,10 @@ export default function SeleccionHorariosLectivosPage() {
                         fetchDocenteCursos();
                         verificarHorariosGenerados();
                       }}
+                      rol_viewer="docente"
+                      cursoActivoId={cursoSeleccionado.id}
+                      numSubgrupos={numSubgrupos}
+                      subgrupoActivo={subgrupoActivo}
                     />
                   </div>
                 ) : (
@@ -706,10 +837,10 @@ export default function SeleccionHorariosLectivosPage() {
                     <div className="text-center space-y-2 max-w-sm mx-auto">
                       <LayoutIcon className="h-10 w-10 text-muted-foreground/30 mx-auto" />
                       <p className="text-sm font-semibold text-foreground">
-                        Seleccione un curso de la lista
+                        {t("selectCourseFromList")}
                       </p>
                       <p className="text-xs text-muted-foreground">
-                        Luego elija grupo y ambiente. Haga clic en la matriz para reservar bloques en amarillo.
+                        {t("selectGroupAndEnv")}
                       </p>
                     </div>
                   </Card>

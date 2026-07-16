@@ -299,15 +299,15 @@ export function PlanEstudiosClient() {
   const getTipoBadge = (tipo: string) => {
     switch (tipo) {
       case "especializacion":
-        return <Badge variant="secondary" className="text-xs font-semibold">S</Badge>;
+        return <Badge variant="secondary" className="text-[11px] font-semibold px-1.5 py-0">S</Badge>;
       case "obligatorio":
-        return <Badge className="text-xs font-semibold bg-primary/10 text-primary hover:bg-primary/15">OB</Badge>;
+        return <Badge className="text-[11px] font-semibold px-1.5 py-0 bg-primary/10 text-primary hover:bg-primary/15">OB</Badge>;
       case "opcional":
-        return <Badge variant="outline" className="text-xs font-semibold">OP</Badge>;
+        return <Badge variant="outline" className="text-[11px] font-semibold px-1.5 py-0">OP</Badge>;
       case "electivo":
-        return <Badge variant="secondary" className="text-xs font-semibold">EL</Badge>;
+        return <Badge variant="secondary" className="text-[11px] font-semibold px-1.5 py-0">EL</Badge>;
       default:
-        return <Badge variant="outline" className="text-xs">{tipo}</Badge>;
+        return <Badge variant="outline" className="text-[11px] px-1.5 py-0">{tipo}</Badge>;
     }
   };
 
@@ -526,20 +526,20 @@ export function PlanEstudiosClient() {
   const currentCiclo = nonEmptyCiclos[currentCycleIndex];
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col gap-4 bg-card p-4 rounded-xl border border-border shadow-sm">
-        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shadow-sm">
-              <GraduationCap className="h-4 w-4 text-primary" />
+    <div className="page-shell">
+      <div className="page-header-card">
+        <div className="page-header-top">
+          <div className="page-header-brand">
+            <div className="page-icon-box">
+              <GraduationCap className="page-icon" />
             </div>
-            <div>
-              <h2 className="text-base font-bold text-foreground tracking-tight leading-none">Plan de Estudios</h2>
-              <p className="text-muted-foreground text-[10px] mt-1">Malla curricular y prerequisitos</p>
+            <div className="min-w-0">
+              <h2 className="page-title">Plan de Estudios</h2>
+              <p className="page-subtitle">Malla curricular y prerequisitos</p>
             </div>
           </div>
 
-          <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2 w-full sm:w-auto">
+          <div className="page-toolbar gap-2 sm:gap-3">
             <Button
               onClick={() => {
                 const url = new URL('/api/reportes/pdf', window.location.origin);
@@ -550,22 +550,22 @@ export function PlanEstudiosClient() {
                 window.open(url.toString(), '_blank');
               }}
               variant="outline"
-              className="h-9 rounded-lg border-primary/20 text-primary hover:bg-primary/5 font-bold text-xs"
+              className="page-btn border-primary/20 text-primary hover:bg-primary/5"
             >
-              <FileDown className="mr-2 h-3.5 w-3.5" />
+              <FileDown className="mr-1.5 h-3.5 w-3.5" />
               Descargar PDF
             </Button>
             {isAdminOrSecretaria && (
               <>
                 {selectedMalla !== "all" && mallas.length > 0 && (
-                  <div className="flex items-center gap-2 px-3 h-9 bg-muted/50 rounded-lg border border-border min-w-0">
-                    <span className="text-[11px] font-bold text-foreground truncate">
+                  <div className="flex items-center gap-1.5 px-2.5 bg-muted/50 rounded-lg border border-border min-w-0 h-8 sm:h-9">
+                    <span className="text-xs sm:text-sm font-bold text-foreground truncate">
                       {mallas.find(m => m.id_malla.toString() === selectedMalla)?.nombre}
                     </span>
                     <Button
                       variant="ghost"
                       size="icon"
-                      className="h-7 w-7 shrink-0 hover:bg-muted"
+                      className="size-6 shrink-0 hover:bg-muted"
                       onClick={() => {
                         const malla = mallas.find(m => m.id_malla.toString() === selectedMalla);
                         if (malla) handleEditMalla(malla);
@@ -578,42 +578,40 @@ export function PlanEstudiosClient() {
 
                 <Dialog open={isMallaDialogOpen} onOpenChange={(open) => { setIsMallaDialogOpen(open); if (!open) { setEditingMalla(null); resetMallaForm(); } }}>
                   <DialogTrigger asChild>
-                    <Button variant="outline" className="h-9 rounded-lg font-bold text-[11px]">
-                      <Plus className="mr-2 h-3.5 w-3.5" /> Nueva Malla
+                    <Button variant="outline" className="page-btn">
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Nueva Malla
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[500px] rounded-xl p-6 border-none shadow-2xl bg-card text-foreground max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="mb-4">
-                      <DialogTitle className="text-lg font-bold">
+                  <DialogContent className="page-modal">
+                    <DialogHeader className="page-modal-header">
+                      <DialogTitle className="text-base font-bold">
                         {editingMalla ? "Editar Malla Curricular" : "Nueva Malla Curricular"}
                       </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleMallaSubmit} className="space-y-4">
+                    <form onSubmit={handleMallaSubmit} className="page-modal-body space-y-4">
                       <div className="space-y-1.5">
-                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
                         <Input
                           value={mallaFormData.nombre}
                           onChange={(e) => setMallaFormData({ ...mallaFormData, nombre: e.target.value })}
-                          className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                           placeholder="Ej: Plan de Estudios 2024"
                           required
                         />
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Año</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Año</Label>
                           <Input 
                             type="number" 
                             value={mallaFormData.anio} 
                             onChange={(e) => setMallaFormData({ ...mallaFormData, anio: e.target.value })} 
-                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                             required
                           />
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Facultad</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Facultad</Label>
                           <Select
                             value={mallaFormData.facultadId}
                             onValueChange={(v) => {
@@ -621,12 +619,12 @@ export function PlanEstudiosClient() {
                               fetchEscuelas(v);
                             }}
                           >
-                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
+                            <SelectTrigger>
                               <SelectValue placeholder="Seleccionar facultad" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-lg border-border">
+                            <SelectContent>
                               {allFacultades.map((f: any) => (
-                                <SelectItem key={f.id} value={f.id} className="text-sm">
+                                <SelectItem key={f.id} value={f.id}>
                                   {f.nombre}
                                 </SelectItem>
                               ))}
@@ -635,20 +633,20 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Escuela Profesional</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Escuela Profesional</Label>
                           <Select
                             value={mallaFormData.escuelaId}
                             onValueChange={(v) => setMallaFormData({ ...mallaFormData, escuelaId: v })}
                             disabled={!mallaFormData.facultadId}
                           >
-                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
+                            <SelectTrigger>
                               <SelectValue placeholder="Seleccionar escuela" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-lg border-border">
+                            <SelectContent>
                               {allEscuelas.map((e: any) => (
-                                <SelectItem key={e.id} value={e.id} className="text-sm">
+                                <SelectItem key={e.id} value={e.id}>
                                   {e.nombre}
                                 </SelectItem>
                               ))}
@@ -656,17 +654,17 @@ export function PlanEstudiosClient() {
                           </Select>
                         </div>
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
                           <Select
                             value={mallaFormData.departamentoId}
                             onValueChange={(v) => setMallaFormData({ ...mallaFormData, departamentoId: v })}
                           >
-                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
+                            <SelectTrigger>
                               <SelectValue placeholder="Seleccionar departamento" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-lg border-border">
+                            <SelectContent>
                               {allDepartamentos.map((d: any) => (
-                                <SelectItem key={d.id} value={d.id} className="text-sm">
+                                <SelectItem key={d.id} value={d.id}>
                                   {d.nombre}
                                 </SelectItem>
                               ))}
@@ -676,18 +674,17 @@ export function PlanEstudiosClient() {
                       </div>
 
                       <div className="space-y-1.5">
-                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Descripción (opcional)</Label>
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Descripción (opcional)</Label>
                         <Input
                           value={mallaFormData.descripcion}
                           onChange={(e) => setMallaFormData({ ...mallaFormData, descripcion: e.target.value })}
-                          className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                           placeholder="Descripción opcional"
                         />
                       </div>
 
-                      <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
-                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)} className="h-9 rounded-lg font-bold text-[11px] px-6">Cancelar</Button>
-                        <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-bold text-[11px] px-8 shadow-sm">
+                      <div className="page-actions-row justify-end pt-3 border-t">
+                        <Button type="button" variant="ghost" onClick={() => setIsMallaDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                        <Button type="submit" className="page-modal-btn-submit">
                           {editingMalla ? "Actualizar" : "Crear"}
                         </Button>
                       </div>
@@ -697,94 +694,89 @@ export function PlanEstudiosClient() {
 
                 <Dialog open={isDialogOpen} onOpenChange={(open) => { setIsDialogOpen(open); if (!open) { setEditingCurso(null); resetForm(); } }}>
                   <DialogTrigger asChild>
-                    <Button className="h-9 rounded-lg bg-primary text-primary-foreground hover:bg-primary/90 font-bold text-[11px] shadow-sm">
-                      <Plus className="mr-2 h-3.5 w-3.5" /> Nuevo Curso
+                    <Button className="page-btn bg-primary text-primary-foreground hover:bg-primary/90">
+                      <Plus className="mr-1.5 h-3.5 w-3.5" /> Nuevo Curso
                     </Button>
                   </DialogTrigger>
-                  <DialogContent className="sm:max-w-[600px] rounded-xl p-6 border-none shadow-2xl bg-card text-foreground max-h-[90vh] overflow-y-auto">
-                    <DialogHeader className="mb-4">
-                      <DialogTitle className="text-lg font-bold">
+                  <DialogContent className="page-modal-lg">
+                    <DialogHeader className="page-modal-header">
+                      <DialogTitle className="text-base font-bold">
                         {editingCurso ? "Editar Curso" : "Nuevo Curso"}
                       </DialogTitle>
                     </DialogHeader>
 
-                    <form onSubmit={handleSubmit} className="space-y-4">
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <form onSubmit={handleSubmit} className="page-modal-body space-y-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Código</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Código</Label>
                           <Input
                             value={formData.codigo}
                             onChange={(e) => setFormData({ ...formData, codigo: e.target.value })}
-                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                             placeholder="1939"
                             required
                           />
                         </div>
-                        <div className="space-y-1.5">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Nombre</Label>
+                        <div className="space-y-1 sm:col-span-2">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Nombre</Label>
                           <Input
                             value={formData.nombre}
                             onChange={(e) => setFormData({ ...formData, nombre: e.target.value })}
-                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                             placeholder="Introducción a la Ingeniería de Sistemas"
                             required
                           />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
                         <div className="space-y-1.5">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
                           <Select value={formData.id_ciclo} onValueChange={(v) => setFormData({ ...formData, id_ciclo: v })}>
-                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
+                            <SelectTrigger>
                               <SelectValue placeholder="Seleccionar..." />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
+                            <SelectContent>
                               {ciclos.map((c) => (
-                                <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="font-bold text-sm">
+                                <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
                                   {c.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Malla Curricular</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
                           <Select value={formData.id_malla} onValueChange={(v) => setFormData({ ...formData, id_malla: v })}>
-                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
+                            <SelectTrigger>
                               <SelectValue placeholder="Seleccionar malla" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
+                            <SelectContent>
                               {mallas.map((m) => (
-                                <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="font-bold text-sm">
+                                <SelectItem key={m.id_malla} value={m.id_malla.toString()}>
                                   {m.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                      </div>
-
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Tipo de Curso</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tipo de Curso</Label>
                           <Select value={formData.tipo_curso} onValueChange={(v) => setFormData({ ...formData, tipo_curso: v })}>
-                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
+                            <SelectTrigger>
                               <SelectValue />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
-                              <SelectItem value="especializacion" className="font-bold text-sm">Especialización (S)</SelectItem>
-                              <SelectItem value="obligatorio" className="font-bold text-sm">Obligatorio (OB)</SelectItem>
-                              <SelectItem value="opcional" className="font-bold text-sm">Opcional (OP)</SelectItem>
-                              <SelectItem value="electivo" className="font-bold text-sm">Electivo (EL)</SelectItem>
+                            <SelectContent>
+                              <SelectItem value="especializacion">Especialización (S)</SelectItem>
+                              <SelectItem value="obligatorio">Obligatorio (OB)</SelectItem>
+                              <SelectItem value="opcional">Opcional (OP)</SelectItem>
+                              <SelectItem value="electivo">Electivo (EL)</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Créditos</Label>
+                      <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
                           <Input 
                             type="number" 
                             min="1" 
@@ -796,42 +788,41 @@ export function PlanEstudiosClient() {
                                 setFormData({ ...formData, creditos: val });
                               }
                             }} 
-                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" 
                           />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">T</Label>
-                          <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">T</Label>
+                          <Input type="number" value={formData.horas_teoria} onChange={(e) => setFormData({ ...formData, horas_teoria: e.target.value })} />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">P</Label>
-                          <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">P</Label>
+                          <Input type="number" value={formData.horas_practica} onChange={(e) => setFormData({ ...formData, horas_practica: e.target.value })} />
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">L</Label>
-                          <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">L</Label>
+                          <Input type="number" value={formData.horas_laboratorio} onChange={(e) => setFormData({ ...formData, horas_laboratorio: e.target.value })} />
                         </div>
                       </div>
 
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Máx. Docentes</Label>
-                          <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all" />
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Máx. Docentes</Label>
+                          <Input type="number" value={formData.maximo_docentes} onChange={(e) => setFormData({ ...formData, maximo_docentes: e.target.value })} />
                         </div>
-                        <div className="space-y-2 flex items-center">
-                          <div className="flex items-center gap-3">
+                        <div className="space-y-1 flex items-center">
+                          <div className="flex items-center gap-2">
                             <Switch
                               id="activo"
                               checked={formData.activo}
                               onCheckedChange={(checked) => setFormData({ ...formData, activo: checked })}
                             />
-                            <Label htmlFor="activo" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Activo</Label>
+                            <Label htmlFor="activo" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground cursor-pointer">Activo</Label>
                           </div>
                         </div>
                       </div>
-                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento</Label>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Departamento</Label>
                           <Select 
                             value={formData.departamentoId} 
                             onValueChange={(v) => {
@@ -843,32 +834,31 @@ export function PlanEstudiosClient() {
                               });
                             }}
                           >
-                            <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all">
+                            <SelectTrigger>
                               <SelectValue placeholder="Seleccionar departamento" />
                             </SelectTrigger>
-                            <SelectContent className="rounded-xl border-border">
+                            <SelectContent>
                               {allDepartamentos.map((d: any) => (
-                                <SelectItem key={d.id} value={d.id} className="font-bold text-sm">
+                                <SelectItem key={d.id} value={d.id}>
                                   {d.nombre}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
                         </div>
-                        <div className="space-y-2">
-                          <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Departamento Responsable (Texto)</Label>
+                        <div className="space-y-1.5">
+                          <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Depto. Responsable (Texto)</Label>
                           <Input
                             value={formData.departamento_responsable}
                             onChange={(e) => setFormData({ ...formData, departamento_responsable: e.target.value })}
-                            className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px] focus:ring-1 focus:ring-primary transition-all"
                             placeholder="Ingeniería de Sistemas"
                           />
                         </div>
                       </div>
 
-                      <div className="space-y-2">
-                        <Label className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground ml-1">Prerequisitos</Label>
-                        <div className="space-y-2">
+                      <div className="space-y-1.5">
+                        <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Prerequisitos</Label>
+                        <div className="space-y-1.5">
                           <SearchableSelect
                             options={allCursos
                               .filter((c) => {
@@ -895,16 +885,16 @@ export function PlanEstudiosClient() {
                             placeholder="Buscar y seleccionar prerequisitos..."
                             emptyMessage="No hay cursos disponibles para esta malla curricular"
                           />
-                          <div className="flex flex-wrap gap-2 mt-2">
+                          <div className="flex flex-wrap gap-1.5 mt-1.5">
                             {selectedPrerequisitos.map((codigo) => {
                               const curso = allCursos.find((c) => c.codigo === codigo);
                               return (
-                                <Badge key={codigo} variant="secondary" className="text-xs flex items-center gap-2">
+                                <Badge key={codigo} variant="secondary" className="text-[11px] px-1.5 py-0.5 flex items-center gap-1">
                                   {curso?.nombre || codigo}
                                   <button
                                     type="button"
                                     onClick={() => setSelectedPrerequisitos(selectedPrerequisitos.filter((c) => c !== codigo))}
-                                    className="ml-1 hover:text-red-500"
+                                    className="hover:text-red-500 leading-none"
                                   >
                                     ×
                                   </button>
@@ -915,9 +905,9 @@ export function PlanEstudiosClient() {
                         </div>
                       </div>
 
-                      <div className="flex justify-end gap-3 pt-4 border-t border-border/50">
-                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="h-9 rounded-lg font-bold text-[11px] px-6">Cancelar</Button>
-                        <Button type="submit" className="h-9 bg-primary text-primary-foreground hover:bg-primary/90 rounded-lg font-bold text-[11px] px-8 shadow-sm">
+                      <div className="page-actions-row justify-end pt-3 border-t">
+                        <Button type="button" variant="ghost" onClick={() => setIsDialogOpen(false)} className="page-modal-btn-cancel">Cancelar</Button>
+                        <Button type="submit" className="page-modal-btn-submit">
                           {editingCurso ? "Actualizar" : "Crear"}
                         </Button>
                       </div>
@@ -929,18 +919,17 @@ export function PlanEstudiosClient() {
           </div>
         </div>
 
-        {/* Filters */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-3 pt-2 border-t border-border/50">
-          <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Malla Curricular</Label>
+        <div className="page-filters">
+          <div className="page-filter-wide space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Malla Curricular</Label>
             <Select value={selectedMalla} onValueChange={setSelectedMalla}>
-              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Malla Curricular" />
               </SelectTrigger>
-              <SelectContent className="rounded-lg border-border">
+              <SelectContent>
                 <SelectItem value="all">Todas las mallas</SelectItem>
                 {mallas.map((m) => (
-                  <SelectItem key={m.id_malla} value={m.id_malla.toString()} className="text-[11px] font-bold">
+                  <SelectItem key={m.id_malla} value={m.id_malla.toString()}>
                     {m.nombre}
                   </SelectItem>
                 ))}
@@ -948,13 +937,13 @@ export function PlanEstudiosClient() {
             </Select>
           </div>
 
-          <div className="space-y-1.5 sm:col-span-2">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Buscar</Label>
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+          <div className="space-y-1.5">
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Buscar</Label>
+            <div className="page-search-wrap">
+              <Search className="page-search-icon" />
               <Input
                 placeholder="Buscar curso..."
-                className="pl-9 h-9 rounded-lg border-input bg-muted/50 font-semibold text-[11px] focus:ring-1 focus:ring-primary transition-all"
+                className="page-search"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -962,15 +951,15 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Ciclo</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Ciclo</Label>
             <Select value={filterCiclo} onValueChange={setFilterCiclo}>
-              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Ciclo" />
               </SelectTrigger>
-              <SelectContent className="rounded-lg border-border">
+              <SelectContent>
                 <SelectItem value="all">Todos los ciclos</SelectItem>
                 {ciclos.map((c) => (
-                  <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()} className="text-[11px] font-bold">
+                  <SelectItem key={c.id_ciclo} value={c.id_ciclo.toString()}>
                     {c.nombre}
                   </SelectItem>
                 ))}
@@ -979,12 +968,12 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Tipo</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Tipo</Label>
             <Select value={filterTipoCurso} onValueChange={setFilterTipoCurso}>
-              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Tipo" />
               </SelectTrigger>
-              <SelectContent className="rounded-lg border-border">
+              <SelectContent>
                 <SelectItem value="all">Todos los tipos</SelectItem>
                 <SelectItem value="especializacion">Especialización</SelectItem>
                 <SelectItem value="obligatorio">Obligatorio</SelectItem>
@@ -995,12 +984,12 @@ export function PlanEstudiosClient() {
           </div>
 
           <div className="space-y-1.5">
-            <Label className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">Créditos</Label>
+            <Label className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">Créditos</Label>
             <Select value={filterCreditos} onValueChange={setFilterCreditos}>
-              <SelectTrigger className="h-9 rounded-lg border-input bg-muted/50 font-bold text-[11px]">
+              <SelectTrigger className="page-filter-select">
                 <SelectValue placeholder="Créditos" />
               </SelectTrigger>
-              <SelectContent className="rounded-lg border-border">
+              <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="1">1</SelectItem>
                 <SelectItem value="2">2</SelectItem>
@@ -1010,11 +999,11 @@ export function PlanEstudiosClient() {
             </Select>
           </div>
 
-          <div className="space-y-1.5 flex flex-col justify-end">
-            <Label htmlFor="hasPrerequisitos" className="text-[9px] font-black uppercase tracking-widest text-muted-foreground ml-1">
+          <div className="self-end space-y-1.5">
+            <Label htmlFor="hasPrerequisitos" className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground">
               Con prerequisitos
             </Label>
-            <div className="flex items-center h-9">
+            <div className="flex items-center min-h-[2rem]">
               <Switch
                 id="hasPrerequisitos"
                 checked={filterHasPrerequisitos}
@@ -1026,43 +1015,47 @@ export function PlanEstudiosClient() {
       </div>
 
       {loading ? (
-        <div className="flex justify-center py-20">
-          <div className="h-8 w-8 rounded-full border-2 border-primary border-t-transparent animate-spin" />
+        <div className="flex justify-center py-12">
+          <div className="h-6 w-6 rounded-full border-2 border-primary border-t-transparent animate-spin" />
         </div>
       ) : (
         <>
           {/* Pagination controls for cycles - only show if no specific cycle selected and no search term */}
           {filterCiclo === "all" && !searchTerm && nonEmptyCiclos.length > 0 && (
-            <div className="flex items-center justify-between bg-card p-3 rounded-xl border border-border shadow-sm">
-              <Button
-                variant="ghost"
-                onClick={() => setCurrentCycleIndex((prev) => Math.max(0, prev - 1))}
-                disabled={currentCycleIndex === 0}
-                className="h-8 rounded-lg text-[11px] font-bold"
-              >
-                <ChevronLeft className="h-3.5 w-3.5 mr-1" />
-                Anterior
-              </Button>
-              <div className="flex items-center gap-2 min-w-0">
-                <BookOpen className="h-4 w-4 text-primary shrink-0" />
-                <div className="min-w-0 text-center">
-                  <h3 className="text-[11px] font-bold text-foreground truncate">
-                    {currentCiclo?.nombre || "Sin resultados"}
-                  </h3>
-                  <p className="text-[9px] text-muted-foreground">
-                    {currentCiclo ? `${currentCiclo.cursos.length} cursos` : "—"}
-                  </p>
+            <div className="page-table-card">
+              <div className="flex items-center justify-between px-4 py-1">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentCycleIndex((prev) => Math.max(0, prev - 1))}
+                  disabled={currentCycleIndex === 0}
+                  className="text-xs h-7 px-2"
+                >
+                  <ChevronLeft className="h-3.5 w-3.5 mr-0.5" />
+                  Anterior
+                </Button>
+                <div className="flex items-center gap-1.5 min-w-0">
+                  <BookOpen className="h-3.5 w-3.5 text-primary shrink-0" />
+                  <div className="min-w-0 text-center">
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground truncate">
+                      {currentCiclo?.nombre || "Sin resultados"}
+                    </h3>
+                    <p className="text-[11px] text-muted-foreground">
+                      {currentCiclo ? `${currentCiclo.cursos.length} cursos` : "—"}
+                    </p>
+                  </div>
                 </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={() => setCurrentCycleIndex((prev) => Math.min(nonEmptyCiclos.length - 1, prev + 1))}
+                  disabled={currentCycleIndex === nonEmptyCiclos.length - 1}
+                  className="text-xs h-7 px-2"
+                >
+                  Siguiente
+                  <ChevronRight className="h-3.5 w-3.5 ml-0.5" />
+                </Button>
               </div>
-              <Button
-                variant="ghost"
-                onClick={() => setCurrentCycleIndex((prev) => Math.min(nonEmptyCiclos.length - 1, prev + 1))}
-                disabled={currentCycleIndex === nonEmptyCiclos.length - 1}
-                className="h-8 rounded-lg text-[11px] font-bold"
-              >
-                Siguiente
-                <ChevronRight className="h-3.5 w-3.5 ml-1" />
-              </Button>
             </div>
           )}
 
@@ -1111,87 +1104,100 @@ export function PlanEstudiosClient() {
             }
 
             return (
-              <div className="bg-card rounded-xl border border-border shadow-sm overflow-hidden">
+              <div className="page-table-card">
                 {displayTitle && (
-                  <div className="bg-muted/50 px-4 py-2 border-b border-border">
-                    <h3 className="text-[11px] font-bold text-foreground flex items-center gap-2">
+                  <div className="bg-muted/50 px-3 py-1.5 border-b border-border">
+                    <h3 className="text-xs sm:text-sm font-bold text-foreground flex items-center gap-1.5">
                       <BookOpen className="h-3.5 w-3.5 text-primary" />
                       {displayTitle}
                     </h3>
                   </div>
                 )}
-                <div className="overflow-x-auto">
-                  <Table className="min-w-[900px] w-full">
+                <Table className="w-full" style={{ tableLayout: 'fixed' }}>
+                    <colgroup>
+                      <col style={{ width: '32%' }} />
+                      <col style={{ width: '6%' }} />
+                      <col style={{ width: '7%' }} />
+                      <col style={{ width: '16%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '5%' }} />
+                      <col style={{ width: '14%' }} />
+                      {isAdminOrSecretaria && <col style={{ width: '10%' }} />}
+                    </colgroup>
                     <TableHeader className="bg-muted/50">
                       <TableRow className="border-b border-border hover:bg-transparent">
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 w-20">Cód.</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden md:table-cell">Depto.</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-14">Tipo</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-10">T</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-10">P</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-10">L</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center w-14">Créd.</TableHead>
-                        <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Prereq.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2">Curso</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Créd.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">Tipo</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Prereq.</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">T</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">P</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-center">L</TableHead>
+                        <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 hidden lg:table-cell">Depto.</TableHead>
                         {isAdminOrSecretaria && (
-                          <TableHead className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
+                          <TableHead className="text-xs font-bold text-muted-foreground uppercase tracking-widest px-4 py-2 text-right">Acciones</TableHead>
                         )}
                       </TableRow>
                     </TableHeader>
                     <TableBody className="divide-y divide-border">
                       {displayCursos.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={isAdminOrSecretaria ? 10 : 9} className="py-10 text-center text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="py-8 text-center text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                             No hay cursos para mostrar
                           </TableCell>
                         </TableRow>
                       ) : (
                         displayCursos.map((curso) => (
                           <TableRow key={curso.id_curso} className="group hover:bg-muted/50 transition-colors">
-                            <TableCell className="px-4 py-2">
-                              <span className="font-mono text-[9px] font-bold text-muted-foreground">{curso.codigo}</span>
+                            <TableCell className="page-table-td">
+                              <div className="flex flex-col min-w-0">
+                                <span className="font-bold text-foreground leading-tight truncate">{curso.nombre}</span>
+                                <span className="font-mono text-[11px] text-muted-foreground">{curso.codigo}</span>
+                              </div>
                             </TableCell>
-                            <TableCell className="px-4 py-2">
-                              <span className="font-bold text-foreground text-[11px] leading-tight">{curso.nombre}</span>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.creditos}</span>
                             </TableCell>
-                            <TableCell className="px-4 py-2 hidden md:table-cell">
-                              <span className="text-[10px] font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-center">
+                            <TableCell className="page-table-td text-center">
                               {getTipoBadge(curso.tipo_curso)}
                             </TableCell>
-                            <TableCell className="px-4 py-2 text-center">
-                              <span className="text-[10px] font-bold text-foreground">{curso.horas_teoria}</span>
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-center">
-                              <span className="text-[10px] font-bold text-foreground">{curso.horas_practica}</span>
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-center">
-                              <span className="text-[10px] font-bold text-foreground">{curso.horas_laboratorio}</span>
-                            </TableCell>
-                            <TableCell className="px-4 py-2 text-center">
-                              <span className="text-[10px] font-bold text-foreground">{curso.creditos}</span>
-                            </TableCell>
-                            <TableCell className="px-4 py-2 hidden lg:table-cell">
+                            <TableCell className="page-table-td hidden lg:table-cell">
                               <div className="flex flex-wrap gap-1">
                                 {curso.prerequisitos_rel.length === 0 ? (
-                                  <span className="text-xs text-muted-foreground italic">Ninguno</span>
+                                  <span className="text-[11px] text-muted-foreground italic">Ninguno</span>
                                 ) : (
                                   curso.prerequisitos_rel.map((p) => (
-                                    <Badge key={p.id_prerequisito_curso} variant="secondary" className="text-xs">
+                                    <Badge key={p.id_prerequisito_curso} variant="secondary" className="text-[11px] px-1.5 py-0">
                                       {p.prerequisito.codigo}
                                     </Badge>
                                   ))
                                 )}
                               </div>
                             </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.horas_teoria}</span>
+                            </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.horas_practica}</span>
+                            </TableCell>
+                            <TableCell className="page-table-td text-center">
+                              <span className="font-bold text-foreground">{curso.horas_laboratorio}</span>
+                            </TableCell>
+                            <TableCell className="page-table-td hidden lg:table-cell">
+                              <span className="text-[11px] font-bold text-muted-foreground">{curso.departamento_responsable || "-"}</span>
+                            </TableCell>
                             {isAdminOrSecretaria && (
-                              <TableCell className="px-4 py-2">
+                              <TableCell className="page-table-td text-right">
                                 <div className="flex items-center justify-end gap-1">
-                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar" className="h-7 w-7 rounded-lg hover:bg-amber-500/10 hover:text-amber-600 transition-all">
+                                  <Button variant="ghost" size="icon" onClick={() => handleEdit(curso)} title="Editar"
+                                    className="h-7 w-7 rounded-lg hover:bg-blue-500/10 hover:text-blue-600 transition-all"
+                                  >
                                     <Edit className="h-3.5 w-3.5" />
                                   </Button>
-                                  <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar" className="h-7 w-7 rounded-lg hover:bg-rose-500/10 hover:text-rose-600 transition-all">
+                                  <Button variant="ghost" size="icon" onClick={() => { setDeletingId(curso.id_curso); setIsDeleteDialogOpen(true); }} title="Eliminar"
+                                    className="h-7 w-7 rounded-lg hover:bg-red-500/10 hover:text-red-600 transition-all"
+                                  >
                                     <Trash2 className="h-3.5 w-3.5" />
                                   </Button>
                                 </div>
@@ -1202,26 +1208,25 @@ export function PlanEstudiosClient() {
                       )}
                       {displayCursos.length > 0 && (
                         <TableRow className="bg-muted/30 font-bold">
-                          <TableCell colSpan={isAdminOrSecretaria ? 9 : 8} className="px-4 py-2 text-right text-[10px] uppercase tracking-widest text-muted-foreground">
+                          <TableCell colSpan={isAdminOrSecretaria ? 8 : 7} className="page-table-td text-right text-[10px] uppercase tracking-widest text-muted-foreground">
                             Total créditos del ciclo:
                           </TableCell>
-                          <TableCell className="px-4 py-2 text-center text-[11px] font-black text-primary">
+                          <TableCell className="page-table-td text-center font-black text-primary">
                             {totalFinal}
                           </TableCell>
-                          {isAdminOrSecretaria && <TableCell></TableCell>}
+                          {isAdminOrSecretaria && <TableCell className="page-table-td"></TableCell>}
                         </TableRow>
                       )}
                     </TableBody>
                   </Table>
-                </div>
               </div>
             );
           })()}
 
           {/* If no cycles with courses */}
           {nonEmptyCiclos.length === 0 && (
-            <div className="bg-card rounded-xl border border-border shadow-sm p-8 text-center">
-              <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">
+            <div className="page-table-card p-6 text-center">
+              <p className="text-[11px] font-bold text-muted-foreground uppercase tracking-widest">
                 No hay cursos con los filtros seleccionados
               </p>
             </div>
@@ -1230,16 +1235,16 @@ export function PlanEstudiosClient() {
       )}
 
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-6 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
-            <AlertDialogTitle className="text-lg font-bold">¿Está completamente seguro?</AlertDialogTitle>
-            <AlertDialogDescription className="text-muted-foreground text-sm">
+            <AlertDialogTitle className="text-base font-bold">¿Está completamente seguro?</AlertDialogTitle>
+            <AlertDialogDescription className="text-muted-foreground text-xs">
               Esta acción no se puede deshacer. Se eliminará permanentemente el curso y sus relaciones de prerequisitos.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 mt-4">
-            <AlertDialogCancel className="h-9 rounded-lg font-bold text-[11px] border-border hover:bg-muted">Cancelar</AlertDialogCancel>
-            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="h-9 rounded-lg bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold text-[11px]">
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+            <AlertDialogCancel className="page-modal-alert-btn">Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={() => deletingId && handleDelete(deletingId)} className="page-modal-alert-btn bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Confirmar eliminación
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -1247,19 +1252,19 @@ export function PlanEstudiosClient() {
       </AlertDialog>
 
       <AlertDialog open={isErrorDialogOpen} onOpenChange={setIsErrorDialogOpen}>
-        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-6 bg-card text-foreground">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             {dependencias.length > 0 ? (
               <>
-                <div className="flex items-center gap-3 text-destructive mb-2">
-                  <AlertCircle className="h-5 w-5 shrink-0" />
-                  <AlertDialogTitle className="text-lg font-bold">No se puede eliminar este curso</AlertDialogTitle>
+                <div className="flex items-center gap-2 text-destructive mb-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <AlertDialogTitle className="text-base font-bold">No se puede eliminar este curso</AlertDialogTitle>
                 </div>
-                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-4 rounded-xl border border-destructive/10">
+                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-3 rounded-lg border border-destructive/10 text-xs">
                   Este curso es prerequisito de los siguientes cursos:
                   <ul className="mt-2 list-disc list-inside">
                     {dependencias.map((dep, idx) => (
-                      <li key={idx} className="font-bold">
+                      <li key={idx} className="font-bold text-xs">
                         [{dep.codigo}] {dep.nombre}
                       </li>
                     ))}
@@ -1268,18 +1273,18 @@ export function PlanEstudiosClient() {
               </>
             ) : (
               <>
-                <div className="flex items-center gap-3 text-destructive mb-2">
-                  <AlertCircle className="h-5 w-5 shrink-0" />
-                  <AlertDialogTitle className="text-lg font-bold">Error al eliminar</AlertDialogTitle>
+                <div className="flex items-center gap-2 text-destructive mb-1.5">
+                  <AlertCircle className="h-4 w-4 shrink-0" />
+                  <AlertDialogTitle className="text-base font-bold">Error al eliminar</AlertDialogTitle>
                 </div>
-                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-4 rounded-xl border border-destructive/10">
+                <AlertDialogDescription className="text-muted-foreground font-medium bg-destructive/5 p-3 rounded-lg border border-destructive/10 text-xs">
                   {errorMessage}
                 </AlertDialogDescription>
               </>
             )}
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4">
-            <AlertDialogAction onClick={() => { setIsErrorDialogOpen(false); setDependencias([]); }} className="h-9 rounded-lg bg-muted text-foreground hover:bg-muted/80 font-bold text-[11px] px-8">
+          <AlertDialogFooter>
+            <AlertDialogAction onClick={() => { setIsErrorDialogOpen(false); setDependencias([]); }} className="bg-muted text-foreground hover:bg-muted/80 text-xs">
               Entendido
             </AlertDialogAction>
           </AlertDialogFooter>

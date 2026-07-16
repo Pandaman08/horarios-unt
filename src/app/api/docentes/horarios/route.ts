@@ -44,11 +44,6 @@ export async function GET(request: Request) {
         { status: 404 }
       );
     }
-    
-    if (!periodo.activo) {
-      // SI EL PERÍODO NO ESTÁ ACTIVO, DEVOLVER LISTA VACÍA
-      return NextResponse.json([]);
-    }
 
     // Buscar el docente por el id_usuario de la sesión
     const docente = await prisma.docente.findUnique({
@@ -75,8 +70,11 @@ export async function GET(request: Request) {
             codigo: true,
             nombre: true,
             creditos: true,
-            ciclo_rel: true
-          }
+            horas_teoria: true,
+            horas_practica: true,
+            horas_laboratorio: true,
+            ciclo_rel: true,
+          },
         },
         grupo: {
           select: {
@@ -99,8 +97,57 @@ export async function GET(request: Request) {
       ]
     });
 
+    const cursosMap = new Map<string, {
+      key: string;
+      numero: number;
+      codigo: string;
+      nombre: string;
+      ciclo: string;
+      grupo: string;
+      teoria: number;
+      practica: number;
+      laboratorio: number;
+    }>();
+
+    for (const h of horarios) {
+      const key = `${h.id_curso}-${h.id_grupo}`;
+      if (!cursosMap.has(key)) {
+        cursosMap.set(key, {
+          key,
+          numero: cursosMap.size + 1,
+          codigo: h.curso.codigo,
+          nombre: h.curso.nombre,
+          ciclo: h.curso.ciclo_rel
+            ? (h.curso.ciclo_rel.nombre || `${h.curso.ciclo_rel.numero}°`)
+            : "—",
+          grupo: h.grupo.codigo_grupo,
+          teoria: h.curso.horas_teoria ?? 0,
+          practica: h.curso.horas_practica ?? 0,
+          laboratorio: h.curso.horas_laboratorio ?? 0,
+        });
+      }
+    }
+    const cursosLeyenda = Array.from(cursosMap.values());
+
     // Formatear respuesta
-    const horariosFormato = horarios.map((h: any) => ({
+    const horariosFormato: Array<{
+      id_carga_no_lectiva?: number;
+      id_asignacion: number | null;
+      id_curso: number | null;
+      id_grupo: number | null;
+      id_ambiente: number | null;
+      curso_codigo: string;
+      curso_nombre: string;
+      grupo_codigo: string;
+      ambiente_codigo: string;
+      ambiente_nombre: string;
+      tipo_clase: string;
+      dia_semana: number;
+      hora_inicio: string;
+      hora_fin: string;
+      ciclo_nombre: string;
+      is_no_lectiva: boolean;
+    }> = horarios.map((h: any) => ({
       id_asignacion: h.id_asignacion,
       id_curso: h.id_curso,
       id_grupo: h.id_grupo,
@@ -132,32 +179,52 @@ export async function GET(request: Request) {
       }
     });
 
-    if (declaracion?.cargas_no_lectivas?.length) {
-      declaracion.cargas_no_lectivas.forEach((carga: any) => {
+    const estadoDeclaracion = declaracion?.estado ?? null;
+    const cargaAprobadaPorDecano = estadoDeclaracion === "APROBADO";
+
+    const cargasNL = cargaAprobadaPorDecano
+      ? (declaracion?.cargas_no_lectivas ?? [])
+      : [];
+    const noLectivasLeyenda = cargasNL.map((carga: (typeof cargasNL)[number], idx: number) => ({
+      id_carga_no_lectiva: carga.id_carga_no_lectiva,
+      numero: idx + 1,
+      tipo: String(carga.tipo).replace(/_/g, " "),
+      descripcion: carga.descripcion || String(carga.tipo).replace(/_/g, " "),
+      horasSemanales: carga.horas_semanales ?? 0,
+    }));
+
+    if (cargasNL.length) {
+      cargasNL.forEach((carga: any) => {
         (carga.horarios || []).forEach((horario: any) => {
           horariosFormato.push({
             id_carga_no_lectiva: carga.id_carga_no_lectiva,
-            id_asignacion: undefined,
+            id_asignacion: null,
             id_curso: null,
             id_grupo: null,
             id_ambiente: null,
             curso_codigo: carga.tipo || "NOLECT",
             curso_nombre: carga.descripcion || carga.tipo || "Carga no lectiva",
             grupo_codigo: "",
-            ambiente_codigo: "",
-            ambiente_nombre: "",
+            ambiente_codigo: carga.ambiente || "",
+            ambiente_nombre: carga.ambiente || "",
             tipo_clase: "No lectiva",
             dia_semana: DIA_MAP[horario.dia?.toString().toUpperCase()] ?? 0,
             hora_inicio: horario.horaInicio,
             hora_fin: horario.horaFin,
-            ciclo_nombre: carga.cargo?.nombre || "No lectiva",
+            ciclo_nombre: String(carga.tipo).replace(/_/g, " "),
             is_no_lectiva: true,
           });
         });
       });
     }
 
-    return NextResponse.json(horariosFormato);
+    return NextResponse.json({
+      horarios: horariosFormato,
+      cursosLeyenda,
+      noLectivasLeyenda,
+      estadoDeclaracion,
+      cargaAprobadaPorDecano,
+    });
   } catch (error) {
     console.error("Error al obtener horarios:", error);
     return NextResponse.json(

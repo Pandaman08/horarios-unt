@@ -5,12 +5,8 @@ import { useSession } from "next-auth/react";
 import { toast } from "sonner";
 import { format, parse, addMinutes } from "date-fns";
 import { Button } from "@/components/ui/button";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+import {Select, 
+  SelectContent, SelectItem, SelectTrigger,SelectValue,
 } from "@/components/ui/select";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
@@ -48,12 +44,12 @@ import { cn } from "@/lib/utils";
 import { usePeriodo } from "@/contexts/PeriodoContext";
 
 const DIAS = [
-  { id: 1, nombre: "Lunes" },
-  { id: 2, nombre: "Martes" },
-  { id: 3, nombre: "Miércoles" },
-  { id: 4, nombre: "Jueves" },
-  { id: 5, nombre: "Viernes" },
-  { id: 6, nombre: "Sábado" },
+  { id: 0, nombre: "Lunes" },
+  { id: 1, nombre: "Martes" },
+  { id: 2, nombre: "Miércoles" },
+  { id: 3, nombre: "Jueves" },
+  { id: 4, nombre: "Viernes" },
+  { id: 5, nombre: "Sábado" },
 ];
 
 interface DisponibilidadItem {
@@ -88,8 +84,11 @@ export function DisponibilidadDocenteView() {
     let current = parse("07:00", "HH:mm", new Date());
     const end = parse("22:00", "HH:mm", new Date());
 
-    while (current <= end) {
-      slots.push(format(current, "HH:mm"));
+    while (current < end) {
+      const horaStr = format(current, "HH:mm");
+      if (horaStr !== "12:00") {
+        slots.push(horaStr);
+      }
       current = addMinutes(current, 60);
     }
     return slots;
@@ -292,7 +291,7 @@ export function DisponibilidadDocenteView() {
           </div>
           <CardContent className="p-4 space-y-4">
             <div className="space-y-2">
-              <Label className="text-[11px] font-bold text-muted-foreground uppercase">Seleccionar Periodo</Label>
+              <Label className="text-sm font-bold text-muted-foreground uppercase">Seleccionar Periodo</Label>
               <Select value={selectedPeriodo} onValueChange={setSelectedPeriodo}>
                 <SelectTrigger className="w-full h-10 bg-background border-border focus:bg-background transition-all text-sm">
                   <SelectValue placeholder="Selecciona un periodo" />
@@ -315,10 +314,10 @@ export function DisponibilidadDocenteView() {
               <div className="flex items-start gap-2.5">
                 <Info className={cn("h-4 w-4 shrink-0 mt-0.5", esLectura ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400")} />
                 <div className="space-y-1">
-                  <p className={cn("text-[11px] font-bold uppercase tracking-tight", esLectura ? "text-amber-700 dark:text-amber-400" : "text-blue-700 dark:text-blue-400")}>
+                  <p className={cn("text-sm font-bold uppercase tracking-tight", esLectura ? "text-amber-700 dark:text-amber-400" : "text-blue-700 dark:text-blue-400")}>
                     {esLectura ? "Modo Lectura" : "Modo Edición"}
                   </p>
-                  <p className={cn("text-[10px] leading-tight font-medium", esLectura ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400")}>
+                  <p className={cn("text-xs leading-tight font-medium", esLectura ? "text-amber-600 dark:text-amber-400" : "text-blue-600 dark:text-blue-400")}>
                     {esLectura 
                       ? "Este periodo está finalizado o inactivo." 
                       : "Tus cambios afectan directamente a la generación automática."}
@@ -341,7 +340,7 @@ export function DisponibilidadDocenteView() {
             <div className="grid grid-cols-3 gap-2 mb-4">
               {diaActual.map((dia) => (
                 <div key={dia.id} className="p-2 rounded-lg bg-muted border border-border text-center">
-                  <p className="text-[10px] font-bold text-muted-foreground uppercase">{dia.nombre.slice(0, 3)}</p>
+                  <p className="text-xs font-bold text-muted-foreground uppercase">{dia.nombre.slice(0, 3)}</p>
                   <p className="text-sm font-black text-foreground">{dia.count}h</p>
                 </div>
               ))}
@@ -349,17 +348,17 @@ export function DisponibilidadDocenteView() {
             <div className="pt-4 border-t border-border space-y-3">
               {horasMaximas > 0 && (
                 <div className="p-3 rounded-lg border border-blue-200 dark:border-blue-900/50 bg-blue-50 dark:bg-blue-950/30">
-                  <p className="text-[10px] font-bold uppercase text-blue-700 dark:text-blue-400">Límite según condición</p>
+                  <p className="text-xs font-bold uppercase text-blue-700 dark:text-blue-400">Límite según condición</p>
                   <p className="text-xs font-black text-blue-800 dark:text-blue-300 mt-1">{horasMaximas}h semanales máx.</p>
                   {etiquetaRegimen && (
-                    <p className="text-[10px] text-blue-600 dark:text-blue-400 mt-1 leading-snug">{etiquetaRegimen}</p>
+                    <p className="text-xs text-blue-600 dark:text-blue-400 mt-1 leading-snug">{etiquetaRegimen}</p>
                   )}
                 </div>
               )}
               <div className="flex justify-between items-center p-3 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg border border-emerald-200 dark:border-emerald-900/50">
                 <div className="flex flex-col">
-                  <span className="text-[11px] font-bold uppercase text-emerald-600 dark:text-emerald-400 tracking-tight">Total Disponible</span>
-                  <span className="text-[9px] text-muted-foreground font-medium">En toda la semana</span>
+                  <span className="text-sm font-bold uppercase text-emerald-600 dark:text-emerald-400 tracking-tight">Total Disponible</span>
+                  <span className="text-xs text-muted-foreground font-medium">En toda la semana</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <span className={cn(
@@ -421,9 +420,9 @@ export function DisponibilidadDocenteView() {
               <Table>
                 <TableHeader className="bg-muted/30">
                   <TableRow className="hover:bg-transparent">
-                    <TableHead className="text-[10px] font-bold uppercase text-muted-foreground px-4 h-10 w-32 border-r border-border">Hora</TableHead>
+                    <TableHead className="text-xs font-bold uppercase text-muted-foreground px-4 h-10 w-32 border-r border-border">Hora</TableHead>
                     {DIAS.map((dia) => (
-                      <TableHead key={dia.id} className="text-[10px] font-bold uppercase text-muted-foreground px-2 h-10 text-center">{dia.nombre}</TableHead>
+                      <TableHead key={dia.id} className="text-xs font-bold uppercase text-muted-foreground px-2 h-10 text-center">{dia.nombre}</TableHead>
                     ))}
                   </TableRow>
                 </TableHeader>
@@ -435,7 +434,7 @@ export function DisponibilidadDocenteView() {
                     );
                     return (
                       <TableRow key={hora} className={cn("hover:bg-muted/30 border-border", idx % 2 === 0 ? "bg-background" : "bg-muted/20")}>
-                        <TableCell className="px-4 py-2 text-[11px] font-bold text-foreground border-r border-border bg-muted/30">
+                        <TableCell className="px-4 py-2 text-sm font-bold text-foreground border-r border-border bg-muted/30">
                           {hora} - {siguienteHora}
                         </TableCell>
                         {DIAS.map((dia) => {
@@ -490,7 +489,7 @@ export function DisponibilidadDocenteView() {
 
       {/* Alert Dialog para confirmación */}
       <AlertDialog open={showConfirm} onOpenChange={setShowConfirm}>
-        <AlertDialogContent className="rounded-xl border-none shadow-2xl p-6 bg-card max-w-[400px]">
+        <AlertDialogContent className="page-modal-alert">
           <AlertDialogHeader>
             <div className="h-10 w-10 bg-emerald-50 dark:bg-emerald-950/30 rounded-lg flex items-center justify-center mb-4">
               <Save className="h-5 w-5 text-emerald-600 dark:text-emerald-400" />
@@ -500,13 +499,13 @@ export function DisponibilidadDocenteView() {
               ¿Estás seguro de que deseas guardar tu nueva disponibilidad? Esta información será utilizada por el sistema para la generación de horarios del periodo.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-2 mt-6">
-            <AlertDialogCancel className="h-10 rounded-lg font-bold border-border text-foreground hover:bg-muted text-xs uppercase">
+          <AlertDialogFooter className="flex flex-col-reverse sm:flex-row sm:justify-end gap-2 mt-4">
+            <AlertDialogCancel className="page-modal-alert-btn">
               Cancelar
             </AlertDialogCancel>
             <AlertDialogAction 
               onClick={handleSave} 
-              className="h-10 rounded-lg bg-emerald-600 text-white hover:bg-emerald-700 font-bold px-6 text-xs uppercase shadow-md shadow-emerald-100"
+              className="page-modal-alert-btn bg-emerald-600 text-white hover:bg-emerald-700"
             >
               Sí, Guardar Cambios
             </AlertDialogAction>

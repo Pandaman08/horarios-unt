@@ -14,7 +14,7 @@ export const ChatWindow = ({ messages, isLoading }: ChatWindowProps) => {
     <div className="flex flex-col h-full bg-background border rounded-lg shadow-sm overflow-hidden">
       <div className="p-4 border-b bg-primary/5">
         <h3 className="font-semibold text-sm">Asistente UNT</h3>
-        <p className="text-[10px] text-muted-foreground">Chatbot con IA para gestión de horarios</p>
+        <p className="text-xs text-muted-foreground">Chatbot con IA para gestión de horarios</p>
       </div>
 
       <div className="flex-1 p-4 overflow-y-auto">
@@ -36,7 +36,7 @@ export const ChatWindow = ({ messages, isLoading }: ChatWindowProps) => {
               )}
             >
               <span className="whitespace-pre-wrap">{msg.content}</span>
-              <span className="text-[10px] opacity-70 mt-1 self-end">
+              <span className="text-xs opacity-70 mt-1 self-end">
                 {new Date(msg.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
               </span>
             </div>

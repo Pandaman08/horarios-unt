@@ -57,7 +57,7 @@ export function ProgresoCursos({
         </div>
         <div>
           <h3 className="text-xs font-bold text-foreground">Carga académica</h3>
-          <p className="text-[10px] text-muted-foreground">
+          <p className="text-xs text-muted-foreground">
             {cursos.length} curso{cursos.length !== 1 ? "s" : ""} aprobado{cursos.length !== 1 ? "s" : ""}
           </p>
         </div>
@@ -68,12 +68,12 @@ export function ProgresoCursos({
           <div className="p-5 text-center rounded-xl border border-dashed border-border bg-muted/30 space-y-2">
             <BookOpen className="h-8 w-8 text-muted-foreground/40 mx-auto" />
             <p className="text-xs font-semibold text-foreground">Sin cursos</p>
-            <p className="text-[10px] text-muted-foreground leading-relaxed">
+            <p className="text-xs text-muted-foreground leading-relaxed">
               Requiere carga horaria aprobada y grupos en el período.
             </p>
             <div className="inline-flex items-center gap-1.5 px-2 py-1 rounded-md bg-amber-500/10 border border-amber-500/20">
               <AlertCircle className="h-3 w-3 text-amber-600" />
-              <span className="text-[9px] font-semibold text-amber-700">Pendiente</span>
+              <span className="text-xs font-semibold text-amber-700">Pendiente</span>
             </div>
           </div>
         ) : (
@@ -104,7 +104,7 @@ export function ProgresoCursos({
                   <div className="min-w-0 flex-1">
                     <p
                       className={cn(
-                        "text-[11px] font-bold leading-snug line-clamp-2",
+                        "text-sm font-bold leading-snug line-clamp-2",
                         seleccionado ? "text-primary-foreground" : "text-foreground"
                       )}
                     >
@@ -112,7 +112,7 @@ export function ProgresoCursos({
                     </p>
                     <p
                       className={cn(
-                        "text-[10px] font-mono mt-0.5",
+                        "text-xs font-mono mt-0.5",
                         seleccionado ? "text-primary-foreground/70" : "text-muted-foreground"
                       )}
                     >
@@ -122,7 +122,7 @@ export function ProgresoCursos({
                   <div className="flex flex-col items-end gap-1 shrink-0">
                     <span
                       className={cn(
-                        "px-1.5 py-0.5 rounded text-[8px] font-bold uppercase border",
+                        "px-1.5 py-0.5 rounded text-xs font-bold uppercase border",
                         tipoColor(curso.tipo_clase, seleccionado)
                       )}
                     >
@@ -140,7 +140,7 @@ export function ProgresoCursos({
                 </div>
 
                 <div className="space-y-1">
-                  <div className="flex justify-between items-center text-[9px] font-semibold uppercase tracking-wide">
+                  <div className="flex justify-between items-center text-xs font-semibold uppercase tracking-wide">
                     <span className={seleccionado ? "text-primary-foreground/70" : "text-muted-foreground"}>
                       Horas
                     </span>

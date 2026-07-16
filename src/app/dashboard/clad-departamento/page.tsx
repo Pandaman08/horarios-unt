@@ -194,48 +194,56 @@ export default function CladDepartamentoPage() {
                             Revisar
                           </Button>
                         </DialogTrigger>
-                        <DialogContent className="max-w-3xl">
-                          <DialogHeader>
-                            <DialogTitle>Revisar CLAD</DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <DialogContent className="page-modal-lg">
+                          <DialogHeader className="page-modal-header">
+                            <div className="flex items-center gap-3">
+                              <div className="h-9 w-9 bg-primary/10 rounded-lg flex items-center justify-center border border-primary/20 shrink-0">
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                              </div>
                               <div>
-                                <p className="text-sm font-medium text-muted-foreground">Docente</p>
+                                <DialogTitle className="text-base font-bold text-foreground">Revisar CLAD</DialogTitle>
+                                <p className="text-xs text-muted-foreground mt-0.5">Validar carga lectiva adicional del docente</p>
+                              </div>
+                            </div>
+                          </DialogHeader>
+                          <div className="page-modal-body space-y-4">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Docente</p>
                                 <p className="font-medium">{clad.docente.nombres} {clad.docente.apellidos}</p>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Curso</p>
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Curso</p>
                                 <p className="font-medium">{clad.curso}</p>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Dependencia</p>
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Dependencia</p>
                                 <p className="font-medium">{DEPENDENCIAS.find(d => d.value === clad.dependencia)?.label}</p>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Sede</p>
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Sede</p>
                                 <p className="font-medium">{clad.sede?.nombre}</p>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Número de Resolución</p>
-                                <p className="font-medium">{clad.numeroResolucion || '-'} </p>
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Número de Resolución</p>
+                                <p className="font-medium">{clad.numeroResolucion || '-'}</p>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Total Horas</p>
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Total Horas</p>
                                 <p className="font-medium">{clad.totalHoras}h</p>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Fecha Inicio</p>
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Fecha Inicio</p>
                                 <p className="font-medium">{new Date(clad.fechaInicio).toLocaleDateString('es-PE')}</p>
                               </div>
-                              <div>
-                                <p className="text-sm font-medium text-muted-foreground">Fecha Fin</p>
+                              <div className="page-modal-field">
+                                <p className="page-modal-label">Fecha Fin</p>
                                 <p className="font-medium">{new Date(clad.fechaFin).toLocaleDateString('es-PE')}</p>
                               </div>
                             </div>
 
                             <div className="space-y-2">
-                              <p className="text-sm font-medium text-muted-foreground">Horarios</p>
+                              <p className="page-modal-label">Horarios</p>
                               <div className="grid grid-cols-1 md:grid-cols-2 gap-2">
                                 {clad.horarios.map(horario => (
                                   <div key={horario.id} className="p-2 border rounded-md bg-muted flex items-center gap-3">
@@ -248,9 +256,9 @@ export default function CladDepartamentoPage() {
                               </div>
                             </div>
 
-                            <div className="space-y-2">
-                              <p className="text-sm font-medium text-muted-foreground">Observaciones</p>
-                              <Textarea 
+                            <div className="page-modal-field">
+                              <p className="page-modal-label">Observaciones</p>
+                              <Textarea
                                 placeholder="Agrega observaciones (requerido para rechazar)"
                                 value={observaciones}
                                 onChange={e => setObservaciones(e.target.value)}
@@ -258,20 +266,24 @@ export default function CladDepartamentoPage() {
                               />
                             </div>
 
-                            <div className="flex gap-3 justify-end pt-4 border-t">
-                              <Button 
-                                variant="destructive" 
-                                onClick={() => handleRechazar(clad)}
-                              >
-                                <XCircle className="w-4 h-4 mr-2" />
-                                Rechazar
-                              </Button>
-                              <Button 
-                                onClick={() => handleAprobar(clad)}
-                              >
-                                <CheckCircle2 className="w-4 h-4 mr-2" />
-                                Aprobar
-                              </Button>
+                            <div className="page-modal-footer border-t border-border pt-4">
+                              <div className="page-actions-row justify-end gap-2">
+                                <Button
+                                  variant="destructive"
+                                  className="page-modal-btn-submit bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  onClick={() => handleRechazar(clad)}
+                                >
+                                  <XCircle className="w-4 h-4 mr-2" />
+                                  Rechazar
+                                </Button>
+                                <Button
+                                  className="page-modal-btn-submit"
+                                  onClick={() => handleAprobar(clad)}
+                                >
+                                  <CheckCircle2 className="w-4 h-4 mr-2" />
+                                  Aprobar
+                                </Button>
+                              </div>
                             </div>
                           </div>
                         </DialogContent>

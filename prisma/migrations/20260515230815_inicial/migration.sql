@@ -1,3 +1,4 @@
+s
 -- CreateTable
 CREATE TABLE "Usuario" (
     "id_usuario" SERIAL NOT NULL,
