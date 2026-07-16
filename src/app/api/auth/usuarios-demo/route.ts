@@ -1,11 +1,11 @@
 import { NextResponse } from 'next/server';
-import { PDFDocument, rgb } from 'pdf-lib';
+import PDFDocument from 'pdfkit';
 import { prisma } from '@/lib/prisma';
 
 export async function GET() {
   try {
-    console.log('[Usuarios PDF] Iniciando generación de PDF con pdf-lib...');
-    
+    console.log('[Usuarios PDF] Iniciando generación de PDF con PDFKit...');
+
     const usuarios = await prisma.usuario.findMany({
       select: {
         nombres: true,
@@ -20,93 +20,45 @@ export async function GET() {
 
     console.log(`[Usuarios PDF] Se encontraron ${usuarios.length} usuarios`);
 
-    // Crear documento PDF en landscape para más espacio
-    const pdfDoc = await PDFDocument.create();
-    let page = pdfDoc.addPage([792, 612]); // Landscape (ancho x alto)
-    const { width, height } = page.getSize();
-    
-    let y = height - 40;
-    const margin = 40;
-    const lineHeight = 15;
-
-    // Título
-    page.drawText('Usuarios de prueba - SGH UNT', {
-      x: margin,
-      y: y,
-      size: 18,
-      color: rgb(0, 0, 0),
+    const doc = new PDFDocument({
+      size: 'A4',
+      layout: 'landscape',
+      margin: 40,
     });
-    y -= lineHeight * 1.5;
 
-    page.drawText('Se incluyen todos los usuarios registrados en el sistema con sus datos de acceso para pruebas.', {
-      x: margin,
-      y: y,
-      size: 10,
-      color: rgb(0.3, 0.3, 0.3),
-    });
-    y -= lineHeight * 2;
+    const chunks: Buffer[] = [];
+    doc.on('data', (chunk: Buffer) => chunks.push(chunk));
 
-    // Encabezados de tabla (ajustados para landscape)
-    const colWidths = [55, 65, 65, 60, 85, 240, 50];
+    doc.font('Helvetica-Bold').fontSize(18).text('Usuarios de prueba - SGH UNT', { align: 'left' });
+    doc.font('Helvetica').fontSize(10).fillColor('#3f3f46').text('Se incluyen todos los usuarios registrados en el sistema con sus datos de acceso para pruebas.');
+    doc.moveDown(1.5);
+
     const headers = ['Código', 'Nombres', 'Apellidos', 'Rol', 'Contraseña', 'Correo', 'Estado'];
-    let x = margin;
+    const colWidths = [55, 65, 65, 60, 85, 240, 50];
+    const tableWidth = headers.reduce((sum, _header, index) => sum + colWidths[index], 0);
+    const startX = 40;
+    let y = doc.y;
 
-    // Fondo gris para encabezados
-    page.drawRectangle({
-      x: margin,
-      y: y - 12,
-      width: width - margin * 2,
-      height: 15,
-      color: rgb(0.95, 0.95, 0.95),
+    doc.fillColor('#f4f4f5').rect(startX, y - 4, tableWidth, 16).fill();
+    let currentX = startX;
+    headers.forEach((header, index) => {
+      doc.fillColor('#111827').font('Helvetica-Bold').fontSize(8).text(header, currentX + 4, y, { width: colWidths[index] - 8, lineGap: 0 });
+      currentX += colWidths[index];
     });
 
-    // Dibujar encabezados
-    for (let i = 0; i < headers.length; i++) {
-      page.drawText(headers[i], {
-        x: x,
-        y: y - 10,
-        size: 8,
-        color: rgb(0, 0, 0),
-      });
-      x += colWidths[i];
-    }
-    y -= lineHeight * 1.2;
+    y += 16;
+    doc.moveTo(startX, y).lineTo(startX + tableWidth, y).strokeColor('#d4d4d8').lineWidth(0.5).stroke();
+    y += 8;
 
-    // Dibujar línea separadora
-    page.drawLine({
-      start: { x: margin, y: y },
-      end: { x: width - margin, y: y },
-      thickness: 0.5,
-      color: rgb(0.8, 0.8, 0.8),
-    });
-    y -= lineHeight * 0.5;
-
-    // Dibujar filas de usuarios
-    const rowHeight = 12;
     let rowCount = 0;
-
     for (const usuario of usuarios) {
-      // Verificar si necesitamos una nueva página
-      if (y < margin + 20) {
-        page = pdfDoc.addPage([792, 612]);
-        y = 612 - 40;
-        page.drawText(`Página ${pdfDoc.getPages().length}`, {
-          x: width - 100,
-          y: 20,
-          size: 8,
-          color: rgb(0.5, 0.5, 0.5),
-        });
+      if (y > 420) {
+        doc.addPage({ size: 'A4', layout: 'landscape', margin: 40 });
+        y = 40;
       }
 
-      // Alternar color de fondo para mejor legibilidad
       if (rowCount % 2 === 0) {
-        page.drawRectangle({
-          x: margin,
-          y: y - rowHeight,
-          width: width - margin * 2,
-          height: rowHeight,
-          color: rgb(0.98, 0.98, 0.98),
-        });
+        doc.fillColor('#fafafa').rect(startX, y - 2, tableWidth, 14).fill();
       }
 
       const cols = [
@@ -114,61 +66,33 @@ export async function GET() {
         usuario.nombres || '',
         usuario.apellidos || '',
         usuario.rol || '',
-        usuario.codigo || 'N/A', // Contraseña = Código/DNI
-        usuario.correo_electronico || 'Sin correo', // Correo completo
+        usuario.codigo || 'N/A',
+        usuario.correo_electronico || 'Sin correo',
         usuario.activo ? 'Activo' : 'Inactivo',
       ];
 
-      x = margin;
-      for (let i = 0; i < cols.length; i++) {
-        let text = cols[i];
-        
-        // Solo truncar texto en columnas pequeñas (no en Correo)
-        if (i !== 5 && text.length > 12) {
-          text = text.substring(0, 9) + '...';
-        } else if (i === 5 && text.length > 35) {
-          text = text.substring(0, 32) + '...';
-        }
-        
-        page.drawText(text, {
-          x: x,
-          y: y - rowHeight + 2,
-          size: 7,
-          color: rgb(0, 0, 0),
-        });
-        x += colWidths[i];
-      }
+      currentX = startX;
+      cols.forEach((text, index) => {
+        const limit = colWidths[index] - 8;
+        const content = index === 5 && text.length > 35 ? `${text.slice(0, 32)}...` : index !== 5 && text.length > 12 ? `${text.slice(0, 9)}...` : text;
+        doc.fillColor('#111827').font('Helvetica').fontSize(7).text(content, currentX + 4, y, { width: limit, lineGap: 0 });
+        currentX += colWidths[index];
+      });
 
-      y -= rowHeight;
+      y += 14;
       rowCount++;
     }
 
-    // Pie de página en la página actual
-    page.drawLine({
-      start: { x: margin, y: y },
-      end: { x: width - margin, y: y },
-      thickness: 0.5,
-      color: rgb(0.8, 0.8, 0.8),
-    });
-    y -= lineHeight;
+    doc.fillColor('#52525b').font('Helvetica').fontSize(9).text(`Total de usuarios: ${usuarios.length}`, startX, y + 10);
+    doc.fillColor('#71717a').font('Helvetica').fontSize(8).text('NOTA: La contraseña es igual al código del usuario. Correo completo disponible para copiar.', startX, y + 22);
+    doc.end();
 
-    page.drawText(`Total de usuarios: ${usuarios.length}`, {
-      x: margin,
-      y: y,
-      size: 9,
-      color: rgb(0.3, 0.3, 0.3),
+    await new Promise<void>((resolve, reject) => {
+      doc.on('end', () => resolve());
+      doc.on('error', reject);
     });
 
-    page.drawText('NOTA: La contraseña es igual al código del usuario. Correo completo disponible para copiar.', {
-      x: margin,
-      y: y - 12,
-      size: 8,
-      color: rgb(0.5, 0.5, 0.5),
-    });
-
-    // Generar buffer
-    const pdfBytes = await pdfDoc.save();
-    const pdfBuffer = Buffer.from(pdfBytes);
+    const pdfBuffer = Buffer.concat(chunks);
     console.log(`[Usuarios PDF] PDF generado exitosamente, tamaño: ${pdfBuffer.length} bytes`);
 
     return new NextResponse(pdfBuffer, {

@@ -1,7 +1,8 @@
-import { NextResponse } from 'next/server';
+﻿import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
+import { generatePlanEstudiosPDF, generateCladPDF, generateDocenteHorarioPDF, createDocenteHorarioPdfDto } from '@/lib/pdf';
 import { GeneradorPDF } from '@/services/reportes/GeneradorPDF';
 import { ServicioEstadisticas } from '@/services/reportes/ServicioEstadisticas';
 
@@ -754,7 +755,8 @@ export async function GET(request: Request) {
       });
       
       console.log('Ciclos obtenidos:', ciclos.map((c: { numero: number; nombre: string; cursos: any[] }) => ({
-        numero: c.numero, nombre: c.nombre, cursos: c.cursos.length })));
+        numero: c.numero, nombre: c.nombre, cursos: c.cursos.length
+      })));
 
       // Get malla info for filename and title
       let filename = 'plan-de-estudios';
@@ -768,8 +770,7 @@ export async function GET(request: Request) {
         }
       }
 
-      const htmlContent = generarPlanEstudios(ciclos, malla);
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
+      const pdfBuffer = await generatePlanEstudiosPDF(ciclos, malla);
 
       return new NextResponse(pdfBuffer as unknown as BodyInit, {
         status: 200,
@@ -793,113 +794,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: 'CLAD no encontrado' }, { status: 404 });
       }
 
-      const DEPENDENCIAS_LABEL = {
-        FILIAL: 'Filial',
-        POSGRADO: 'Posgrado',
-        'SEGUNDA_ESPECIALIDAD': 'Segunda Especialidad',
-        'CENTRO_PRODUCCION': 'Centro de Producción',
-        'EXTENSION_UNIVERSITARIA': 'Extensión Universitaria'
-      };
-
-      const DIAS_LABEL = {
-        LU: 'Lunes', MA: 'Martes', MI: 'Miércoles', JU: 'Jueves', VI: 'Viernes', SA: 'Sábado'
-      };
-
-      const htmlContent = `
-<!DOCTYPE html>
-<html lang="es">
-<head>
-  <meta charset="UTF-8"/>
-  <title>CARGA LECTIVA ADICIONAL (CLAD)</title>
-  <style>
-    @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap');
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { font-family: 'Inter', sans-serif; padding: 30px; font-size: 12px; }
-    .header { text-align: center; margin-bottom: 25px; }
-    .header h1 { font-size: 16px; font-weight: 800; text-transform: uppercase; color: #003366; }
-    .docente-info { border: 2px solid #003366; padding: 15px; margin-bottom: 20px; border-radius: 6px; }
-    .docente-info .row { display: flex; gap: 20px; margin-bottom: 10px; }
-    .docente-info .label { font-weight: 700; color: #003366; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 20px; }
-    table td, table th { border: 1px solid #003366; padding: 8px; text-align: center; font-size: 11px; }
-    table th { background-color: #003366; color: white; font-weight: 700; }
-    .firmas { margin-top: 60px; display: grid; grid-template-columns: repeat(4, 1fr); gap: 20px; text-align: center; }
-    .firma-line { border-top: 1px solid #003366; margin-top: 50px; padding-top: 5px; font-weight: 600; }
-  </style>
-</head>
-<body>
-  <div class="header">
-    <h1>UNIVERSIDAD NACIONAL DE TRUJILLO</h1>
-    <h2 style="font-size: 14px; margin-top: 5px; color: #1e4d80;">FACULTAD DE INGENIERÍA</h2>
-    <h2 style="font-size: 15px; margin-top: 8px; font-weight: 800; color: #003366;">CARGA LECTIVA ADICIONAL (CLAD)</h2>
-  </div>
-
-  <div class="docente-info">
-    <div class="row">
-      <div><span class="label">DOCENTE:</span> ${clad.docente.nombres} ${clad.docente.apellidos}</div>
-      <div><span class="label">DNI:</span> ${clad.docente.dni || '—'}</div>
-      <div><span class="label">DPTO. ACADÉMICO:</span> ${clad.docente.departamentoId ? 'Ingeniería de Sistemas' : '—'}</div>
-    </div>
-    <div class="row">
-      <div><span class="label">FACULTAD:</span> ${clad.sede.nombre}</div>
-    </div>
-  </div>
-
-  <table>
-    <thead>
-      <tr>
-        <th>CURSO</th>
-        <th>DEPENDENCIA</th>
-        <th>N° RESOLUCIÓN</th>
-        <th>FECHA INICIO</th>
-        <th>FECHA FIN</th>
-        <th>TOTAL HORAS</th>
-        <th>HORARIO</th>
-      </tr>
-    </thead>
-    <tbody>
-      <tr>
-        <td>${clad.curso}</td>
-        <td>${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || clad.dependencia}</td>
-        <td>${clad.numeroResolucion || '—'}</td>
-        <td>${new Date(clad.fechaInicio).toLocaleDateString('es-PE')}</td>
-        <td>${new Date(clad.fechaFin).toLocaleDateString('es-PE')}</td>
-        <td>${clad.totalHoras}</td>
-        <td>
-          ${clad.horarios.map((h: { dia: string; horaInicio: string; horaFin: string }) => `${DIAS_LABEL[h.dia as keyof typeof DIAS_LABEL]}: ${h.horaInicio} - ${h.horaFin}`).join('<br/>')}
-        </td>
-      </tr>
-    </tbody>
-  </table>
-
-  ${clad.observaciones ? `<div style="margin-bottom: 20px;"><strong>Observaciones:</strong> ${clad.observaciones}</div>` : ''}
-
-  <div class="firmas">
-    <div>
-      <div class="firma-line">Profesor</div>
-      <div style="margin-top: 3px; font-size: 10px;">${clad.docente.nombres} ${clad.docente.apellidos}</div>
-    </div>
-    <div>
-      <div class="firma-line">Director de Departamento</div>
-      <div style="margin-top: 3px; font-size: 10px;">${clad.validador ? `${clad.validador.nombres} ${clad.validador.apellidos}` : '—'}</div>
-    </div>
-    <div>
-      <div class="firma-line">Decano</div>
-      <div style="margin-top: 3px; font-size: 10px;">—</div>
-    </div>
-    <div>
-      <div class="firma-line">Director de ${DEPENDENCIAS_LABEL[clad.dependencia as keyof typeof DEPENDENCIAS_LABEL] || 'Unidad Académica'}</div>
-      <div style="margin-top: 3px; font-size: 10px;">—</div>
-    </div>
-  </div>
-
-  <div style="margin-top: 20px; text-align: right; font-size: 10px; color: #666;">
-    Generado el ${new Date().toLocaleString('es-PE')} · Sistema de Gestión de Horarios UNT
-  </div>
-</body>
-</html>`;
-
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(htmlContent, false);
+      const pdfBuffer = await generateCladPDF(clad);
       const filename = `clad-${clad.docente.apellidos}-${new Date().toISOString().slice(0, 10)}`;
 
       return new NextResponse(pdfBuffer as unknown as BodyInit, {
@@ -1841,19 +1736,27 @@ export async function GET(request: Request) {
       isLandscape = true;
       reportTitle = `Horario Docente: ${docente.nombres} ${docente.apellidos}`;
 
-      const fullHTML = `<!DOCTYPE html><html lang="es"><head><meta charset="UTF-8"/><title>${reportTitle}</title>
-        <style>@import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700;800;900&display=swap');
-        * { box-sizing:border-box; margin:0; padding:0; } body { font-family:'Inter',sans-serif; }
-        @media print { body { -webkit-print-color-adjust:exact; print-color-adjust:exact; } }
-        </style></head><body>${generarReporteUNT({
+      const pdfDto = createDocenteHorarioPdfDto({
+        docente: {
+          id_docente: docente.id_docente,
+          nombres: docente.nombres,
+          apellidos: docente.apellidos,
+          codigo_docente: docente.codigo_docente ?? null,
+        },
+        periodo: {
+          id_periodo: periodo?.id_periodo ?? Number.parseInt(id_periodo),
+          nombre: periodo?.nombre ?? null,
+          anio: periodo?.anio ?? null,
+          semestre: typeof periodo?.semestre === 'string' ? periodo.semestre : null,
+        },
+        escuela: {
+          nombre: 'Escuela Profesional de Ingeniería de Sistemas',
+          codigo: 'SYS',
+        },
         horarios: docente.horarios_asignados ?? [],
-        titulo: reportTitle,
-        subtitulo: docente.codigo_docente ?? '',
-        periodo: periodo,
-        docenteNombre: `${docente.nombres} ${docente.apellidos}`,
-        paginaIndex: 0
-      })}</body></html>`;
-      const pdfBuffer = await GeneradorPDF.generarDesdeHTML(fullHTML, true);
+      });
+
+      const pdfBuffer = await generateDocenteHorarioPDF(pdfDto);
       return new Response(new Uint8Array(pdfBuffer), {
         headers: { 'Content-Type': 'application/pdf', 'Content-Disposition': `attachment; filename="reporte-docente-${docenteId}.pdf"`, 'Content-Length': pdfBuffer.length.toString() }
       });
@@ -2108,7 +2011,7 @@ export async function GET(request: Request) {
       const estadisticas = await ServicioEstadisticas.obtenerEstadisticasGestion(Number.parseInt(id_periodo));
       if (!estadisticas) return NextResponse.json({ error: 'No hay datos de gestión' }, { status: 404 });
 
-      const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: parseInt(id_periodo) } } } });
+      const docentesConCarga = await prisma.docente.findMany({ include: { horarios_asignados: { where: { id_periodo: Number.parseInt(id_periodo) } } } });
       const cargaDocentes = docentesConCarga.map((d: any) => {
         const horas = (d.horarios_asignados || []).reduce((acc: number, h: any) => {
           if (!h.hora_inicio || !h.hora_fin) return acc;

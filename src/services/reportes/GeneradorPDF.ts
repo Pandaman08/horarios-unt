@@ -1,145 +1,125 @@
-import { PDFDocument, rgb, StandardFonts } from 'pdf-lib';
-import type { TDocumentDefinitions } from 'pdfmake/interfaces';
+import PDFDocument from 'pdfkit';
+
+type PDFDocumentInstance = InstanceType<typeof PDFDocument>;
 
 export class GeneradorPDF {
-  static async generarDesdeHTML(
-    html: string,
-    landscape: boolean = false,
-  ): Promise<Buffer> {
-    try {
-      console.log('[GeneradorPDF] Iniciando generación de PDF con html-to-pdfmake...');
-
-      // Importar dinámicamente para evitar problemas con Next.js
-      const htmlToPdfmakeModule = await import('html-to-pdfmake');
-      const htmlToPdfmake = htmlToPdfmakeModule.default || htmlToPdfmakeModule;
-
-      // 1. Convertir HTML a la estructura de pdfmake
-      const pdfMakeContent = htmlToPdfmake(html, {
-        defaultStyles: {
-          p: { fontSize: 12 },
-          h1: { fontSize: 24, bold: true, marginBottom: 10 },
-          h2: { fontSize: 20, bold: true, marginBottom: 8 },
-          table: { margin: [0, 5, 0, 15] },
-          th: { bold: true, fillColor: '#f8fafc' },
-        },
-      });
-
-      // 2. Crear la definición del documento PDF
-      const docDefinition: TDocumentDefinitions = {
-        pageSize: 'A4',
-        pageOrientation: landscape ? 'landscape' : 'portrait',
-        content: pdfMakeContent as any,
-        defaultStyle: {
-          font: 'Helvetica',
-        },
-      };
-
-      // 3. Importar pdfmake dinámicamente
-      const pdfmakeModule = await import('pdfmake');
-      const PdfPrinter = pdfmakeModule.default as unknown as new (fonts: any) => any;
-      const printer = new PdfPrinter({
-        Helvetica: {
-          normal: 'Helvetica',
-          bold: 'Helvetica-Bold',
-          italics: 'Helvetica-Oblique',
-          bolditalics: 'Helvetica-BoldOblique',
-        },
-      });
-
-      // 4. Generar el PDF
-      const pdfDoc = printer.createPdfKitDocument(docDefinition);
+  static async toBuffer(doc: PDFDocumentInstance): Promise<Buffer> {
+    return new Promise<Buffer>((resolve, reject) => {
       const chunks: Buffer[] = [];
 
-      return new Promise<Buffer>((resolve, reject) => {
-        pdfDoc.on('data', (chunk: Buffer) => chunks.push(chunk));
-        pdfDoc.on('end', () => {
-          const pdfBuffer = Buffer.concat(chunks);
-          console.log(
-            '[GeneradorPDF] PDF generado con éxito, bytes:',
-            pdfBuffer.length,
-          );
-          resolve(pdfBuffer);
-        });
-        pdfDoc.on('error', reject);
-        pdfDoc.end();
-      });
-    } catch (error) {
-      console.error('[GeneradorPDF] Error al generar PDF:', error);
-      return this.generarPDFMinimalista();
-    }
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+      doc.end();
+    });
   }
 
-  static async generarPDFMinimalista(): Promise<Buffer> {
-    const pdfDoc = await PDFDocument.create();
-    const page = pdfDoc.addPage([600, 800]);
-    const helveticaFont = await pdfDoc.embedFont(StandardFonts.Helvetica);
+  static async generarDocumentoBase(): Promise<PDFDocumentInstance> {
+    return new PDFDocument({
+      size: 'A4',
+      margin: 40,
+      layout: 'portrait',
+    });
+  }
 
-    page.drawText('Reporte Generado', {
-      x: 50,
-      y: 700,
-      size: 24,
-      font: helveticaFont,
-      color: rgb(0, 0, 0),
+  static wrapLayout(bodyHtml: string, _titulo: string, _landscape = false): string {
+    return bodyHtml;
+  }
+
+  static async generarDesdeHTML(htmlContent: string, landscape = false): Promise<Buffer> {
+    const doc = new PDFDocument({
+      size: 'A4',
+      margin: 40,
+      layout: landscape ? 'landscape' : 'portrait',
     });
 
-    const pdfBytes = await pdfDoc.save();
-    return Buffer.from(pdfBytes);
-  }
+    doc.font('Helvetica').fontSize(9).fillColor('#0f172a');
 
-  static wrapLayout(
-    content: string,
-    title: string,
-    minimal: boolean = false,
-  ): string {
-    if (minimal) {
-      return `
-        <!DOCTYPE html>
-        <html>
-          <head>
-            <meta charset="utf-8">
-            <title>${title}</title>
-            <style>
-              @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-              body {
-                font-family: 'Inter', -apple-system, sans-serif;
-                margin: 0;
-                padding: 0;
-                color: #000;
-                background: white;
-              }
-              @media print {
-                .page-break { page-break-after: always; }
-              }
-            </style>
-          </head>
-          <body>
-            ${content}
-          </body>
-        </html>
-      `;
+    const text = this.htmlToPlainText(htmlContent);
+    const lines = text.split(/\r?\n/).filter(Boolean);
+    let cursorY = doc.page.height - 50;
+
+    doc.text('Reporte generado con PDFKit', 40, cursorY, {
+      width: doc.page.width - 80,
+      align: 'center',
+    });
+    cursorY -= 18;
+
+    for (const line of lines) {
+      if (cursorY < 50) {
+        doc.addPage({
+          size: 'A4',
+          margin: 40,
+          layout: landscape ? 'landscape' : 'portrait',
+        });
+        cursorY = doc.page.height - 50;
+      }
+
+      const wrapped = doc.widthOfString(line);
+      if (wrapped > doc.page.width - 80) {
+        const chunks = this.wrapText(line, doc.page.width - 80);
+        for (const chunk of chunks) {
+          doc.text(chunk, 40, cursorY, { width: doc.page.width - 80, lineGap: 3 });
+          cursorY -= 12;
+          if (cursorY < 50) {
+            doc.addPage({
+              size: 'A4',
+              margin: 40,
+              layout: landscape ? 'landscape' : 'portrait',
+            });
+            cursorY = doc.page.height - 50;
+          }
+        }
+        continue;
+      }
+
+      doc.text(line, 40, cursorY, { width: doc.page.width - 80, lineGap: 3 });
+      cursorY -= 12;
     }
 
-    return `
-      <!DOCTYPE html>
-      <html>
-        <head>
-          <meta charset="utf-8">
-          <title>${title}</title>
-          <style>
-            @import url('https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&display=swap');
-            body {
-              font-family: 'Inter', -apple-system, sans-serif;
-              margin: 0;
-              padding: 20px;
-              color: #1e293b;
-              line-height: 1.5;
-            }
-          </style>
-        </head>
-        <body>
-          ${content}
-        </body>
-      </html>
-    `;
+    return this.toBuffer(doc);
+  }
+
+  private static isDocenteHorarioHtml(htmlContent: string): boolean {
+    return htmlContent.includes('DOCENTE:') && htmlContent.includes('UNIVERSIDAD NACIONAL DE TRUJILLO') && htmlContent.includes('HORA');
+  }
+
+  private static htmlToPlainText(html: string): string {
+    return html
+      .replace(/<style[\s\S]*?<\/style>/gi, ' ')
+      .replace(/<script[\s\S]*?<\/script>/gi, ' ')
+      .replace(/<br\s*\/?\s*>/gi, '\n')
+      .replace(/<\/?(div|p|li|tr|td|th|h[1-6]|table|thead|tbody|tfoot|body|html)[^>]*>/gi, '\n')
+      .replace(/<[^>]+>/g, ' ')
+      .replace(/&nbsp;/gi, ' ')
+      .replace(/&amp;/gi, '&')
+      .replace(/&quot;/gi, '"')
+      .replace(/&#39;/gi, "'")
+      .replace(/&lt;/gi, '<')
+      .replace(/&gt;/gi, '>')
+      .replace(/[\t\r]/g, ' ')
+      .split(/\n+/)
+      .map((line) => line.replace(/\s+/g, ' ').trim())
+      .filter(Boolean)
+      .join('\n');
+  }
+
+  private static wrapText(text: string, maxWidth: number): string[] {
+    const words = text.split(' ');
+    const lines: string[] = [];
+    let current = '';
+
+    for (const word of words) {
+      const candidate = current ? `${current} ${word}` : word;
+      if (candidate.length <= Math.max(12, Math.floor(maxWidth / 2))) {
+        current = candidate;
+      } else {
+        if (current) lines.push(current);
+        current = word;
+      }
+    }
+
+    if (current) lines.push(current);
+    return lines;
   }
 }

@@ -2,8 +2,7 @@ import type { NextConfig } from "next";
 
 const nextConfig: NextConfig = {
   serverExternalPackages: [
-    "html-to-pdfmake",
-    "pdfmake",
+    "pdfkit",
     "exceljs",
     "nodemailer",
     "bcryptjs",
