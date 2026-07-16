@@ -1,8 +1,16 @@
 export { generatePlanEstudiosPDF } from './generators/planEstudios';
 export { generateCladPDF } from './generators/clad';
 export { generateDocenteHorarioPDF } from './generators/docenteHorario';
+export { generateGestionAcademicaPDF } from './generators/gestionAcademica';
+export { generateHorarioConsolidadoPdf } from './generators/horarios';
+export { generateHorarioAulaOCicloPDF } from './generators/horarioAulaCiclo';
+export { generateDocentesListPdf, generateCursosListPdf, generateAmbientesListPdf, generatePeriodosListPdf } from './generators/listas';
 export { createDocenteHorarioPdfDto } from './dto/docenteHorario';
+export { createGestionAcademicaPdfDto } from './dto/gestionAcademica';
 export type { DocenteHorarioPdfDto, DocenteHorarioPdfItem } from './types/docenteHorario';
+export type { GestionAcademicaPdfDto, DocenteCargaHoraria } from './types/gestionAcademica';
+export type { HorarioReportePdfDto, HorarioReporteGroup, HorarioReportePdfItem } from './types/horarios';
+export type { ListReportPdfDto, DocenteListItem, CursoListItem, AmbienteListItem, PeriodoListItem } from './types/listas';
 export { PDFBuilder } from './utils';
 export { PDFDocumentFactory } from './builders/PDFDocumentFactory';
 export { ReportLayout } from './layout';
