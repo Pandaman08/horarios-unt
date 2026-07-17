@@ -35,23 +35,17 @@ export class ValidadorHorario {
    */
   static async validarAsignacion(solicitud: SolicitudAsignacion): Promise<ResultadoValidacion> {
     const inicio = performance.now();
+    const conflictos: Conflicto[] = [];
 
-    const validaciones = [
-      this.validarCruceDocente(solicitud),
-      this.validarCruceGrupo(solicitud),
-      this.validarOcupacionAmbiente(solicitud),
-      this.validarExcesoCargaDiaria(solicitud),
-      this.validarFranjaInstitucional(solicitud),
-      this.validarCursoAsignable(solicitud),
-      this.validarAmbienteValido(solicitud),
-      this.validarHorasCompletadas(solicitud),
-      // COMENTADO: La validación de APROBADO ya no es requerida por el nuevo flujo
-      // Ahora solo necesitamos que exista CargaLectiva asignada (cualquier estado)
-      // this.validarDeclaracionAprobada(solicitud),
-    ];
-
-    const resultados = await Promise.all(validaciones);
-    const conflictos = resultados.flat();
+    // Run validations sequentially to avoid hitting connection limits
+    conflictos.push(...await this.validarCruceDocente(solicitud));
+    conflictos.push(...await this.validarCruceGrupo(solicitud));
+    conflictos.push(...await this.validarOcupacionAmbiente(solicitud));
+    conflictos.push(...await this.validarExcesoCargaDiaria(solicitud));
+    conflictos.push(...await this.validarFranjaInstitucional(solicitud));
+    conflictos.push(...await this.validarCursoAsignable(solicitud));
+    conflictos.push(...await this.validarAmbienteValido(solicitud));
+    conflictos.push(...await this.validarHorasCompletadas(solicitud));
     
     const fin = performance.now();
     const tiempoValidacion = fin - inicio;
@@ -64,10 +58,6 @@ export class ValidadorHorario {
         console.error('Error al registrar conflictos:', err);
       });
     }
-
-    // Validación: Bloques mínimos (mínimo 2 casillas horarias consecutivas)
-    // Nota: El motor actual asigna bloques de 1 hora. Esta validación asegura que si se programa algo, 
-    // sea por al menos 2 horas si el curso tiene carga suficiente.
 
     return {
       valido: !tieneErrores,
