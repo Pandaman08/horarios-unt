@@ -1,4 +1,4 @@
-﻿import { NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { getServerSession } from 'next-auth';
 import { authOptions } from '@/lib/auth';
 import { prisma } from '@/lib/prisma';
@@ -187,42 +187,62 @@ export async function GET(request: Request) {
       }
     }
 
-    const progreso = await Promise.all(
-      Array.from(cursosMap.values()).map(async (curso) => {
-        const asignaciones = await prisma.horarioAsignado.findMany({
-          where: {
-            id_docente: docenteId,
-            id_curso: curso.id_curso,
-            tipo_clase: curso.tipo_clase,
-            id_periodo: periodoId,
-          },
-        });
-
-        const temporales = await prisma.seleccionTemporalHorario.findMany({
-          where: {
-            id_docente: docenteId,
-            id_curso: curso.id_curso,
-            tipo_clase: curso.tipo_clase,
-            id_periodo: periodoId,
-            fecha_expiracion: { gt: new Date() },
-          },
-        });
-
-        let minutosTotales = 0;
-        asignaciones.forEach((a: { hora_inicio: string; hora_fin: string }) => {
-          minutosTotales += calcularMinutos(a.hora_inicio, a.hora_fin);
-        });
-        temporales.forEach((t: { hora_inicio: string; hora_fin: string }) => {
-          minutosTotales += calcularMinutos(t.hora_inicio, t.hora_fin);
-        });
-
-        return {
-          ...curso,
-          horas_asignadas: Math.max(0, minutosTotales / 60),
-          confirmado: asignaciones.length > 0,
-        };
-      })
-    );
+    // Get all course keys for batch query
+    const courseKeys = Array.from(cursosMap.values());
+    
+    // Batch query for horarioAsignado
+    const allAsignaciones = await prisma.horarioAsignado.findMany({
+      where: {
+        id_docente: docenteId,
+        id_periodo: periodoId,
+      },
+    });
+    
+    // Batch query for seleccionTemporalHorario
+    const allTemporales = await prisma.seleccionTemporalHorario.findMany({
+      where: {
+        id_docente: docenteId,
+        id_periodo: periodoId,
+        fecha_expiracion: { gt: new Date() },
+      },
+    });
+    
+    // Create maps for quick lookup
+    const asignacionesMap = new Map<string, any[]>();
+    const temporalesMap = new Map<string, any[]>();
+    
+    allAsignaciones.forEach(a => {
+      const key = `${a.id_curso}:${a.tipo_clase}`;
+      if (!asignacionesMap.has(key)) asignacionesMap.set(key, []);
+      asignacionesMap.get(key)!.push(a);
+    });
+    
+    allTemporales.forEach(t => {
+      const key = `${t.id_curso}:${t.tipo_clase}`;
+      if (!temporalesMap.has(key)) temporalesMap.set(key, []);
+      temporalesMap.get(key)!.push(t);
+    });
+    
+    // Calculate progress for each course
+    const progreso = courseKeys.map(curso => {
+      const key = `${curso.id_curso}:${curso.tipo_clase}`;
+      const asignaciones = asignacionesMap.get(key) || [];
+      const temporales = temporalesMap.get(key) || [];
+      
+      let minutosTotales = 0;
+      asignaciones.forEach((a: { hora_inicio: string; hora_fin: string }) => {
+        minutosTotales += calcularMinutos(a.hora_inicio, a.hora_fin);
+      });
+      temporales.forEach((t: { hora_inicio: string; hora_fin: string }) => {
+        minutosTotales += calcularMinutos(t.hora_inicio, t.hora_fin);
+      });
+      
+      return {
+        ...curso,
+        horas_asignadas: Math.max(0, minutosTotales / 60),
+        confirmado: asignaciones.length > 0,
+      };
+    });
 
     return NextResponse.json(progreso);
   } catch (error) {
