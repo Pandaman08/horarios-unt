@@ -1,4 +1,4 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect, useMemo } from "react";
 import { useSession } from "next-auth/react";
@@ -90,9 +90,7 @@ export function DisponibilidadDocenteView() {
 
     while (current < end) {
       const horaStr = format(current, "HH:mm");
-      if (horaStr !== "12:00") {
-        slots.push(horaStr);
-      }
+      slots.push(horaStr);
       current = addMinutes(current, 60);
     }
     return slots;
