@@ -1,4 +1,4 @@
-﻿import { NextRequest, NextResponse } from "next/server";
+import { NextRequest, NextResponse } from "next/server";
 import { getServerSession } from "next-auth";
 import { authOptions } from "@/lib/auth";
 import { prisma } from "@/lib/prisma";
@@ -46,8 +46,34 @@ export async function GET(req: NextRequest) {
       }
     });
 
-    // Filtrar slots de receso (12:00) que puedan haber sido creados por seeds antiguos
-    const disponibilidadesFiltradas = disponibilidades.filter(d => d.hora_inicio !== '12:00');
+    // Generar todos los slots de horario (incluyendo 12:00) para todos los días,
+    // usando los valores de la BD si existen, o false si no
+    const DIAS = [0, 1, 2, 3, 4, 5]; // Lunes a Sábado
+    const HORAS = [
+      "07:00", "08:00", "09:00", "10:00", "11:00", "12:00",
+      "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"
+    ];
+
+    const disponibilidadesCompletas: any[] = [];
+    for (const dia of DIAS) {
+      for (const hora of HORAS) {
+        const existing = disponibilidades.find(
+          d => d.dia_semana === dia && d.hora_inicio === hora
+        );
+        disponibilidadesCompletas.push({
+          id_disponibilidad: existing?.id_disponibilidad,
+          id_docente: docente.id_docente,
+          id_periodo: parseInt(periodoId),
+          dia_semana: dia,
+          hora_inicio: hora,
+          hora_fin: existing?.hora_fin || 
+            `${String(parseInt(hora.split(':')[0]) + 1).padStart(2, '0')}:00`,
+          disponible: existing?.disponible ?? false,
+        });
+      }
+    }
+
+    const disponibilidadesFiltradas = disponibilidadesCompletas;
 
     return NextResponse.json({
       disponibilidades: disponibilidadesFiltradas,

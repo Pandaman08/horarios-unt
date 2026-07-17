@@ -309,12 +309,28 @@ export async function GET(request: Request) {
         console.log(`🔍 [API disponibilidad-matriz] Primeros 3 registros:`, JSON.stringify(rawDisponibilidad.slice(0, 3)));
       }
 
-      // La BD ya almacena dia_semana como 0-5 (0=Lunes), mismo formato que la matriz
-      disponibilidadSlots = rawDisponibilidad
-        .filter((s: { hora_inicio: string }) => s.hora_inicio !== '12:00')
-        .map((s: { dia_semana: number; hora_inicio: string; disponible: boolean }) => ({
-          ...s
-        }));
+      // Generar TODOS los slots de horario (incluyendo 12:00) para todos los días
+      const DIAS = [0, 1, 2, 3, 4, 5]; // Lunes a Sábado
+      const HORAS = [
+        "07:00", "08:00", "09:00", "10:00", "11:00", "12:00",
+        "13:00", "14:00", "15:00", "16:00", "17:00", "18:00", "19:00"
+      ];
+
+      const slotsCompletos: Array<{ dia_semana: number; hora_inicio: string; disponible: boolean }> = [];
+      for (const dia of DIAS) {
+        for (const hora of HORAS) {
+          const existing = rawDisponibilidad.find(
+            s => s.dia_semana === dia && s.hora_inicio === hora
+          );
+          slotsCompletos.push({
+            dia_semana: dia,
+            hora_inicio: hora,
+            disponible: existing?.disponible ?? false,
+          });
+        }
+      }
+
+      disponibilidadSlots = slotsCompletos;
     }
 
     return NextResponse.json({

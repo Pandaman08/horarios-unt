@@ -319,14 +319,14 @@ export class ValidadorHorario {
       });
     }
 
-    // Bloque de almuerzo (12:00 - 13:00)
-    const almuerzoInicio = this.timeToMinutes("12:00");
-    const almuerzoFin = this.timeToMinutes("13:00");
+    // Bloque de almuerzo (13:00 - 14:00)
+    const almuerzoInicio = this.timeToMinutes("13:00");
+    const almuerzoFin = this.timeToMinutes("14:00");
 
     if ((inicio < almuerzoFin && fin > almuerzoInicio)) {
       conflictos.push({
         tipo: 'FUERA_FRANJA',
-        mensaje: 'El horario interfiere con el bloque de almuerzo institucional (12:00 - 13:00).',
+        mensaje: 'El horario interfiere con el bloque de almuerzo institucional (13:00 - 14:00).',
         severidad: 'ADVERTENCIA'
       });
     }

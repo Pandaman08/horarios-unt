@@ -1,4 +1,4 @@
-﻿export type Locale = "es" | "en" | "pt" | "fr" | "zh";
+export type Locale = "es" | "en" | "pt" | "fr" | "zh";
 
 export const LOCALES: { code: Locale; label: string; flag: string }[] = [
   { code: "es", label: "Español", flag: "🇪🇸" },
@@ -192,7 +192,7 @@ const es = {
   hour: "Hora",
   breakLabel: "Receso",
   notAvailable: "No disponible",
-  breakTime: "Receso 12:00 – 13:00",
+  breakTime: "Receso 13:00 – 14:00",
   free: "Libre",
   myNonLective: "Mi carga no lectiva",
   lectiveBlocked: "Carga lectiva (bloqueado)",
