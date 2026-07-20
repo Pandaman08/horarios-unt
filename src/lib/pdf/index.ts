@@ -1,6 +1,6 @@
 export { generatePlanEstudiosPDF } from './generators/planEstudios';
 export { generateCladPDF } from './generators/clad';
-export { generateDocenteHorarioPDF } from './generators/docenteHorario';
+export { generateDocenteHorarioPDF, DocenteHorarioPDF } from './generators/docenteHorario';
 export { generateGestionAcademicaPDF } from './generators/gestionAcademica';
 export { generateHorarioConsolidadoPdf } from './generators/horarios';
 export { generateHorarioAulaOCicloPDF, generateHorarioInstitucionalPdf } from './generators/horarioAulaCiclo';
