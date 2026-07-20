@@ -1,11 +1,11 @@
-﻿"use client";
+"use client";
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers, FileSpreadsheet } from "lucide-react";
+import { FileText, Download, Printer, User, Home, RefreshCw, ChevronDown, Calendar, School, BookOpen, TrendingUp, X, CheckCircle2, Layers, FileSpreadsheet, Eye } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { useSession } from "next-auth/react";
@@ -13,6 +13,9 @@ import { usePeriodo } from "@/contexts/PeriodoContext";
 import { useDepartment } from "@/contexts/DepartmentContext";
 import { useLocale } from "@/contexts/LocaleContext";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { PDFViewer, PDFDownloadLink } from "@react-pdf/renderer";
+import { DocenteHorarioPDF } from "@/lib/pdf/generators/docenteHorario";
+import type { DocenteHorarioPdfDto } from "@/lib/pdf/types/docenteHorario";
 
 export function VisorReportes() {
   const { data: session } = useSession();
@@ -43,6 +46,8 @@ export function VisorReportes() {
   const [generatingConflictos, setGeneratingConflictos] = useState(false);
   const [generatingEstadisticas, setGeneratingEstadisticas] = useState(false);
   const [generatingReporteGeneral, setGeneratingReporteGeneral] = useState(false);
+  const [previewDto, setPreviewDto] = useState<DocenteHorarioPdfDto | null>(null);
+  const [showPreview, setShowPreview] = useState(false);
 
   // Sincronizar con el periodo global al inicio o cuando cambie
   useEffect(() => {
@@ -151,6 +156,31 @@ export function VisorReportes() {
     }
   };
 
+  const handlePreviewDocente = async () => {
+    if (!id_periodo || !selectedDocente) {
+      toast.warning(t("selectElement"));
+      return;
+    }
+
+    setGeneratingDocente(true);
+    try {
+      let url = `/api/reportes/docente-data?id=${selectedDocente}&id_periodo=${id_periodo}`;
+      if (departamentoSeleccionado) url += `&departamentoId=${departamentoSeleccionado.id}`;
+      
+      const response = await fetch(url);
+      if (!response.ok) throw new Error('Error al cargar datos del docente');
+      
+      const dto = await response.json();
+      setPreviewDto(dto);
+      setShowPreview(true);
+    } catch (error) {
+      console.error(error);
+      toast.error('Error al cargar la vista previa');
+    } finally {
+      setGeneratingDocente(false);
+    }
+  };
+
   const handleDownload = async (tipo: string, id?: string, formato: 'pdf' | 'excel' = 'pdf') => {
     if (!id_periodo) return;
     if ((tipo === 'docente' || tipo === 'aula' || tipo === 'ciclo') && !id) {
@@ -174,23 +204,23 @@ export function VisorReportes() {
   | 'estadisticas'
   | 'reporte_general';
 
-  const loadingMap: Record<
-    TipoReporte,
-    React.Dispatch<React.SetStateAction<boolean>>
-  > = {
-    docente: setGeneratingDocente,
-    aula: setGeneratingAula,
-    aulas_todas: setGeneratingTodasAulas,
-    dia: setGeneratingDia,
-    ciclo: setGeneratingCiclo,
-    ciclos_todos: setGeneratingTodosCiclos,
-    consolidado: setGeneratingConsolidado,
-    conflictos: setGeneratingConflictos,
-    estadisticas: setGeneratingEstadisticas,
-    reporte_general: setGeneratingReporteGeneral,
-  };
+    const loadingMap: Record<
+      TipoReporte,
+      React.Dispatch<React.SetStateAction<boolean>>
+    > = {
+      docente: setGeneratingDocente,
+      aula: setGeneratingAula,
+      aulas_todas: setGeneratingTodasAulas,
+      dia: setGeneratingDia,
+      ciclo: setGeneratingCiclo,
+      ciclos_todos: setGeneratingTodosCiclos,
+      consolidado: setGeneratingConsolidado,
+      conflictos: setGeneratingConflictos,
+      estadisticas: setGeneratingEstadisticas,
+      reporte_general: setGeneratingReporteGeneral,
+    };
 
-  const setLoading = loadingMap[tipo as TipoReporte];
+    const setLoading = loadingMap[tipo as TipoReporte];
     
 
     if (setLoading) setLoading(true);
@@ -408,38 +438,89 @@ export function VisorReportes() {
               </div>
             </div>
           ) : selectedReporte === 'docente' ? (
-            <div className="flex flex-col sm:flex-row gap-4 items-end">
-              <div className="flex-1">
-                <Label className="text-sm font-semibold text-foreground mb-2 block">{t("selectTeacherReport")}</Label>
-                <SearchableSelect
-                  options={docentes.map(d => ({
-                    value: d.id_docente.toString(),
-                    label: `${d.nombres} ${d.apellidos}`
-                  }))}
-                  value={selectedDocente}
-                  onValueChange={setSelectedDocente}
-                  placeholder={t("searchTeacher")}
-                />
+            <div className="flex flex-col gap-6">
+              <div className="flex flex-col sm:flex-row gap-4 items-end">
+                <div className="flex-1">
+                  <Label className="text-sm font-semibold text-foreground mb-2 block">{t("selectTeacherReport")}</Label>
+                  <SearchableSelect
+                    options={docentes.map(d => ({
+                      value: d.id_docente.toString(),
+                      label: `${d.nombres} ${d.apellidos}`
+                    }))}
+                    value={selectedDocente}
+                    onValueChange={setSelectedDocente}
+                    placeholder={t("searchTeacher")}
+                  />
+                </div>
+                <div className="flex gap-2">
+                  <Button
+                    className="h-11 bg-blue-600 hover:bg-blue-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-blue-900/10"
+                    onClick={handlePreviewDocente}
+                    disabled={generatingDocente}
+                  >
+                    <Eye className="h-4 w-4 mr-2" />
+                    Vista Previa
+                  </Button>
+                  <Button
+                    className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
+                    onClick={() => handleDownload('docente', selectedDocente, 'pdf')}
+                    disabled={generatingDocente}
+                  >
+                    <FileText className="h-4 w-4 mr-2" />
+                    PDF
+                  </Button>
+                  <Button
+                    variant="outline"
+                    className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
+                    onClick={() => handleDownloadExcel('docente', selectedDocente)}
+                    disabled={generatingDocente}
+                  >
+                    <FileSpreadsheet className="h-4 w-4 mr-2" />
+                    Excel
+                  </Button>
+                </div>
               </div>
-              <div className="flex gap-2">
-                <Button
-                  className="h-11 bg-emerald-600 hover:bg-emerald-700 text-white rounded-xl px-6 font-bold text-sm shadow-lg shadow-emerald-900/10"
-                  onClick={() => handleDownload('docente', selectedDocente, 'pdf')}
-                  disabled={generatingDocente}
-                >
-                  <FileText className="h-4 w-4 mr-2" />
-                  PDF
-                </Button>
-                <Button
-                  variant="outline"
-                  className="h-11 border-emerald-600 text-emerald-600 hover:bg-emerald-50 rounded-xl px-6 font-bold text-sm"
-                  onClick={() => handleDownloadExcel('docente', selectedDocente)}
-                  disabled={generatingDocente}
-                >
-                  <FileSpreadsheet className="h-4 w-4 mr-2" />
-                  Excel
-                </Button>
-              </div>
+
+              {showPreview && previewDto && (
+                <div className="bg-white rounded-2xl border border-border shadow-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-bold text-foreground">Vista Previa del Horario</h3>
+                    <div className="flex gap-2">
+                      <PDFDownloadLink
+                        document={<DocenteHorarioPDF dto={previewDto} />}
+                        fileName={`horario-docente-${selectedDocente}.pdf`}
+                        className="inline-flex items-center justify-center whitespace-nowrap rounded-xl text-sm font-bold ring-offset-background transition-colors focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:pointer-events-none disabled:opacity-50 bg-emerald-600 text-white hover:bg-emerald-700 h-10 px-4 py-2"
+                      >
+                        {({ loading }) =>
+                          loading ? (
+                            <>
+                              <RefreshCw className="h-4 w-4 mr-2 animate-spin" />
+                              Cargando...
+                            </>
+                          ) : (
+                            <>
+                              <Download className="h-4 w-4 mr-2" />
+                              Descargar PDF
+                            </>
+                          )
+                        }
+                      </PDFDownloadLink>
+                      <Button
+                        variant="outline"
+                        onClick={() => setShowPreview(false)}
+                      >
+                        <X className="h-4 w-4 mr-2" />
+                        Cerrar
+                      </Button>
+                    </div>
+                  </div>
+                  <div className="border rounded-lg overflow-hidden">
+                    <PDFViewer width="100%" height="600px">
+                      <DocenteHorarioPDF dto={previewDto} />
+                    </PDFViewer>
+                  </div>
+                </div>
+              )}
             </div>
           ) : selectedReporte === 'ciclo' ? (
             <div className="flex flex-col sm:flex-row gap-4 items-end">

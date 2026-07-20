@@ -27,7 +27,7 @@ const styles = StyleSheet.create({
   },
 });
 
-export async function generateDocenteHorarioPDF(dto: DocenteHorarioPdfDto): Promise<Buffer> {
+export function DocenteHorarioPDF({ dto }: { dto: DocenteHorarioPdfDto }) {
   const generatedAt = new Date().toLocaleString('es-PE');
   const docenteName = `${dto.docente.nombres} ${dto.docente.apellidos}`.trim().toUpperCase();
   const year = dto.periodo?.anio ?? '2026';
@@ -35,40 +35,33 @@ export async function generateDocenteHorarioPDF(dto: DocenteHorarioPdfDto): Prom
   const fechaInicio = '12/4/2026';
   const fechaTermino = '7/8/2026';
 
-  const document = React.createElement(
-    Document,
-    null,
-    React.createElement(
-      Page,
-      { size: 'A4', orientation: 'landscape', style: styles.page },
-      React.createElement(
-        View,
-        { style: styles.body },
-        React.createElement(DocenteTopBar, {
-          docente: docenteName,
-        }),
-        React.createElement(
-          View,
-          { style: styles.topSectionRow },
-          React.createElement(SchoolInfoBox, {
-            university: 'Universidad Nacional de Trujillo',
-            faculty: 'Facultad de Ingeniería',
-            school: dto.escuela?.nombre ?? 'Ingeniería de Sistemas',
-            section: 'A',
-            year,
-            semestre,
-            fechaInicio,
-            fechaTermino,
-          }),
-          React.createElement(AsignaturaSummaryTable, { dto }),
-        ),
-        React.createElement(ScheduleMatrix, { dto }),
-      ),
-      React.createElement(Footer, { generatedAt }),
-    ),
+  return (
+    <Document>
+      <Page size="A4" orientation="landscape" style={styles.page}>
+        <View style={styles.body}>
+          <DocenteTopBar docente={docenteName} />
+          <View style={styles.topSectionRow}>
+            <SchoolInfoBox
+              university="Universidad Nacional de Trujillo"
+              faculty="Facultad de Ingeniería"
+              school={dto.escuela?.nombre ?? 'Ingeniería de Sistemas'}
+              section="A"
+              year={year}
+              semestre={semestre}
+              fechaInicio={fechaInicio}
+              fechaTermino={fechaTermino}
+            />
+            <AsignaturaSummaryTable dto={dto} />
+          </View>
+          <ScheduleMatrix dto={dto} />
+        </View>
+        <Footer generatedAt={generatedAt} />
+      </Page>
+    </Document>
   );
+}
 
-  const pdfBuffer = await renderToBuffer(document);
-
+export async function generateDocenteHorarioPDF(dto: DocenteHorarioPdfDto): Promise<Buffer> {
+  const pdfBuffer = await renderToBuffer(<DocenteHorarioPDF dto={dto} />);
   return Buffer.isBuffer(pdfBuffer) ? pdfBuffer : Buffer.from(pdfBuffer);
 }
